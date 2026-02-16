@@ -1,0 +1,14 @@
+{
+  "name": "text-idle",
+  "private": true,
+  "scripts": {
+    "dev:backend": "go run ./cmd/server",
+    "dev:frontend": "cd frontend && npm run dev",
+    "e2e": "concurrently -k -s first -n backend,frontend \"go run ./cmd/server\" \"cd frontend && npm run dev\" \"wait-on http://localhost:5173 http://localhost:8080/health && npx playwright test --config=e2e/browser/playwright.config.js\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1"
+  }
+}

@@ -73,6 +73,17 @@ Avoid overly complex test structures.
 
 ---
 
+# 5.1 End-to-End (E2E) Definition
+
+**E2E tests require both frontend and backend.**
+
+- E2E = full user flow through the UI (browser) to the backend API and database
+- API-only tests (e.g. httptest against handlers) are integration tests, not E2E
+- When implementing a feature with E2E coverage: implement frontend page + backend API + browser E2E tests (e.g. Playwright)
+- E2E test location: `e2e/browser/`
+
+---
+
 # 6. Implementation Rules
 
 Implementation should:

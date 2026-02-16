@@ -9,7 +9,7 @@ Set-Location $PSScriptRoot
 $status = git status --porcelain
 if ($status) {
     git add .
-    git commit -m "chore: initial project setup with design document and cursor rules"
+    git commit -m "feat(auth): implement user registration API with TDD"
 }
 
 # Add remote if not exists
