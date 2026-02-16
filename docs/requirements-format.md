@@ -58,17 +58,19 @@ Then [expected result/verifiable behavior].
 
 **User Story**
 
-> As a returning player,  
+> As a player,  
 > I want to log in with my email and password,  
-> So that I can access my account and continue playing.
+> So that I can access my account and play the game.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | User is on the login page | User enters correct email and password and submits | User is logged in and redirected to the main screen |
-| AC2 | User is on the login page | User enters wrong email or password | Login fails with a clear error message |
-| AC3 | User visits the site without being logged in | User accesses any protected page | User is redirected to the login page |
+| AC1 | User is on the login page | User enters correct email and password and submits | User is logged in successfully |
+| AC2 | User has logged in (first-time player, never played before) | Login succeeds | User sees the opening introduction (tutorial/welcome screen) |
+| AC3 | User has logged in (returning player, has played before) | Login succeeds | User is redirected to the main screen |
+| AC4 | User is on the login page | User enters wrong email or password | Login fails with a clear error message |
+| AC5 | User visits the site without being logged in | User accesses any protected page | User is redirected to the login page |
 
 ---
 
@@ -87,6 +89,25 @@ Then [expected result/verifiable behavior].
 | AC1 | Player is on the main screen | Player clicks "Recruit" | A class selection screen is shown |
 | AC2 | Player is on the class selection screen | Player selects a class and confirms | A new character is created and added to the party |
 | AC3 | Player has 1 character in the party | Player views the party panel | The character's class and basic stats are displayed |
+
+---
+
+## Example 4: Opening Introduction
+
+**User Story**
+
+> As a first-time player,  
+> I want to see an opening introduction and name my party,  
+> So that I understand what the game is about and personalize my adventure.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | First-time player has just logged in | Player lands on the intro screen | Player sees a brief introduction explaining what kind of game this is |
+| AC2 | Player is on the introduction step | Player clicks "Next" | Player sees the team name input step |
+| AC3 | Player is on the team name step | Player enters a name and confirms | Team name is saved and player is redirected to the main screen |
+| AC4 | Player has completed the intro before | Player logs in | Player is redirected directly to the main screen (skips intro) |
 
 ---
 

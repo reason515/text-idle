@@ -153,7 +153,18 @@ Do not guess requirements.
 
 ---
 
-# 12. Prohibited Behaviors
+# 12. Shell / Terminal (PowerShell)
+
+When running terminal commands on Windows (PowerShell):
+
+- Do NOT use `&&` to chain commands; PowerShell does not support it
+- Use `;` instead (e.g. `cd foo; npm run dev`)
+- Or run commands separately
+- Avoid `head`, `tail`, `grep` in favor of built-in tools (e.g. `Select-Object -First`) or project tools
+
+---
+
+# 13. Prohibited Behaviors
 
 The following are not allowed:
 
@@ -166,7 +177,7 @@ The following are not allowed:
 
 ---
 
-# 13. Output Order (When Implementation Is Involved)
+# 14. Output Order (When Implementation Is Involved)
 
 1. Brief clarification
 2. Scenario summary

@@ -76,7 +76,7 @@ async function submit() {
       if (data.token) {
         localStorage.setItem('token', data.token)
       }
-      router.push('/main')
+      router.push('/intro')
     } else {
       if (res.status === 409) {
         errors.general = data.error || 'Email already exists'

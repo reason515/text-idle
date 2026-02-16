@@ -13,6 +13,7 @@ const router = useRouter()
 
 function logout() {
   localStorage.removeItem('token')
+  // teamName persists so returning user skips intro (per-browser; backend will handle per-user later)
   router.push('/login')
 }
 </script>

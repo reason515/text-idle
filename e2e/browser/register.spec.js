@@ -5,14 +5,14 @@ test.describe('Register E2E', () => {
     await page.goto('/register')
   })
 
-  test('AC1: valid email and password creates account and logs in', async ({ page }) => {
+  test('AC1: valid email and password creates account and redirects to intro', async ({ page }) => {
     const email = `e2e-${Date.now()}@example.com`
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
+    await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
+    await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
   })
 
   test('AC2: duplicate email shows clear error', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
     await page.goto('/register')
     await page.getByLabel('Email').fill(email)

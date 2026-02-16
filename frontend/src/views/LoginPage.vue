@@ -75,7 +75,8 @@ async function submit() {
       if (data.token) {
         localStorage.setItem('token', data.token)
       }
-      router.push('/main')
+      const hasTeamName = !!localStorage.getItem('teamName')
+      router.push(hasTeamName ? '/main' : '/intro')
     } else {
       if (res.status === 401) {
         errors.general = data.error || 'Invalid email or password'
