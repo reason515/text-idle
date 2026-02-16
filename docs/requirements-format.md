@@ -74,25 +74,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 3: Character Recruitment
-
-**User Story**
-
-> As a player,  
-> I want to recruit a character and assign them a class,  
-> So that I can build my adventure party.
-
-**Acceptance Criteria**
-
-| # | Given | When | Then |
-|---|-------|------|------|
-| AC1 | Player is on the main screen | Player clicks "Recruit" | A class selection screen is shown |
-| AC2 | Player is on the class selection screen | Player selects a class and confirms | A new character is created and added to the party |
-| AC3 | Player has 1 character in the party | Player views the party panel | The character's class and basic stats are displayed |
-
----
-
-## Example 4: Opening Introduction
+## Example 3: Opening Introduction
 
 **User Story**
 
@@ -108,6 +90,24 @@ Then [expected result/verifiable behavior].
 | AC2 | Player is on the introduction step | Player clicks "Next" | Player sees the team name input step |
 | AC3 | Player is on the team name step | Player enters a name and confirms | Team name is saved and player is redirected to the main screen |
 | AC4 | Player has completed the intro before | Player logs in | Player is redirected directly to the main screen (skips intro) |
+
+---
+
+## Example 4: Character Recruitment
+
+**User Story**
+
+> As a player,  
+> I want to recruit a character and assign them a class,  
+> So that I can build my adventure party.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player is on the main screen | Player clicks "Recruit" | A class selection screen is shown |
+| AC2 | Player is on the class selection screen | Player selects a class and confirms | A new character is created and added to the party |
+| AC3 | Player has 1 character in the party | Player views the party panel | The character's class and basic stats are displayed |
 
 ---
 
