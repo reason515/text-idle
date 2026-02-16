@@ -1,6 +1,6 @@
 <template>
   <div class="panel">
-    <h2>Register</h2>
+    <h2>Login</h2>
     <form @submit.prevent="submit">
       <div class="form-group">
         <label for="email">Email</label>
@@ -15,26 +15,25 @@
         <p v-if="errors.email" class="error-msg">{{ errors.email }}</p>
       </div>
       <div class="form-group">
-        <label for="password">Password (min 8 chars)</label>
+        <label for="password">Password</label>
         <input
           id="password"
           v-model="password"
           type="password"
           placeholder="********"
           required
-          minlength="8"
           :disabled="loading"
         />
         <p v-if="errors.password" class="error-msg">{{ errors.password }}</p>
       </div>
       <p v-if="errors.general" class="error-msg">{{ errors.general }}</p>
-      <p v-if="success" class="success-msg">Account created! You are logged in.</p>
+      <p v-if="success" class="success-msg">You are logged in.</p>
       <button type="submit" class="btn" :disabled="loading">
-        {{ loading ? 'Registering...' : 'Register' }}
+        {{ loading ? 'Logging in...' : 'Login' }}
       </button>
     </form>
     <p class="link-msg">
-      Already have an account? <router-link to="/login">Login</router-link>
+      Don't have an account? <router-link to="/register">Register</router-link>
     </p>
   </div>
 </template>
@@ -63,7 +62,7 @@ async function submit() {
 
   try {
     const base = import.meta.env.DEV ? '/api' : ''
-    const res = await fetch(`${base}/register`, {
+    const res = await fetch(`${base}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.value, password: password.value }),
@@ -78,8 +77,8 @@ async function submit() {
       }
       router.push('/main')
     } else {
-      if (res.status === 409) {
-        errors.general = data.error || 'Email already exists'
+      if (res.status === 401) {
+        errors.general = data.error || 'Invalid email or password'
       } else if (res.status === 400) {
         const msg = data.error || data.errors?.join?.(' ') || 'Invalid input'
         if (msg.toLowerCase().includes('email')) {
@@ -89,8 +88,10 @@ async function submit() {
         } else {
           errors.general = msg
         }
+      } else if (res.status === 404) {
+        errors.general = 'Login service unavailable. Please restart the backend server.'
       } else {
-        errors.general = data.error || 'Registration failed'
+        errors.general = data.error || 'Login failed'
       }
     }
   } catch (e) {

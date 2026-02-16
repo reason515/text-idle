@@ -11,7 +11,8 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page.getByText('Account created! You are logged in.')).toBeVisible({ timeout: 5000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
   })
 
   test('AC2: duplicate email shows clear error', async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page.getByText('Account created!')).toBeVisible({ timeout: 5000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.goto('/register')
     await page.getByLabel('Email').fill(email)

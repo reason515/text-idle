@@ -2,6 +2,8 @@
   "name": "text-idle",
   "private": true,
   "scripts": {
+    "dev": "concurrently -k -s first -n backend,frontend \"go run ./cmd/server\" \"cd frontend && npm run dev\"",
+    "dev:restart": "powershell -ExecutionPolicy Bypass -File scripts/restart-dev.ps1",
     "dev:backend": "go run ./cmd/server",
     "dev:frontend": "cd frontend && npm run dev",
     "e2e": "concurrently -k -s first -n backend,frontend \"go run ./cmd/server\" \"cd frontend && npm run dev\" \"wait-on http://localhost:5173 http://localhost:8080/health && npx playwright test --config=e2e/browser/playwright.config.js\""

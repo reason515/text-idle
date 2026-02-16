@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	ErrEmailExists = errors.New("email already exists")
+	ErrEmailExists         = errors.New("email already exists")
+	ErrInvalidCredentials  = errors.New("invalid email or password")
 )
 
 type AuthService struct {
@@ -46,6 +47,17 @@ func (s *AuthService) Register(email, password string) (string, error) {
 
 	token := generateToken()
 	return token, nil
+}
+
+func (s *AuthService) Login(email, password string) (string, error) {
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil || user == nil {
+		return "", ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return "", ErrInvalidCredentials
+	}
+	return generateToken(), nil
 }
 
 func generateToken() string {

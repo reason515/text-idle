@@ -31,6 +31,7 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *gorm.DB) {
 
 	r := gin.New()
 	r.POST("/register", authHandler.Register)
+	r.POST("/login", authHandler.Login)
 
 	return r, db
 }
@@ -140,5 +141,90 @@ func TestRegister_AC3_WeakPassword_ReturnsValidationError(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestLogin_AC1_CorrectEmailAndPassword_ReturnsToken(t *testing.T) {
+	r, _ := setupTestRouter(t)
+
+	// Create user via register first
+	regBody, _ := json.Marshal(map[string]string{"email": "login@example.com", "password": "password123"})
+	regReq := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(regBody))
+	regReq.Header.Set("Content-Type", "application/json")
+	regW := httptest.NewRecorder()
+	r.ServeHTTP(regW, regReq)
+	if regW.Code != http.StatusCreated {
+		t.Fatalf("setup: register failed with %d", regW.Code)
+	}
+
+	// Login with correct credentials
+	reqBody := map[string]string{
+		"email":    "login@example.com",
+		"password": "password123",
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var resp LoginResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp.Token == "" {
+		t.Error("expected non-empty token")
+	}
+}
+
+func TestLogin_AC2_WrongEmailOrPassword_ReturnsUnauthorized(t *testing.T) {
+	r, _ := setupTestRouter(t)
+
+	// Create user via register first
+	regBody, _ := json.Marshal(map[string]string{"email": "wrong@example.com", "password": "password123"})
+	regReq := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(regBody))
+	regReq.Header.Set("Content-Type", "application/json")
+	regW := httptest.NewRecorder()
+	r.ServeHTTP(regW, regReq)
+	if regW.Code != http.StatusCreated {
+		t.Fatalf("setup: register failed with %d", regW.Code)
+	}
+
+	tests := []struct {
+		name     string
+		email    string
+		password string
+	}{
+		{"wrong email", "nonexistent@example.com", "password123"},
+		{"wrong password", "wrong@example.com", "wrongpassword"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqBody := map[string]string{"email": tt.email, "password": tt.password}
+			body, _ := json.Marshal(reqBody)
+
+			req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			if w.Code != http.StatusUnauthorized {
+				t.Errorf("expected status 401, got %d, body: %s", w.Code, w.Body.String())
+			}
+
+			var resp map[string]string
+			json.Unmarshal(w.Body.Bytes(), &resp)
+			if resp["error"] != "invalid email or password" {
+				t.Errorf("expected clear error message, got: %v", resp["error"])
+			}
+		})
 	}
 }

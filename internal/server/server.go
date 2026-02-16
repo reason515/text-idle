@@ -25,5 +25,6 @@ func NewRouter(db *gorm.DB) *gin.Engine {
 	}))
 	r.GET("/health", func(c *gin.Context) { c.Status(200) })
 	r.POST("/register", authHandler.Register)
+	r.POST("/login", authHandler.Login)
 	return r
 }
