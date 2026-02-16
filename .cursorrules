@@ -1,0 +1,9 @@
+# Project Standards & AI Behavior
+
+## Language & Encoding
+- **Language**: ALL code, variable names, function names, and comments MUST be written in English.
+- **Encoding Safety**: Do not use Chinese characters or any non-ASCII characters in source files to prevent encoding issues.
+- **Auto-Correction**: If you find any Chinese in the provided context or the files you are editing, translate them to English immediately.
+
+## Git Standards
+- All git commit messages must be in English and follow Conventional Commits format.
