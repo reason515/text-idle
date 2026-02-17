@@ -20,7 +20,32 @@
         >
           <span class="member-name">{{ char.name }}</span>
           <span class="member-class" :style="{ color: classColor(char.class) }">{{ char.class }}</span>
-          <span class="member-stats">HP {{ char.hp }} | ATK {{ char.atk }} | DEF {{ char.def }}</span>
+          <div class="member-attributes">
+            <div class="attribute-row">
+              <span class="attr-label">Level:</span>
+              <span class="attr-value">{{ char.level || 1 }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Strength:</span>
+              <span class="attr-value">{{ char.strength || 0 }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Agility:</span>
+              <span class="attr-value">{{ char.agility || 0 }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Intellect:</span>
+              <span class="attr-value">{{ char.intellect || 0 }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Stamina:</span>
+              <span class="attr-value">{{ char.stamina || 0 }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Spirit:</span>
+              <span class="attr-value">{{ char.spirit || 0 }}</span>
+            </div>
+          </div>
         </div>
       </div>
       <button
@@ -112,11 +137,13 @@ onMounted(loadSquad)
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
 }
 
 .member-name {
   font-weight: bold;
   font-size: 1.1rem;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
 .member-class {
@@ -124,9 +151,26 @@ onMounted(loadSquad)
   font-size: 0.9rem;
 }
 
-.member-stats {
+.member-attributes {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   font-size: 0.85rem;
-  margin-top: 0.25rem;
+}
+
+.attribute-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.attr-label {
+  color: var(--text-muted);
+}
+
+.attr-value {
+  font-weight: bold;
 }
 
 .recruit-btn {

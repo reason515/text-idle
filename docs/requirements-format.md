@@ -116,6 +116,18 @@ Then [expected result/verifiable behavior].
   | Hunter | Rexxar | #ABD473 |
   | Warlock | Gul'dan | #9482C9 |
   | Shaman | Thrall | #0070DE |
+- **Initial Attributes (Level 1)**: All new characters start at level 1 with the following base attributes (small-number design principle):
+  | Class | Strength | Agility | Intellect | Stamina | Spirit |
+  |-------|----------|---------|-----------|---------|--------|
+  | Warrior | 10 | 4 | 2 | 9 | 3 |
+  | Paladin | 8 | 3 | 8 | 8 | 6 |
+  | Priest | 2 | 3 | 10 | 5 | 9 |
+  | Druid | 4 | 8 | 8 | 7 | 7 |
+  | Mage | 2 | 4 | 11 | 4 | 5 |
+  | Rogue | 5 | 11 | 3 | 6 | 3 |
+  | Hunter | 5 | 10 | 4 | 7 | 4 |
+  | Warlock | 2 | 3 | 10 | 6 | 5 |
+  | Shaman | 4 | 7 | 7 | 6 | 6 |
 - **Visual**: Hero class and selection frame border use the above WoW classic class colors for presentation.
 
 **Acceptance Criteria**
@@ -124,7 +136,7 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes; each of the 9 classes has at least one hero to choose |
 | AC2 | Player is on the character selection screen | Player selects a hero (e.g., Jaina, Rexxar, Uther) | Hero's class and frame are rendered in the corresponding WoW class color; a confirmation step is shown; after player confirms, the selected character joins the squad and the adventure begins |
-| AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), and basic stats are displayed |
+| AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values |
 | AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero |
 | AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
 

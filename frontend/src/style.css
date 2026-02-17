@@ -17,13 +17,13 @@
 }
 
 :root {
-  --bg-dark: #1a1a1a;
-  --bg-panel: #2d2d2d;
-  --border: #4a4a4a;
-  --text: #e0e0e0;
-  --text-muted: #888;
-  --accent: #6b8e23;
-  --error: #c44;
+  --bg-dark: #000000;
+  --bg-panel: #000000;
+  --border: #00ff00;
+  --text: #00ff00;
+  --text-muted: #00cc00;
+  --accent: #00ff00;
+  --error: #cc0000;
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }
 
@@ -36,6 +36,7 @@ body {
   background: var(--bg-dark);
   color: var(--text);
   min-height: 100vh;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
 .app {
@@ -47,11 +48,13 @@ body {
 .header {
   padding: 1rem 2rem;
   border-bottom: 2px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.2);
 }
 
 .header h1 {
   margin: 0;
   font-size: 2rem;
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
 }
 
 .main {
@@ -67,11 +70,13 @@ body {
   border: 2px solid var(--border);
   padding: 2rem;
   min-width: 320px;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
 }
 
 .panel h2 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
 .form-group {
@@ -92,23 +97,27 @@ body {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--text);
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
 }
 
 .error-msg {
   color: var(--error);
   font-size: 0.9rem;
   margin-top: 0.25rem;
+  text-shadow: 0 0 3px rgba(204, 0, 0, 0.5);
 }
 
 .success-msg {
   color: var(--accent);
   font-size: 0.9rem;
   margin-top: 0.25rem;
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
 }
 
 .btn {
@@ -116,15 +125,19 @@ body {
   padding: 0.75rem;
   font-family: inherit;
   font-size: 1.1rem;
-  background: var(--accent);
+  background: var(--bg-dark);
   border: 2px solid var(--border);
   color: var(--text);
   cursor: pointer;
   margin-top: 0.5rem;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+  transition: all 0.2s;
 }
 
 .btn:hover {
-  filter: brightness(1.1);
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
 }
 
 .btn:disabled {

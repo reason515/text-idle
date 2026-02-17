@@ -36,7 +36,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Warrior')).toBeVisible()
   })
 
-  test('AC3: squad panel displays name, class, and basic stats', async ({ page }) => {
+  test('AC3: squad panel displays name, class, level, and initial attributes', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
@@ -45,9 +45,16 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.getByText('Jaina Proudmoore')).toBeVisible()
     await expect(page.getByText('Mage')).toBeVisible()
-    await expect(page.getByText(/HP 100/)).toBeVisible()
-    await expect(page.getByText(/ATK 18/)).toBeVisible()
-    await expect(page.getByText(/DEF 5/)).toBeVisible()
+    // Verify level and initial attributes are displayed
+    await expect(page.getByText(/Level:/)).toBeVisible()
+    await expect(page.getByText(/Strength:/)).toBeVisible()
+    await expect(page.getByText(/Agility:/)).toBeVisible()
+    await expect(page.getByText(/Intellect:/)).toBeVisible()
+    await expect(page.getByText(/Stamina:/)).toBeVisible()
+    await expect(page.getByText(/Spirit:/)).toBeVisible()
+    // Verify Mage's initial attributes (Intellect: 11, Strength: 2)
+    await expect(page.getByText(/Intellect:.*11/)).toBeVisible()
+    await expect(page.getByText(/Strength:.*2/)).toBeVisible()
   })
 
   test('AC4: player with 1+ character can recruit another hero when squad < 5', async ({ page }) => {

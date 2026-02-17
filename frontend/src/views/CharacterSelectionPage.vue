@@ -19,7 +19,7 @@
         >
           <span class="hero-name">{{ hero.name }}</span>
           <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
-          <span class="hero-stats">HP {{ hero.hp }} | ATK {{ hero.atk }} | DEF {{ hero.def }}</span>
+          <span class="hero-stats">Level 1 | Str {{ getInitialAttributes(hero.class).strength }} | Agi {{ getInitialAttributes(hero.class).agility }} | Int {{ getInitialAttributes(hero.class).intellect }} | Sta {{ getInitialAttributes(hero.class).stamina }} | Spi {{ getInitialAttributes(hero.class).spirit }}</span>
         </button>
       </div>
     </template>
@@ -31,7 +31,32 @@
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
           <span class="hero-class" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
-          <span class="hero-stats">HP {{ selectedHero.hp }} | ATK {{ selectedHero.atk }} | DEF {{ selectedHero.def }}</span>
+          <div class="hero-attributes">
+            <div class="attribute-row">
+              <span class="attr-label">Level:</span>
+              <span class="attr-value">1</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Strength:</span>
+              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Agility:</span>
+              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Intellect:</span>
+              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Stamina:</span>
+              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
+            </div>
+            <div class="attribute-row">
+              <span class="attr-label">Spirit:</span>
+              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+            </div>
+          </div>
         </div>
         <div class="confirmation-actions">
           <button class="btn btn-secondary" @click="selectedHero = null">Back</button>
@@ -45,7 +70,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, getSquad, addHeroToSquad } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, getSquad, addHeroToSquad, getInitialAttributes, createCharacter } from '../data/heroes.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -113,12 +138,14 @@ function confirmSelection() {
 }
 
 .hero-card:hover {
-  filter: brightness(1.1);
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.6);
 }
 
 .hero-name {
   font-size: 1.2rem;
   font-weight: bold;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
 .hero-class {
@@ -128,7 +155,30 @@ function confirmSelection() {
 
 .hero-stats {
   margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.hero-attributes {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   font-size: 0.85rem;
+}
+
+.attribute-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.attr-label {
+  color: var(--text-muted);
+}
+
+.attr-value {
+  font-weight: bold;
 }
 
 .confirmation-step {
@@ -144,6 +194,7 @@ function confirmSelection() {
   background: var(--bg-dark);
   border: 2px solid;
   margin-bottom: 1rem;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
 }
 
 .confirmation-actions {

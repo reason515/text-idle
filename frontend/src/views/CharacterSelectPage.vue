@@ -9,9 +9,30 @@
         <h3>{{ selectedHero?.name }}</h3>
         <p class="hero-class">{{ selectedHero?.class }}</p>
         <div class="hero-stats">
-          <span>HP: {{ selectedHero?.hp }}</span>
-          <span>ATK: {{ selectedHero?.atk }}</span>
-          <span>DEF: {{ selectedHero?.def }}</span>
+          <div class="stat-row">
+            <span class="stat-label">Level:</span>
+            <span class="stat-value">1</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Strength:</span>
+            <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).strength : 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Agility:</span>
+            <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).agility : 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Intellect:</span>
+            <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).intellect : 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Stamina:</span>
+            <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).stamina : 0 }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Spirit:</span>
+            <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).spirit : 0 }}</span>
+          </div>
         </div>
         <p>Add {{ selectedHero?.name }} to your squad?</p>
         <div class="confirm-actions">
@@ -38,7 +59,7 @@
         >
           <span class="hero-name">{{ hero.name }}</span>
           <span class="hero-class">{{ hero.class }}</span>
-          <span class="hero-stats-mini">HP {{ hero.hp }} | ATK {{ hero.atk }}</span>
+          <span class="hero-stats-mini">Lv1 | Str {{ getInitialAttributes(hero.class).strength }} | Agi {{ getInitialAttributes(hero.class).agility }} | Int {{ getInitialAttributes(hero.class).intellect }}</span>
           <span v-if="isInSquad(hero.id)" class="in-squad-badge">In Squad</span>
         </button>
       </div>
@@ -49,7 +70,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, getSquad, addHeroToSquad } from '../data/heroes.js'
+import { HEROES, getSquad, addHeroToSquad, getInitialAttributes } from '../data/heroes.js'
 
 const router = useRouter()
 const confirming = ref(false)
@@ -163,9 +184,24 @@ function confirmAdd() {
 
 .hero-stats {
   display: flex;
-  gap: 1.5rem;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stat-label {
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-weight: bold;
 }
 
 .confirm-actions {
