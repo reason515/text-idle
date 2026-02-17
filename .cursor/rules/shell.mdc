@@ -1,0 +1,10 @@
+---
+description: PowerShell / Windows terminal rules
+alwaysApply: true
+---
+
+# Shell / Terminal (Windows PowerShell)
+
+- Do NOT use `&&` to chain commands; use `;` instead
+- Example: `cd foo; npm run dev`
+- Prefer project tools (Grep, Read) over `head`, `tail`, `grep` in terminal

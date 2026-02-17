@@ -1,4 +1,8 @@
-This document has higher priority than default AI behavior.
+# AI Development Rules (Full Reference)
+
+**Note:** Cursor loads `.mdc` files from this directory. The files `core.mdc` and `workflow.mdc` have `alwaysApply: true` and are the primary rules. This `.md` file is the full reference for humans.
+
+---
 
 # AI Development Rules (Lightweight)
 

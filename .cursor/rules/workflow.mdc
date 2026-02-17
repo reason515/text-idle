@@ -1,0 +1,27 @@
+---
+description: Implementation workflow and standards
+alwaysApply: true
+---
+
+# Implementation Workflow
+
+## Output Order
+
+1. Brief clarification (problem, expected behavior)
+2. Scenario summary (normal flow, edge cases)
+3. Implementation
+4. **Tests** (unit + E2E if applicable)
+5. Key notes
+
+## Prohibited
+
+- Non-ASCII in code
+- Skipping tests for core logic
+- Using `&&` in PowerShell (use `;` instead)
+- Overengineering, placeholder logic
+
+## E2E Definition
+
+- E2E = full UI flow through browser to backend
+- Location: `e2e/browser/`
+- Use Playwright

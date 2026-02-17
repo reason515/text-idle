@@ -1,0 +1,39 @@
+---
+description: Core project rules - ASCII, TDD, Definition of Done
+alwaysApply: true
+---
+
+# Text Idle - Core Rules (MANDATORY)
+
+**Before ANY implementation, you MUST:**
+
+1. [ ] Read these rules fully
+2. [ ] Confirm: Will I write tests? (Unit + E2E per feature)
+3. [ ] Confirm: Will ALL code use ASCII only? (No Chinese in source)
+
+---
+
+## ASCII Encoding (STRICT - No Exceptions)
+
+- Source code, comments, logs, tests, string literals, identifiers: **ASCII ONLY**
+- Documentation (e.g. docs/*.md) may use non-ASCII
+- If you see non-ASCII in code you edit: translate to English
+
+---
+
+## Definition of Done
+
+A task is NOT complete until:
+
+- Core logic has **unit tests**
+- Features with UI have **E2E tests** in `e2e/browser/`
+- All code is ASCII-only
+
+---
+
+## TDD / Test Requirements
+
+- Prefer tests before implementation
+- Unit tests: `frontend/src/**/*.spec.js` (Vitest)
+- E2E tests: `e2e/browser/*.spec.js` (Playwright)
+- Run: `npm run test` (frontend), `npm run e2e` (root)

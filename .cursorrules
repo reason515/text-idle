@@ -1,5 +1,7 @@
 # Project Standards & AI Behavior
 
+**Primary rules:** `.cursor/rules/*.mdc` (alwaysApply). Read these before implementation.
+
 ## Language & Encoding
 - **Language**: ALL code, variable names, function names, and comments MUST be written in English.
 - **Encoding Safety**: Do not use Chinese characters or any non-ASCII characters in source files to prevent encoding issues.

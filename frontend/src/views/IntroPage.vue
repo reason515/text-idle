@@ -64,7 +64,7 @@ function confirmTeamName() {
   }
   error.value = ''
   localStorage.setItem('teamName', name)
-  router.push('/main')
+  router.push('/character-select')
 }
 </script>
 

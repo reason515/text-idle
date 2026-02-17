@@ -39,6 +39,10 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
 
+    await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
+    await page.getByRole('button', { name: /Thrall/ }).click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
   })
@@ -54,6 +58,9 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
+    await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
+    await page.getByRole('button', { name: /Thrall/ }).click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.goto('/login')
