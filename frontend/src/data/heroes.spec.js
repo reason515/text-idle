@@ -77,7 +77,7 @@ describe('heroes', () => {
     })
 
     it('HEROES has WoW-style heroes with required fields', () => {
-      expect(HEROES.length).toBeGreaterThanOrEqual(8)
+      expect(HEROES.length).toBeGreaterThanOrEqual(9)
       for (const h of HEROES) {
         expect(h).toHaveProperty('id')
         expect(h).toHaveProperty('name')
@@ -88,8 +88,8 @@ describe('heroes', () => {
       }
     })
 
-    it('each of the 8 classes has at least one hero', () => {
-      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock']
+    it('each of the 9 classes has at least one hero', () => {
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
       const heroClasses = [...new Set(HEROES.map((h) => h.class))]
       for (const c of expectedClasses) {
         expect(heroClasses).toContain(c)
@@ -97,7 +97,7 @@ describe('heroes', () => {
     })
 
     it('CLASS_COLORS has hex color for each class', () => {
-      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock']
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
       for (const c of expectedClasses) {
         expect(CLASS_COLORS[c]).toMatch(/^#[0-9A-Fa-f]{6}$/)
       }

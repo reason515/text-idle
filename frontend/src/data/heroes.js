@@ -1,7 +1,7 @@
 /**
  * WoW-style hero pool for character recruitment.
  * Each hero has: id, name, class, hp, atk, def
- * Each of the 8 classes (Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock)
+ * Each of the 9 classes (Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman)
  * has at least one hero available.
  */
 export const HEROES = [
@@ -13,6 +13,7 @@ export const HEROES = [
   { id: 'valeera', name: 'Valeera', class: 'Rogue', hp: 120, atk: 16, def: 6 },
   { id: 'rexxar', name: 'Rexxar', class: 'Hunter', hp: 130, atk: 14, def: 7 },
   { id: 'guldan', name: "Gul'dan", class: 'Warlock', hp: 110, atk: 17, def: 5 },
+  { id: 'thrall', name: 'Thrall', class: 'Shaman', hp: 120, atk: 13, def: 7 },
 ]
 
 /** WoW classic class colors (hex) for hero class and frame border display */
@@ -25,6 +26,7 @@ export const CLASS_COLORS = {
   Rogue: '#FFF569',
   Hunter: '#ABD473',
   Warlock: '#9482C9',
+  Shaman: '#0070DE',
 }
 
 export const MAX_SQUAD_SIZE = 5

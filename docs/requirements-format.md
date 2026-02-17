@@ -103,7 +103,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Classes**: Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock. Each class has at least one hero available.
+- **Classes**: Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman. Each class has at least one hero available.
 - **Hero roster (one per class minimum)**:
   | Class | Hero Example | WoW Class Color (hex) |
   |-------|--------------|------------------------|
@@ -115,13 +115,14 @@ Then [expected result/verifiable behavior].
   | Rogue | Valeera | #FFF569 |
   | Hunter | Rexxar | #ABD473 |
   | Warlock | Gul'dan | #9482C9 |
+  | Shaman | Thrall | #0070DE |
 - **Visual**: Hero class and selection frame border use the above WoW classic class colors for presentation.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes; each of the 8 classes has at least one hero to choose |
+| AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes; each of the 9 classes has at least one hero to choose |
 | AC2 | Player is on the character selection screen | Player selects a hero (e.g., Jaina, Rexxar, Uther) | Hero's class and frame are rendered in the corresponding WoW class color; a confirmation step is shown; after player confirms, the selected character joins the squad and the adventure begins |
 | AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), and basic stats are displayed |
 | AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero |
