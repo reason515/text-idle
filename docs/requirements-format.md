@@ -93,21 +93,23 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 4: Character Recruitment
+## Example 4: Character Recruitment (Squad Formation)
 
 **User Story**
 
 > As a player,  
-> I want to recruit a character and assign them a class,  
-> So that I can build my adventure party.
+> I want to choose a character to join my squad when I start an adventure,  
+> So that I can build my adventure party with iconic heroes and expand it as I progress.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player is on the main screen | Player clicks "Recruit" | A class selection screen is shown |
-| AC2 | Player is on the class selection screen | Player selects a class and confirms | A new character is created and added to the party |
-| AC3 | Player has 1 character in the party | Player views the party panel | The character's class and basic stats are displayed |
+| AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes |
+| AC2 | Player is on the character selection screen | Player selects a hero (e.g., Thrall, Jaina, Rexxar) | A confirmation step is shown; after player confirms, the selected character joins the squad and the adventure begins |
+| AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class, and basic stats are displayed |
+| AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad |
+| AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
 
 ---
 
