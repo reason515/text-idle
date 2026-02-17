@@ -76,6 +76,9 @@ async function submit() {
       if (data.token) {
         localStorage.setItem('token', data.token)
       }
+      // Clear any existing game data for new user
+      localStorage.removeItem('teamName')
+      localStorage.removeItem('squad')
       router.push('/intro')
     } else {
       if (res.status === 409) {
