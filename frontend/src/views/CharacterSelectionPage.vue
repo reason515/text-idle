@@ -14,10 +14,11 @@
           v-for="hero in availableHeroes"
           :key="hero.id"
           class="hero-card"
+          :style="heroCardStyle(hero)"
           @click="selectHero(hero)"
         >
           <span class="hero-name">{{ hero.name }}</span>
-          <span class="hero-class">{{ hero.class }}</span>
+          <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
           <span class="hero-stats">HP {{ hero.hp }} | ATK {{ hero.atk }} | DEF {{ hero.def }}</span>
         </button>
       </div>
@@ -27,9 +28,9 @@
     <template v-else>
       <div class="confirmation-step">
         <p>Add <strong>{{ selectedHero.name }}</strong> ({{ selectedHero.class }}) to your squad?</p>
-        <div class="hero-preview">
+        <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
-          <span class="hero-class">{{ selectedHero.class }}</span>
+          <span class="hero-class" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
           <span class="hero-stats">HP {{ selectedHero.hp }} | ATK {{ selectedHero.atk }} | DEF {{ selectedHero.def }}</span>
         </div>
         <div class="confirmation-actions">
@@ -44,7 +45,19 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, getSquad, addHeroToSquad } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, getSquad, addHeroToSquad } from '../data/heroes.js'
+
+function classColor(heroClass) {
+  return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
+
+function heroCardStyle(hero) {
+  return { borderColor: classColor(hero.class) }
+}
+
+function heroPreviewStyle(hero) {
+  return { borderColor: classColor(hero.class) }
+}
 
 const router = useRouter()
 const selectedHero = ref(null)
@@ -92,7 +105,7 @@ function confirmSelection() {
   align-items: flex-start;
   padding: 1rem;
   background: var(--bg-dark);
-  border: 2px solid var(--border);
+  border: 2px solid;
   color: var(--text);
   font-family: inherit;
   cursor: pointer;
@@ -100,7 +113,7 @@ function confirmSelection() {
 }
 
 .hero-card:hover {
-  border-color: var(--accent);
+  filter: brightness(1.1);
 }
 
 .hero-name {
@@ -129,7 +142,7 @@ function confirmSelection() {
 .hero-preview {
   padding: 1rem;
   background: var(--bg-dark);
-  border: 2px solid var(--accent);
+  border: 2px solid;
   margin-bottom: 1rem;
 }
 

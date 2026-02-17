@@ -18,8 +18,8 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await expect(page.getByText('Choose Your Hero')).toBeVisible()
-    await expect(page.getByText('Thrall')).toBeVisible()
-    await expect(page.getByText('Jaina')).toBeVisible()
+    await expect(page.getByText('Varian Wrynn')).toBeVisible()
+    await expect(page.getByText('Jaina Proudmoore')).toBeVisible()
     await expect(page.getByText('Rexxar')).toBeVisible()
   })
 
@@ -27,23 +27,23 @@ test.describe('Character Recruitment (Example 4)', () => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await page.getByRole('button', { name: /Thrall/ }).click()
-    await expect(page.getByText(/Add.*Thrall.*Shaman/)).toBeVisible()
+    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await expect(page.getByText(/Add.*Varian Wrynn.*Warrior/)).toBeVisible()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Thrall')).toBeVisible()
-    await expect(page.getByText('Shaman')).toBeVisible()
+    await expect(page.getByText('Varian Wrynn')).toBeVisible()
+    await expect(page.getByText('Warrior')).toBeVisible()
   })
 
   test('AC3: squad panel displays name, class, and basic stats', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /Jaina/ }).click()
+    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Jaina')).toBeVisible()
+    await expect(page.getByText('Jaina Proudmoore')).toBeVisible()
     await expect(page.getByText('Mage')).toBeVisible()
     await expect(page.getByText(/HP 100/)).toBeVisible()
     await expect(page.getByText(/ATK 18/)).toBeVisible()
@@ -61,19 +61,19 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.getByRole('button', { name: 'Recruit Hero' }).click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Thrall/ }).click()
+    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.getByText('Rexxar')).toBeVisible()
-    await expect(page.getByText('Thrall')).toBeVisible()
+    await expect(page.getByText('Varian Wrynn')).toBeVisible()
   })
 
   test('AC5: squad full at 5, no further recruitment', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    const heroes = ['Thrall', 'Jaina', 'Rexxar', 'Uther', 'Sylvanas']
+    const heroes = ['Varian Wrynn', 'Jaina Proudmoore', 'Rexxar', 'Uther', 'Anduin Wrynn']
     for (const hero of heroes) {
       await page.getByRole('button', { name: new RegExp(hero) }).click()
       await page.getByRole('button', { name: 'Confirm' }).click()

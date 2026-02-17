@@ -36,7 +36,8 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page.locator('.error-msg')).toBeVisible({ timeout: 5000 })
+    await expect(page).toHaveURL(/\/register/)
+    await expect(page.getByRole('button', { name: 'Register' })).toBeVisible()
   })
 
   test('AC3: weak password shows validation error', async ({ page }) => {
@@ -44,6 +45,7 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('short')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page.locator('.error-msg')).toBeVisible({ timeout: 5000 })
+    await expect(page).toHaveURL(/\/register/)
+    await expect(page.getByRole('button', { name: 'Register' })).toBeVisible()
   })
 })

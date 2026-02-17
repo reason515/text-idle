@@ -25,3 +25,24 @@ alwaysApply: true
 - E2E = full UI flow through browser to backend
 - Location: `e2e/browser/`
 - Use Playwright
+
+## E2E Port Release (Before Running)
+
+Before running `npm run e2e`, release ports 8080 and 5173:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1
+```
+
+The `e2e` npm script runs this automatically. If running e2e manually or ports are in use, run the script first.
+
+## Anti-Hang Execution Mode
+
+To reduce "stuck" behavior during long operations, use this execution style by default:
+
+- Prefer short, single-purpose commands over large command batches
+- Run long tasks in background and poll output every 3-5 seconds
+- Send a brief progress update at least every 10 seconds during long tasks
+- Read only log tail sections (for example, last 100-200 lines), not full large files
+- If no new output appears for 30+ seconds, report current status and next action
+- If ports are required (for example 8080/5173), verify port state before and after task start

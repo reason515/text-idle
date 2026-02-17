@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   HEROES,
+  CLASS_COLORS,
   MAX_SQUAD_SIZE,
   SQUAD_STORAGE_KEY,
   getSquad,
@@ -25,7 +26,7 @@ describe('heroes', () => {
     })
 
     it('returns parsed squad when valid JSON stored', () => {
-      const squad = [{ id: 'thrall', name: 'Thrall', class: 'Shaman' }]
+      const squad = [{ id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }]
       localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
       expect(getSquad()).toEqual(squad)
     })
@@ -38,7 +39,7 @@ describe('heroes', () => {
 
   describe('saveSquad', () => {
     it('stores squad as JSON string', () => {
-      const squad = [{ id: 'jaina', name: 'Jaina' }]
+      const squad = [{ id: 'jaina', name: 'Jaina Proudmoore' }]
       saveSquad(squad)
       expect(getSquad()).toEqual(squad)
     })
@@ -76,7 +77,7 @@ describe('heroes', () => {
     })
 
     it('HEROES has WoW-style heroes with required fields', () => {
-      expect(HEROES.length).toBeGreaterThanOrEqual(3)
+      expect(HEROES.length).toBeGreaterThanOrEqual(8)
       for (const h of HEROES) {
         expect(h).toHaveProperty('id')
         expect(h).toHaveProperty('name')
@@ -84,6 +85,21 @@ describe('heroes', () => {
         expect(h).toHaveProperty('hp')
         expect(h).toHaveProperty('atk')
         expect(h).toHaveProperty('def')
+      }
+    })
+
+    it('each of the 8 classes has at least one hero', () => {
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock']
+      const heroClasses = [...new Set(HEROES.map((h) => h.class))]
+      for (const c of expectedClasses) {
+        expect(heroClasses).toContain(c)
+      }
+    })
+
+    it('CLASS_COLORS has hex color for each class', () => {
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock']
+      for (const c of expectedClasses) {
+        expect(CLASS_COLORS[c]).toMatch(/^#[0-9A-Fa-f]{6}$/)
       }
     })
   })

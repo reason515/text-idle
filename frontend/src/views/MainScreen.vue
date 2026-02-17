@@ -16,9 +16,10 @@
           v-for="(char, index) in squad"
           :key="char.id + '-' + index"
           class="squad-member"
+          :style="{ borderColor: classColor(char.class) }"
         >
           <span class="member-name">{{ char.name }}</span>
-          <span class="member-class">{{ char.class }}</span>
+          <span class="member-class" :style="{ color: classColor(char.class) }">{{ char.class }}</span>
           <span class="member-stats">HP {{ char.hp }} | ATK {{ char.atk }} | DEF {{ char.def }}</span>
         </div>
       </div>
@@ -39,7 +40,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, MAX_SQUAD_SIZE } from '../data/heroes.js'
+import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS } from '../data/heroes.js'
+
+function classColor(heroClass) {
+  return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
 
 const router = useRouter()
 const squad = ref([])
@@ -103,7 +108,7 @@ onMounted(loadSquad)
 .squad-member {
   padding: 0.75rem;
   background: var(--bg-dark);
-  border: 1px solid var(--border);
+  border: 2px solid;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
