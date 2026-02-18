@@ -103,6 +103,8 @@ onMounted(loadSquad)
   grid-template-columns: minmax(20rem, 28rem) 1fr;
   gap: 1.25rem;
   width: 100%;
+  align-self: stretch;
+  align-items: start;
 }
 
 .main-panel {
