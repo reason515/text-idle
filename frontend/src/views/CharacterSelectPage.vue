@@ -111,7 +111,7 @@ function confirmAdd() {
 
 .subtitle {
   margin-bottom: 1.5rem;
-  color: var(--text-muted);
+  color: var(--text-label);
   font-size: 0.9rem;
 }
 
@@ -152,14 +152,14 @@ function confirmAdd() {
 }
 
 .hero-class {
-  color: var(--text-muted);
+  color: var(--text-label);
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
 }
 
 .hero-stats-mini {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .in-squad-badge {
@@ -198,10 +198,11 @@ function confirmAdd() {
 }
 
 .stat-label {
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .stat-value {
+  color: var(--text-value);
   font-weight: bold;
 }
 

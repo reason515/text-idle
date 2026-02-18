@@ -19,11 +19,14 @@
 :root {
   --bg-dark: #000000;
   --bg-panel: #000000;
-  --border: #00ff00;
-  --text: #00ff00;
-  --text-muted: #00cc00;
-  --accent: #00ff00;
-  --error: #cc0000;
+  --border: #00cc66;
+  --text: #00ff88;
+  --text-muted: #66aa66;
+  --text-label: #66cccc;
+  --text-value: #aaffaa;
+  --accent: #00ffaa;
+  --error: #ff6666;
+  --warning: #ffcc66;
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }
 
@@ -41,7 +44,7 @@ body {
 }
 
 body {
-  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.3);
   overflow: hidden;
 }
 
@@ -59,20 +62,21 @@ body {
   display: flex;
   flex-direction: column;
   border: 2px solid var(--border);
-  box-shadow: 0 0 16px rgba(0, 255, 0, 0.3);
+  box-shadow: 0 0 12px rgba(0, 204, 102, 0.25);
   overflow: hidden;
 }
 
 .header {
   padding: 1.25rem 2rem;
   border-bottom: 2px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 204, 102, 0.2);
 }
 
 .header h1 {
   margin: 0;
   font-size: 2rem;
-  text-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+  color: var(--text);
+  text-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
 }
 
 .main {
@@ -89,13 +93,14 @@ body {
   border: 2px solid var(--border);
   padding: 1.5rem;
   width: min(100%, 72rem);
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
 }
 
 .panel h2 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
-  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+  color: var(--text);
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.3);
 }
 
 .form-group {
@@ -106,6 +111,7 @@ body {
   display: block;
   margin-bottom: 0.25rem;
   font-size: 1rem;
+  color: var(--text-label);
 }
 
 .form-group input {
@@ -116,27 +122,27 @@ body {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--text);
-  text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 3px rgba(0, 255, 136, 0.25);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
 }
 
 .error-msg {
   color: var(--error);
   font-size: 0.9rem;
   margin-top: 0.25rem;
-  text-shadow: 0 0 3px rgba(204, 0, 0, 0.5);
+  text-shadow: 0 0 2px rgba(204, 68, 68, 0.3);
 }
 
 .success-msg {
   color: var(--accent);
   font-size: 0.9rem;
   margin-top: 0.25rem;
-  text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 2px rgba(0, 255, 136, 0.3);
 }
 
 .btn {
@@ -149,14 +155,15 @@ body {
   color: var(--text);
   cursor: pointer;
   margin-top: 0.5rem;
-  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 3px rgba(0, 255, 136, 0.25);
   transition: all 0.2s;
 }
 
 .btn:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-  text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
+  background: rgba(0, 255, 136, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.35);
+  text-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
 }
 
 .btn:disabled {

@@ -164,7 +164,7 @@ function confirmSelection() {
 }
 
 .subtitle {
-  color: var(--text-muted);
+  color: var(--text-label);
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
 }
@@ -189,14 +189,14 @@ function confirmSelection() {
 }
 
 .hero-card:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow: 0 0 12px rgba(0, 255, 0, 0.6);
+  background: rgba(0, 255, 136, 0.06);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.35);
 }
 
 .hero-name {
   font-size: 1.2rem;
   font-weight: bold;
-  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 3px rgba(0, 255, 136, 0.3);
 }
 
 .hero-meta {
@@ -212,14 +212,14 @@ function confirmSelection() {
 
 .hero-role {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .hero-class-desc {
   margin: 0.35rem 0 0 0;
   font-size: 0.72rem;
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .hero-bio {
@@ -232,7 +232,7 @@ function confirmSelection() {
 .hero-attributes-mini {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-label);
   display: flex;
   flex-wrap: wrap;
   gap: 0 1rem;
@@ -253,7 +253,7 @@ function confirmSelection() {
 .formula-intro {
   margin: 0.25rem 0 0.5rem 0;
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .secondary-attributes-table {
@@ -269,7 +269,7 @@ function confirmSelection() {
   grid-template-columns: 1fr auto 1.8fr;
   gap: 0.75rem;
   padding: 0.25rem 0;
-  color: var(--text-muted);
+  color: var(--text-label);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -285,10 +285,11 @@ function confirmSelection() {
 }
 
 .secondary-row .col-attr {
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .secondary-row .col-value {
+  color: var(--text-value);
   font-weight: bold;
   min-width: 3rem;
   text-align: right;
@@ -298,14 +299,14 @@ function confirmSelection() {
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
   color: var(--text);
-  background: rgba(0, 255, 0, 0.08);
+  background: rgba(0, 204, 102, 0.08);
   padding: 0.15rem 0.35rem;
   border-radius: 2px;
 }
 
 .attributes-title {
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--text-label);
   margin-bottom: 0.25rem;
 }
 
@@ -324,10 +325,11 @@ function confirmSelection() {
 }
 
 .attr-label {
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .attr-value {
+  color: var(--text-value);
   font-weight: bold;
 }
 
@@ -344,7 +346,7 @@ function confirmSelection() {
   background: var(--bg-dark);
   border: 2px solid;
   margin-bottom: 1rem;
-  box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 6px rgba(0, 204, 102, 0.2);
 }
 
 .info-section {
@@ -355,7 +357,7 @@ function confirmSelection() {
 
 .section-label {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -382,7 +384,7 @@ function confirmSelection() {
 
 .no-heroes {
   padding: 1rem 0;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .no-heroes p {

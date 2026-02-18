@@ -111,7 +111,7 @@ async function submit() {
 .link-msg {
   margin-top: 1rem;
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 .link-msg a {
   color: var(--accent);

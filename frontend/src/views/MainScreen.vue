@@ -121,7 +121,7 @@ onMounted(loadSquad)
 }
 
 .squad-empty {
-  color: var(--text-muted);
+  color: var(--text-label);
   padding: 1rem 0;
 }
 
@@ -139,17 +139,18 @@ onMounted(loadSquad)
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 6px rgba(61, 139, 61, 0.2);
 }
 
 .member-name {
   font-weight: bold;
   font-size: 1.1rem;
-  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+  color: var(--text);
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.35);
 }
 
 .member-class {
-  color: var(--text-muted);
+  color: var(--text-label);
   font-size: 0.9rem;
 }
 
@@ -168,10 +169,11 @@ onMounted(loadSquad)
 }
 
 .attr-label {
-  color: var(--text-muted);
+  color: var(--text-label);
 }
 
 .attr-value {
+  color: var(--text-value);
   font-weight: bold;
 }
 
@@ -180,7 +182,7 @@ onMounted(loadSquad)
 }
 
 .squad-full {
-  color: var(--text-muted);
+  color: var(--text-label);
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
