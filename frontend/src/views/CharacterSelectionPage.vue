@@ -109,7 +109,8 @@ function confirmSelection() {
 
 <style scoped>
 .character-select-panel {
-  max-width: 520px;
+  width: 100%;
+  max-width: 72rem;
 }
 
 .subtitle {
@@ -119,8 +120,8 @@ function confirmSelection() {
 }
 
 .hero-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 

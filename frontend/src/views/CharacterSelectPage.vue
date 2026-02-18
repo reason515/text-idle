@@ -105,7 +105,8 @@ function confirmAdd() {
 
 <style scoped>
 .character-select-panel {
-  max-width: 560px;
+  width: 100%;
+  max-width: 72rem;
 }
 
 .subtitle {
@@ -116,7 +117,7 @@ function confirmAdd() {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 

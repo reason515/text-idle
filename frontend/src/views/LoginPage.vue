@@ -1,5 +1,5 @@
 <template>
-  <div class="panel">
+  <div class="panel auth-panel">
     <h2>Login</h2>
     <form @submit.prevent="submit">
       <div class="form-group">
@@ -104,6 +104,10 @@ async function submit() {
 </script>
 
 <style scoped>
+.auth-panel {
+  width: min(100%, 42rem);
+}
+
 .link-msg {
   margin-top: 1rem;
   font-size: 0.9rem;

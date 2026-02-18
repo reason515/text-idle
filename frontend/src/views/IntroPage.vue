@@ -70,7 +70,7 @@ function confirmTeamName() {
 
 <style scoped>
 .intro-panel {
-  max-width: 480px;
+  width: min(100%, 56rem);
 }
 
 .intro-content {

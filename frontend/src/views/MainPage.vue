@@ -19,7 +19,7 @@ function logout() {
 
 <style scoped>
 .main-panel {
-  min-width: 400px;
+  width: min(100%, 56rem);
 }
 .btn-secondary {
   margin-top: 1rem;

@@ -99,18 +99,18 @@ onMounted(loadSquad)
 
 <style scoped>
 .main-screen {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  min-width: 400px;
+  display: grid;
+  grid-template-columns: minmax(20rem, 28rem) 1fr;
+  gap: 1.25rem;
+  width: 100%;
 }
 
 .main-panel {
-  min-width: 400px;
+  width: 100%;
 }
 
 .squad-panel {
-  min-width: 400px;
+  width: 100%;
 }
 
 .btn-secondary {
