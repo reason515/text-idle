@@ -157,7 +157,17 @@ Do not guess requirements.
 
 ---
 
-# 12. Shell / Terminal (PowerShell)
+# 12. Turn-Based Game Design
+
+The game uses **turn-based combat**. Do not use real-time units (seconds, minutes) for combat or resource mechanics.
+
+- Use **turn** (回合) for all combat timing
+- Resource recovery: "per turn" (每回合), not "per second"
+- Cooldowns: "X turns", not "X seconds"
+
+---
+
+# 13. Shell / Terminal (PowerShell)
 
 When running terminal commands on Windows (PowerShell):
 
@@ -168,7 +178,7 @@ When running terminal commands on Windows (PowerShell):
 
 ---
 
-# 13. Prohibited Behaviors
+# 14. Prohibited Behaviors
 
 The following are not allowed:
 
@@ -181,7 +191,7 @@ The following are not allowed:
 
 ---
 
-# 14. Output Order (When Implementation Is Involved)
+# 15. Output Order (When Implementation Is Involved)
 
 1. Brief clarification
 2. Scenario summary

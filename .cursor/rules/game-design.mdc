@@ -1,0 +1,31 @@
+---
+description: Game design constraints - turn-based combat, no real-time units
+alwaysApply: true
+---
+
+# Text Idle - Game Design Rules
+
+## Turn-Based Combat (MANDATORY)
+
+The game uses **turn-based combat**, not real-time. All mechanics must be expressed in **turns/rounds**, never in real-time units.
+
+### Prohibited
+
+- Seconds (秒), minutes (分钟), hours (小时) for combat or resource mechanics
+- Per-second rates (e.g. "10 per second", "每秒 10 点")
+- Real-time cooldowns (e.g. "3 second CD")
+
+### Required
+
+- Use **turn** (回合) or **round** for all combat timing
+- Resource recovery: "per turn" (每回合), not "per second"
+- Cooldowns: "X turns" (X 回合), not "X seconds"
+- Rate-based mechanics: "X per turn" (每回合 X 点)
+
+### Examples
+
+| Wrong | Correct |
+|-------|---------|
+| 每秒恢复 10 能量 | 每回合恢复 10 能量 |
+| 3 second cooldown | 3 回合冷却 |
+| 10 damage per second | 10 伤害/回合 |

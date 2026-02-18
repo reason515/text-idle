@@ -6,6 +6,7 @@
 |------|-------------|---------|
 | `core.mdc` | true | ASCII, TDD, Definition of Done, pre-implementation checklist |
 | `workflow.mdc` | true | Output order, prohibited behaviors, E2E definition |
+| `game-design.mdc` | true | Turn-based combat, no real-time units (seconds/minutes) |
 | `shell.mdc` | false | PowerShell rules (globs: package.json, configs) |
 | `rules.md` | - | Full reference (Cursor loads .mdc, not .md) |
 
