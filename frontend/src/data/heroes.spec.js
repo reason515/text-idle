@@ -10,6 +10,7 @@ import {
   addHeroToSquad,
   getInitialAttributes,
   createCharacter,
+  computeSecondaryAttributes,
 } from './heroes.js'
 
 const storage = {}
@@ -45,6 +46,130 @@ describe('heroes', () => {
       const squad = [{ id: 'jaina', name: 'Jaina Proudmoore' }]
       saveSquad(squad)
       expect(getSquad()).toEqual(squad)
+    })
+  })
+
+  describe('computeSecondaryAttributes', () => {
+    it('returns HP, PhysAtk, Armor, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
+      const { values, formulas } = computeSecondaryAttributes('Warrior', 1)
+      expect(values.HP).toBe(48) // 10 + 9*4 + 1*2 = 48
+      expect(values.PhysAtk).toBe(11.5) // 5 + 10*0.65 = 11.5
+      expect(values.Armor).toBe(8) // 10*0.8 = 8
+      expect(values.PhysCrit).toBe(6.2) // 5 + 4*0.3 = 6.2
+      expect(values.Dodge).toBe(5.8) // 5 + 4*0.2 = 5.8
+      expect(values.Hit).toBe(95.8) // 95 + 4*0.2 = 95.8
+      expect(values.MP).toBeUndefined()
+      expect(values.SpellPower).toBeUndefined()
+      expect(values.SpellCrit).toBeUndefined()
+      expect(formulas.length).toBeGreaterThan(0)
+    })
+
+    it('returns SpellPower, SpellCrit, MP for Mage at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Mage', 1)
+      expect(values.HP).toBe(20) // 10 + 4*2 + 2 = 20
+      expect(values.MP).toBe(37) // 5 + 11*2.8 + 1 = 36.8, rounds to 37
+      expect(values.SpellPower).toBe(12.2) // 5 + 11*0.65 = 12.15 -> 12.2
+      expect(values.SpellCrit).toBe(11.6) // 5 + 11*0.6 = 11.6
+      expect(values.PhysAtk).toBeUndefined()
+      expect(values.Armor).toBeUndefined()
+    })
+
+    it('returns both PhysAtk and SpellPower for Paladin at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Paladin', 1)
+      expect(values.PhysAtk).toBe(8.6) // 5 + 8*0.45 = 8.6
+      expect(values.SpellPower).toBe(8.6) // 5 + 8*0.45 = 8.6
+      expect(values.MP).toBe(24) // 5 + 8*2.2 + 1 = 23.6, rounds to 24
+    })
+
+    it('returns formulas with correct structure', () => {
+      const { formulas } = computeSecondaryAttributes('Rogue', 1)
+      const hpFormula = formulas.find((f) => f.key === 'HP')
+      expect(hpFormula).toBeDefined()
+      expect(hpFormula.formula).toContain('Stam')
+      expect(hpFormula.value).toBeGreaterThan(0)
+    })
+
+    it('returns correct values for Rogue (agility physical) at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Rogue', 1)
+      expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29
+      expect(values.PhysAtk).toBe(11.1) // 5 + 11*0.55 = 11.05 -> 11.1
+      expect(values.Armor).toBe(1) // 5*0.2 = 1
+      expect(values.PhysCrit).toBe(12.7) // 5 + 11*0.7 = 12.7
+      expect(values.Dodge).toBe(10.5) // 5 + 11*0.5 = 10.5
+      expect(values.MP).toBeUndefined()
+      expect(values.SpellPower).toBeUndefined()
+    })
+
+    it('returns correct values for Druid (hybrid agility/intellect) at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Druid', 1)
+      expect(values.HP).toBe(34) // 10 + 7*3.2 + 2 = 34.4 -> 34
+      expect(values.MP).toBe(24) // 5 + 8*2.2 + 1 = 23.6 -> 24
+      expect(values.PhysAtk).toBe(9) // 5 + 8*0.5 = 9
+      expect(values.SpellPower).toBe(8.6) // 5 + 8*0.45 = 8.6
+      expect(values.Armor).toBe(1.6) // 4*0.4 = 1.6
+      expect(values.PhysCrit).toBe(9.8) // 5 + 8*0.6 = 9.8
+      expect(values.SpellCrit).toBe(9) // 5 + 8*0.5 = 9
+      expect(values.Dodge).toBe(8.2) // 5 + 8*0.4 = 8.2
+    })
+
+    it('returns correct values for Warlock (spell-only) at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Warlock', 1)
+      expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29
+      expect(values.MP).toBe(34) // 5 + 10*2.8 + 1 = 34
+      expect(values.SpellPower).toBe(11.5) // 5 + 10*0.65 = 11.5
+      expect(values.SpellCrit).toBe(11) // 5 + 10*0.6 = 11
+      expect(values.PhysAtk).toBeUndefined()
+      expect(values.Armor).toBeUndefined()
+    })
+
+    it('returns correct values for Hunter (physical ranged) at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Hunter', 1)
+      expect(values.HP).toBe(33) // 10 + 7*3 + 2 = 33
+      expect(values.PhysAtk).toBe(10) // 5 + 10*0.5 = 10
+      expect(values.Armor).toBe(1.5) // 5*0.3 = 1.5
+      expect(values.PhysCrit).toBe(11) // 5 + 10*0.6 = 11
+      expect(values.MP).toBeUndefined()
+    })
+
+    it('returns correct values for Shaman (hybrid) at Lv1', () => {
+      const { values } = computeSecondaryAttributes('Shaman', 1)
+      expect(values.HP).toBe(30) // 10 + 6*3 + 2 = 30
+      expect(values.MP).toBe(21) // 5 + 7*2.2 + 1 = 21.4 -> 21
+      expect(values.PhysAtk).toBe(7.8) // 5 + 7*0.4 = 7.8
+      expect(values.SpellPower).toBe(8.2) // 5 + 7*0.45 = 8.15 -> 8.2
+      expect(values.Armor).toBe(1.2) // 4*0.3 = 1.2
+      expect(values.PhysCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
+      expect(values.SpellCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
+      expect(values.Dodge).toBe(7.1) // 5 + 7*0.3 = 7.1
+    })
+
+    it('all 9 classes produce valid secondary attributes with HP and Hit', () => {
+      const classes = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
+      for (const heroClass of classes) {
+        const { values, formulas } = computeSecondaryAttributes(heroClass, 1)
+        expect(values.HP).toBeGreaterThan(0)
+        expect(values.Hit).toBeGreaterThanOrEqual(95)
+        expect(values.Hit).toBeLessThanOrEqual(100)
+        expect(formulas.length).toBeGreaterThanOrEqual(6)
+      }
+    })
+
+    it('HP and MP scale with level', () => {
+      const { values: v1 } = computeSecondaryAttributes('Warrior', 1)
+      const { values: v60 } = computeSecondaryAttributes('Warrior', 60)
+      expect(v60.HP).toBe(v1.HP + (60 - 1) * 2) // +2 HP per level
+    })
+
+    it('MP scales with level for mana classes', () => {
+      const { values: v1 } = computeSecondaryAttributes('Mage', 1)
+      const { values: v60 } = computeSecondaryAttributes('Mage', 60)
+      expect(v60.MP).toBe(v1.MP + (60 - 1) * 1) // +1 MP per level
+    })
+
+    it('unknown class returns base values with fallback formulas', () => {
+      const { values, formulas } = computeSecondaryAttributes('Unknown', 1)
+      expect(values.HP).toBe(12) // 10 + 0*0 + 1*2 = 12 (no coef, attrs all 0)
+      expect(formulas.length).toBeGreaterThan(0)
     })
   })
 

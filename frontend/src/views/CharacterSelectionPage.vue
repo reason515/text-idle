@@ -54,7 +54,7 @@
             <p class="section-text">{{ selectedHero.bio }}</p>
           </div>
           <div class="hero-attributes-section">
-            <span class="attributes-title">Attributes</span>
+            <span class="attributes-title">Primary Attributes</span>
             <div class="hero-attributes">
               <div class="attribute-row">
                 <span class="attr-label">Strength:</span>
@@ -78,6 +78,26 @@
               </div>
             </div>
           </div>
+          <div class="hero-secondary-section">
+            <span class="attributes-title">Secondary Attributes (Lv1)</span>
+            <p class="formula-intro">Derived from primary attributes. All formulas are transparent.</p>
+            <div class="secondary-attributes-table">
+              <div class="secondary-header">
+                <span class="col-attr">Attribute</span>
+                <span class="col-value">Value</span>
+                <span class="col-formula">Formula</span>
+              </div>
+              <div
+                v-for="item in getSecondaryFormulas(selectedHero.class)"
+                :key="item.key"
+                class="secondary-row"
+              >
+                <span class="col-attr">{{ item.label }}</span>
+                <span class="col-value">{{ item.value }}</span>
+                <code class="col-formula">{{ item.formula }}</code>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="confirmation-actions">
           <button class="btn btn-secondary" @click="selectedHero = null">Back</button>
@@ -91,7 +111,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes, computeSecondaryAttributes } from '../data/heroes.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -107,6 +127,11 @@ function heroPreviewStyle(hero) {
 
 function getClassInfo(heroClass) {
   return CLASS_INFO[heroClass] ?? null
+}
+
+function getSecondaryFormulas(heroClass) {
+  const { formulas } = computeSecondaryAttributes(heroClass, 1)
+  return formulas
 }
 
 const router = useRouter()
@@ -217,6 +242,65 @@ function confirmSelection() {
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
+}
+
+.hero-secondary-section {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.formula-intro {
+  margin: 0.25rem 0 0.5rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.secondary-attributes-table {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.secondary-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1.8fr;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.secondary-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1.8fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+
+.secondary-row .col-attr {
+  color: var(--text-muted);
+}
+
+.secondary-row .col-value {
+  font-weight: bold;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.secondary-row .col-formula {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--text);
+  background: rgba(0, 255, 0, 0.08);
+  padding: 0.15rem 0.35rem;
+  border-radius: 2px;
 }
 
 .attributes-title {

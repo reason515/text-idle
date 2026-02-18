@@ -76,6 +76,36 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Varian Wrynn')).toBeVisible()
   })
 
+  test('AC5a: hero confirmation shows secondary attributes and formulas', async ({ page }) => {
+    const email = `recruit-e2e-${Date.now()}@example.com`
+    await registerAndCompleteIntro(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible()
+
+    await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
+    await expect(page.getByText('Derived from primary attributes. All formulas are transparent.')).toBeVisible()
+    await expect(page.getByText('HP')).toBeVisible()
+    await expect(page.getByText('48')).toBeVisible()
+    await expect(page.getByText('PhysAtk')).toBeVisible()
+    await expect(page.getByText('11.5')).toBeVisible()
+    await expect(page.getByText(/10 \+ Stam/)).toBeVisible()
+  })
+
+  test('AC5b: Mage confirmation shows SpellPower and MP', async ({ page }) => {
+    const email = `recruit-e2e-${Date.now()}@example.com`
+    await registerAndCompleteIntro(page, email)
+
+    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.getByText(/Add.*Jaina/)).toBeVisible()
+
+    await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
+    await expect(page.getByText('SpellPower')).toBeVisible()
+    await expect(page.getByText('MP')).toBeVisible()
+    await expect(page.getByText('12.2')).toBeVisible()
+    await expect(page.getByText('37')).toBeVisible()
+  })
+
   test('AC5: squad full at 5, no further recruitment', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
