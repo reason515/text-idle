@@ -18,8 +18,19 @@
           @click="selectHero(hero)"
         >
           <span class="hero-name">{{ hero.name }}</span>
-          <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
-          <span class="hero-stats">Level 1 | Str {{ getInitialAttributes(hero.class).strength }} | Agi {{ getInitialAttributes(hero.class).agility }} | Int {{ getInitialAttributes(hero.class).intellect }} | Sta {{ getInitialAttributes(hero.class).stamina }} | Spi {{ getInitialAttributes(hero.class).spirit }}</span>
+          <div class="hero-meta">
+            <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ hero.class }} (Lv1)</span>
+            <span v-if="getClassInfo(hero.class)" class="hero-role">{{ getClassInfo(hero.class).role }}</span>
+          </div>
+          <p v-if="getClassInfo(hero.class)" class="hero-class-desc">{{ getClassInfo(hero.class).desc }}</p>
+          <p v-if="hero.bio" class="hero-bio">{{ hero.bio }}</p>
+          <div class="hero-attributes-mini">
+            <span>Str {{ getInitialAttributes(hero.class).strength }}</span>
+            <span>Agi {{ getInitialAttributes(hero.class).agility }}</span>
+            <span>Int {{ getInitialAttributes(hero.class).intellect }}</span>
+            <span>Sta {{ getInitialAttributes(hero.class).stamina }}</span>
+            <span>Spi {{ getInitialAttributes(hero.class).spirit }}</span>
+          </div>
         </button>
       </div>
     </template>
@@ -27,34 +38,44 @@
     <!-- Confirmation step -->
     <template v-else>
       <div class="confirmation-step">
-        <p>Add <strong>{{ selectedHero.name }}</strong> ({{ selectedHero.class }}) to your squad?</p>
+        <p>Add <strong>{{ selectedHero.name }}</strong> to your squad?</p>
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
-          <span class="hero-class" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
-          <div class="hero-attributes">
-            <div class="attribute-row">
-              <span class="attr-label">Level:</span>
-              <span class="attr-value">1</span>
-            </div>
-            <div class="attribute-row">
-              <span class="attr-label">Strength:</span>
-              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
-            </div>
-            <div class="attribute-row">
-              <span class="attr-label">Agility:</span>
-              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
-            </div>
-            <div class="attribute-row">
-              <span class="attr-label">Intellect:</span>
-              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
-            </div>
-            <div class="attribute-row">
-              <span class="attr-label">Stamina:</span>
-              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
-            </div>
-            <div class="attribute-row">
-              <span class="attr-label">Spirit:</span>
-              <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+          <div class="hero-meta">
+            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} (Level 1)</span>
+            <span v-if="getClassInfo(selectedHero.class)" class="hero-role">{{ getClassInfo(selectedHero.class).role }}</span>
+          </div>
+          <div v-if="getClassInfo(selectedHero.class)" class="info-section class-section">
+            <span class="section-label">Class</span>
+            <p class="section-text">{{ getClassInfo(selectedHero.class).desc }}</p>
+          </div>
+          <div v-if="selectedHero.bio" class="info-section hero-section">
+            <span class="section-label">About</span>
+            <p class="section-text">{{ selectedHero.bio }}</p>
+          </div>
+          <div class="hero-attributes-section">
+            <span class="attributes-title">Attributes</span>
+            <div class="hero-attributes">
+              <div class="attribute-row">
+                <span class="attr-label">Strength:</span>
+                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
+              </div>
+              <div class="attribute-row">
+                <span class="attr-label">Agility:</span>
+                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
+              </div>
+              <div class="attribute-row">
+                <span class="attr-label">Intellect:</span>
+                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
+              </div>
+              <div class="attribute-row">
+                <span class="attr-label">Stamina:</span>
+                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
+              </div>
+              <div class="attribute-row">
+                <span class="attr-label">Spirit:</span>
+                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -70,7 +91,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, getSquad, addHeroToSquad, getInitialAttributes, createCharacter } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes } from '../data/heroes.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -82,6 +103,10 @@ function heroCardStyle(hero) {
 
 function heroPreviewStyle(hero) {
   return { borderColor: classColor(hero.class) }
+}
+
+function getClassInfo(heroClass) {
+  return CLASS_INFO[heroClass] ?? null
 }
 
 const router = useRouter()
@@ -149,15 +174,55 @@ function confirmSelection() {
   text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
-.hero-class {
-  color: var(--text-muted);
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.hero-class-level {
   font-size: 0.9rem;
 }
 
-.hero-stats {
-  margin-top: 0.25rem;
+.hero-role {
   font-size: 0.75rem;
-  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.hero-class-desc {
+  margin: 0.35rem 0 0 0;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.hero-bio {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.hero-attributes-mini {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+.hero-attributes-section {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.attributes-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
 }
 
 .hero-attributes {
@@ -196,6 +261,26 @@ function confirmSelection() {
   border: 2px solid;
   margin-bottom: 1rem;
   box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+}
+
+.info-section {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section-text {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text);
 }
 
 .confirmation-actions {

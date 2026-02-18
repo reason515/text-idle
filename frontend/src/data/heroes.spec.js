@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   HEROES,
   CLASS_COLORS,
+  CLASS_INFO,
   MAX_SQUAD_SIZE,
   SQUAD_STORAGE_KEY,
   getSquad,
@@ -145,12 +146,15 @@ describe('heroes', () => {
       expect(MAX_SQUAD_SIZE).toBe(5)
     })
 
-    it('HEROES has WoW-style heroes with required fields', () => {
+    it('HEROES has WoW-style heroes with required fields and bio', () => {
       expect(HEROES.length).toBeGreaterThanOrEqual(9)
       for (const h of HEROES) {
         expect(h).toHaveProperty('id')
         expect(h).toHaveProperty('name')
         expect(h).toHaveProperty('class')
+        expect(h).toHaveProperty('bio')
+        expect(typeof h.bio).toBe('string')
+        expect(h.bio.length).toBeGreaterThan(0)
       }
     })
 
@@ -182,6 +186,16 @@ describe('heroes', () => {
       const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
       for (const c of expectedClasses) {
         expect(CLASS_COLORS[c]).toMatch(/^#[0-9A-Fa-f]{6}$/)
+      }
+    })
+
+    it('CLASS_INFO has role and desc for each class', () => {
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
+      for (const c of expectedClasses) {
+        expect(CLASS_INFO[c]).toHaveProperty('role')
+        expect(CLASS_INFO[c]).toHaveProperty('desc')
+        expect(typeof CLASS_INFO[c].role).toBe('string')
+        expect(typeof CLASS_INFO[c].desc).toBe('string')
       }
     })
   })

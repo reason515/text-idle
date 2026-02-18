@@ -31,16 +31,76 @@ export function getInitialAttributes(heroClass) {
 }
 
 export const HEROES = [
-  { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' },
-  { id: 'uther', name: 'Uther', class: 'Paladin' },
-  { id: 'anduin', name: 'Anduin Wrynn', class: 'Priest' },
-  { id: 'malfurion', name: 'Malfurion Stormrage', class: 'Druid' },
-  { id: 'jaina', name: 'Jaina Proudmoore', class: 'Mage' },
-  { id: 'valeera', name: 'Valeera', class: 'Rogue' },
-  { id: 'rexxar', name: 'Rexxar', class: 'Hunter' },
-  { id: 'guldan', name: "Gul'dan", class: 'Warlock' },
-  { id: 'thrall', name: 'Thrall', class: 'Shaman' },
+  {
+    id: 'varian',
+    name: 'Varian Wrynn',
+    class: 'Warrior',
+    bio: 'King of Stormwind and legendary warrior. Once fought as Lo\'Gosh the gladiator; reunited to lead the Alliance with unmatched blade and valor.',
+  },
+  {
+    id: 'uther',
+    name: 'Uther',
+    class: 'Paladin',
+    bio: 'The first Paladin of the Silver Hand. Mentor to Arthas, champion of the Light, and defender of Lordaeron until his tragic end.',
+  },
+  {
+    id: 'anduin',
+    name: 'Anduin Wrynn',
+    class: 'Priest',
+    bio: 'High King of the Alliance and son of Varian. A priest of the Holy Light who believes in peace and diplomacy over war.',
+  },
+  {
+    id: 'malfurion',
+    name: 'Malfurion Stormrage',
+    class: 'Druid',
+    bio: 'Archdruid of the night elves and first mortal student of Cenarius. Master of nature magic and guardian of the Emerald Dream.',
+  },
+  {
+    id: 'jaina',
+    name: 'Jaina Proudmoore',
+    class: 'Mage',
+    bio: 'Archmage and former leader of the Kirin Tor. Apprentice of Antonidas, ruler of Theramore and Dalaran, wielder of frost and arcane.',
+  },
+  {
+    id: 'valeera',
+    name: 'Valeera',
+    class: 'Rogue',
+    bio: 'Blood elf rogue and former gladiator. Loyal companion to Varian Wrynn, master of shadows and deadly precision.',
+  },
+  {
+    id: 'rexxar',
+    name: 'Rexxar',
+    class: 'Hunter',
+    bio: 'Mok\'nathal beastmaster and Champion of the Horde. A wanderer who fights alongside his loyal beasts Misha, Huffer, and Leokk.',
+  },
+  {
+    id: 'guldan',
+    name: "Gul'dan",
+    class: 'Warlock',
+    bio: 'The first orc warlock and founder of the Shadow Council. Corrupted the orcs with fel magic in pursuit of ultimate power.',
+  },
+  {
+    id: 'thrall',
+    name: 'Thrall',
+    class: 'Shaman',
+    bio: 'Former Warchief of the Horde. A shaman who freed the orcs from internment and founded Durotar, champion of the elements.',
+  },
 ]
+
+/**
+ * Class role (Tank/Healer/DPS) and short description for player reference
+ */
+export const CLASS_INFO = {
+  Warrior: { role: 'Tank / DPS', desc: 'High armor, shield block, rage. Front-line damage absorber and melee striker.' },
+  Paladin: { role: 'Tank / Healer / DPS', desc: 'Versatile. Holy Light heals, Judgement damages, plate armor tanks.' },
+  Priest: { role: 'Healer / DPS', desc: 'Strong healing and shields. Shadow form for damage output.' },
+  Druid: { role: 'Tank / Healer / DPS', desc: 'Shapeshifts between forms. HoT heals, bear tank, cat/owl DPS.' },
+  Mage: { role: 'DPS', desc: 'Arcane, frost, fire. Burst spells and crowd control.' },
+  Rogue: { role: 'DPS', desc: 'Combo points, backstab, poison. Melee burst and stealth.' },
+  Hunter: { role: 'DPS', desc: 'Ranged physical. Pet, traps, steady shot.' },
+  Warlock: { role: 'DPS', desc: 'DoT, summon, life drain. Sustained shadow and fire damage.' },
+  Shaman: { role: 'Healer / DPS', desc: 'Totems, elemental spells, chain heal. Support and spell damage.' },
+}
 
 /** WoW classic class colors (hex) for hero class and frame border display */
 export const CLASS_COLORS = {
