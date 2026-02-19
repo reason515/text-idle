@@ -31,6 +31,9 @@
             <span>Sta {{ getInitialAttributes(hero.class).stamina }}</span>
             <span>Spi {{ getInitialAttributes(hero.class).spirit }}</span>
           </div>
+          <div class="hero-resources-mini">
+            <span v-for="r in getResourceDisplay(hero.class)" :key="r.key" class="resource-item">{{ r.label }} {{ r.value }}</span>
+          </div>
         </button>
       </div>
     </template>
@@ -111,7 +114,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes, computeSecondaryAttributes } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -236,6 +239,21 @@ function confirmSelection() {
   display: flex;
   flex-wrap: wrap;
   gap: 0 1rem;
+}
+
+.hero-resources-mini {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+.hero-resources-mini .resource-item {
+  color: var(--text-value);
 }
 
 .hero-attributes-section {

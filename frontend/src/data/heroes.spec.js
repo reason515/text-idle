@@ -11,6 +11,7 @@ import {
   getInitialAttributes,
   createCharacter,
   computeSecondaryAttributes,
+  getResourceDisplay,
 } from './heroes.js'
 
 const storage = {}
@@ -131,6 +132,21 @@ describe('heroes', () => {
       expect(values.MP).toBeUndefined()
     })
 
+    it('returns Rage 100 for Warrior', () => {
+      const { values } = computeSecondaryAttributes('Warrior', 1)
+      expect(values.Rage).toBe(100)
+    })
+
+    it('returns Energy 100 for Rogue', () => {
+      const { values } = computeSecondaryAttributes('Rogue', 1)
+      expect(values.Energy).toBe(100)
+    })
+
+    it('returns Focus 100 for Hunter', () => {
+      const { values } = computeSecondaryAttributes('Hunter', 1)
+      expect(values.Focus).toBe(100)
+    })
+
     it('returns correct values for Shaman (hybrid) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Shaman', 1)
       expect(values.HP).toBe(30) // 10 + 6*3 + 2 = 30
@@ -170,6 +186,43 @@ describe('heroes', () => {
       const { values, formulas } = computeSecondaryAttributes('Unknown', 1)
       expect(values.HP).toBe(12) // 10 + 0*0 + 1*2 = 12 (no coef, attrs all 0)
       expect(formulas.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('getResourceDisplay', () => {
+    it('returns HP and Rage for Warrior', () => {
+      const items = getResourceDisplay('Warrior', 1)
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: 'HP', value: 48 })
+      expect(items.find((i) => i.key === 'Rage')).toEqual({ key: 'Rage', label: 'Rage', value: 100 })
+    })
+
+    it('returns HP and MP for Mage', () => {
+      const items = getResourceDisplay('Mage', 1)
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.key === 'HP')).toBeDefined()
+      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: 'MP', value: 37 })
+    })
+
+    it('returns HP and Energy for Rogue', () => {
+      const items = getResourceDisplay('Rogue', 1)
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.key === 'HP')).toBeDefined()
+      expect(items.find((i) => i.key === 'Energy')).toEqual({ key: 'Energy', label: 'Energy', value: 100 })
+    })
+
+    it('returns HP and Focus for Hunter', () => {
+      const items = getResourceDisplay('Hunter', 1)
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.key === 'HP')).toBeDefined()
+      expect(items.find((i) => i.key === 'Focus')).toEqual({ key: 'Focus', label: 'Focus', value: 100 })
+    })
+
+    it('returns HP, MP for Paladin (mana hybrid)', () => {
+      const items = getResourceDisplay('Paladin', 1)
+      expect(items).toHaveLength(2)
+      expect(items.find((i) => i.key === 'HP')).toBeDefined()
+      expect(items.find((i) => i.key === 'MP')).toBeDefined()
     })
   })
 

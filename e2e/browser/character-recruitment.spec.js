@@ -23,6 +23,24 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Rexxar')).toBeVisible()
   })
 
+  test('AC1b: hero cards show resources (HP/MP/Rage/Energy/Focus) distinct from primary attributes', async ({ page }) => {
+    const email = `recruit-e2e-${Date.now()}@example.com`
+    await registerAndCompleteIntro(page, email)
+
+    await expect(page.getByText('Choose Your Hero')).toBeVisible()
+    // Varian (Warrior): HP 48, Rage 100
+    await expect(page.getByText('HP 48')).toBeVisible()
+    await expect(page.getByText('Rage 100')).toBeVisible()
+    // Jaina (Mage): HP, MP
+    await expect(page.getByText('MP 37')).toBeVisible()
+    // Rexxar (Hunter): HP, Focus 100
+    await expect(page.getByText('Focus 100')).toBeVisible()
+    // Valeera (Rogue): Energy 100
+    await expect(page.getByText('Energy 100')).toBeVisible()
+    // Primary attributes (Str, Agi, etc) still visible
+    await expect(page.getByText(/Str \d+/)).toBeVisible()
+  })
+
   test('AC2: selecting hero shows confirmation, after confirm joins squad and adventure begins', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)

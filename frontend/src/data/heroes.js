@@ -107,7 +107,39 @@ export function computeSecondaryAttributes(heroClass, level = 1) {
   values.Hit = Math.round(hit * 10) / 10
   formulas.push({ key: 'Hit', label: 'Hit %', value: values.Hit, formula: '95 + Agi * 0.2' })
 
+  // Combat resources (fixed cap per design doc 2.2.1)
+  if (heroClass === 'Warrior') {
+    values.Rage = 100
+    formulas.push({ key: 'Rage', label: 'Rage', value: 100, formula: 'Fixed 100' })
+  }
+  if (heroClass === 'Rogue') {
+    values.Energy = 100
+    formulas.push({ key: 'Energy', label: 'Energy', value: 100, formula: 'Fixed 100' })
+  }
+  if (heroClass === 'Hunter') {
+    values.Focus = 100
+    formulas.push({ key: 'Focus', label: 'Focus', value: 100, formula: 'Fixed 100' })
+  }
+
   return { values, formulas }
+}
+
+/**
+ * Get resource values (HP, MP, Rage, Energy, Focus) for display in character selection.
+ * These are distinct from primary attributes (Str, Agi, Int, Sta, Spi).
+ * @param {string} heroClass - The hero's class
+ * @param {number} level - Character level (default 1)
+ * @returns {Array<{key: string, label: string, value: number}>}
+ */
+export function getResourceDisplay(heroClass, level = 1) {
+  const { values } = computeSecondaryAttributes(heroClass, level)
+  const items = []
+  items.push({ key: 'HP', label: 'HP', value: values.HP })
+  if (values.MP != null) items.push({ key: 'MP', label: 'MP', value: values.MP })
+  if (values.Rage != null) items.push({ key: 'Rage', label: 'Rage', value: values.Rage })
+  if (values.Energy != null) items.push({ key: 'Energy', label: 'Energy', value: values.Energy })
+  if (values.Focus != null) items.push({ key: 'Focus', label: 'Focus', value: values.Focus })
+  return items
 }
 
 export const HEROES = [
