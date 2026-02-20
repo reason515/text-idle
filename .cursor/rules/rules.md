@@ -157,7 +157,17 @@ Do not guess requirements.
 
 ---
 
-# 12. Turn-Based Game Design
+# 12. Idle Game Principle
+
+This is an **idle/placement game**. During combat, the player **cannot control** the battle in real-time.
+
+- **Player influence**: Only through **pre-configured tactics** (skill priority, target selection, AI behavior)
+- **Prohibited**: Design assumptions that imply real-time player control (e.g., "for strategy prediction during battle")
+- **Correct**: Design for post-combat analysis, tactic tuning, and build optimization based on combat logs and statistics
+
+---
+
+# 13. Turn-Based Game Design
 
 The game uses **turn-based combat**. Do not use real-time units (seconds, minutes) for combat or resource mechanics.
 
@@ -167,7 +177,7 @@ The game uses **turn-based combat**. Do not use real-time units (seconds, minute
 
 ---
 
-# 13. Shell / Terminal (PowerShell)
+# 14. Shell / Terminal (PowerShell)
 
 When running terminal commands on Windows (PowerShell):
 
@@ -178,7 +188,7 @@ When running terminal commands on Windows (PowerShell):
 
 ---
 
-# 14. Prohibited Behaviors
+# 15. Prohibited Behaviors
 
 The following are not allowed:
 
@@ -191,7 +201,7 @@ The following are not allowed:
 
 ---
 
-# 15. Output Order (When Implementation Is Involved)
+# 16. Output Order (When Implementation Is Involved)
 
 1. Brief clarification
 2. Scenario summary

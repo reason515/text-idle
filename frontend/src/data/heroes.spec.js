@@ -90,6 +90,31 @@ describe('heroes', () => {
       expect(hpFormula.value).toBeGreaterThan(0)
     })
 
+    it('formulas use multiplication symbol not asterisk', () => {
+      const { formulas } = computeSecondaryAttributes('Warrior', 1)
+      const armorFormula = formulas.find((f) => f.key === 'Armor')
+      expect(armorFormula.formula).toContain('\u00D7')
+      expect(armorFormula.formula).not.toContain('equipment')
+    })
+
+    it('formulas include actual attribute values for calculation transparency', () => {
+      const { formulas } = computeSecondaryAttributes('Warrior', 1)
+      const hpFormula = formulas.find((f) => f.key === 'HP')
+      expect(hpFormula.formula).toContain('Stam(9)')
+      expect(hpFormula.formula).toContain('Level(1)')
+      expect(hpFormula.formula).toMatch(/= 48$/)
+    })
+
+    it('all classes have same secondary attribute order with Resource in 2nd position', () => {
+      const fixedKeys = ['PhysAtk', 'SpellPower', 'Armor', 'PhysCrit', 'SpellCrit', 'Dodge', 'Hit']
+      for (const heroClass of ['Warrior', 'Mage', 'Rogue']) {
+        const { formulas } = computeSecondaryAttributes(heroClass, 1)
+        expect(formulas[0].key).toBe('HP')
+        expect(['MP', 'Rage', 'Energy', 'Focus']).toContain(formulas[1].key)
+        expect(formulas.slice(2).map((f) => f.key)).toEqual(fixedKeys)
+      }
+    })
+
     it('returns correct values for Rogue (agility physical) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Rogue', 1)
       expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29

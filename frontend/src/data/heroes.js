@@ -47,6 +47,40 @@ const CLASS_COEFFICIENTS = {
   Shaman: { k_HP: 3.0, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.4, k_SpellPower: 0.45, k_Armor: 0.3, k_PhysCrit: 0.5, k_SpellCrit: 0.5, k_Dodge: 0.3 },
 }
 
+/** Format formula string: replace * with multiplication symbol for display */
+function fmtFormula(s) {
+  return s.replace(/\*/g, '\u00D7')
+}
+
+/** Build formula with actual values substituted for attributes (e.g. "10 + Stam(9) x 4 + Level(1) x 2 = 48") */
+function formulaWithValues(template, attrs, level, result) {
+  const s = template
+    .replace(/\bStam\b/g, `Stam(${attrs.stamina})`)
+    .replace(/\bInt\b/g, `Int(${attrs.intellect})`)
+    .replace(/\bStr\b/g, `Str(${attrs.strength})`)
+    .replace(/\bAgi\b/g, `Agi(${attrs.agility})`)
+    .replace(/\bLevel\b/g, `Level(${level})`)
+  return result != null ? `${s} = ${result}` : s
+}
+
+/**
+ * Fixed order for secondary attributes. All classes show same rows; formulas differ per class.
+ * Resource (MP/Rage/Energy/Focus) always in 2nd position.
+ */
+const SECONDARY_ATTR_ORDER = [
+  'HP',
+  'Resource', // MP | Rage | Energy | Focus
+  'PhysAtk',
+  'SpellPower',
+  'Armor',
+  'PhysCrit',
+  'SpellCrit',
+  'Dodge',
+  'Hit',
+]
+
+const NA = '-'
+
 /**
  * Compute secondary attributes for a class at given level (no equipment)
  * @param {string} heroClass - The hero's class
@@ -57,68 +91,99 @@ export function computeSecondaryAttributes(heroClass, level = 1) {
   const attrs = getInitialAttributes(heroClass)
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}
-  const formulas = []
+  const formulaMap = {}
 
+  // HP
   const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * 2
   values.HP = Math.round(hp)
-  formulas.push({ key: 'HP', label: 'HP', value: values.HP, formula: `10 + Stam * ${coef.k_HP ?? '?'} + Level * 2` })
+  formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * 2`, attrs, level, values.HP))
 
+  // Resource (2nd position): MP for mana classes, Rage/Energy/Focus for others
   if (coef.k_MP != null) {
     const mp = 5 + attrs.intellect * coef.k_MP + level * 1
     values.MP = Math.round(mp)
-    formulas.push({ key: 'MP', label: 'MP', value: values.MP, formula: `5 + Int * ${coef.k_MP} + Level * 1` })
+    formulaMap.Resource = { key: 'MP', label: 'MP', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * 1`, attrs, level, Math.round(mp))) }
+  } else if (heroClass === 'Warrior') {
+    values.Rage = 100
+    formulaMap.Resource = { key: 'Rage', label: 'Rage', value: 100, formula: 'Fixed 100' }
+  } else if (heroClass === 'Rogue') {
+    values.Energy = 100
+    formulaMap.Resource = { key: 'Energy', label: 'Energy', value: 100, formula: 'Fixed 100' }
+  } else if (heroClass === 'Hunter') {
+    values.Focus = 100
+    formulaMap.Resource = { key: 'Focus', label: 'Focus', value: 100, formula: 'Fixed 100' }
+  } else {
+    formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
 
+  // PhysAtk (all classes, N/A when null)
   if (coef.physAtkAttr && coef.k_PhysAtk != null) {
     const mainAttr = attrs[coef.physAtkAttr] || 0
     const physAtk = 5 + mainAttr * coef.k_PhysAtk
     values.PhysAtk = Math.round(physAtk * 10) / 10
     const attrName = coef.physAtkAttr === 'strength' ? 'Str' : 'Agi'
-    formulas.push({ key: 'PhysAtk', label: 'PhysAtk', value: values.PhysAtk, formula: `5 + ${attrName} * ${coef.k_PhysAtk}` })
+    formulaMap.PhysAtk = fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
+  } else {
+    formulaMap.PhysAtk = NA
   }
 
+  // SpellPower (all classes, N/A when null)
   if (coef.k_SpellPower != null) {
     const spellPower = 5 + attrs.intellect * coef.k_SpellPower
     values.SpellPower = Math.round(spellPower * 10) / 10
-    formulas.push({ key: 'SpellPower', label: 'SpellPower', value: values.SpellPower, formula: `5 + Int * ${coef.k_SpellPower}` })
+    formulaMap.SpellPower = fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
+  } else {
+    formulaMap.SpellPower = NA
   }
 
+  // Armor (all classes, no equipment in formula)
   if (coef.k_Armor != null) {
     const armor = attrs.strength * coef.k_Armor
     values.Armor = Math.round(armor * 10) / 10
-    formulas.push({ key: 'Armor', label: 'Armor', value: values.Armor, formula: `Str * ${coef.k_Armor} + equipment` })
+    formulaMap.Armor = fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
+  } else {
+    formulaMap.Armor = NA
   }
 
+  // PhysCrit
   const physCrit = 5 + attrs.agility * (coef.k_PhysCrit || 0)
   values.PhysCrit = Math.round(physCrit * 10) / 10
-  formulas.push({ key: 'PhysCrit', label: 'PhysCrit %', value: values.PhysCrit, formula: `5 + Agi * ${coef.k_PhysCrit ?? 0}` })
+  formulaMap.PhysCrit = fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, values.PhysCrit))
 
+  // SpellCrit (all classes, N/A when null)
   if (coef.k_SpellCrit != null) {
     const spellCrit = 5 + attrs.intellect * coef.k_SpellCrit
     values.SpellCrit = Math.round(spellCrit * 10) / 10
-    formulas.push({ key: 'SpellCrit', label: 'SpellCrit %', value: values.SpellCrit, formula: `5 + Int * ${coef.k_SpellCrit}` })
+    formulaMap.SpellCrit = fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, values.SpellCrit))
+  } else {
+    formulaMap.SpellCrit = NA
   }
 
+  // Dodge
   const dodge = 5 + attrs.agility * (coef.k_Dodge || 0)
   values.Dodge = Math.round(dodge * 10) / 10
-  formulas.push({ key: 'Dodge', label: 'Dodge %', value: values.Dodge, formula: `5 + Agi * ${coef.k_Dodge ?? 0}` })
+  formulaMap.Dodge = fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, values.Dodge))
 
+  // Hit
   const hit = 95 + attrs.agility * 0.2
   values.Hit = Math.round(hit * 10) / 10
-  formulas.push({ key: 'Hit', label: 'Hit %', value: values.Hit, formula: '95 + Agi * 0.2' })
+  formulaMap.Hit = fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
 
-  // Combat resources (fixed cap per design doc 2.2.1)
-  if (heroClass === 'Warrior') {
-    values.Rage = 100
-    formulas.push({ key: 'Rage', label: 'Rage', value: 100, formula: 'Fixed 100' })
-  }
-  if (heroClass === 'Rogue') {
-    values.Energy = 100
-    formulas.push({ key: 'Energy', label: 'Energy', value: 100, formula: 'Fixed 100' })
-  }
-  if (heroClass === 'Hunter') {
-    values.Focus = 100
-    formulas.push({ key: 'Focus', label: 'Focus', value: 100, formula: 'Fixed 100' })
+  // Build formulas array in fixed order
+  const labels = { PhysCrit: 'PhysCrit %', SpellCrit: 'SpellCrit %', Dodge: 'Dodge %', Hit: 'Hit %' }
+  const formulas = []
+  for (const key of SECONDARY_ATTR_ORDER) {
+    if (key === 'Resource') {
+      const r = formulaMap.Resource
+      formulas.push(typeof r === 'object' ? r : { key: 'Resource', label: 'Resource', value: NA, formula: NA })
+    } else {
+      formulas.push({
+        key,
+        label: labels[key] ?? key,
+        value: values[key] ?? NA,
+        formula: formulaMap[key] ?? NA,
+      })
+    }
   }
 
   return { values, formulas }

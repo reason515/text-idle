@@ -1,9 +1,17 @@
 ---
-description: Game design constraints - turn-based combat, no real-time units
+description: Game design constraints - idle game, turn-based combat, no real-time units
 alwaysApply: true
 ---
 
 # Text Idle - Game Design Rules
+
+## Idle Game Principle (MANDATORY)
+
+This is an **idle/placement game**. During combat, the player **cannot control** the battle in real-time.
+
+- **Player influence**: Only through **pre-configured tactics** (e.g., skill priority, target selection, AI behavior)
+- **Prohibited**: Design assumptions that imply real-time player control (e.g., "for strategy prediction during battle", "for in-combat decision-making")
+- **Correct**: Design for post-combat analysis, tactic tuning, and build optimization based on combat logs and statistics
 
 ## Turn-Based Combat (MANDATORY)
 

@@ -56,48 +56,46 @@
             <span class="section-label">About</span>
             <p class="section-text">{{ selectedHero.bio }}</p>
           </div>
-          <div class="hero-attributes-section">
-            <span class="attributes-title">Primary Attributes</span>
-            <div class="hero-attributes">
-              <div class="attribute-row">
-                <span class="attr-label">Strength:</span>
-                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
-              </div>
-              <div class="attribute-row">
-                <span class="attr-label">Agility:</span>
-                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
-              </div>
-              <div class="attribute-row">
-                <span class="attr-label">Intellect:</span>
-                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
-              </div>
-              <div class="attribute-row">
-                <span class="attr-label">Stamina:</span>
-                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
-              </div>
-              <div class="attribute-row">
-                <span class="attr-label">Spirit:</span>
-                <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+          <div class="hero-stats-grid">
+            <div class="hero-attributes-section">
+              <span class="attributes-title">Primary Attributes</span>
+              <div class="hero-attributes">
+                <div class="attribute-row">
+                  <span class="attr-label">Strength</span>
+                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
+                </div>
+                <div class="attribute-row">
+                  <span class="attr-label">Agility</span>
+                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
+                </div>
+                <div class="attribute-row">
+                  <span class="attr-label">Intellect</span>
+                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
+                </div>
+                <div class="attribute-row">
+                  <span class="attr-label">Stamina</span>
+                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
+                </div>
+                <div class="attribute-row">
+                  <span class="attr-label">Spirit</span>
+                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="hero-secondary-section">
-            <span class="attributes-title">Secondary Attributes (Lv1)</span>
-            <p class="formula-intro">Derived from primary attributes. All formulas are transparent.</p>
-            <div class="secondary-attributes-table">
-              <div class="secondary-header">
-                <span class="col-attr">Attribute</span>
-                <span class="col-value">Value</span>
-                <span class="col-formula">Formula</span>
-              </div>
-              <div
-                v-for="item in getSecondaryFormulas(selectedHero.class)"
-                :key="item.key"
-                class="secondary-row"
-              >
-                <span class="col-attr">{{ item.label }}</span>
-                <span class="col-value">{{ item.value }}</span>
-                <code class="col-formula">{{ item.formula }}</code>
+            <div class="hero-secondary-section">
+              <span class="attributes-title">Secondary Attributes (Lv1)</span>
+              <p class="formula-hint">Hover over attribute for formula</p>
+              <div class="secondary-attributes-grid">
+                <div
+                  v-for="item in getSecondaryFormulas(selectedHero.class)"
+                  :key="item.key"
+                  class="secondary-item secondary-item-tooltip"
+                  :class="{ 'has-formula': item.formula !== '-' }"
+                  :data-tooltip="item.formula !== '-' ? item.formula : null"
+                >
+                  <span class="secondary-label">{{ item.label }}</span>
+                  <span class="secondary-value">{{ item.value }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -256,70 +254,88 @@ function confirmSelection() {
   color: var(--text-value);
 }
 
-.hero-attributes-section {
+.hero-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
+}
+
+.hero-attributes-section {
+  margin-top: 0;
 }
 
 .hero-secondary-section {
-  margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
+  margin-top: 0;
 }
 
-.formula-intro {
+.formula-hint {
   margin: 0.25rem 0 0.5rem 0;
-  font-size: 0.75rem;
-  color: var(--text-label);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
-.secondary-attributes-table {
-  margin-top: 0.5rem;
+.secondary-attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem 1.5rem;
   font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.secondary-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.secondary-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1.8fr;
-  gap: 0.75rem;
-  padding: 0.25rem 0;
-  color: var(--text-label);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
-}
-
-.secondary-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1.8fr;
-  gap: 0.75rem;
   align-items: center;
-  padding: 0.2rem 0;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
+  cursor: help;
+  position: relative;
 }
 
-.secondary-row .col-attr {
-  color: var(--text-label);
+.secondary-item:hover {
+  background: rgba(0, 204, 102, 0.06);
 }
 
-.secondary-row .col-value {
-  color: var(--text-value);
-  font-weight: bold;
-  min-width: 3rem;
-  text-align: right;
+.secondary-item.has-formula {
+  border-bottom: 1px dotted var(--border);
 }
 
-.secondary-row .col-formula {
+.secondary-item-tooltip[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%) translateY(-0.35rem);
+  padding: 0.4rem 0.6rem;
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
+  line-height: 1.4;
   color: var(--text);
-  background: rgba(0, 204, 102, 0.08);
-  padding: 0.15rem 0.35rem;
-  border-radius: 2px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  max-width: 28rem;
+  white-space: normal;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.secondary-label {
+  color: var(--text-label);
+  font-size: 0.78rem;
+}
+
+.secondary-value {
+  color: var(--text-value);
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
 }
 
 .attributes-title {
@@ -338,11 +354,12 @@ function confirmSelection() {
 
 .attribute-row {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .attr-label {
+  min-width: 5.5rem;
   color: var(--text-label);
 }
 
@@ -365,6 +382,7 @@ function confirmSelection() {
   border: 2px solid;
   margin-bottom: 1rem;
   box-shadow: 0 0 6px rgba(0, 204, 102, 0.2);
+  overflow: visible;
 }
 
 .info-section {
@@ -407,5 +425,11 @@ function confirmSelection() {
 
 .no-heroes p {
   margin-bottom: 1rem;
+}
+
+@media (max-width: 520px) {
+  .hero-stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

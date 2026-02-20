@@ -102,12 +102,13 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible()
 
     await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
-    await expect(page.getByText('Derived from primary attributes. All formulas are transparent.')).toBeVisible()
+    await expect(page.getByText('Hover over attribute for formula')).toBeVisible()
     await expect(page.getByText('HP')).toBeVisible()
     await expect(page.getByText('48')).toBeVisible()
     await expect(page.getByText('PhysAtk')).toBeVisible()
     await expect(page.getByText('11.5')).toBeVisible()
-    await expect(page.getByText(/10 \+ Stam/)).toBeVisible()
+    const hpItem = page.locator('.secondary-item').filter({ hasText: 'HP' }).first()
+    await expect(hpItem).toHaveAttribute('data-tooltip', /10 \+ Stam/)
   })
 
   test('AC5b: Mage confirmation shows SpellPower and MP', async ({ page }) => {
