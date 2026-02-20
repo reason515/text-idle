@@ -4,6 +4,7 @@ import {
   createInitialProgress,
   getRecruitLimit,
   addExplorationProgress,
+  deductExplorationProgress,
   unlockNextMapAfterBoss,
   generateEncounterSize,
   createMonster,
@@ -52,17 +53,42 @@ describe('combat progression and systems', () => {
     const afterNormal = addExplorationProgress(progress, 'normal')
     const afterElite = addExplorationProgress(progress, 'elite')
     expect(afterNormal.currentProgress).toBeLessThan(afterElite.currentProgress)
+    expect(afterNormal.currentProgress).toBe(3)
+    expect(afterElite.currentProgress).toBe(6)
     expect(afterNormal.bossAvailable).toBe(false)
   })
 
   it('Example5: reaching 100 progress spawns map boss', () => {
     const progress = createInitialProgress()
     let next = progress
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 17; i += 1) {
       next = addExplorationProgress(next, 'elite')
     }
     expect(next.currentProgress).toBe(100)
     expect(next.bossAvailable).toBe(true)
+  })
+
+  it('Example5: defeat deducts exploration progress by fixed amount', () => {
+    const progress = { ...createInitialProgress(), currentProgress: 30 }
+    const after = deductExplorationProgress(progress, 10)
+    expect(after.currentProgress).toBe(20)
+    expect(after.bossAvailable).toBe(false)
+    expect(after.unlockedMapCount).toBe(progress.unlockedMapCount)
+    expect(after.currentMapId).toBe(progress.currentMapId)
+  })
+
+  it('Example5: defeat progress deduction does not drop below 0', () => {
+    const progress = { ...createInitialProgress(), currentProgress: 5 }
+    const after = deductExplorationProgress(progress, 10)
+    expect(after.currentProgress).toBe(0)
+    expect(after.bossAvailable).toBe(false)
+  })
+
+  it('Example5: defeat at 100 progress deducts and clears bossAvailable', () => {
+    const progress = { ...createInitialProgress(), currentProgress: 100, bossAvailable: true }
+    const after = deductExplorationProgress(progress, 10)
+    expect(after.currentProgress).toBe(90)
+    expect(after.bossAvailable).toBe(false)
   })
 
   it('Example5: defeating boss unlocks next map and increases recruit limit', () => {

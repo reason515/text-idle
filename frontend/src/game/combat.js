@@ -87,11 +87,20 @@ export function getRecruitLimit(progress) {
 
 export function addExplorationProgress(progress, killTier) {
   const gainTable = {
-    normal: 10,
-    elite: 18,
+    normal: 3,
+    elite: 6,
   }
   const gain = gainTable[killTier] ?? 0
   const nextProgress = clamp(progress.currentProgress + gain, 0, 100)
+  return {
+    ...progress,
+    currentProgress: nextProgress,
+    bossAvailable: nextProgress >= 100,
+  }
+}
+
+export function deductExplorationProgress(progress, amount = 10) {
+  const nextProgress = clamp(progress.currentProgress - amount, 0, 100)
   return {
     ...progress,
     currentProgress: nextProgress,

@@ -27,6 +27,23 @@
   --accent: #00ffaa;
   --error: #ff6666;
   --warning: #ffcc66;
+
+  --color-hp: #44ff88;
+  --color-mp: #44aaff;
+  --color-rage: #ffaa44;
+  --color-energy: #ffee66;
+  --color-focus: #00ffcc;
+  --color-phys: #ffaa44;
+  --color-magic: #cc88ff;
+  --color-skill: #ffee66;
+  --color-victory: #00ffcc;
+  --color-defeat: #ff4444;
+  --color-gold: #ffcc44;
+  --color-exp: #88ffaa;
+  --color-boss: #ff6644;
+  --color-elite: #cc88ff;
+  --color-normal: #66aa88;
+
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }
 

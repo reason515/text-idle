@@ -170,11 +170,12 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | Player has completed character recruitment (Example 4) and adventure has begun | Player views the map selection screen | Only Elwynn Forest is available; other maps are locked or hidden |
-| AC2 | Player is on Elwynn Forest and squad is exploring | Squad defeats monsters (Normal, Elite) | Exploration progress increases; progress bar or equivalent is visible; Normal kills contribute less than Elite kills |
-| AC3 | Player is on a map and exploration progress has reached 100% | Progress reaches 100% | The zone boss (e.g., Hogger for Elwynn Forest) appears; player must defeat it to proceed |
-| AC4 | Player has defeated the zone boss on the current map | Boss is defeated | The next map is unlocked; player can select the new map to explore; squad expansion becomes available (Example 4 AC4: player may recruit 1 more hero) |
+| AC2 | Player is on Elwynn Forest and the auto-combat loop is running | Squad automatically encounters random monsters (Normal and Elite mixed) and wins | Exploration progress increases automatically; progress bar or equivalent is visible; Normal kills contribute less than Elite kills; no manual selection of encounter type is required |
+| AC3 | Player is on a map and exploration progress has reached 100% | Progress reaches 100% | The zone boss (e.g., Hogger for Elwynn Forest) is automatically challenged in the next encounter |
+| AC4 | Player has defeated the zone boss on the current map | Boss is defeated | The next map is unlocked; player can select the new map to explore via the map modal; squad expansion becomes available (Example 4 AC4: player may recruit 1 more hero) |
 | AC5 | Player has unlocked all 5 maps and defeated all 5 zone bosses | Player views the map selection screen | All 5 maps (Elwynn Forest through Stranglethorn Vale) are available; squad has reached max size (5 heroes) |
 | AC6 | Player is in combat with an Elite or Boss monster | Monster acts | Monster may use skills (not just basic attacks); combat log or UI indicates damage type (Physical or Magic) when applicable |
+| AC7 | Squad loses a combat encounter on any map | Defeat occurs | Exploration progress is deducted by a fixed amount (default 10 points); progress does not drop below 0; the auto-combat loop resumes after a short pause |
 
 ---
 
@@ -227,10 +228,10 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | Squad has 3 heroes and enters combat on a map | An encounter is generated | Monster count is 3 with higher probability; 1–2 or 4–5 monsters occur with lower probability; distribution is configurable |
 | AC2 | Squad has N heroes (N = 1 to 5) | An encounter is generated | Monster count follows the same distribution (usually N, sometimes N-1, N-2, or N+1, N+2 within valid range) |
-| AC3 | Combat is in progress and the last monster dies | All monsters are dead | Combat ends with **victory**; post-combat rewards (exp, gold, loot) are granted; squad enters rest/recovery phase |
-| AC4 | Combat is in progress and the last hero dies | All player heroes are dead | Combat ends with **defeat**; no rewards (exp, gold, loot) from this encounter are granted; resurrection/death rules apply |
-| AC5 | Combat ends in victory | Victory is triggered | Squad cannot start the next combat until rest phase completes (see Example 8) |
-| AC6 | Combat ends in defeat | Defeat is triggered | Squad does not enter normal rest phase; resurrection/death rules determine next state (e.g., revive at safe point, no rest until revived) |
+| AC3 | Combat is in progress and the last monster dies | All monsters are dead | Combat ends with **victory**; post-combat rewards (exp, gold, loot) are granted; squad enters rest/recovery phase automatically |
+| AC4 | Combat is in progress and the last hero dies | All player heroes are dead | Combat ends with **defeat**; no rewards (exp, gold, loot) from this encounter are granted; **exploration progress is deducted by a fixed amount (default 10 points, not below 0)** |
+| AC5 | Combat ends in victory | Victory is triggered | Rest phase begins automatically; next combat starts automatically after rest completes (see Example 8) |
+| AC6 | Combat ends in defeat | Defeat is triggered | Squad does not enter rest phase; exploration progress is deducted; auto-combat loop resumes after a short pause |
 
 ---
 
@@ -253,14 +254,14 @@ Then [expected result/verifiable behavior].
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Squad has won a combat and at least one hero has less than full HP or MP | Rest phase begins | Squad is in rest phase; recovery proceeds each turn/step; next combat is not available |
-| AC2 | Squad is in rest phase | All heroes reach full HP and full MP (and any other required resources) | Rest phase ends; squad can start the next combat |
+| AC1 | Squad has won a combat and at least one hero has less than full HP or MP | Rest phase begins | Squad is in rest phase; recovery proceeds each turn/step automatically; next combat does not start until rest is complete |
+| AC2 | Squad is in rest phase | All heroes reach full HP and full MP (and any other required resources) | Rest phase ends automatically; next combat starts immediately without any player input |
 | AC3 | A hero has Spirit 5 and no recovery equipment | One recovery turn/step elapses | HP and MP increase according to the recovery formula (Base + Spirit * k); higher Spirit yields faster recovery |
 | AC4 | A hero has equipment with recovery bonus | One recovery turn/step elapses | HP and MP increase by the equipment bonus in addition to base + Spirit; recovery speed is visible or calculable by the player |
 | AC5 | Squad won the last combat with 1 hero having died (e.g., revived during combat or died and was rezzed) | Rest phase begins | Recovery takes longer than if no hero had died; recovery speed is reduced or extra recovery turns are required; the death penalty is configurable |
 | AC6 | Squad won the last combat with 2 heroes having died | Rest phase begins | Recovery takes even longer than with 1 death; penalty scales with number of deaths (e.g., N deaths → N * penalty factor) |
 | AC7 | Player views a hero's recovery rate | Player inspects the hero or rest UI | Recovery formula or effective rate is visible (Spirit, equipment, death penalty), supporting transparent optimization |
-| AC8 | Squad has not yet fully recovered | Player attempts to start the next combat | Next combat cannot start; UI indicates that rest is required or shows recovery progress |
+| AC8 | Squad has not yet fully recovered | Auto-combat loop runs | Rest phase and recovery proceed automatically; next combat starts automatically after rest completes; no player action is required |
 
 ---
 

@@ -20,7 +20,7 @@ async function registerToCharacterSelect(page, email) {
 }
 
 test.describe('Combat Flow (Example 5-9)', () => {
-  test('register to battle start full flow works', async ({ page }) => {
+  test('auto-combat loop starts after recruitment', async ({ page }) => {
     const email = `combat-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
@@ -28,28 +28,101 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.getByText('Map Exploration')).toBeVisible()
-    await expect(page.getByText('Current map: Elwynn Forest')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start Encounter' })).toBeVisible()
+    await expect(page.locator('.map-btn')).toBeVisible()
+    await expect(page.locator('.explore-track')).toBeVisible()
+    await expect(page.locator('.col-header').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Start Encounter' }).click()
-    await expect(page.getByText('Last outcome:')).toBeVisible()
-    await expect(page.getByText(/R\d+ .+ used/).first()).toBeVisible()
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
   })
 
-  test('victory enters rest and blocks next combat until recovery', async ({ page }) => {
-    const email = `rest-e2e-${Date.now()}@example.com`
+  test('hero card shows name, class, level and resource bars', async ({ page }) => {
+    const email = `hero-card-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const card = page.locator('.hero-card').first()
+    await expect(card).toBeVisible()
+    await expect(card.locator('.hero-name')).toBeVisible()
+    await expect(card.locator('.hero-class')).toBeVisible()
+    await expect(card.locator('.card-level')).toContainText('Lv.')
+    await expect(card.locator('.bar-track').first()).toBeVisible()
+    await expect(card.locator('.bar-row').first()).toContainText('HP')
+    await expect(card.locator('.bar-row').nth(1)).toContainText('Rage')
+  })
+
+  test('hero detail modal opens on card click', async ({ page }) => {
+    const email = `hero-modal-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await expect(page.locator('.detail-grid')).toBeVisible()
+    await expect(page.locator('.detail-grid')).toContainText('Strength')
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.locator('.modal-box')).not.toBeVisible()
+  })
+
+  test('map modal opens and lists maps', async ({ page }) => {
+    const email = `map-modal-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.map-btn').click()
+    await expect(page.locator('.map-list-modal')).toBeVisible()
+    await expect(page.locator('.map-item').first()).toContainText('Elwynn Forest')
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.locator('.map-list-modal')).not.toBeVisible()
+  })
+
+  test('monsters panel appears once combat starts', async ({ page }) => {
+    const email = `monster-panel-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.monster-name').first()).toBeVisible()
+    await expect(page.locator('.monster-tier').first()).toBeVisible()
+  })
+
+  test('combat log entries appear automatically with outcome shown', async ({ page }) => {
+    const email = `log-auto-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.getByRole('button', { name: 'Start Encounter' }).click()
-    if (await page.getByText('Last outcome: victory').isVisible()) {
-      await expect(page.getByText('Rest phase: complete recovery required before next combat.')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Start Encounter' })).toBeDisabled()
-      await page.getByRole('button', { name: 'Recover One Turn' }).click()
-    }
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+
+    await expect(page.locator('.outcome-row')).toBeVisible({ timeout: 60000 })
+    const outcomeText = await page.locator('.outcome-text').textContent()
+    expect(['Victory!', 'Defeat!']).toContain(outcomeText.trim())
+  })
+
+  test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {
+    const email = `no-buttons-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.getByRole('button', { name: 'Start Encounter' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Recover One Turn' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Explore Normal' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Explore Elite' })).not.toBeVisible()
   })
 })
