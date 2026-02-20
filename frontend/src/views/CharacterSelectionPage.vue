@@ -113,6 +113,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
+import { createInitialProgress, getRecruitLimit } from '../game/combat.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -137,8 +138,19 @@ function getSecondaryFormulas(heroClass) {
 
 const router = useRouter()
 const selectedHero = ref(null)
+const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 const squadIds = computed(() => new Set(getSquad().map((c) => c.id)))
+const squadSize = computed(() => getSquad().length)
+const recruitLimit = computed(() => {
+  try {
+    const raw = localStorage.getItem(COMBAT_PROGRESS_KEY)
+    const progress = raw ? JSON.parse(raw) : createInitialProgress()
+    return getRecruitLimit(progress)
+  } catch {
+    return 1
+  }
+})
 
 const availableHeroes = computed(() =>
   HEROES.filter((h) => !squadIds.value.has(h.id))
@@ -150,6 +162,11 @@ function selectHero(hero) {
 
 function confirmSelection() {
   if (!selectedHero.value) return
+  if (squadSize.value >= recruitLimit.value) {
+    selectedHero.value = null
+    router.push('/main')
+    return
+  }
   const ok = addHeroToSquad(selectedHero.value)
   if (ok) {
     selectedHero.value = null

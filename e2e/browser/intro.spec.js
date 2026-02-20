@@ -40,7 +40,7 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '开始冒险' }).click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -59,7 +59,7 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

@@ -18,9 +18,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await expect(page.getByText('Choose Your Hero')).toBeVisible()
-    await expect(page.getByText('Varian Wrynn')).toBeVisible()
-    await expect(page.getByText('Jaina Proudmoore')).toBeVisible()
-    await expect(page.getByText('Rexxar')).toBeVisible()
+    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
+    await expect(page.getByText('Jaina Proudmoore').first()).toBeVisible()
+    await expect(page.getByText('Rexxar').first()).toBeVisible()
   })
 
   test('AC1b: hero cards show resources (HP/MP/Rage/Energy/Focus) distinct from primary attributes', async ({ page }) => {
@@ -38,19 +38,19 @@ test.describe('Character Recruitment (Example 4)', () => {
     // Valeera (Rogue): Energy 100
     await expect(page.getByText('Energy 100')).toBeVisible()
     // Primary attributes (Str, Agi, etc) still visible
-    await expect(page.getByText(/Str \d+/)).toBeVisible()
+    await expect(page.getByText(/Str \d+/).first()).toBeVisible()
   })
 
   test('AC2: selecting hero shows confirmation, after confirm joins squad and adventure begins', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.getByText(/Add.*Varian Wrynn.*Warrior/)).toBeVisible()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Varian Wrynn')).toBeVisible()
+    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
     await expect(page.getByText('Warrior')).toBeVisible()
   })
 
@@ -61,7 +61,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Jaina Proudmoore')).toBeVisible()
+    await expect(page.getByText('Jaina Proudmoore').first()).toBeVisible()
     await expect(page.getByText('Mage')).toBeVisible()
     // Verify level and initial attributes are displayed
     await expect(page.getByText(/Level:/)).toBeVisible()
@@ -78,27 +78,36 @@ test.describe('Character Recruitment (Example 4)', () => {
   test('AC4: player with 1+ character can recruit another hero when squad < 5', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /Rexxar/ }).click()
+    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await page.evaluate(() => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    })
+    await page.reload()
     await expect(page.getByRole('button', { name: 'Recruit Hero' })).toBeVisible()
     await page.getByRole('button', { name: 'Recruit Hero' }).click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Rexxar')).toBeVisible()
-    await expect(page.getByText('Varian Wrynn')).toBeVisible()
+    await expect(page.getByText('Rexxar').first()).toBeVisible()
+    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
   })
 
   test('AC5a: hero confirmation shows secondary attributes and formulas', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).click()
+    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible()
 
     await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
@@ -128,10 +137,19 @@ test.describe('Character Recruitment (Example 4)', () => {
   test('AC5: squad full at 5, no further recruitment', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
+    await page.evaluate(() => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 5,
+        currentMapId: 'stranglethorn-vale',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    })
+    await page.reload()
 
     const heroes = ['Varian Wrynn', 'Jaina Proudmoore', 'Rexxar', 'Uther', 'Anduin Wrynn']
     for (const hero of heroes) {
-      await page.getByRole('button', { name: new RegExp(hero) }).click()
+      await page.getByRole('button', { name: new RegExp(`^${hero}\\b`) }).click()
       await page.getByRole('button', { name: 'Confirm' }).click()
       await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
       if (hero !== heroes[heroes.length - 1]) {
