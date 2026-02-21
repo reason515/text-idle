@@ -12,6 +12,7 @@ import {
   getInitialAttributes,
   createCharacter,
   computeSecondaryAttributes,
+  computeHeroMaxHP,
   getResourceDisplay,
   getClassCritRates,
 } from './heroes.js'
@@ -49,6 +50,27 @@ describe('heroes', () => {
       const squad = [{ id: 'jaina', name: 'Jaina Proudmoore' }]
       saveSquad(squad)
       expect(getSquad()).toEqual(squad)
+    })
+  })
+
+  describe('computeHeroMaxHP', () => {
+    it('returns 48 for Warrior Lv1 with Stamina 9 (10 + 9*4 + 1*2)', () => {
+      expect(computeHeroMaxHP({ class: 'Warrior', stamina: 9, level: 1 })).toBe(48)
+    })
+
+    it('matches computeSecondaryAttributes HP for all classes at Lv1', () => {
+      const classes = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
+      for (const heroClass of classes) {
+        const attrs = getInitialAttributes(heroClass)
+        const hero = { class: heroClass, ...attrs, level: 1 }
+        const { values } = computeSecondaryAttributes(heroClass, 1)
+        expect(computeHeroMaxHP(hero)).toBe(values.HP)
+      }
+    })
+
+    it('scales with level', () => {
+      const warrior = { class: 'Warrior', stamina: 9, level: 60 }
+      expect(computeHeroMaxHP(warrior)).toBe(10 + 9 * 4 + 60 * 2)
     })
   })
 

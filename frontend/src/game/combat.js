@@ -1,4 +1,4 @@
-import { getClassCritRates } from '../data/heroes.js'
+import { getClassCritRates, computeHeroMaxHP } from '../data/heroes.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -211,7 +211,7 @@ function getMaxResource(heroClass, intellect, spirit) {
 }
 
 function heroCombatStats(hero) {
-  const maxHP = 40 + hero.stamina * 8 + (hero.level || 1) * 4
+  const maxHP = computeHeroMaxHP(hero)
   const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
   const crit = getClassCritRates(hero.class, {
     agility: hero.agility,

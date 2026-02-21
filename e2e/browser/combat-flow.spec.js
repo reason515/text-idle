@@ -157,6 +157,58 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(hasRecovering).toBe(true)
   })
 
+  test('pause button pauses combat log scrolling', async ({ page }) => {
+    const email = `pause-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    const pauseBtn = page.locator('.pause-btn')
+    await expect(pauseBtn).toBeVisible()
+    await expect(pauseBtn).toContainText('Pause')
+    await pauseBtn.click()
+    await expect(pauseBtn).toContainText('Resume')
+    await pauseBtn.click()
+    await expect(pauseBtn).toContainText('Pause')
+  })
+
+  test('layout: squad left, monsters center-left, combat log right', async ({ page }) => {
+    const email = `layout-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const battleContent = page.locator('.battle-content')
+    await expect(battleContent).toBeVisible()
+    const cols = battleContent.locator('> div')
+    await expect(cols).toHaveCount(3)
+    await expect(cols.nth(0)).toHaveClass(/squad-col/)
+    await expect(cols.nth(1)).toHaveClass(/monsters-col/)
+    await expect(cols.nth(2)).toHaveClass(/log-col/)
+  })
+
+  test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {
+    const email = `hp-consistency-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    const basicHp = page.locator('.detail-section').first().locator('.val-hp')
+    await expect(basicHp).toContainText('48')
+    const secondarySection = page.locator('.detail-section').nth(2)
+    await expect(secondarySection.locator('.detail-row').first()).toContainText('48')
+    await page.getByRole('button', { name: 'Close' }).click()
+  })
+
   test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {
     const email = `no-buttons-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

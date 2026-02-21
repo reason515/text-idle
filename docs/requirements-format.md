@@ -345,6 +345,11 @@ Then [expected result/verifiable behavior].
 | AC19 | Player views secondary attributes in hero detail | Mouse hovers over a secondary attribute value | A tooltip shows the calculation formula with actual attribute values and result |
 | AC20 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; defense section shows Armor, Armor Reduction%, Resistance, Resist Reduction% with tooltip formulas |
 | AC21 | A Warrior hero is displayed | Player views resource bar or detail panel | Resource is "Rage" with max value fixed at 100 (same for Rogue "Energy" and Hunter "Focus") |
+| AC22 | Combat is in progress | Player clicks Pause button | Combat log stops scrolling; new log entries are not displayed until Resume is clicked |
+| AC23 | Combat is paused | Player clicks Resume button | Combat log resumes scrolling and displaying new entries |
+| AC24 | Player views main battle layout | Layout is displayed | Squad (left), Monsters (center-left), Combat Log (right); monsters closer to squad for easier status comparison |
+| AC25 | Player opens hero detail modal | Hero has Stamina 9, Level 1, Warrior class | HP in basic info and HP in secondary attributes both show 48 (10 + 9*4 + 1*2); values are consistent |
+| AC26 | Combat log displays entries | Player views [Rx], used, on, for, (physical), (magic) | These elements use distinct colors/backgrounds for readability (e.g. #66aa88, #88bb99, #99ccaa) |
 
 ---
 

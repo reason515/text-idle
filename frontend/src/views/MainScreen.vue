@@ -49,8 +49,42 @@
         <button v-if="canRecruit" class="btn recruit-btn" @click="goRecruit">+ Recruit</button>
       </div>
 
+      <div class="monsters-col">
+        <div class="col-header">Monsters</div>
+        <div class="monster-list">
+          <div
+            v-for="(m, i) in currentMonsters"
+            :key="m.id + '-' + i"
+            class="monster-card"
+            @click="selectedMonster = m"
+          >
+            <div class="card-top">
+              <span class="monster-name">{{ m.name }}</span>
+              <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">HP</span>
+              <div class="bar-track">
+                <div class="bar-fill monster-hp-fill" :style="{ width: monsterHpPct(m) + '%' }"></div>
+              </div>
+              <span class="bar-num">{{ m.currentHP }}/{{ m.maxHP }}</span>
+            </div>
+          </div>
+          <div v-if="currentMonsters.length === 0" class="empty-hint">No active encounter.</div>
+        </div>
+      </div>
       <div class="log-col">
-        <div class="col-header">Combat Log</div>
+        <div class="log-col-header">
+          <span class="col-header">Combat Log</span>
+          <button
+            class="btn pause-btn"
+            :class="{ paused: isPaused }"
+            :title="isPaused ? 'Resume' : 'Pause'"
+            @click="isPaused = !isPaused"
+          >
+            {{ isPaused ? 'Resume' : 'Pause' }}
+          </button>
+        </div>
         <div class="log-list" ref="logListEl">
           <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
           <template v-for="(entry, i) in displayedLog" :key="i">
@@ -103,31 +137,6 @@
               </div>
             </div>
           </template>
-        </div>
-      </div>
-
-      <div class="monsters-col">
-        <div class="col-header">Monsters</div>
-        <div class="monster-list">
-          <div
-            v-for="(m, i) in currentMonsters"
-            :key="m.id + '-' + i"
-            class="monster-card"
-            @click="selectedMonster = m"
-          >
-            <div class="card-top">
-              <span class="monster-name">{{ m.name }}</span>
-              <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">HP</span>
-              <div class="bar-track">
-                <div class="bar-fill monster-hp-fill" :style="{ width: monsterHpPct(m) + '%' }"></div>
-              </div>
-              <span class="bar-num">{{ m.currentHP }}/{{ m.maxHP }}</span>
-            </div>
-          </div>
-          <div v-if="currentMonsters.length === 0" class="empty-hint">No active encounter.</div>
         </div>
       </div>
     </div>
@@ -265,7 +274,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes } from '../data/heroes.js'
+import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -332,6 +341,7 @@ const selectedHero = ref(null)
 const selectedMonster = ref(null)
 const logListEl = ref(null)
 const isRunning = ref(false)
+const isPaused = ref(false)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
@@ -369,7 +379,7 @@ function getMaxResource(heroClass, intellect, spirit) {
 }
 
 function computeHeroDisplay(hero) {
-  const maxHP = 40 + (hero.stamina || 0) * 8 + (hero.level || 1) * 4
+  const maxHP = computeHeroMaxHP(hero)
   const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
   return {
     ...hero,
@@ -441,10 +451,23 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+async function sleepMsRespectingPause(ms) {
+  let remaining = ms
+  while (remaining > 0 && isRunning.value) {
+    if (isPaused.value) {
+      await sleepMs(200)
+      continue
+    }
+    const chunk = Math.min(200, remaining)
+    await sleepMs(chunk)
+    remaining -= chunk
+  }
+}
+
 async function animateCombatLog(result) {
   for (const entry of result.log) {
     if (!isRunning.value) return
-    await sleepMs(2000)
+    await sleepMsRespectingPause(2000)
     if (!isRunning.value) return
     addLogEntry(entry)
 
@@ -486,7 +509,8 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     ).join(' | ')
     addLogEntry({ type: 'rest', message: `Recovering... ${status}`, complete: false })
     await scrollLog()
-    await sleepMs(2000)
+    await sleepMsRespectingPause(2000)
+    if (!isRunning.value) break
   }
 
   const endMsg = isDefeat
@@ -694,7 +718,7 @@ onUnmounted(() => {
 
 .battle-content {
   display: grid;
-  grid-template-columns: 15rem 1fr 15rem;
+  grid-template-columns: 15rem 15rem 1fr;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -709,8 +733,36 @@ onUnmounted(() => {
   padding: 0.6rem 0.75rem;
   border-right: 1px solid var(--border);
 }
-.monsters-col {
+.log-col {
   border-right: none;
+}
+
+.log-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pause-btn {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+}
+.pause-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pause-btn.paused {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
 }
 
 .col-header {
@@ -913,8 +965,16 @@ onUnmounted(() => {
   padding: 0.12rem 0;
   border-bottom: 1px solid #0d0d0d;
 }
-.log-round { color: #336644; flex-shrink: 0; }
-.log-sep { color: #334433; }
+.log-round {
+  color: #66aa88;
+  background: rgba(34, 68, 51, 0.6);
+  padding: 0.05rem 0.25rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.log-sep {
+  color: #88bb99;
+}
 .log-action { color: var(--text-label); }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
 .log-actor { font-weight: bold; }
@@ -929,7 +989,13 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 0.78rem;
 }
-.log-dtype { color: #334433; font-size: 0.75rem; }
+.log-dtype {
+  color: #99ccaa;
+  font-size: 0.75rem;
+  background: rgba(34, 68, 51, 0.5);
+  padding: 0.02rem 0.2rem;
+  border-radius: 2px;
+}
 .log-calc {
   width: 100%;
   font-size: 0.72rem;

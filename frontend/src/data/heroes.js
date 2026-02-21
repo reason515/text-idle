@@ -48,6 +48,17 @@ export const CLASS_COEFFICIENTS = {
 }
 
 /**
+ * Compute max HP for a hero using design doc formula: HP = 10 + Stam * k_HP + Level * 2
+ * @param {Object} hero - Hero object with class, stamina, level
+ * @returns {number} Max HP
+ */
+export function computeHeroMaxHP(hero) {
+  const coef = CLASS_COEFFICIENTS[hero?.class] || {}
+  const k_HP = coef.k_HP ?? 0
+  return Math.round(10 + (hero?.stamina || 0) * k_HP + (hero?.level || 1) * 2)
+}
+
+/**
  * Get crit rates for a hero class based on attributes.
  * Returns decimal values (e.g. 0.062 for 6.2%).
  */
