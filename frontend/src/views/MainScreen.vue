@@ -76,16 +76,14 @@
               <span class="log-round">[R{{ entry.round }}]</span>
               <span
                 class="log-actor"
-                :style="entry.actorClass ? { color: classColor(entry.actorClass) } : {}"
-                :class="{ 'log-monster-actor': !entry.actorClass }"
+                :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
               >{{ entry.actorName }}</span>
               <span class="log-sep">used</span>
               <span class="log-action" :class="entry.action === 'skill' ? 'log-skill' : ''">{{ entry.action }}</span>
               <span class="log-sep">on</span>
               <span
                 class="log-target"
-                :style="entry.targetClass ? { color: classColor(entry.targetClass) } : {}"
-                :class="{ 'log-monster-target': !entry.targetClass }"
+                :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
               >{{ entry.targetName }}</span>
               <span class="log-sep">for</span>
               <span
@@ -160,8 +158,8 @@
     <Teleport to="body">
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null">
         <div class="modal-box detail-modal">
-          <div class="modal-title" :style="{ color: classColor(selectedHero.class) }">
-            {{ selectedHero.name }}
+          <div class="modal-title">
+            <span class="modal-hero-name">{{ selectedHero.name }}</span>
             <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
           </div>
           <div class="detail-section">
@@ -299,8 +297,17 @@ const PRIMARY_ATTRS = [
 
 const MAX_LOG_ENTRIES = 300
 
+const MONSTER_TIER_COLORS = {
+  normal: 'var(--color-normal)',
+  elite: 'var(--color-elite)',
+  boss: 'var(--color-boss)',
+}
+
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
+function monsterTierColor(tier) {
+  return MONSTER_TIER_COLORS[tier] || 'var(--color-normal)'
 }
 function resourceLabel(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).label
@@ -354,9 +361,16 @@ function isMapUnlocked(mapId) {
   return index >= 0 && index < progress.value.unlockedMapCount
 }
 
+function getMaxResource(heroClass, intellect, spirit) {
+  if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
+    return 100
+  }
+  return 10 + (intellect || 0) * 3 + (spirit || 0) * 2
+}
+
 function computeHeroDisplay(hero) {
   const maxHP = 40 + (hero.stamina || 0) * 8 + (hero.level || 1) * 4
-  const maxMP = 10 + (hero.intellect || 0) * 3 + (hero.spirit || 0) * 2
+  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
   return {
     ...hero,
     maxHP,
@@ -451,32 +465,34 @@ async function animateCombatLog(result) {
   }
 }
 
-async function autoRest(heroesAfter) {
+async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
   let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
 
-  addLogEntry({ type: 'rest', message: 'Resting... recovering HP and MP', complete: false })
+  const startMsg = isDefeat
+    ? 'Recovering from defeat...'
+    : 'Resting... recovering HP and MP'
+  addLogEntry({ type: 'rest', message: startMsg, complete: false })
   await scrollLog()
 
-  let stepCount = 0
   while (!rest.isComplete && isRunning.value) {
     rest = applyRestStep(rest)
-    stepCount += 1
     displayHeroes.value = displayHeroes.value.map((dh) => {
       const rh = rest.heroes.find((r) => r.id === dh.id)
       return rh ? { ...dh, currentHP: rh.currentHP, currentMP: rh.currentMP } : dh
     })
-    if (stepCount % 3 === 0) {
-      const status = rest.heroes.map(
-        (h) => `${h.name}: ${h.currentHP}/${h.maxHP} HP`
-      ).join(' | ')
-      addLogEntry({ type: 'rest', message: `Recovering... ${status}`, complete: false })
-      await scrollLog()
-    }
-    await sleepMs(500)
+    const status = rest.heroes.map(
+      (h) => `${h.name}: ${h.currentHP}/${h.maxHP} HP`
+    ).join(' | ')
+    addLogEntry({ type: 'rest', message: `Recovering... ${status}`, complete: false })
+    await scrollLog()
+    await sleepMs(2000)
   }
 
-  addLogEntry({ type: 'rest', message: 'Rest complete. All heroes fully recovered.', complete: true })
+  const endMsg = isDefeat
+    ? 'Recovery complete. Heroes ready for battle.'
+    : 'Rest complete. All heroes fully recovered.'
+  addLogEntry({ type: 'rest', message: endMsg, complete: true })
   await scrollLog()
 }
 
@@ -558,6 +574,7 @@ async function runCombatLoop() {
       progress.value = deductExplorationProgress(progress.value, 10)
       saveProgress()
       await sleepMs(2000)
+      await autoRest(result.heroesAfter, { isDefeat: true })
     }
 
     if (!isRunning.value) break
@@ -707,6 +724,35 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* Shared scrollbar styling */
+.squad-list,
+.monster-list,
+.detail-modal {
+  scrollbar-width: thin;
+  scrollbar-color: #1a3a1a #0a0a0a;
+}
+.squad-list::-webkit-scrollbar,
+.monster-list::-webkit-scrollbar,
+.detail-modal::-webkit-scrollbar {
+  width: 6px;
+}
+.squad-list::-webkit-scrollbar-track,
+.monster-list::-webkit-scrollbar-track,
+.detail-modal::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.squad-list::-webkit-scrollbar-thumb,
+.monster-list::-webkit-scrollbar-thumb,
+.detail-modal::-webkit-scrollbar-thumb {
+  background: #1a3a1a;
+  border-radius: 3px;
+}
+.squad-list::-webkit-scrollbar-thumb:hover,
+.monster-list::-webkit-scrollbar-thumb:hover,
+.detail-modal::-webkit-scrollbar-thumb:hover {
+  background: #2a5a2a;
+}
+
 /* Hero cards */
 .squad-list {
   flex: 1;
@@ -806,6 +852,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: #1a3a1a #0a0a0a;
+}
+.log-list::-webkit-scrollbar {
+  width: 6px;
+}
+.log-list::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.log-list::-webkit-scrollbar-thumb {
+  background: #1a3a1a;
+  border-radius: 3px;
+}
+.log-list::-webkit-scrollbar-thumb:hover {
+  background: #2a5a2a;
 }
 
 .log-separator {
@@ -857,9 +918,7 @@ onUnmounted(() => {
 .log-action { color: var(--text-label); }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
 .log-actor { font-weight: bold; }
-.log-monster-actor { color: var(--color-boss); }
 .log-target { }
-.log-monster-target { color: var(--text-muted); }
 
 /* Damage colors: physical = white, magic = blue */
 .log-phys-dmg { color: #dddddd; }
@@ -874,7 +933,7 @@ onUnmounted(() => {
 .log-calc {
   width: 100%;
   font-size: 0.72rem;
-  color: #445544;
+  color: #88aa88;
   padding-left: 2.5rem;
 }
 
@@ -952,6 +1011,9 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+}
+.modal-hero-name {
+  color: #eeffee;
 }
 .modal-class-tag {
   font-size: 0.8rem;

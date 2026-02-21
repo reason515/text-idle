@@ -203,9 +203,16 @@ export function applyDamage(rawDamage, damageType, target) {
   }
 }
 
+function getMaxResource(heroClass, intellect, spirit) {
+  if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
+    return 100
+  }
+  return 10 + (intellect || 0) * 3 + (spirit || 0) * 2
+}
+
 function heroCombatStats(hero) {
   const maxHP = 40 + hero.stamina * 8 + (hero.level || 1) * 4
-  const maxMP = 10 + hero.intellect * 3 + hero.spirit * 2
+  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
   const crit = getClassCritRates(hero.class, {
     agility: hero.agility,
     intellect: hero.intellect,
@@ -351,10 +358,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorId: actor.id,
         actorName: actor.name,
         actorClass: actor.class || null,
+        actorTier: actor.tier || null,
         action: action.action,
         targetId: target.id,
         targetName: target.name,
         targetClass: target.class || null,
+        targetTier: target.tier || null,
         damageType: damage.damageType,
         rawDamage: action.rawDamage,
         isCrit,

@@ -216,7 +216,7 @@ describe('combat progression and systems', () => {
     expect(new Set(acted).size).toBe(acted.length)
   })
 
-  it('log entries include actorClass and targetClass for heroes', () => {
+  it('log entries include actorClass/targetClass and actorTier/targetTier', () => {
     const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
     const monsters = [
       createMonster(
@@ -232,12 +232,45 @@ describe('combat progression and systems', () => {
     const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
     const heroAction = result.log.find((e) => e.actorName === 'Hero One')
     expect(heroAction.actorClass).toBe('Warrior')
+    expect(heroAction.actorTier).toBeNull()
     expect(heroAction.targetClass).toBeNull()
+    expect(heroAction.targetTier).toBe('normal')
     const monsterAction = result.log.find((e) => e.actorName === 'Kobold Miner')
     if (monsterAction) {
       expect(monsterAction.actorClass).toBeNull()
+      expect(monsterAction.actorTier).toBe('normal')
       expect(monsterAction.targetClass).toBe('Warrior')
+      expect(monsterAction.targetTier).toBeNull()
     }
+  })
+
+  it('log entries include correct tier for elite and boss monsters', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 20 })]
+    const eliteMonster = createMonster(
+      {
+        id: 'geomancer',
+        name: 'Kobold Geomancer',
+        damageType: 'magic',
+        base: { hp: 20, physAtk: 0, spellPower: 5, agility: 4, armor: 1, resistance: 1 },
+      },
+      { tier: 'elite', level: 1 }
+    )
+    const eliteResult = runAutoCombat({ heroes, monsters: [eliteMonster], rng: () => 0.5 })
+    const eliteEntry = eliteResult.log.find((e) => e.actorName === 'Hero One')
+    expect(eliteEntry.targetTier).toBe('elite')
+
+    const bossMonster = createMonster(
+      {
+        id: 'hogger',
+        name: 'Hogger',
+        damageType: 'mixed',
+        base: { hp: 20, physAtk: 5, spellPower: 3, agility: 4, armor: 1, resistance: 1 },
+      },
+      { tier: 'boss', level: 1 }
+    )
+    const bossResult = runAutoCombat({ heroes, monsters: [bossMonster], rng: () => 0.5 })
+    const bossEntry = bossResult.log.find((e) => e.actorName === 'Hero One')
+    expect(bossEntry.targetTier).toBe('boss')
   })
 
   it('log entries include isCrit field', () => {
@@ -330,6 +363,37 @@ describe('combat progression and systems', () => {
     const first = runAutoCombat({ heroes, monsters, rng: fixedRng([0.95, 0.1, 0.2, 0.2]) })
     const second = runAutoCombat({ heroes, monsters, rng: fixedRng([0.05, 0.8, 0.9, 0.8]) })
     expect(first.initialOrder.join(',')).not.toBe(second.initialOrder.join(','))
+  })
+
+  it('Warrior/Rogue/Hunter get fixed 100 maxMP in combat stats', () => {
+    const warrior = sampleHero({ id: 'w1', class: 'Warrior', intellect: 2, spirit: 3 })
+    const rogue = sampleHero({ id: 'r1', class: 'Rogue', agility: 11, intellect: 3, spirit: 3 })
+    const hunter = sampleHero({ id: 'h1', class: 'Hunter', agility: 10, intellect: 4, spirit: 4 })
+    const mage = sampleHero({ id: 'm1', class: 'Mage', intellect: 11, spirit: 5 })
+
+    const monsters = [
+      createMonster(
+        {
+          id: 'dummy',
+          name: 'Dummy',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+
+    const wResult = runAutoCombat({ heroes: [warrior], monsters, rng: () => 0.5 })
+    expect(wResult.heroesAfter[0].maxMP).toBe(100)
+
+    const rResult = runAutoCombat({ heroes: [rogue], monsters, rng: () => 0.5 })
+    expect(rResult.heroesAfter[0].maxMP).toBe(100)
+
+    const hResult = runAutoCombat({ heroes: [hunter], monsters, rng: () => 0.5 })
+    expect(hResult.heroesAfter[0].maxMP).toBe(100)
+
+    const mResult = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5 })
+    expect(mResult.heroesAfter[0].maxMP).toBe(10 + 11 * 3 + 5 * 2)
   })
 
   it('Example8: after victory rest phase blocks next combat until fully recovered', () => {
