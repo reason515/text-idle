@@ -345,6 +345,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const rawAfterCrit = isCrit
         ? Math.round(action.rawDamage * CRIT_MULTIPLIER)
         : action.rawDamage
+      const targetHPBefore = target.currentHP
       const damage = applyDamage(rawAfterCrit, action.damageType, target)
       target.currentHP = damage.nextHP
       turnActedByRound[round].push(actor.id)
@@ -368,7 +369,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         finalDamage: damage.finalDamage,
         absorbed: damage.absorbed,
         targetDefense,
+        targetHPBefore,
         targetHPAfter: target.currentHP,
+        targetMaxHP: target.maxHP,
       })
     }
     round += 1

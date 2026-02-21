@@ -129,6 +129,19 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(calcText).toContain('=')
   })
 
+  test('combat log shows target HP change', async ({ page }) => {
+    const email = `target-hp-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-target-hp').first()).toBeVisible({ timeout: 30000 })
+    const hpText = await page.locator('.log-target-hp').first().textContent()
+    expect(hpText).toMatch(/HP:.*->.*\/\d+/)
+  })
+
   test('battle summary appears after combat ends', async ({ page }) => {
     const email = `summary-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

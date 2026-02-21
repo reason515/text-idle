@@ -109,7 +109,15 @@
               </template>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
-              {{ entry.message }}
+              <template v-if="entry.heroes">
+                Recovering...
+                <template v-for="(h, i) in entry.heroes" :key="h.id">
+                  <span v-if="i > 0" class="log-rest-sep"> | </span>
+                  <span :style="{ color: classColor(h.class) }">{{ h.name }}</span>
+                  : {{ h.currentHP }}/{{ h.maxHP }} HP
+                </template>
+              </template>
+              <template v-else>{{ entry.message }}</template>
             </div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
@@ -136,6 +144,12 @@
               <span class="log-dtype">({{ entry.damageType }})</span>
               <div class="log-calc">
                 {{ damageFormulaEquation(entry) }}
+              </div>
+              <div v-if="entry.targetHPBefore != null" class="log-target-hp">
+                <span
+                  :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+                >{{ entry.targetName }}</span>
+                HP: {{ entry.targetHPBefore }} -> {{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}
               </div>
             </div>
           </template>
@@ -495,10 +509,11 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
       const rh = rest.heroes.find((r) => r.id === dh.id)
       return rh ? { ...dh, currentHP: rh.currentHP, currentMP: rh.currentMP } : dh
     })
-    const status = rest.heroes.map(
-      (h) => `${h.name}: ${h.currentHP}/${h.maxHP} HP`
-    ).join(' | ')
-    addLogEntry({ type: 'rest', message: `Recovering... ${status}`, complete: false })
+    addLogEntry({
+      type: 'rest',
+      heroes: rest.heroes.map((h) => ({ id: h.id, name: h.name, class: h.class, currentHP: h.currentHP, maxHP: h.maxHP })),
+      complete: false,
+    })
     await scrollLog()
     await sleepMsRespectingPause(2000)
     if (!isRunning.value) break
@@ -951,6 +966,9 @@ onUnmounted(() => {
   padding: 0.15rem 0;
   font-style: italic;
 }
+.log-rest-sep {
+  color: var(--text-muted);
+}
 .log-rest-done {
   color: var(--color-hp);
   font-style: normal;
@@ -997,6 +1015,12 @@ onUnmounted(() => {
   border-radius: 2px;
 }
 .log-calc {
+  width: 100%;
+  font-size: 0.72rem;
+  color: #88aa88;
+  padding-left: 2.5rem;
+}
+.log-target-hp {
   width: 100%;
   font-size: 0.72rem;
   color: #88aa88;

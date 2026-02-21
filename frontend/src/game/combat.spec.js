@@ -339,6 +339,11 @@ describe('combat progression and systems', () => {
     expect(heroEntry.targetDefense).toBeGreaterThan(0)
     expect(heroEntry).toHaveProperty('absorbed')
     expect(heroEntry.absorbed).toBeGreaterThanOrEqual(0)
+    expect(heroEntry).toHaveProperty('targetHPBefore')
+    expect(heroEntry).toHaveProperty('targetHPAfter')
+    expect(heroEntry).toHaveProperty('targetMaxHP')
+    expect(heroEntry.targetHPBefore).toBeGreaterThanOrEqual(heroEntry.targetHPAfter)
+    expect(heroEntry.targetHPAfter).toBe(Math.max(0, heroEntry.targetHPBefore - heroEntry.finalDamage))
   })
 
   it('Example6: same agility tie order is randomized by rng', () => {
