@@ -1,4 +1,4 @@
-import { getClassCritRates, computeHeroMaxHP } from '../data/heroes.js'
+import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance } from '../data/heroes.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -188,16 +188,14 @@ export function buildEncounterMonsters({
   return monsters
 }
 
-export function calculateReduction(statValue) {
-  return statValue / (statValue + 50)
-}
-
+/** 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. No cap, scales with equipment. */
 export function applyDamage(rawDamage, damageType, target) {
-  const reduction = damageType === 'magic' ? calculateReduction(target.resistance || 0) : calculateReduction(target.armor || 0)
-  const finalDamage = Math.max(1, Math.round(rawDamage * (1 - reduction)))
+  const defense = damageType === 'magic' ? (target.resistance || 0) : (target.armor || 0)
+  const finalDamage = Math.max(1, Math.round(rawDamage) - defense)
+  const absorbed = Math.round(rawDamage) - finalDamage
   return {
     damageType,
-    reduction,
+    absorbed,
     finalDamage,
     nextHP: Math.max(0, (target.currentHP || 0) - finalDamage),
   }
@@ -223,8 +221,8 @@ function heroCombatStats(hero) {
     side: 'hero',
     class: hero.class,
     agility: hero.agility,
-    armor: hero.strength,
-    resistance: hero.intellect,
+    armor: computeHeroArmor(hero),
+    resistance: computeHeroResistance(hero),
     physAtk: Math.max(1, Math.round(hero.strength * 1.4 + hero.agility * 0.6)),
     spellPower: Math.max(0, Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)),
     physCrit: crit.physCrit,
@@ -368,7 +366,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         rawDamage: action.rawDamage,
         isCrit,
         finalDamage: damage.finalDamage,
-        reduction: damage.reduction,
+        absorbed: damage.absorbed,
         targetDefense,
         targetHPAfter: target.currentHP,
       })

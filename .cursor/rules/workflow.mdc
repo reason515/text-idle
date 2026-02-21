@@ -13,6 +13,17 @@ alwaysApply: true
 4. **Tests** (unit + E2E if applicable)
 5. Key notes
 
+## Doc and Test Sync (MANDATORY)
+
+On every change, check whether these need updates:
+
+- `设计文档.md` - design doc (formulas, attributes, UI specs)
+- `docs/requirements-format.md` - acceptance criteria, user stories
+- Unit tests: `frontend/src/**/*.spec.js`
+- E2E tests: `e2e/browser/*.spec.js`
+
+Update them when the change affects formulas, attributes, UI behavior, or acceptance criteria.
+
 ## Prohibited
 
 - Non-ASCII in code

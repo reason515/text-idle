@@ -36,12 +36,14 @@
               <div class="bar-track">
                 <div class="bar-fill hp-fill" :style="{ width: hpPct(hero) + '%' }"></div>
               </div>
+              <span class="bar-num">{{ hero.currentHP }}/{{ hero.maxHP }}</span>
             </div>
             <div class="bar-row">
               <span class="bar-label">{{ resourceLabel(hero.class) }}</span>
               <div class="bar-track">
                 <div class="bar-fill" :class="resourceFillClass(hero.class)" :style="{ width: mpPct(hero) + '%' }"></div>
               </div>
+              <span class="bar-num">{{ hero.currentMP }}/{{ hero.maxMP }}</span>
             </div>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">No heroes. Recruit to begin.</div>
@@ -76,14 +78,17 @@
       <div class="log-col">
         <div class="log-col-header">
           <span class="col-header">Combat Log</span>
-          <button
-            class="btn pause-btn"
-            :class="{ paused: isPaused }"
-            :title="isPaused ? 'Resume' : 'Pause'"
-            @click="isPaused = !isPaused"
-          >
-            {{ isPaused ? 'Resume' : 'Pause' }}
-          </button>
+          <div class="log-actions">
+            <button
+              class="btn btn-sm pause-btn"
+              :class="{ paused: isPaused }"
+              :title="isPaused ? 'Resume' : 'Pause'"
+              @click="isPaused = !isPaused"
+            >
+              {{ isPaused ? 'Resume' : 'Pause' }}
+            </button>
+            <!-- Reserved for future: speed, settings, etc. -->
+          </div>
         </div>
         <div class="log-list" ref="logListEl">
           <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
@@ -130,10 +135,7 @@
               <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
               <span class="log-dtype">({{ entry.damageType }})</span>
               <div class="log-calc">
-                ATK {{ entry.rawDamage }}
-                <template v-if="entry.isCrit"> x1.5</template>
-                - {{ formatReduction(entry.reduction) }}% {{ entry.damageType === 'magic' ? 'resist' : 'armor' }}
-                ({{ entry.damageType === 'magic' ? 'Resist' : 'Armor' }} {{ entry.targetDefense }})
+                {{ damageFormulaEquation(entry) }}
               </div>
             </div>
           </template>
@@ -245,23 +247,15 @@
               <span class="detail-label">Armor</span>
               <span class="detail-value tooltip-wrap has-tip">
                 {{ selectedMonster.armor }}
-                <span class="tooltip-text">Reduction: {{ formatReduction(monsterArmorReduction) }}% = {{ selectedMonster.armor }} / ({{ selectedMonster.armor }} + 50)</span>
+                <span class="tooltip-text">Absorbs {{ selectedMonster.armor }} physical damage per hit</span>
               </span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Armor Reduction</span>
-              <span class="detail-value">{{ formatReduction(monsterArmorReduction) }}%</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Resistance</span>
               <span class="detail-value tooltip-wrap has-tip">
                 {{ selectedMonster.resistance }}
-                <span class="tooltip-text">Reduction: {{ formatReduction(monsterResistReduction) }}% = {{ selectedMonster.resistance }} / ({{ selectedMonster.resistance }} + 50)</span>
+                <span class="tooltip-text">Absorbs {{ selectedMonster.resistance }} magic damage per hit</span>
               </span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Resist Reduction</span>
-              <span class="detail-value">{{ formatReduction(monsterResistReduction) }}%</span>
             </div>
           </div>
           <button class="btn" @click="selectedMonster = null">Close</button>
@@ -286,7 +280,6 @@ import {
   runAutoCombat,
   startRestPhase,
   applyRestStep,
-  calculateReduction,
 } from '../game/combat.js'
 
 const RESOURCE_MAP = {
@@ -324,8 +317,15 @@ function resourceLabel(heroClass) {
 function resourceFillClass(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).fillClass
 }
-function formatReduction(fraction) {
-  return (fraction * 100).toFixed(1)
+function damageFormulaEquation(entry) {
+  const rawDisplay = entry.isCrit ? Math.round(entry.rawDamage * 1.5) : entry.rawDamage
+  const final = entry.finalDamage
+  const defLabel = entry.damageType === 'magic' ? 'Resist' : 'Armor'
+  const defVal = entry.targetDefense
+  if (entry.isCrit) {
+    return `${entry.rawDamage} x 1.5 - ${defVal} = ${final}  [${defLabel}]`
+  }
+  return `${rawDisplay} - ${defVal} = ${final}  [${defLabel}]`
 }
 
 const router = useRouter()
@@ -355,15 +355,6 @@ const heroIds = computed(() => new Set(displayHeroes.value.map((h) => h.id)))
 const heroSecondaryAttrs = computed(() => {
   if (!selectedHero.value) return []
   return computeSecondaryAttributes(selectedHero.value.class, selectedHero.value.level || 1).formulas
-})
-
-const monsterArmorReduction = computed(() => {
-  if (!selectedMonster.value) return 0
-  return calculateReduction(selectedMonster.value.armor || 0)
-})
-const monsterResistReduction = computed(() => {
-  if (!selectedMonster.value) return 0
-  return calculateReduction(selectedMonster.value.resistance || 0)
 })
 
 function isMapUnlocked(mapId) {
@@ -748,9 +739,18 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.log-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 6rem;
+}
+
+.btn-sm {
+  font-size: 0.7rem;
+  padding: 0.12rem 0.35rem;
+}
 .pause-btn {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.5rem;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--text);

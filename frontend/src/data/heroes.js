@@ -32,19 +32,19 @@ export function getInitialAttributes(heroClass) {
 
 /**
  * Class coefficients for secondary attribute formulas (design doc 2.2.2)
- * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Armor, k_PhysCrit, k_SpellCrit, k_Dodge
+ * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Armor, k_Resistance, k_PhysCrit, k_SpellCrit, k_Dodge
  * null/- means class does not use that attribute
  */
 export const CLASS_COEFFICIENTS = {
-  Warrior: { k_HP: 4.0, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.65, k_SpellPower: null, k_Armor: 0.8, k_PhysCrit: 0.3, k_SpellCrit: null, k_Dodge: 0.2 },
-  Paladin: { k_HP: 3.5, k_MP: 2.2, physAtkAttr: 'strength', k_PhysAtk: 0.45, k_SpellPower: 0.45, k_Armor: 0.6, k_PhysCrit: 0.3, k_SpellCrit: 0.4, k_Dodge: 0.2 },
-  Priest: { k_HP: 2.5, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Druid: { k_HP: 3.2, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: 0.45, k_Armor: 0.4, k_PhysCrit: 0.6, k_SpellCrit: 0.5, k_Dodge: 0.4 },
-  Mage: { k_HP: 2.0, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Rogue: { k_HP: 2.8, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.55, k_SpellPower: null, k_Armor: 0.2, k_PhysCrit: 0.7, k_SpellCrit: null, k_Dodge: 0.5 },
-  Hunter: { k_HP: 3.0, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: null, k_Armor: 0.3, k_PhysCrit: 0.6, k_SpellCrit: null, k_Dodge: 0.4 },
-  Warlock: { k_HP: 2.8, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Shaman: { k_HP: 3.0, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.4, k_SpellPower: 0.45, k_Armor: 0.3, k_PhysCrit: 0.5, k_SpellCrit: 0.5, k_Dodge: 0.3 },
+  Warrior: { k_HP: 4.0, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.65, k_SpellPower: null, k_Armor: 0.8, k_Resistance: 0.3, k_PhysCrit: 0.3, k_SpellCrit: null, k_Dodge: 0.2 },
+  Paladin: { k_HP: 3.5, k_MP: 2.2, physAtkAttr: 'strength', k_PhysAtk: 0.45, k_SpellPower: 0.45, k_Armor: 0.6, k_Resistance: 0.6, k_PhysCrit: 0.3, k_SpellCrit: 0.4, k_Dodge: 0.2 },
+  Priest: { k_HP: 2.5, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
+  Druid: { k_HP: 3.2, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: 0.45, k_Armor: 0.4, k_Resistance: 0.6, k_PhysCrit: 0.6, k_SpellCrit: 0.5, k_Dodge: 0.4 },
+  Mage: { k_HP: 2.0, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
+  Rogue: { k_HP: 2.8, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.55, k_SpellPower: null, k_Armor: 0.2, k_Resistance: 0.3, k_PhysCrit: 0.7, k_SpellCrit: null, k_Dodge: 0.5 },
+  Hunter: { k_HP: 3.0, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: null, k_Armor: 0.3, k_Resistance: 0.3, k_PhysCrit: 0.6, k_SpellCrit: null, k_Dodge: 0.4 },
+  Warlock: { k_HP: 2.8, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
+  Shaman: { k_HP: 3.0, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.4, k_SpellPower: 0.45, k_Armor: 0.3, k_Resistance: 0.6, k_PhysCrit: 0.5, k_SpellCrit: 0.5, k_Dodge: 0.3 },
 }
 
 /**
@@ -56,6 +56,20 @@ export function computeHeroMaxHP(hero) {
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k_HP = coef.k_HP ?? 0
   return Math.round(10 + (hero?.stamina || 0) * k_HP + (hero?.level || 1) * 2)
+}
+
+/** Armor for combat: Str * k_Armor. Returns 0 if class has no k_Armor. */
+export function computeHeroArmor(hero) {
+  const coef = CLASS_COEFFICIENTS[hero?.class] || {}
+  const k = coef.k_Armor ?? 0
+  return Math.round((hero?.strength || 0) * k)
+}
+
+/** Resistance for combat: Int * k_Resistance. Returns 0 if class has no k_Resistance. */
+export function computeHeroResistance(hero) {
+  const coef = CLASS_COEFFICIENTS[hero?.class] || {}
+  const k = coef.k_Resistance ?? 0
+  return Math.round((hero?.intellect || 0) * k)
 }
 
 /**
@@ -98,6 +112,7 @@ const SECONDARY_ATTR_ORDER = [
   'PhysAtk',
   'SpellPower',
   'Armor',
+  'Resistance',
   'PhysCrit',
   'SpellCrit',
   'Dodge',
@@ -168,6 +183,15 @@ export function computeSecondaryAttributes(heroClass, level = 1) {
     formulaMap.Armor = fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
   } else {
     formulaMap.Armor = NA
+  }
+
+  // Resistance (all classes, absorbs magic damage)
+  if (coef.k_Resistance != null) {
+    const resistance = attrs.intellect * coef.k_Resistance
+    values.Resistance = Math.round(resistance * 10) / 10
+    formulaMap.Resistance = fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
+  } else {
+    formulaMap.Resistance = NA
   }
 
   // PhysCrit

@@ -9,7 +9,6 @@ import {
   unlockNextMapAfterBoss,
   generateEncounterSize,
   createMonster,
-  calculateReduction,
   applyDamage,
   runAutoCombat,
   startRestPhase,
@@ -177,18 +176,22 @@ describe('combat progression and systems', () => {
     expect(boss.spellCrit).toBe(0.15)
   })
 
-  it('Example9: armor and resistance use required reduction formulas', () => {
-    expect(calculateReduction(2)).toBeCloseTo(2 / 52, 6)
-    expect(calculateReduction(3)).toBeCloseTo(3 / 53, 6)
-  })
-
-  it('Example9: physical and magic damage are reduced by different defenses', () => {
+  it('Example9: armor and resistance absorb damage flat (1 pt = 1 damage)', () => {
     const target = { armor: 20, resistance: 5, currentHP: 100 }
     const physical = applyDamage(40, 'physical', target)
     const magic = applyDamage(40, 'magic', target)
+    expect(physical.finalDamage).toBe(20)
+    expect(physical.absorbed).toBe(20)
+    expect(magic.finalDamage).toBe(35)
+    expect(magic.absorbed).toBe(5)
     expect(physical.finalDamage).toBeLessThan(magic.finalDamage)
-    expect(physical.damageType).toBe('physical')
-    expect(magic.damageType).toBe('magic')
+  })
+
+  it('Example9: minimum 1 damage when armor exceeds raw damage', () => {
+    const target = { armor: 100, resistance: 0, currentHP: 100 }
+    const result = applyDamage(30, 'physical', target)
+    expect(result.finalDamage).toBe(1)
+    expect(result.absorbed).toBe(29)
   })
 
   it('Example6/7: turn order uses agility and battle returns victory with rewards', () => {
@@ -334,8 +337,8 @@ describe('combat progression and systems', () => {
     const heroEntry = result.log.find((e) => e.actorName === 'Hero One')
     expect(heroEntry).toHaveProperty('targetDefense')
     expect(heroEntry.targetDefense).toBeGreaterThan(0)
-    expect(heroEntry).toHaveProperty('reduction')
-    expect(heroEntry.reduction).toBeGreaterThan(0)
+    expect(heroEntry).toHaveProperty('absorbed')
+    expect(heroEntry.absorbed).toBeGreaterThanOrEqual(0)
   })
 
   it('Example6: same agility tie order is randomized by rng', () => {

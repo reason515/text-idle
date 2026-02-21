@@ -278,7 +278,7 @@ Then [expected result/verifiable behavior].
 - **Monster tiers**: Normal (basic stats), Elite (~2x stats, uses skills), Boss (~5x stats, multi-skill).
 - **Core attributes**: HP, PhysAtk, SpellPower, Agility, Armor, Resistance. Same damage/reduction formulas as heroes.
 - **Damage types**: Physical (reduced by Armor), Magic (reduced by Resistance). Monsters can be pure physical, pure magic, or mixed (PhysRatio/MagicRatio).
-- **Reduction formula**: `ArmorReduction = Armor / (Armor + 50)`, `ResistReduction = Resistance / (Resistance + 50)`.
+- **Defense formula**: 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. Flat subtraction, no cap.
 - **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner (physical); Kobold Geomancer (magic); Hogger (Boss).
 
 **Acceptance Criteria**
@@ -286,10 +286,10 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | An encounter is generated on Elwynn Forest | Monsters spawn | Each monster has HP, PhysAtk, SpellPower, Agility, Armor, Resistance; values follow Base * TierMult * (1 + Level * LevelScale) |
-| AC2 | A hero deals physical damage to a monster (e.g., Young Wolf with Armor 2) | Damage is calculated | Monster's Armor reduces damage: `ArmorReduction = Armor / (Armor + 50)`; combat log shows physical damage and reduction |
-| AC3 | A hero deals magic damage to a monster (e.g., Kobold Geomancer with Resistance 3) | Damage is calculated | Monster's Resistance reduces damage: `ResistReduction = Resistance / (Resistance + 50)`; combat log shows magic damage and reduction |
-| AC4 | A physical monster (e.g., Young Wolf, PhysAtk=8, SpellPower=0) attacks a hero | Monster deals damage | Hero's Armor reduces the damage; combat log indicates damage type as Physical |
-| AC5 | A magic monster (e.g., Kobold Geomancer, PhysAtk=0, SpellPower=10) attacks a hero | Monster deals damage | Hero's Resistance reduces the damage; combat log indicates damage type as Magic |
+| AC2 | A hero deals physical damage to a monster (e.g., Young Wolf with Armor 2) | Damage is calculated | Monster's Armor absorbs damage: 1 armor = 1 damage absorbed; combat log shows raw - armor = final |
+| AC3 | A hero deals magic damage to a monster (e.g., Kobold Geomancer with Resistance 3) | Damage is calculated | Monster's Resistance absorbs damage: 1 resist = 1 damage absorbed; combat log shows raw - resist = final |
+| AC4 | A physical monster (e.g., Young Wolf, PhysAtk=8, SpellPower=0) attacks a hero | Monster deals damage | Hero's Armor absorbs the damage; combat log indicates damage type as Physical |
+| AC5 | A magic monster (e.g., Kobold Geomancer, PhysAtk=0, SpellPower=10) attacks a hero | Monster deals damage | Hero's Resistance absorbs the damage; combat log indicates damage type as Magic |
 | AC6 | An Elite or Boss monster (e.g., Kobold Geomancer elite, Hogger) is in combat | Monster acts | Monster has higher HP/Atk than Normal (TierMult); Elite/Boss may use skills; combat log shows damage type when applicable |
 | AC7 | Player views monster info (e.g., in bestiary, combat log, or pre-encounter tooltip) | Player inspects a monster type | Core attributes (HP, PhysAtk, SpellPower, Agility, Armor, Resistance) and damage type (Physical/Magic/Mixed) are visible or inferable |
 | AC8 | Squad enters combat on a specific map (e.g., Elwynn Forest) | Encounter is generated | Monsters are drawn from that map's pool (e.g., Kobold Miner, Young Wolf, Defias Trapper for Normal; Kobold Geomancer, Defias Smuggler for Elite; Hogger for Boss) |
@@ -309,7 +309,7 @@ Then [expected result/verifiable behavior].
 
 - **Name colors**: Hero names in combat log use their WoW class color (same as hero card). Monster names use tier-based colors: Normal (#66aa88), Elite (#cc88ff), Boss (#ff6644). Monster name color is **consistent** whether the monster is acting or being targeted.
 - **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
-- **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `ATK [raw] [x1.5 if crit] - [reduction]% [armor/resist] (Armor/Resist [value])`.
+- **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `raw - armor/resist = final [Armor/Resist]`.
 - **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 15%. CritMultiplier = 1.5.
 - **Encounter message**: Each battle starts with "Your adventure party encountered [monster names]!" (Boss: "the fearsome [name]").
 - **Battle summary**: After combat ends, a summary line: "Victory! Defeated X monster(s) in Y round(s). EXP +N Gold +N" or "Defeat! ...".
@@ -317,8 +317,8 @@ Then [expected result/verifiable behavior].
 - **Battle separator**: Visual separator line between consecutive battles.
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
-- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. Warrior/Rogue/Hunter resource max is fixed 100.
-- **Monster detail panel**: Similar alignment; includes Armor/Resistance reduction percentages with tooltip showing formula.
+- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, Resistance, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. Warrior/Rogue/Hunter resource max is fixed 100.
+- **Monster detail panel**: Similar alignment; includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 
 **Acceptance Criteria**
 
@@ -331,7 +331,7 @@ Then [expected result/verifiable behavior].
 | AC5 | Combat log is displaying actions | A hero or monster scores a critical hit | Damage number is bold; a "CRIT!" marker appears next to the number |
 | AC6 | A hero has Agility 8 and class Warrior (k_PhysCrit=0.3) | Hero's physical crit rate is computed | PhysCrit = (5 + 8 * 0.3) / 100 = 7.4%; crit chance is correctly applied in combat |
 | AC7 | A Normal monster attacks | Crit is checked | Monster has 5% crit chance; Elite has 10%; Boss has 15% |
-| AC8 | Combat log shows a damage entry | Player views the log | A sub-line in readable color (#88aa88) shows detailed calculation: ATK value, crit multiplier if applicable, reduction %, defense type and value |
+| AC8 | Combat log shows a damage entry | Player views the log | A sub-line in readable color (#88aa88) shows detailed calculation: raw - armor/resist = final |
 | AC9 | A new battle begins | Encounter is generated | The log shows "Your adventure party encountered [monster names]!" before combat actions start |
 | AC10 | A boss encounter begins | Boss fight starts | The log shows "Your adventure party encountered the fearsome [boss name]!" |
 | AC11 | Combat ends in victory | Battle concludes | The log shows a summary: "Victory! Defeated X monster(s) in Y round(s)." with EXP and Gold rewards |
@@ -343,7 +343,7 @@ Then [expected result/verifiable behavior].
 | AC17 | Combat log has many entries | Player scrolls the log | Scrollbar matches the dark-green terminal theme (thin, dark track, green thumb) |
 | AC18 | Player clicks a hero card | Hero detail modal opens | Hero name is in light text (#eeffee), class tag is in WoW class color; primary and secondary attributes are shown in separate sections with left-label right-value alignment |
 | AC19 | Player views secondary attributes in hero detail | Mouse hovers over a secondary attribute value | A tooltip shows the calculation formula with actual attribute values and result |
-| AC20 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; defense section shows Armor, Armor Reduction%, Resistance, Resist Reduction% with tooltip formulas |
+| AC20 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; defense section shows Armor, Resistance with tooltip "Absorbs X damage per hit" |
 | AC21 | A Warrior hero is displayed | Player views resource bar or detail panel | Resource is "Rage" with max value fixed at 100 (same for Rogue "Energy" and Hunter "Focus") |
 | AC22 | Combat is in progress | Player clicks Pause button | Combat log stops scrolling; new log entries are not displayed until Resume is clicked |
 | AC23 | Combat is paused | Player clicks Resume button | Combat log resumes scrolling and displaying new entries |

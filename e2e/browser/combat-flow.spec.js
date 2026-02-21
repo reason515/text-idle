@@ -125,8 +125,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
     await expect(page.locator('.log-calc').first()).toBeVisible()
     const calcText = await page.locator('.log-calc').first().textContent()
-    expect(calcText).toContain('ATK')
-    expect(calcText).toContain('%')
+    expect(calcText).toMatch(/-.*=.*\d+/)
+    expect(calcText).toContain('=')
   })
 
   test('battle summary appears after combat ends', async ({ page }) => {

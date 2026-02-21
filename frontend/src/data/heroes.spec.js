@@ -13,6 +13,8 @@ import {
   createCharacter,
   computeSecondaryAttributes,
   computeHeroMaxHP,
+  computeHeroArmor,
+  computeHeroResistance,
   getResourceDisplay,
   getClassCritRates,
 } from './heroes.js'
@@ -74,12 +76,33 @@ describe('heroes', () => {
     })
   })
 
+  describe('computeHeroArmor and computeHeroResistance', () => {
+    it('returns armor from Str * k_Armor for Warrior', () => {
+      expect(computeHeroArmor({ class: 'Warrior', strength: 10 })).toBe(8)
+      expect(computeHeroArmor({ class: 'Warrior', strength: 0 })).toBe(0)
+    })
+
+    it('returns 0 armor for Priest (no k_Armor)', () => {
+      expect(computeHeroArmor({ class: 'Priest', strength: 10 })).toBe(0)
+    })
+
+    it('returns resistance from Int * k_Resistance for Mage', () => {
+      expect(computeHeroResistance({ class: 'Mage', intellect: 11 })).toBe(9)
+      expect(computeHeroResistance({ class: 'Mage', intellect: 0 })).toBe(0)
+    })
+
+    it('returns lower resistance for Warrior (k_Resistance 0.3)', () => {
+      expect(computeHeroResistance({ class: 'Warrior', intellect: 2 })).toBe(1)
+    })
+  })
+
   describe('computeSecondaryAttributes', () => {
-    it('returns HP, PhysAtk, Armor, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
+    it('returns HP, PhysAtk, Armor, Resistance, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1)
       expect(values.HP).toBe(48) // 10 + 9*4 + 1*2 = 48
       expect(values.PhysAtk).toBe(11.5) // 5 + 10*0.65 = 11.5
       expect(values.Armor).toBe(8) // 10*0.8 = 8
+      expect(values.Resistance).toBe(0.6) // 2*0.3 = 0.6
       expect(values.PhysCrit).toBe(6.2) // 5 + 4*0.3 = 6.2
       expect(values.Dodge).toBe(5.8) // 5 + 4*0.2 = 5.8
       expect(values.Hit).toBe(95.8) // 95 + 4*0.2 = 95.8
@@ -89,11 +112,12 @@ describe('heroes', () => {
       expect(formulas.length).toBeGreaterThan(0)
     })
 
-    it('returns SpellPower, SpellCrit, MP for Mage at Lv1', () => {
+    it('returns SpellPower, SpellCrit, Resistance, MP for Mage at Lv1', () => {
       const { values } = computeSecondaryAttributes('Mage', 1)
       expect(values.HP).toBe(20) // 10 + 4*2 + 2 = 20
       expect(values.MP).toBe(37) // 5 + 11*2.8 + 1 = 36.8, rounds to 37
       expect(values.SpellPower).toBe(12.2) // 5 + 11*0.65 = 12.15 -> 12.2
+      expect(values.Resistance).toBe(8.8) // 11*0.8 = 8.8
       expect(values.SpellCrit).toBe(11.6) // 5 + 11*0.6 = 11.6
       expect(values.PhysAtk).toBeUndefined()
       expect(values.Armor).toBeUndefined()
@@ -130,7 +154,7 @@ describe('heroes', () => {
     })
 
     it('all classes have same secondary attribute order with Resource in 2nd position', () => {
-      const fixedKeys = ['PhysAtk', 'SpellPower', 'Armor', 'PhysCrit', 'SpellCrit', 'Dodge', 'Hit']
+      const fixedKeys = ['PhysAtk', 'SpellPower', 'Armor', 'Resistance', 'PhysCrit', 'SpellCrit', 'Dodge', 'Hit']
       for (const heroClass of ['Warrior', 'Mage', 'Rogue']) {
         const { formulas } = computeSecondaryAttributes(heroClass, 1)
         expect(formulas[0].key).toBe('HP')
@@ -144,6 +168,7 @@ describe('heroes', () => {
       expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29
       expect(values.PhysAtk).toBe(11.1) // 5 + 11*0.55 = 11.05 -> 11.1
       expect(values.Armor).toBe(1) // 5*0.2 = 1
+      expect(values.Resistance).toBe(0.9) // 3*0.3 = 0.9
       expect(values.PhysCrit).toBe(12.7) // 5 + 11*0.7 = 12.7
       expect(values.Dodge).toBe(10.5) // 5 + 11*0.5 = 10.5
       expect(values.MP).toBeUndefined()
@@ -157,6 +182,7 @@ describe('heroes', () => {
       expect(values.PhysAtk).toBe(9) // 5 + 8*0.5 = 9
       expect(values.SpellPower).toBe(8.6) // 5 + 8*0.45 = 8.6
       expect(values.Armor).toBe(1.6) // 4*0.4 = 1.6
+      expect(values.Resistance).toBe(4.8) // 8*0.6 = 4.8
       expect(values.PhysCrit).toBe(9.8) // 5 + 8*0.6 = 9.8
       expect(values.SpellCrit).toBe(9) // 5 + 8*0.5 = 9
       expect(values.Dodge).toBe(8.2) // 5 + 8*0.4 = 8.2
@@ -177,6 +203,7 @@ describe('heroes', () => {
       expect(values.HP).toBe(33) // 10 + 7*3 + 2 = 33
       expect(values.PhysAtk).toBe(10) // 5 + 10*0.5 = 10
       expect(values.Armor).toBe(1.5) // 5*0.3 = 1.5
+      expect(values.Resistance).toBe(1.2) // 4*0.3 = 1.2
       expect(values.PhysCrit).toBe(11) // 5 + 10*0.6 = 11
       expect(values.MP).toBeUndefined()
     })
@@ -203,6 +230,7 @@ describe('heroes', () => {
       expect(values.PhysAtk).toBe(7.8) // 5 + 7*0.4 = 7.8
       expect(values.SpellPower).toBe(8.2) // 5 + 7*0.45 = 8.15 -> 8.2
       expect(values.Armor).toBe(1.2) // 4*0.3 = 1.2
+      expect(values.Resistance).toBe(4.2) // 7*0.6 = 4.2
       expect(values.PhysCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
       expect(values.SpellCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
       expect(values.Dodge).toBe(7.1) // 5 + 7*0.3 = 7.1
