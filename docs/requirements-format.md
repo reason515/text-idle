@@ -286,7 +286,7 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | An encounter is generated on Elwynn Forest | Monsters spawn | Each monster has HP, PhysAtk, SpellPower, Agility, Armor, Resistance; values follow Base * TierMult * (1 + Level * LevelScale) |
-| AC2 | A hero deals physical damage to a monster (e.g., Young Wolf with Armor 2) | Damage is calculated | Monster's Armor absorbs damage: 1 armor = 1 damage absorbed; combat log shows raw - armor = final |
+| AC2 | A hero deals physical damage to a monster (e.g., Young Wolf with Armor 2) | Damage is calculated | Monster's Armor absorbs damage: 1 armor = 1 damage absorbed; combat log shows ATK(raw) - Armor(defVal) = final |
 | AC3 | A hero deals magic damage to a monster (e.g., Kobold Geomancer with Resistance 3) | Damage is calculated | Monster's Resistance absorbs damage: 1 resist = 1 damage absorbed; combat log shows raw - resist = final |
 | AC4 | A physical monster (e.g., Young Wolf, PhysAtk=8, SpellPower=0) attacks a hero | Monster deals damage | Hero's Armor absorbs the damage; combat log indicates damage type as Physical |
 | AC5 | A magic monster (e.g., Kobold Geomancer, PhysAtk=0, SpellPower=10) attacks a hero | Monster deals damage | Hero's Resistance absorbs the damage; combat log indicates damage type as Magic |
@@ -309,7 +309,7 @@ Then [expected result/verifiable behavior].
 
 - **Name colors**: Hero names in combat log use their WoW class color (same as hero card). Monster names use tier-based colors: Normal (#66aa88), Elite (#cc88ff), Boss (#ff6644). Monster name color is **consistent** whether the monster is acting or being targeted.
 - **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
-- **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `raw - armor/resist = final [Armor/Resist]`.
+- **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `ATK(raw) - Armor(defVal) = final` (or Resist for magic). All values in parentheses for consistency.
 - **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 15%. CritMultiplier = 1.5.
 - **Encounter message**: Each battle starts with "Your adventure party encountered [monster names]!" (Boss: "the fearsome [name]").
 - **Battle summary**: After combat ends, a summary line: "Victory! Defeated X monster(s) in Y round(s). EXP +N Gold +N" or "Defeat! ...".
@@ -331,7 +331,7 @@ Then [expected result/verifiable behavior].
 | AC5 | Combat log is displaying actions | A hero or monster scores a critical hit | Damage number is bold; a "CRIT!" marker appears next to the number |
 | AC6 | A hero has Agility 8 and class Warrior (k_PhysCrit=0.3) | Hero's physical crit rate is computed | PhysCrit = (5 + 8 * 0.3) / 100 = 7.4%; crit chance is correctly applied in combat |
 | AC7 | A Normal monster attacks | Crit is checked | Monster has 5% crit chance; Elite has 10%; Boss has 15% |
-| AC8 | Combat log shows a damage entry | Player views the log | A sub-line in readable color (#88aa88) shows detailed calculation: raw - armor/resist = final |
+| AC8 | Combat log shows a damage entry | Player views the log | A sub-line in readable color (#88aa88) shows ATK(raw) - Armor/Resist(defVal) = final |
 | AC9 | A new battle begins | Encounter is generated | The log shows "Your adventure party encountered [monster names]!" before combat actions start |
 | AC10 | A boss encounter begins | Boss fight starts | The log shows "Your adventure party encountered the fearsome [boss name]!" |
 | AC11 | Combat ends in victory | Battle concludes | The log shows a summary: "Victory! Defeated X monster(s) in Y round(s)." with EXP and Gold rewards |

@@ -323,9 +323,9 @@ function damageFormulaEquation(entry) {
   const defLabel = entry.damageType === 'magic' ? 'Resist' : 'Armor'
   const defVal = entry.targetDefense
   if (entry.isCrit) {
-    return `${entry.rawDamage} x 1.5 - ${defVal} = ${final}  [${defLabel}]`
+    return `ATK(${entry.rawDamage}) x 1.5 - ${defLabel}(${defVal}) = ${final}`
   }
-  return `${rawDisplay} - ${defVal} = ${final}  [${defLabel}]`
+  return `ATK(${rawDisplay}) - ${defLabel}(${defVal}) = ${final}`
 }
 
 const router = useRouter()
