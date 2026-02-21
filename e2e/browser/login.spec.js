@@ -28,7 +28,8 @@ test.describe('Login E2E', () => {
     await page.getByRole('button', { name: 'Login' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
+    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page.locator('.col-header').first()).toBeVisible()
   })
 
   test('AC2: wrong email or password shows clear error', async ({ page }) => {

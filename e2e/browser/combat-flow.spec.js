@@ -53,7 +53,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(card.locator('.bar-row').nth(1)).toContainText('Rage')
   })
 
-  test('hero detail modal opens on card click', async ({ page }) => {
+  test('hero detail modal opens with primary and secondary attributes', async ({ page }) => {
     const email = `hero-modal-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
@@ -61,10 +61,14 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
+    await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-grid')).toBeVisible()
-    await expect(page.locator('.detail-grid')).toContainText('Strength')
+    await expect(page.locator('.detail-section').first()).toBeVisible()
+    await expect(page.locator('.detail-section').nth(1)).toContainText('Strength')
+    await expect(page.locator('.detail-sep-line').first()).toContainText('Primary Attributes')
+    await expect(page.locator('.detail-sep-line').nth(1)).toContainText('Secondary Attributes')
+    await expect(page.locator('.detail-row').first()).toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.locator('.modal-box')).not.toBeVisible()
   })
@@ -97,19 +101,60 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.monster-tier').first()).toBeVisible()
   })
 
-  test('combat log entries appear automatically with outcome shown', async ({ page }) => {
-    const email = `log-auto-e2e-${Date.now()}@example.com`
+  test('encounter message appears at battle start', async ({ page }) => {
+    const email = `encounter-msg-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 10000 })
+    const text = await page.locator('.log-encounter').first().textContent()
+    expect(text).toContain('Your adventure party encountered')
+  })
+
+  test('combat log shows damage calculation detail', async ({ page }) => {
+    const email = `dmg-calc-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('.log-calc').first()).toBeVisible()
+    const calcText = await page.locator('.log-calc').first().textContent()
+    expect(calcText).toContain('ATK')
+    expect(calcText).toContain('%')
+  })
+
+  test('battle summary appears after combat ends', async ({ page }) => {
+    const email = `summary-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: 60000 })
+    const summaryText = await page.locator('.log-summary').first().textContent()
+    expect(summaryText).toMatch(/Victory!|Defeat!|Draw/)
+  })
 
-    await expect(page.locator('.outcome-row')).toBeVisible({ timeout: 60000 })
-    const outcomeText = await page.locator('.outcome-text').textContent()
-    expect(['Victory!', 'Defeat!']).toContain(outcomeText.trim())
+  test('rest phase is shown in combat log after victory', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = `rest-log-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
+    const restTexts = await page.locator('.log-rest').allTextContents()
+    const hasRecovering = restTexts.some((t) => t.includes('Resting') || t.includes('Recovering') || t.includes('Rest complete'))
+    expect(hasRecovering).toBe(true)
   })
 
   test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {

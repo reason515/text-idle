@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   MAPS,
+  CRIT_MULTIPLIER,
   createInitialProgress,
   getRecruitLimit,
   addExplorationProgress,
@@ -140,6 +141,42 @@ describe('combat progression and systems', () => {
     expect(elite.physAtk).toBeGreaterThan(normal.physAtk)
   })
 
+  it('Example9: monster has crit rates based on tier', () => {
+    const normal = createMonster(
+      {
+        id: 'wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const elite = createMonster(
+      {
+        id: 'wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
+      },
+      { tier: 'elite', level: 1 }
+    )
+    const boss = createMonster(
+      {
+        id: 'wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
+      },
+      { tier: 'boss', level: 1 }
+    )
+    expect(normal.physCrit).toBe(0.05)
+    expect(elite.physCrit).toBe(0.1)
+    expect(boss.physCrit).toBe(0.15)
+    expect(normal.spellCrit).toBe(0.05)
+    expect(elite.spellCrit).toBe(0.1)
+    expect(boss.spellCrit).toBe(0.15)
+  })
+
   it('Example9: armor and resistance use required reduction formulas', () => {
     expect(calculateReduction(2)).toBeCloseTo(2 / 52, 6)
     expect(calculateReduction(3)).toBeCloseTo(3 / 53, 6)
@@ -177,6 +214,95 @@ describe('combat progression and systems', () => {
     expect(result.log[0].actorName).toBe('Hero One')
     const acted = result.turnActedByRound[1]
     expect(new Set(acted).size).toBe(acted.length)
+  })
+
+  it('log entries include actorClass and targetClass for heroes', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const monsters = [
+      createMonster(
+        {
+          id: 'kobold-1',
+          name: 'Kobold Miner',
+          damageType: 'physical',
+          base: { hp: 24, physAtk: 4, spellPower: 0, agility: 4, armor: 1, resistance: 1 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
+    const heroAction = result.log.find((e) => e.actorName === 'Hero One')
+    expect(heroAction.actorClass).toBe('Warrior')
+    expect(heroAction.targetClass).toBeNull()
+    const monsterAction = result.log.find((e) => e.actorName === 'Kobold Miner')
+    if (monsterAction) {
+      expect(monsterAction.actorClass).toBeNull()
+      expect(monsterAction.targetClass).toBe('Warrior')
+    }
+  })
+
+  it('log entries include isCrit field', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const monsters = [
+      createMonster(
+        {
+          id: 'kobold-1',
+          name: 'Kobold Miner',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 4, spellPower: 0, agility: 4, armor: 1, resistance: 1 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
+    for (const entry of result.log) {
+      expect(entry).toHaveProperty('isCrit')
+      expect(typeof entry.isCrit).toBe('boolean')
+    }
+  })
+
+  it('crit multiplies raw damage by CRIT_MULTIPLIER', () => {
+    expect(CRIT_MULTIPLIER).toBe(1.5)
+    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const monsters = [
+      createMonster(
+        {
+          id: 'kobold-1',
+          name: 'Kobold Miner',
+          damageType: 'physical',
+          base: { hp: 300, physAtk: 4, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const noCritResult = runAutoCombat({ heroes, monsters, rng: () => 0.99 })
+    const noCritEntry = noCritResult.log.find((e) => e.actorName === 'Hero One')
+    expect(noCritEntry.isCrit).toBe(false)
+
+    const alwaysCritResult = runAutoCombat({ heroes, monsters, rng: () => 0.01 })
+    const critEntry = alwaysCritResult.log.find((e) => e.actorName === 'Hero One')
+    expect(critEntry.isCrit).toBe(true)
+    expect(critEntry.finalDamage).toBeGreaterThan(noCritEntry.finalDamage)
+  })
+
+  it('log entries include targetDefense for damage calculation transparency', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const monsters = [
+      createMonster(
+        {
+          id: 'kobold-1',
+          name: 'Kobold Miner',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 4, spellPower: 0, agility: 4, armor: 5, resistance: 3 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
+    const heroEntry = result.log.find((e) => e.actorName === 'Hero One')
+    expect(heroEntry).toHaveProperty('targetDefense')
+    expect(heroEntry.targetDefense).toBeGreaterThan(0)
+    expect(heroEntry).toHaveProperty('reduction')
+    expect(heroEntry.reduction).toBeGreaterThan(0)
   })
 
   it('Example6: same agility tie order is randomized by rng', () => {

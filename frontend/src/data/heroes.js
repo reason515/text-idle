@@ -35,7 +35,7 @@ export function getInitialAttributes(heroClass) {
  * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Armor, k_PhysCrit, k_SpellCrit, k_Dodge
  * null/- means class does not use that attribute
  */
-const CLASS_COEFFICIENTS = {
+export const CLASS_COEFFICIENTS = {
   Warrior: { k_HP: 4.0, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.65, k_SpellPower: null, k_Armor: 0.8, k_PhysCrit: 0.3, k_SpellCrit: null, k_Dodge: 0.2 },
   Paladin: { k_HP: 3.5, k_MP: 2.2, physAtkAttr: 'strength', k_PhysAtk: 0.45, k_SpellPower: 0.45, k_Armor: 0.6, k_PhysCrit: 0.3, k_SpellCrit: 0.4, k_Dodge: 0.2 },
   Priest: { k_HP: 2.5, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
@@ -45,6 +45,20 @@ const CLASS_COEFFICIENTS = {
   Hunter: { k_HP: 3.0, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: null, k_Armor: 0.3, k_PhysCrit: 0.6, k_SpellCrit: null, k_Dodge: 0.4 },
   Warlock: { k_HP: 2.8, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
   Shaman: { k_HP: 3.0, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.4, k_SpellPower: 0.45, k_Armor: 0.3, k_PhysCrit: 0.5, k_SpellCrit: 0.5, k_Dodge: 0.3 },
+}
+
+/**
+ * Get crit rates for a hero class based on attributes.
+ * Returns decimal values (e.g. 0.062 for 6.2%).
+ */
+export function getClassCritRates(heroClass, attrs) {
+  const coef = CLASS_COEFFICIENTS[heroClass] || {}
+  return {
+    physCrit: (5 + (attrs.agility || 0) * (coef.k_PhysCrit || 0)) / 100,
+    spellCrit: coef.k_SpellCrit != null
+      ? (5 + (attrs.intellect || 0) * coef.k_SpellCrit) / 100
+      : 0,
+  }
 }
 
 /** Format formula string: replace * with multiplication symbol for display */

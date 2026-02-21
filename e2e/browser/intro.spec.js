@@ -44,7 +44,8 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
+    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page.locator('.col-header').first()).toBeVisible()
   })
 
   test('AC4: returning player skips intro', async ({ page }) => {
@@ -69,6 +70,7 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: 'Login' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Welcome! You are logged in.')).toBeVisible()
+    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page.locator('.col-header').first()).toBeVisible()
   })
 })

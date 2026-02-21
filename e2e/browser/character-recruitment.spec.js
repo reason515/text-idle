@@ -54,25 +54,30 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Warrior')).toBeVisible()
   })
 
-  test('AC3: squad panel displays name, class, level, and initial attributes', async ({ page }) => {
+  test('AC3: squad panel displays name, class, level, and initial attributes via detail modal', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Jaina Proudmoore').first()).toBeVisible()
-    await expect(page.getByText('Mage')).toBeVisible()
-    // Verify level and initial attributes are displayed
-    await expect(page.getByText(/Level:/)).toBeVisible()
-    await expect(page.getByText(/Strength:/)).toBeVisible()
-    await expect(page.getByText(/Agility:/)).toBeVisible()
-    await expect(page.getByText(/Intellect:/)).toBeVisible()
-    await expect(page.getByText(/Stamina:/)).toBeVisible()
-    await expect(page.getByText(/Spirit:/)).toBeVisible()
-    // Verify Mage's initial attributes (Intellect: 11, Strength: 2)
-    await expect(page.getByText(/Intellect:.*11/)).toBeVisible()
-    await expect(page.getByText(/Strength:.*2/)).toBeVisible()
+    const card = page.locator('.hero-card').first()
+    await expect(card).toBeVisible()
+    await expect(card.locator('.hero-name')).toContainText('Jaina Proudmoore')
+    await expect(card.locator('.hero-class')).toContainText('Mage')
+    await expect(card.locator('.card-level')).toContainText('Lv.')
+
+    await card.click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await expect(page.locator('.detail-sep-line').first()).toContainText('Primary Attributes')
+    await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Agility' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Intellect' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Stamina' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Spirit' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Intellect' })).toContainText('11')
+    await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toContainText('2')
+    await page.getByRole('button', { name: 'Close' }).click()
   })
 
   test('AC4: player with 1+ character can recruit another hero when squad < 5', async ({ page }) => {
@@ -91,8 +96,8 @@ test.describe('Character Recruitment (Example 4)', () => {
       }))
     })
     await page.reload()
-    await expect(page.getByRole('button', { name: 'Recruit Hero' })).toBeVisible()
-    await page.getByRole('button', { name: 'Recruit Hero' }).click()
+    await expect(page.locator('.recruit-btn')).toBeVisible({ timeout: 5000 })
+    await page.locator('.recruit-btn').click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
@@ -153,12 +158,12 @@ test.describe('Character Recruitment (Example 4)', () => {
       await page.getByRole('button', { name: 'Confirm' }).click()
       await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
       if (hero !== heroes[heroes.length - 1]) {
-        await page.getByRole('button', { name: 'Recruit Hero' }).click()
+        await page.locator('.recruit-btn').click()
         await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
       }
     }
 
-    await expect(page.getByText('Squad is full (5/5)')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Recruit Hero' })).not.toBeVisible()
+    await expect(page.locator('.hero-card')).toHaveCount(5)
+    await expect(page.locator('.recruit-btn')).not.toBeVisible()
   })
 })

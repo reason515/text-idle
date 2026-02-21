@@ -3,6 +3,7 @@ import {
   HEROES,
   CLASS_COLORS,
   CLASS_INFO,
+  CLASS_COEFFICIENTS,
   MAX_SQUAD_SIZE,
   SQUAD_STORAGE_KEY,
   getSquad,
@@ -12,6 +13,7 @@ import {
   createCharacter,
   computeSecondaryAttributes,
   getResourceDisplay,
+  getClassCritRates,
 } from './heroes.js'
 
 const storage = {}
@@ -400,6 +402,40 @@ describe('heroes', () => {
         expect(typeof CLASS_INFO[c].role).toBe('string')
         expect(typeof CLASS_INFO[c].desc).toBe('string')
       }
+    })
+
+    it('CLASS_COEFFICIENTS is exported and has all 9 classes', () => {
+      const expectedClasses = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Mage', 'Rogue', 'Hunter', 'Warlock', 'Shaman']
+      for (const c of expectedClasses) {
+        expect(CLASS_COEFFICIENTS[c]).toBeDefined()
+        expect(CLASS_COEFFICIENTS[c]).toHaveProperty('k_HP')
+        expect(CLASS_COEFFICIENTS[c]).toHaveProperty('k_PhysCrit')
+      }
+    })
+  })
+
+  describe('getClassCritRates', () => {
+    it('returns physCrit and spellCrit as decimal values for Warrior', () => {
+      const rates = getClassCritRates('Warrior', { agility: 4, intellect: 2 })
+      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.3) / 100, 6)
+      expect(rates.spellCrit).toBe(0)
+    })
+
+    it('returns both crit rates for Mage', () => {
+      const rates = getClassCritRates('Mage', { agility: 4, intellect: 11 })
+      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.3) / 100, 6)
+      expect(rates.spellCrit).toBeCloseTo((5 + 11 * 0.6) / 100, 6)
+    })
+
+    it('returns zero spellCrit for classes without k_SpellCrit', () => {
+      const rates = getClassCritRates('Rogue', { agility: 11, intellect: 3 })
+      expect(rates.spellCrit).toBe(0)
+    })
+
+    it('returns fallback values for unknown class', () => {
+      const rates = getClassCritRates('Unknown', { agility: 5, intellect: 5 })
+      expect(rates.physCrit).toBeCloseTo(5 / 100, 6)
+      expect(rates.spellCrit).toBe(0)
     })
   })
 })

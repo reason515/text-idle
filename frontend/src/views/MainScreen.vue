@@ -51,33 +51,60 @@
 
       <div class="log-col">
         <div class="col-header">Combat Log</div>
-        <div v-if="lastOutcome" class="outcome-row">
-          <span class="outcome-text" :class="lastOutcome + '-text'">
-            {{ lastOutcome === 'victory' ? 'Victory!' : lastOutcome === 'defeat' ? 'Defeat!' : lastOutcome }}
-          </span>
-          <span v-if="lastOutcome === 'victory' && lastRewards.exp > 0" class="rewards-text">
-            EXP <span class="val-exp">+{{ lastRewards.exp }}</span>
-            &nbsp;Gold <span class="val-gold">+{{ lastRewards.gold }}</span>
-          </span>
-          <span v-if="lastOutcome === 'defeat'" class="defeat-penalty">Exploration -10</span>
-        </div>
         <div class="log-list" ref="logListEl">
           <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
-          <div
-            v-for="(entry, i) in displayedLog"
-            :key="i"
-            class="log-entry"
-          >
-            <span class="log-round">[R{{ entry.round }}]</span>
-            <span class="log-actor" :class="heroIds.has(entry.actorId) ? 'log-hero-actor' : 'log-monster-actor'">{{ entry.actorName }}</span>
-            <span class="log-sep">used</span>
-            <span class="log-action" :class="entry.action === 'skill' ? 'log-skill' : ''">{{ entry.action }}</span>
-            <span class="log-sep">on</span>
-            <span class="log-target" :class="heroIds.has(entry.targetId) ? 'log-hero-target' : 'log-monster-target'">{{ entry.targetName }}</span>
-            <span class="log-sep">for</span>
-            <span class="log-dmg" :class="'log-' + entry.damageType">{{ entry.finalDamage }}</span>
-            <span class="log-dtype">({{ entry.damageType }})</span>
-          </div>
+          <template v-for="(entry, i) in displayedLog" :key="i">
+            <div v-if="entry.type === 'separator'" class="log-separator"></div>
+            <div v-else-if="entry.type === 'encounter'" class="log-encounter">{{ entry.message }}</div>
+            <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
+              <template v-if="entry.outcome === 'victory'">
+                Victory! Defeated {{ entry.monsterCount }} monster(s) in {{ entry.rounds }} round(s).
+                <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
+                <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
+              </template>
+              <template v-else-if="entry.outcome === 'defeat'">
+                Defeat! Your party was overwhelmed after {{ entry.rounds }} round(s). Exploration -10
+              </template>
+              <template v-else>
+                Draw after {{ entry.rounds }} round(s).
+              </template>
+            </div>
+            <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
+              {{ entry.message }}
+            </div>
+            <div v-else class="log-entry">
+              <span class="log-round">[R{{ entry.round }}]</span>
+              <span
+                class="log-actor"
+                :style="entry.actorClass ? { color: classColor(entry.actorClass) } : {}"
+                :class="{ 'log-monster-actor': !entry.actorClass }"
+              >{{ entry.actorName }}</span>
+              <span class="log-sep">used</span>
+              <span class="log-action" :class="entry.action === 'skill' ? 'log-skill' : ''">{{ entry.action }}</span>
+              <span class="log-sep">on</span>
+              <span
+                class="log-target"
+                :style="entry.targetClass ? { color: classColor(entry.targetClass) } : {}"
+                :class="{ 'log-monster-target': !entry.targetClass }"
+              >{{ entry.targetName }}</span>
+              <span class="log-sep">for</span>
+              <span
+                class="log-dmg"
+                :class="[
+                  entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
+                  entry.isCrit ? 'log-crit' : ''
+                ]"
+              >{{ entry.finalDamage }}</span>
+              <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
+              <span class="log-dtype">({{ entry.damageType }})</span>
+              <div class="log-calc">
+                ATK {{ entry.rawDamage }}
+                <template v-if="entry.isCrit"> x1.5</template>
+                - {{ formatReduction(entry.reduction) }}% {{ entry.damageType === 'magic' ? 'resist' : 'armor' }}
+                ({{ entry.damageType === 'magic' ? 'Resist' : 'Armor' }} {{ entry.targetDefense }})
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -132,19 +159,41 @@
 
     <Teleport to="body">
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null">
-        <div class="modal-box">
-          <div class="modal-title" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</div>
-          <div class="detail-grid">
-            <span class="detail-label">Class</span><span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
-            <span class="detail-label">Level</span><span>{{ selectedHero.level || 1 }}</span>
-            <span class="detail-label">HP</span><span class="val-hp">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
-            <span class="detail-label">{{ resourceLabel(selectedHero.class) }}</span><span>{{ selectedHero.currentMP ?? selectedHero.maxMP }} / {{ selectedHero.maxMP }}</span>
-            <span class="detail-sep">Attributes</span><span></span>
-            <span class="detail-label">Strength</span><span>{{ selectedHero.strength || 0 }}</span>
-            <span class="detail-label">Agility</span><span>{{ selectedHero.agility || 0 }}</span>
-            <span class="detail-label">Intellect</span><span>{{ selectedHero.intellect || 0 }}</span>
-            <span class="detail-label">Stamina</span><span>{{ selectedHero.stamina || 0 }}</span>
-            <span class="detail-label">Spirit</span><span>{{ selectedHero.spirit || 0 }}</span>
+        <div class="modal-box detail-modal">
+          <div class="modal-title" :style="{ color: classColor(selectedHero.class) }">
+            {{ selectedHero.name }}
+            <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
+          </div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Level</span>
+              <span class="detail-value">{{ selectedHero.level || 1 }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">HP</span>
+              <span class="detail-value val-hp">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">{{ resourceLabel(selectedHero.class) }}</span>
+              <span class="detail-value">{{ selectedHero.currentMP ?? selectedHero.maxMP }} / {{ selectedHero.maxMP }}</span>
+            </div>
+          </div>
+          <div class="detail-sep-line">Primary Attributes</div>
+          <div class="detail-section">
+            <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row">
+              <span class="detail-label">{{ attr.label }}</span>
+              <span class="detail-value">{{ selectedHero[attr.key] || 0 }}</span>
+            </div>
+          </div>
+          <div class="detail-sep-line">Secondary Attributes</div>
+          <div class="detail-section">
+            <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
+              <span class="detail-label">{{ attr.label }}</span>
+              <span class="detail-value tooltip-wrap" :class="{ 'has-tip': attr.formula && attr.formula !== '-' }">
+                {{ attr.value }}
+                <span v-if="attr.formula && attr.formula !== '-'" class="tooltip-text">{{ attr.formula }}</span>
+              </span>
+            </div>
           </div>
           <button class="btn" @click="selectedHero = null">Close</button>
         </div>
@@ -153,18 +202,60 @@
 
     <Teleport to="body">
       <div v-if="selectedMonster" class="modal-overlay" @click.self="selectedMonster = null">
-        <div class="modal-box">
-          <div class="modal-title">{{ selectedMonster.name }}</div>
-          <div class="detail-grid">
-            <span class="detail-label">Tier</span><span :class="'tier-' + selectedMonster.tier">{{ selectedMonster.tier }}</span>
-            <span class="detail-label">HP</span><span class="val-hp">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
-            <span class="detail-sep">Combat Stats</span><span></span>
-            <span class="detail-label">Damage Type</span><span :class="'log-' + selectedMonster.damageType">{{ selectedMonster.damageType }}</span>
-            <span class="detail-label">Phys Atk</span><span>{{ selectedMonster.physAtk }}</span>
-            <span class="detail-label">Spell Power</span><span>{{ selectedMonster.spellPower }}</span>
-            <span class="detail-label">Agility</span><span>{{ selectedMonster.agility }}</span>
-            <span class="detail-label">Armor</span><span>{{ selectedMonster.armor }}</span>
-            <span class="detail-label">Resistance</span><span>{{ selectedMonster.resistance }}</span>
+        <div class="modal-box detail-modal">
+          <div class="modal-title">
+            {{ selectedMonster.name }}
+            <span class="modal-tier-tag" :class="'tier-' + selectedMonster.tier">{{ selectedMonster.tier }}</span>
+          </div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">HP</span>
+              <span class="detail-value val-hp">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Damage Type</span>
+              <span class="detail-value" :class="'log-' + selectedMonster.damageType">{{ selectedMonster.damageType }}</span>
+            </div>
+          </div>
+          <div class="detail-sep-line">Combat Stats</div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Phys Atk</span>
+              <span class="detail-value">{{ selectedMonster.physAtk }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Spell Power</span>
+              <span class="detail-value">{{ selectedMonster.spellPower }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Agility</span>
+              <span class="detail-value">{{ selectedMonster.agility }}</span>
+            </div>
+          </div>
+          <div class="detail-sep-line">Defense</div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Armor</span>
+              <span class="detail-value tooltip-wrap has-tip">
+                {{ selectedMonster.armor }}
+                <span class="tooltip-text">Reduction: {{ formatReduction(monsterArmorReduction) }}% = {{ selectedMonster.armor }} / ({{ selectedMonster.armor }} + 50)</span>
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Armor Reduction</span>
+              <span class="detail-value">{{ formatReduction(monsterArmorReduction) }}%</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Resistance</span>
+              <span class="detail-value tooltip-wrap has-tip">
+                {{ selectedMonster.resistance }}
+                <span class="tooltip-text">Reduction: {{ formatReduction(monsterResistReduction) }}% = {{ selectedMonster.resistance }} / ({{ selectedMonster.resistance }} + 50)</span>
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Resist Reduction</span>
+              <span class="detail-value">{{ formatReduction(monsterResistReduction) }}%</span>
+            </div>
           </div>
           <button class="btn" @click="selectedMonster = null">Close</button>
         </div>
@@ -176,7 +267,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS } from '../data/heroes.js'
+import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -188,6 +279,7 @@ import {
   runAutoCombat,
   startRestPhase,
   applyRestStep,
+  calculateReduction,
 } from '../game/combat.js'
 
 const RESOURCE_MAP = {
@@ -197,6 +289,16 @@ const RESOURCE_MAP = {
 }
 const DEFAULT_RESOURCE = { label: 'MP', fillClass: 'mp-fill' }
 
+const PRIMARY_ATTRS = [
+  { key: 'strength', label: 'Strength' },
+  { key: 'agility', label: 'Agility' },
+  { key: 'intellect', label: 'Intellect' },
+  { key: 'stamina', label: 'Stamina' },
+  { key: 'spirit', label: 'Spirit' },
+]
+
+const MAX_LOG_ENTRIES = 300
+
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
 }
@@ -205,6 +307,9 @@ function resourceLabel(heroClass) {
 }
 function resourceFillClass(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).fillClass
+}
+function formatReduction(fraction) {
+  return (fraction * 100).toFixed(1)
 }
 
 const router = useRouter()
@@ -229,6 +334,20 @@ const currentMapName = computed(() => {
   return map ? map.name : MAPS[0].name
 })
 const heroIds = computed(() => new Set(displayHeroes.value.map((h) => h.id)))
+
+const heroSecondaryAttrs = computed(() => {
+  if (!selectedHero.value) return []
+  return computeSecondaryAttributes(selectedHero.value.class, selectedHero.value.level || 1).formulas
+})
+
+const monsterArmorReduction = computed(() => {
+  if (!selectedMonster.value) return 0
+  return calculateReduction(selectedMonster.value.armor || 0)
+})
+const monsterResistReduction = computed(() => {
+  if (!selectedMonster.value) return 0
+  return calculateReduction(selectedMonster.value.resistance || 0)
+})
 
 function isMapUnlocked(mapId) {
   const index = MAPS.findIndex((m) => m.id === mapId)
@@ -258,6 +377,20 @@ function mpPct(hero) {
 function monsterHpPct(m) {
   if (!m.maxHP) return 100
   return Math.max(0, Math.round((m.currentHP / m.maxHP) * 100))
+}
+
+function addLogEntry(entry) {
+  displayedLog.value = [...displayedLog.value, entry]
+  if (displayedLog.value.length > MAX_LOG_ENTRIES) {
+    displayedLog.value = displayedLog.value.slice(-200)
+  }
+}
+
+async function scrollLog() {
+  await nextTick()
+  if (logListEl.value) {
+    logListEl.value.scrollTop = logListEl.value.scrollHeight
+  }
 }
 
 function loadSquad() {
@@ -299,7 +432,7 @@ async function animateCombatLog(result) {
     if (!isRunning.value) return
     await sleepMs(2000)
     if (!isRunning.value) return
-    displayedLog.value = [...displayedLog.value, entry]
+    addLogEntry(entry)
 
     const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
     if (mi >= 0) {
@@ -314,32 +447,53 @@ async function animateCombatLog(result) {
       displayHeroes.value = updated
     }
 
-    await nextTick()
-    if (logListEl.value) {
-      logListEl.value.scrollTop = logListEl.value.scrollHeight
-    }
+    await scrollLog()
   }
 }
 
 async function autoRest(heroesAfter) {
   const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
   let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
+
+  addLogEntry({ type: 'rest', message: 'Resting... recovering HP and MP', complete: false })
+  await scrollLog()
+
+  let stepCount = 0
   while (!rest.isComplete && isRunning.value) {
     rest = applyRestStep(rest)
+    stepCount += 1
     displayHeroes.value = displayHeroes.value.map((dh) => {
       const rh = rest.heroes.find((r) => r.id === dh.id)
       return rh ? { ...dh, currentHP: rh.currentHP, currentMP: rh.currentMP } : dh
     })
-    await sleepMs(150)
+    if (stepCount % 3 === 0) {
+      const status = rest.heroes.map(
+        (h) => `${h.name}: ${h.currentHP}/${h.maxHP} HP`
+      ).join(' | ')
+      addLogEntry({ type: 'rest', message: `Recovering... ${status}`, complete: false })
+      await scrollLog()
+    }
+    await sleepMs(500)
   }
+
+  addLogEntry({ type: 'rest', message: 'Rest complete. All heroes fully recovered.', complete: true })
+  await scrollLog()
 }
 
 async function runCombatLoop() {
+  let isFirstBattle = true
   while (isRunning.value) {
     if (squad.value.length === 0) {
       await sleepMs(1000)
       continue
     }
+
+    if (!isFirstBattle) {
+      addLogEntry({ type: 'separator' })
+      await scrollLog()
+      await sleepMs(300)
+    }
+    isFirstBattle = false
 
     const monsters = buildEncounterMonsters({
       mapId: progress.value.currentMapId,
@@ -349,9 +503,17 @@ async function runCombatLoop() {
 
     currentMonsters.value = monsters.map((m) => ({ ...m }))
     displayHeroes.value = squad.value.map(computeHeroDisplay)
-    displayedLog.value = []
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, loot: [] }
+
+    const monsterNames = monsters.map((m) => m.name).join(', ')
+    const isBossEncounter = monsters.some((m) => m.tier === 'boss')
+    const encounterMsg = isBossEncounter
+      ? `Your adventure party encountered the fearsome ${monsterNames}!`
+      : `Your adventure party encountered ${monsterNames}!`
+    addLogEntry({ type: 'encounter', message: encounterMsg })
+    await scrollLog()
+    await sleepMs(1000)
 
     const result = runAutoCombat({ heroes: squad.value, monsters })
 
@@ -361,6 +523,15 @@ async function runCombatLoop() {
     if (result.outcome === 'victory') {
       lastOutcome.value = 'victory'
       lastRewards.value = result.rewards
+      addLogEntry({
+        type: 'summary',
+        outcome: 'victory',
+        rounds: result.rounds,
+        monsterCount: monsters.length,
+        rewards: result.rewards,
+      })
+      await scrollLog()
+
       const isBoss = monsters.some((m) => m.tier === 'boss')
       if (isBoss) {
         progress.value = unlockNextMapAfterBoss(progress.value)
@@ -375,6 +546,15 @@ async function runCombatLoop() {
       await autoRest(result.heroesAfter)
     } else {
       lastOutcome.value = result.outcome
+      addLogEntry({
+        type: 'summary',
+        outcome: result.outcome,
+        rounds: result.rounds,
+        monsterCount: monsters.length,
+        rewards: { exp: 0, gold: 0 },
+      })
+      await scrollLog()
+
       progress.value = deductExplorationProgress(progress.value, 10)
       saveProgress()
       await sleepMs(2000)
@@ -423,7 +603,7 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   color: var(--color-gold);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   padding: 0.25rem 0.5rem;
   cursor: pointer;
   display: flex;
@@ -439,7 +619,7 @@ onUnmounted(() => {
   color: var(--color-gold);
 }
 .map-arrow {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
 }
 
@@ -462,14 +642,14 @@ onUnmounted(() => {
   transition: width 0.4s;
 }
 .explore-pct {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--color-victory);
   flex-shrink: 0;
   min-width: 2.5rem;
   text-align: right;
 }
 .boss-badge {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--color-boss);
   border: 1px solid var(--color-boss);
   padding: 0.05rem 0.3rem;
@@ -486,7 +666,7 @@ onUnmounted(() => {
   border: 1px solid var(--error);
   color: var(--error);
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   padding: 0.2rem 0.5rem;
   cursor: pointer;
   flex-shrink: 0;
@@ -517,7 +697,7 @@ onUnmounted(() => {
 }
 
 .col-header {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -552,15 +732,15 @@ onUnmounted(() => {
   margin-bottom: 0.1rem;
 }
 .hero-name {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: bold;
   color: var(--text);
 }
 .hero-class {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 .card-level {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin-bottom: 0.15rem;
 }
@@ -569,7 +749,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   width: 100%;
   padding: 0.35rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--accent);
@@ -589,7 +769,7 @@ onUnmounted(() => {
   margin-bottom: 0.1rem;
 }
 .bar-label {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: var(--text-label);
   width: 2.2rem;
   flex-shrink: 0;
@@ -612,7 +792,7 @@ onUnmounted(() => {
 .focus-fill { background: var(--color-focus); }
 .monster-hp-fill { background: var(--color-defeat); }
 .bar-num {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   flex-shrink: 0;
   min-width: 4rem;
@@ -620,37 +800,51 @@ onUnmounted(() => {
 }
 
 /* Log column */
-.outcome-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.25rem 0.4rem;
-  margin-bottom: 0.4rem;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.4);
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  flex-wrap: wrap;
-}
-.outcome-text {
-  font-weight: bold;
-}
-.victory-text { color: var(--color-victory); }
-.defeat-text { color: var(--color-defeat); }
-.rewards-text { color: var(--text-muted); }
-.val-exp { color: var(--color-exp); }
-.val-gold { color: var(--color-gold); }
-.defeat-penalty { color: var(--error); font-size: 0.7rem; }
-
 .log-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.15rem;
 }
+
+.log-separator {
+  border-top: 2px solid #224422;
+  margin: 0.6rem 0;
+}
+
+.log-encounter {
+  font-size: 0.84rem;
+  color: var(--color-gold);
+  padding: 0.3rem 0;
+  font-style: italic;
+}
+
+.log-summary {
+  font-size: 0.84rem;
+  font-weight: bold;
+  padding: 0.3rem 0;
+  border-top: 1px solid #1a2a1a;
+  margin-top: 0.15rem;
+}
+.log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
+.log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
+.victory-text { color: var(--color-victory); }
+.defeat-text { color: var(--color-defeat); }
+
+.log-rest {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.15rem 0;
+  font-style: italic;
+}
+.log-rest-done {
+  color: var(--color-hp);
+  font-style: normal;
+}
+
 .log-entry {
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem;
@@ -662,15 +856,33 @@ onUnmounted(() => {
 .log-sep { color: #334433; }
 .log-action { color: var(--text-label); }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
-.log-hero-actor { color: var(--color-victory); font-weight: bold; }
-.log-monster-actor { color: var(--color-boss); font-weight: bold; }
-.log-hero-target { color: var(--color-defeat); }
+.log-actor { font-weight: bold; }
+.log-monster-actor { color: var(--color-boss); }
+.log-target { }
 .log-monster-target { color: var(--text-muted); }
+
+/* Damage colors: physical = white, magic = blue */
+.log-phys-dmg { color: #dddddd; }
+.log-magic-dmg { color: #44aaff; }
+.log-crit { font-weight: bold; }
+.log-crit-mark {
+  color: #ff6644;
+  font-weight: bold;
+  font-size: 0.78rem;
+}
+.log-dtype { color: #334433; font-size: 0.75rem; }
+.log-calc {
+  width: 100%;
+  font-size: 0.72rem;
+  color: #445544;
+  padding-left: 2.5rem;
+}
+
+/* Keep old class names for compatibility */
 .log-physical,
-.log-phys { color: var(--color-phys); font-weight: bold; }
-.log-magic { color: var(--color-magic); font-weight: bold; }
-.log-mixed { color: var(--color-skill); font-weight: bold; }
-.log-dtype { color: #334433; font-size: 0.65rem; }
+.log-phys { color: var(--color-phys); }
+.log-magic { color: var(--color-magic); }
+.log-mixed { color: var(--color-skill); }
 
 /* Monster column */
 .monster-list {
@@ -690,9 +902,9 @@ onUnmounted(() => {
 .monster-card:hover {
   background: rgba(255, 102, 68, 0.04);
 }
-.monster-name { font-size: 0.8rem; color: var(--text); }
+.monster-name { font-size: 0.9rem; color: var(--text); }
 .monster-tier {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   padding: 0 0.2rem;
   border: 1px solid currentColor;
 }
@@ -702,7 +914,7 @@ onUnmounted(() => {
 
 .empty-hint {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   padding: 0.5rem 0;
   text-align: center;
 }
@@ -725,12 +937,31 @@ onUnmounted(() => {
   max-width: 22rem;
   box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
 }
+.detail-modal {
+  min-width: 20rem;
+  max-width: 26rem;
+  max-height: 80vh;
+  overflow-y: auto;
+}
 .modal-title {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--text);
   margin-bottom: 0.9rem;
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.modal-class-tag {
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+.modal-tier-tag {
+  font-size: 0.8rem;
+  font-weight: normal;
+  padding: 0 0.25rem;
+  border: 1px solid currentColor;
 }
 
 .map-list-modal {
@@ -744,7 +975,7 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   padding: 0.45rem 0.65rem;
   cursor: pointer;
   display: flex;
@@ -756,24 +987,61 @@ onUnmounted(() => {
 .map-item.selected { border-color: var(--accent); color: var(--accent); }
 .map-item.locked { opacity: 0.45; cursor: not-allowed; }
 .map-item:not(.locked):hover { background: rgba(0, 255, 136, 0.05); }
-.locked-tag { color: var(--text-muted); font-size: 0.7rem; }
-.current-tag { color: var(--accent); font-size: 0.7rem; }
+.locked-tag { color: var(--text-muted); font-size: 0.8rem; }
+.current-tag { color: var(--accent); font-size: 0.8rem; }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.3rem 1rem;
-  margin-bottom: 0.9rem;
-  font-size: 0.82rem;
+/* Detail panel */
+.detail-section {
+  margin-bottom: 0.5rem;
 }
-.detail-label { color: var(--text-label); }
-.detail-sep {
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.15rem 0;
+  font-size: 0.92rem;
+}
+.detail-label {
+  color: var(--text-label);
+  flex-shrink: 0;
+}
+.detail-value {
+  text-align: right;
+  color: var(--text-value);
+}
+.detail-sep-line {
   color: var(--text-muted);
-  font-size: 0.7rem;
-  grid-column: 1 / -1;
+  font-size: 0.8rem;
   border-top: 1px solid var(--border);
   padding-top: 0.3rem;
   margin-top: 0.1rem;
+  margin-bottom: 0.3rem;
 }
 .val-hp { color: var(--color-hp); }
+
+/* Tooltip */
+.tooltip-wrap {
+  position: relative;
+}
+.tooltip-wrap.has-tip {
+  cursor: help;
+  border-bottom: 1px dotted var(--text-muted);
+}
+.tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
+}
+.tooltip-wrap:hover .tooltip-text {
+  display: block;
+}
 </style>

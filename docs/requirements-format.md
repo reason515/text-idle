@@ -297,6 +297,52 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 10: Battle UI Enhancement (Combat Log, Detail Panels, Crit System)
+
+**User Story**
+
+> As a player,
+> I want the combat log to display rich, detailed battle information with class-colored names, damage calculations, crit indicators, encounter narratives, rest progress, and battle separators,
+> So that I can analyze combat outcomes, understand damage formulas, and track the full battle lifecycle.
+
+**Design Reference (from design doc)**
+
+- **Name colors**: Hero names in combat log use their WoW class color (same as hero card).
+- **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
+- **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 15%. CritMultiplier = 1.5.
+- **Damage calculation detail**: Each log entry shows a sub-line: `ATK [raw] [x1.5 if crit] - [reduction]% [armor/resist] (Armor/Resist [value])`.
+- **Encounter message**: Each battle starts with "Your adventure party encountered [monster names]!" (Boss: "the fearsome [name]").
+- **Battle summary**: After combat ends, a summary line: "Victory! Defeated X monster(s) in Y round(s). EXP +N Gold +N" or "Defeat! ...".
+- **Rest phase in log**: Rest shows "Resting..." at start, periodic recovery status every 3 steps, "Rest complete." at end. Step interval 500ms.
+- **Battle separator**: Visual separator line between consecutive battles.
+- **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
+- **Character detail panel**: Left-label right-value alignment; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula.
+- **Monster detail panel**: Similar alignment; includes Armor/Resistance reduction percentages with tooltip showing formula.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Combat log is displaying actions | A hero performs an action | The hero's name is displayed in their WoW class color (e.g., Warrior in #C79C6E, Mage in #69CCF0) |
+| AC2 | Combat log is displaying actions | A hero deals physical damage (non-crit) | Damage number is white (#dddddd), normal weight |
+| AC3 | Combat log is displaying actions | A hero deals magic damage (non-crit) | Damage number is blue (#44aaff), normal weight |
+| AC4 | Combat log is displaying actions | A hero or monster scores a critical hit | Damage number is bold; a "CRIT!" marker appears next to the number |
+| AC5 | A hero has Agility 8 and class Warrior (k_PhysCrit=0.3) | Hero's physical crit rate is computed | PhysCrit = (5 + 8 * 0.3) / 100 = 7.4%; crit chance is correctly applied in combat |
+| AC6 | A Normal monster attacks | Crit is checked | Monster has 5% crit chance; Elite has 10%; Boss has 15% |
+| AC7 | Combat log shows a damage entry | Player views the log | A sub-line shows detailed calculation: ATK value, crit multiplier if applicable, reduction %, defense type and value |
+| AC8 | A new battle begins | Encounter is generated | The log shows "Your adventure party encountered [monster names]!" before combat actions start |
+| AC9 | A boss encounter begins | Boss fight starts | The log shows "Your adventure party encountered the fearsome [boss name]!" |
+| AC10 | Combat ends in victory | Battle concludes | The log shows a summary: "Victory! Defeated X monster(s) in Y round(s)." with EXP and Gold rewards |
+| AC11 | Combat ends in defeat | Battle concludes | The log shows "Defeat! Your party was overwhelmed after Y round(s). Exploration -10" |
+| AC12 | Squad wins a battle and has damaged heroes | Rest phase begins | The log shows "Resting... recovering HP and MP" followed by periodic recovery status and "Rest complete." |
+| AC13 | Rest phase is active | Recovery proceeds | Rest step interval is 500ms; every 3 steps a progress entry shows each hero's current HP / max HP |
+| AC14 | One battle ends and the next begins | Next encounter starts | A visual separator line appears in the log between the two battles |
+| AC15 | Player clicks a hero card | Hero detail modal opens | Attributes are displayed with label on the left and value on the right; primary and secondary attributes are shown in separate sections |
+| AC16 | Player views secondary attributes in hero detail | Mouse hovers over a secondary attribute value | A tooltip shows the calculation formula with actual attribute values and result |
+| AC17 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; defense section shows Armor, Armor Reduction%, Resistance, Resist Reduction% with tooltip formulas |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

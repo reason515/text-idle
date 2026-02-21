@@ -1,3 +1,7 @@
+import { getClassCritRates } from '../data/heroes.js'
+
+export const CRIT_MULTIPLIER = 1.5
+
 export const MAPS = [
   { id: 'elwynn-forest', name: 'Elwynn Forest', bossName: 'Hogger' },
   { id: 'westfall', name: 'Westfall', bossName: 'Edwin VanCleef' },
@@ -156,6 +160,8 @@ export function createMonster(template, options = {}) {
     armor: Math.round(base.armor * factor),
     resistance: Math.round(base.resistance * factor),
     skillChance: tier === 'normal' ? 0 : tier === 'elite' ? 0.35 : 0.55,
+    physCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.15,
+    spellCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.15,
   }
 }
 
@@ -200,6 +206,10 @@ export function applyDamage(rawDamage, damageType, target) {
 function heroCombatStats(hero) {
   const maxHP = 40 + hero.stamina * 8 + (hero.level || 1) * 4
   const maxMP = 10 + hero.intellect * 3 + hero.spirit * 2
+  const crit = getClassCritRates(hero.class, {
+    agility: hero.agility,
+    intellect: hero.intellect,
+  })
   return {
     id: hero.id,
     name: hero.name,
@@ -210,6 +220,8 @@ function heroCombatStats(hero) {
     resistance: hero.intellect,
     physAtk: Math.max(1, Math.round(hero.strength * 1.4 + hero.agility * 0.6)),
     spellPower: Math.max(0, Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)),
+    physCrit: crit.physCrit,
+    spellCrit: crit.spellCrit,
     maxHP,
     currentHP: hero.currentHP ?? maxHP,
     maxMP,
@@ -321,20 +333,34 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const target = pickTarget(actor, heroUnits, monsterUnits)
       if (!target) break
       const action = actorDamage(actor, rng)
-      const damage = applyDamage(action.rawDamage, action.damageType, target)
+      const critRate = action.damageType === 'magic'
+        ? (actor.spellCrit || 0)
+        : (actor.physCrit || 0)
+      const isCrit = rng() < critRate
+      const rawAfterCrit = isCrit
+        ? Math.round(action.rawDamage * CRIT_MULTIPLIER)
+        : action.rawDamage
+      const damage = applyDamage(rawAfterCrit, action.damageType, target)
       target.currentHP = damage.nextHP
       turnActedByRound[round].push(actor.id)
+      const targetDefense = action.damageType === 'magic'
+        ? (target.resistance || 0)
+        : (target.armor || 0)
       log.push({
         round,
         actorId: actor.id,
         actorName: actor.name,
+        actorClass: actor.class || null,
         action: action.action,
         targetId: target.id,
         targetName: target.name,
+        targetClass: target.class || null,
         damageType: damage.damageType,
         rawDamage: action.rawDamage,
+        isCrit,
         finalDamage: damage.finalDamage,
         reduction: damage.reduction,
+        targetDefense,
         targetHPAfter: target.currentHP,
       })
     }
