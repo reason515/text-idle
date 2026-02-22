@@ -96,7 +96,9 @@
           <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
           <template v-for="(entry, i) in displayedLog" :key="i">
             <div v-if="entry.type === 'separator'" class="log-separator"></div>
-            <div v-else-if="entry.type === 'encounter'" class="log-encounter">{{ entry.message }}</div>
+            <div v-else-if="entry.type === 'encounter'" class="log-encounter">
+              Your adventure party encountered <template v-if="entry.isBoss">the fearsome </template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">, </span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>!
+            </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
               <template v-if="entry.outcome === 'victory'">
                 Victory! Defeated {{ entry.monsterCount }} monster(s) in {{ entry.rounds }} round(s).
@@ -563,12 +565,12 @@ async function runCombatLoop() {
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, loot: [] }
 
-    const monsterNames = monsters.map((m) => m.name).join(', ')
     const isBossEncounter = monsters.some((m) => m.tier === 'boss')
-    const encounterMsg = isBossEncounter
-      ? `Your adventure party encountered the fearsome ${monsterNames}!`
-      : `Your adventure party encountered ${monsterNames}!`
-    addLogEntry({ type: 'encounter', message: encounterMsg })
+    addLogEntry({
+      type: 'encounter',
+      monsters: monsters.map((m) => ({ name: m.name, tier: m.tier })),
+      isBoss: isBossEncounter,
+    })
     await scrollLog()
     await sleepMs(1000)
 
