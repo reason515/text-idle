@@ -319,6 +319,7 @@ Then [expected result/verifiable behavior].
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
 - **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, Resistance, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. Warrior/Rogue/Hunter resource max is fixed 100.
 - **Monster detail panel**: Similar alignment; includes Armor/Resistance with tooltip "Absorbs X damage per hit".
+- **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 
 **Acceptance Criteria**
 

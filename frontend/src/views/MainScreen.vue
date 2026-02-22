@@ -23,6 +23,7 @@
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
             class="hero-card"
+            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
@@ -58,6 +59,7 @@
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
             class="monster-card"
+            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId }"
             @click="selectedMonster = m"
           >
             <div class="card-top">
@@ -356,6 +358,8 @@ const selectedMonster = ref(null)
 const logListEl = ref(null)
 const isRunning = ref(false)
 const isPaused = ref(false)
+const currentActorId = ref(null)
+const currentTargetId = ref(null)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
@@ -470,10 +474,14 @@ async function sleepMsRespectingPause(ms) {
 }
 
 async function animateCombatLog(result) {
+  currentActorId.value = null
+  currentTargetId.value = null
   for (const entry of result.log) {
     if (!isRunning.value) return
     await sleepMsRespectingPause(2000)
     if (!isRunning.value) return
+    currentActorId.value = entry.actorId ?? null
+    currentTargetId.value = entry.finalDamage > 0 && entry.targetId ? entry.targetId : null
     addLogEntry(entry)
 
     const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
@@ -491,6 +499,8 @@ async function animateCombatLog(result) {
 
     await scrollLog()
   }
+  currentActorId.value = null
+  currentTargetId.value = null
 }
 
 async function autoRest(heroesAfter, { isDefeat = false } = {}) {
@@ -707,6 +717,10 @@ onUnmounted(() => {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+@keyframes damage-flash {
+  0% { background-color: rgba(255, 68, 68, 0.35); }
+  100% { background-color: var(--bg-dark); }
+}
 
 .btn-logout {
   background: var(--bg-dark);
@@ -827,16 +841,25 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
 }
 .hero-card {
   border: 1px solid;
   padding: 0.35rem 0.45rem;
   background: var(--bg-dark);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 .hero-card:hover {
   background: rgba(0, 255, 136, 0.04);
+}
+.hero-card.acting {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px rgba(0, 255, 170, 0.85), 0 0 12px rgba(0, 255, 170, 0.35);
+}
+.hero-card.targetHit {
+  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
+  animation: damage-flash 0.4s ease-out;
 }
 .card-top {
   display: flex;
@@ -1040,16 +1063,25 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
 }
 .monster-card {
   border: 1px solid var(--border);
   padding: 0.35rem 0.45rem;
   background: var(--bg-dark);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 .monster-card:hover {
   background: rgba(255, 102, 68, 0.04);
+}
+.monster-card.acting {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px rgba(0, 255, 170, 0.85), 0 0 12px rgba(0, 255, 170, 0.35);
+}
+.monster-card.targetHit {
+  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
+  animation: damage-flash 0.4s ease-out;
 }
 .monster-name { font-size: 0.9rem; color: var(--text); }
 .monster-tier {
