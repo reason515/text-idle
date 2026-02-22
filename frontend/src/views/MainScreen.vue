@@ -35,9 +35,9 @@
             <div class="bar-row">
               <span class="bar-label">HP</span>
               <div class="bar-track">
-                <div class="bar-fill hp-fill" :style="{ width: hpPct(hero) + '%' }"></div>
+                <div class="bar-fill hp-fill" :style="{ width: hpPct(hero) + '%', background: hpBarColor(hpPct(hero)) }"></div>
               </div>
-              <span class="bar-num">{{ hero.currentHP }}/{{ hero.maxHP }}</span>
+              <span class="bar-num" :style="{ color: hpBarColor(hpPct(hero)) }">{{ hero.currentHP }}/{{ hero.maxHP }}</span>
             </div>
             <div class="bar-row">
               <span class="bar-label">{{ resourceLabel(hero.class) }}</span>
@@ -69,9 +69,9 @@
             <div class="bar-row">
               <span class="bar-label">HP</span>
               <div class="bar-track">
-                <div class="bar-fill monster-hp-fill" :style="{ width: monsterHpPct(m) + '%' }"></div>
+                <div class="bar-fill monster-hp-fill" :style="{ width: monsterHpPct(m) + '%', background: hpBarColor(monsterHpPct(m)) }"></div>
               </div>
-              <span class="bar-num">{{ m.currentHP }}/{{ m.maxHP }}</span>
+              <span class="bar-num" :style="{ color: hpBarColor(monsterHpPct(m)) }">{{ m.currentHP }}/{{ m.maxHP }}</span>
             </div>
           </div>
           <div v-if="currentMonsters.length === 0" class="empty-hint">No active encounter.</div>
@@ -116,7 +116,7 @@
                 <template v-for="(h, i) in entry.heroes" :key="h.id">
                   <span v-if="i > 0" class="log-rest-sep"> | </span>
                   <span :style="{ color: classColor(h.class) }">{{ h.name }}</span>
-                  : {{ h.currentHP }}/{{ h.maxHP }} HP
+                  : <span :style="{ color: hpBarColor(hpPct(h)) }">{{ h.currentHP }}/{{ h.maxHP }}</span> HP
                 </template>
               </template>
               <template v-else>{{ entry.message }}</template>
@@ -151,7 +151,7 @@
                 <span
                   :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
                 >{{ entry.targetName }}</span>
-                HP: {{ entry.targetHPBefore }} -> {{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}
+                HP: {{ entry.targetHPBefore }} -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
               </div>
             </div>
           </template>
@@ -196,7 +196,7 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">HP</span>
-              <span class="detail-value val-hp">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
+              <span class="detail-value val-hp" :style="{ color: hpBarColor(hpPct(selectedHero)) }">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">{{ resourceLabel(selectedHero.class) }}</span>
@@ -235,7 +235,7 @@
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">HP</span>
-              <span class="detail-value val-hp">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
+              <span class="detail-value val-hp" :style="{ color: hpBarColor(monsterHpPct(selectedMonster)) }">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Damage Type</span>
@@ -297,6 +297,7 @@ import {
   startRestPhase,
   applyRestStep,
 } from '../game/combat.js'
+import { hpBarColor } from '../ui/hpBarColor.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: 'Rage', fillClass: 'rage-fill' },

@@ -53,6 +53,20 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(card.locator('.bar-row').nth(1)).toContainText('Rage')
   })
 
+  test('HP bar color reflects health: green when healthy', async ({ page }) => {
+    const email = `hp-color-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const hpFill = page.locator('.hero-card .hp-fill').first()
+    await expect(hpFill).toBeVisible({ timeout: 5000 })
+    const bg = await hpFill.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(bg).toMatch(/rgb\(68,\s*255,\s*136\)|rgba\(68,\s*255,\s*136/)
+  })
+
   test('hero detail modal opens with primary and secondary attributes', async ({ page }) => {
     const email = `hero-modal-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
