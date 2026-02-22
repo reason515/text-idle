@@ -264,6 +264,14 @@ describe('heroes', () => {
       expect(values.HP).toBe(12) // 10 + 0*0 + 1*2 = 12 (no coef, attrs all 0)
       expect(formulas.length).toBeGreaterThan(0)
     })
+
+    it('uses heroAttrs when provided for leveled hero display', () => {
+      const hero = { class: 'Warrior', strength: 15, agility: 4, intellect: 2, stamina: 14, spirit: 3, level: 2 }
+      const { values } = computeSecondaryAttributes('Warrior', 2, hero)
+      expect(values.HP).toBe(10 + 14 * 4 + 2 * 2)
+      expect(values.PhysAtk).toBe(14.8) // 5 + 15*0.65 rounded to 1 decimal
+      expect(values.Armor).toBe(12) // 15*0.8 = 12
+    })
   })
 
   describe('getResourceDisplay', () => {
@@ -344,6 +352,8 @@ describe('heroes', () => {
         name: 'Varian Wrynn',
         class: 'Warrior',
         level: 1,
+        xp: 0,
+        unassignedPoints: 0,
         strength: 10,
         agility: 4,
         intellect: 2,

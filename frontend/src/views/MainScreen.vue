@@ -46,6 +46,13 @@
               </div>
               <span class="bar-num">{{ hero.currentMP }}/{{ hero.maxMP }}</span>
             </div>
+            <div v-if="(hero.level || 1) < 60" class="bar-row xp-row">
+              <span class="bar-label">XP</span>
+              <div class="bar-track">
+                <div class="bar-fill xp-fill" :style="{ width: xpPct(hero) + '%' }"></div>
+              </div>
+              <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
+            </div>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">No heroes. Recruit to begin.</div>
         </div>
@@ -99,6 +106,12 @@
             <div v-else-if="entry.type === 'roundSeparator'" class="log-separator log-separator-round"></div>
             <div v-else-if="entry.type === 'encounter'" class="log-encounter">
               Your adventure party encountered <template v-if="entry.isBoss">the fearsome </template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">, </span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>!
+            </div>
+            <div v-else-if="entry.type === 'levelUp'" class="log-levelup">
+              <span class="log-levelup-icon">&#9733;</span>
+              <span :style="{ color: classColor(entry.heroClass) }">{{ entry.heroName }}</span>
+              <span class="log-levelup-text">reached Level {{ entry.newLevel }}!</span>
+              <span class="log-levelup-bonus">+{{ entry.pointsGained }} attribute points</span>
             </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
               <template v-if="entry.outcome === 'victory'">
@@ -196,7 +209,11 @@
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">Level</span>
-              <span class="detail-value">{{ selectedHero.level || 1 }}</span>
+              <span class="detail-value">{{ selectedHero.level || 1 }}{{ (selectedHero.level || 1) >= 60 ? ' (max)' : '' }}</span>
+            </div>
+            <div v-if="(selectedHero.level || 1) < 60" class="detail-row">
+              <span class="detail-label">XP</span>
+              <span class="detail-value val-exp">{{ selectedHero.xp ?? 0 }} / {{ xpRequiredFor(selectedHero) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">HP</span>
@@ -208,10 +225,26 @@
             </div>
           </div>
           <div class="detail-sep-line">Primary Attributes</div>
+          <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section attr-alloc">
+            <div class="detail-row">
+              <span class="detail-label">Unassigned</span>
+              <span class="detail-value">{{ selectedHero.unassignedPoints }}</span>
+            </div>
+            <div class="attr-buttons-hint">Click + to assign a point</div>
+          </div>
           <div class="detail-section">
-            <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row">
+            <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
               <span class="detail-label">{{ attr.label }}</span>
-              <span class="detail-value">{{ selectedHero[attr.key] || 0 }}</span>
+              <span class="detail-value">
+                <button
+                  v-if="(selectedHero.unassignedPoints || 0) > 0"
+                  type="button"
+                  class="btn btn-sm attr-btn"
+                  :title="'Add 1 to ' + attr.label"
+                  @click="assignPoint(attr.key)"
+                >+</button>
+                <span class="attr-val">{{ selectedHero[attr.key] || 0 }}</span>
+              </span>
             </div>
           </div>
           <div class="detail-sep-line">Secondary Attributes</div>
@@ -288,7 +321,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP } from '../data/heroes.js'
+import { getSquad, saveSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -301,6 +334,7 @@ import {
   startRestPhase,
   applyRestStep,
 } from '../game/combat.js'
+import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 
 const RESOURCE_MAP = {
@@ -377,7 +411,11 @@ const heroIds = computed(() => new Set(displayHeroes.value.map((h) => h.id)))
 
 const heroSecondaryAttrs = computed(() => {
   if (!selectedHero.value) return []
-  return computeSecondaryAttributes(selectedHero.value.class, selectedHero.value.level || 1).formulas
+  return computeSecondaryAttributes(
+    selectedHero.value.class,
+    selectedHero.value.level || 1,
+    selectedHero.value
+  ).formulas
 })
 
 function isMapUnlocked(mapId) {
@@ -395,18 +433,31 @@ function getMaxResource(heroClass, intellect, spirit) {
 function computeHeroDisplay(hero) {
   const maxHP = computeHeroMaxHP(hero)
   const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
+  const level = hero.level ?? 1
+  const xpRequired = level >= 60 ? 0 : calculateXPRequired(level)
   return {
     ...hero,
     maxHP,
     maxMP,
     currentHP: hero.currentHP ?? maxHP,
     currentMP: hero.currentMP ?? maxMP,
+    xpRequired,
   }
 }
 
 function hpPct(hero) {
   if (!hero.maxHP) return 100
   return Math.max(0, Math.round((hero.currentHP / hero.maxHP) * 100))
+}
+function xpPct(hero) {
+  const req = hero.xpRequired
+  if (!req || req <= 0) return 100
+  const xp = hero.xp ?? 0
+  return Math.min(100, Math.round((xp / req) * 100))
+}
+function xpRequiredFor(hero) {
+  const lvl = hero.level ?? 1
+  return lvl >= 60 ? '-' : calculateXPRequired(lvl)
 }
 function mpPct(hero) {
   if (!hero.maxMP) return 100
@@ -432,7 +483,11 @@ async function scrollLog() {
 }
 
 function loadSquad() {
-  squad.value = getSquad()
+  squad.value = getSquad().map((h) => ({
+    ...h,
+    xp: h.xp ?? 0,
+    unassignedPoints: h.unassignedPoints ?? 0,
+  }))
   displayHeroes.value = squad.value.map(computeHeroDisplay)
 }
 function loadProgress() {
@@ -453,6 +508,15 @@ function selectMap(mapId) {
   saveProgress()
   showMapModal.value = false
 }
+function assignPoint(attr) {
+  const sh = squad.value.find((h) => h.id === selectedHero.value?.id)
+  if (!sh) return
+  if (!assignAttributePoint(sh, attr)) return
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
+}
+
 function goRecruit() {
   router.push('/character-select')
 }
@@ -601,6 +665,25 @@ async function runCombatLoop() {
         rewards: result.rewards,
       })
       await scrollLog()
+
+      const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
+      saveSquad(squad.value)
+      displayHeroes.value = squad.value.map(computeHeroDisplay)
+
+      for (let i = 0; i < squad.value.length; i += 1) {
+        const r = results[i]
+        if (r?.leveledUp && r.levelsGained > 0) {
+          const hero = squad.value[i]
+          addLogEntry({
+            type: 'levelUp',
+            heroName: hero.name,
+            heroClass: hero.class,
+            newLevel: hero.level,
+            pointsGained: r.levelsGained * 5,
+          })
+        }
+      }
+      if (results.some((r) => r?.leveledUp)) await scrollLog()
 
       const isBoss = monsters.some((m) => m.tier === 'boss')
       if (isBoss) {
@@ -937,6 +1020,7 @@ onUnmounted(() => {
 }
 .hp-fill { background: var(--color-hp); }
 .mp-fill { background: var(--color-mp); }
+.xp-fill { background: var(--color-exp); }
 .rage-fill { background: var(--color-rage); }
 .energy-fill { background: var(--color-energy); }
 .focus-fill { background: var(--color-focus); }
@@ -1002,6 +1086,32 @@ onUnmounted(() => {
 .log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
 .victory-text { color: var(--color-victory); }
+
+.log-levelup {
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0.4rem 0.5rem;
+  margin: 0.25rem 0;
+  background: rgba(255, 204, 68, 0.08);
+  border: 1px solid var(--color-gold);
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-gold);
+  text-shadow: 0 0 6px rgba(255, 204, 68, 0.4);
+}
+.log-levelup-icon {
+  font-size: 1rem;
+  color: var(--color-gold);
+}
+.log-levelup-text { color: var(--text); }
+.log-levelup-bonus {
+  color: var(--color-exp);
+  font-size: 0.82rem;
+  font-weight: normal;
+}
 .defeat-text { color: var(--color-defeat); }
 
 .log-rest {
@@ -1254,4 +1364,21 @@ onUnmounted(() => {
 .tooltip-wrap:hover .tooltip-text {
   display: block;
 }
+
+/* Attribute allocation */
+.attr-alloc { background: rgba(0, 255, 136, 0.04); padding: 0.35rem; border-radius: 4px; }
+.attr-buttons-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+.attr-row .detail-value { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
+.attr-btn {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.35rem;
+  min-width: 1.6rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  cursor: pointer;
+}
+.attr-btn:hover { background: rgba(0, 255, 136, 0.12); }
+.attr-val { min-width: 1.5rem; }
+.xp-row .bar-num { color: var(--color-exp); }
 </style>

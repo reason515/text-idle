@@ -264,3 +264,96 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.getByRole('button', { name: 'Explore Elite' })).not.toBeVisible()
   })
 })
+
+test.describe('Experience and Leveling (Example 11)', () => {
+  test('hero card shows XP bar when level < 60', async ({ page }) => {
+    const email = `xp-bar-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.hero-card .xp-row')).toBeVisible()
+    await expect(page.locator('.hero-card .xp-row')).toContainText('XP')
+    await expect(page.locator('.hero-card .xp-row .bar-num')).toContainText('/')
+  })
+
+  test('victory summary shows EXP reward', async ({ page }) => {
+    const email = `exp-reward-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 60000 })
+    const summaryText = await page.locator('.log-summary').first().textContent()
+    expect(summaryText).toMatch(/EXP \+/)
+  })
+
+  test('hero detail modal shows XP progress when level < 60', async ({ page }) => {
+    const email = `xp-modal-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'XP' })).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'XP' })).toContainText('/')
+  })
+
+  test('level-up is prominently shown in combat log when hero levels up', async ({ page }) => {
+    const email = `levelup-log-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].xp = 45
+        squad[0].level = 1
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+    await page.reload()
+
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 60000 })
+    await expect(page.locator('.log-levelup')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-levelup')).toContainText('Level 2')
+    await expect(page.locator('.log-levelup')).toContainText('attribute points')
+  })
+
+  test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
+    const email = `attr-alloc-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].unassignedPoints = 5
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+    await page.reload()
+
+    await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await expect(page.locator('.attr-alloc')).toBeVisible()
+    await expect(page.locator('.attr-alloc')).toContainText('Unassigned')
+    await expect(page.locator('.attr-btn').first()).toBeVisible()
+    await page.locator('.attr-btn').first().click()
+    await expect(page.locator('.attr-alloc')).toContainText('4')
+  })
+})

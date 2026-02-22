@@ -355,6 +355,42 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 11: Experience Gain and Leveling
+
+**User Story**
+
+> As a player,  
+> I want my heroes to gain experience from victorious battles and level up with distributable attribute points,  
+> So that I can grow my squad over time and customize each hero's build through attribute allocation.
+
+**Design Reference (from design doc)**
+
+- **Experience gain**: XP is granted **only on victory**; defeat grants no XP.
+- **XP distribution**: All heroes who participated in the battle **share XP equally**; each hero receives the same amount (total battle XP / number of participating heroes).
+- **XP source**: Monster kills contribute XP; monster level and tier (Normal/Elite/Boss) affect the XP amount per kill.
+- **Level-up condition**: A hero levels up automatically when their accumulated XP reaches the threshold for the current level.
+- **Level-up reward**: Each level-up grants **5 attribute points** that the player may freely assign to Strength, Agility, Intellect, Stamina, or Spirit.
+- **Max level**: 60; at max level XP no longer accumulates; total free attributes over 1–60 = `5 × (60 - 1) = 295`.
+- **XP curve (slower pace)**: `XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)`; e.g. Base_XP=50, Curve_Exponent=1.8 → 1→2 needs 50 XP, 10→11 needs ~2000+ XP, 30→31 needs ~20k+ XP. Early levels faster; mid/late levels slower to give players time to learn and optimize.
+- **Transparency**: XP bar and XP required for next level are visible to the player.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Squad wins a combat encounter | Victory is triggered | Each participating hero gains XP; XP amount is the same for all participating heroes (equal share of total battle XP) |
+| AC2 | Squad loses a combat encounter | Defeat is triggered | No hero gains XP from that encounter |
+| AC3 | Squad of 3 heroes wins a battle that yields 90 total XP | XP is distributed | Each of the 3 heroes receives 30 XP |
+| AC4 | Squad of 1 hero wins a battle that yields 50 total XP | XP is distributed | The single hero receives 50 XP |
+| AC5 | A hero's accumulated XP reaches the threshold for the current level | Level-up condition is met | The hero levels up automatically; the hero gains 5 unassigned attribute points |
+| AC6 | A hero has just leveled up and has 5 unassigned attribute points | Player opens the hero detail panel or attribute allocation UI | Player can assign the 5 points to Strength, Agility, Intellect, Stamina, or Spirit; assignment is saved when confirmed |
+| AC7 | A hero is at level 60 | The hero gains XP from a victorious battle | XP no longer accumulates for that hero; the hero does not level up further |
+| AC8 | Player views a hero's status (e.g., hero card or detail panel) | Player inspects the hero | An XP bar or equivalent shows current XP progress toward the next level; the XP required for the next level is visible |
+| AC9 | A battle is won with monsters of different tiers (Normal, Elite, Boss) | XP is calculated | Higher-tier monsters (Elite, Boss) contribute more XP per kill than Normal monsters; total battle XP reflects monster composition |
+| AC10 | A hero is at level 1 and needs 50 XP to reach level 2 (Base_XP=50) | The hero gains 50 XP | The hero levels up to level 2; XP resets or carries over according to the curve (e.g., excess XP toward level 3) |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

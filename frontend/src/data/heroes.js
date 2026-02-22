@@ -125,10 +125,20 @@ const NA = '-'
  * Compute secondary attributes for a class at given level (no equipment)
  * @param {string} heroClass - The hero's class
  * @param {number} level - Character level (default 1)
+ * @param {Object} [heroAttrs] - Optional hero object with strength, agility, intellect, stamina, spirit (for leveled heroes)
  * @returns {Object} { values: {...}, formulas: [...] } for display
  */
-export function computeSecondaryAttributes(heroClass, level = 1) {
-  const attrs = getInitialAttributes(heroClass)
+export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = null) {
+  const baseAttrs = getInitialAttributes(heroClass)
+  const attrs = heroAttrs
+    ? {
+        strength: heroAttrs.strength ?? baseAttrs.strength,
+        agility: heroAttrs.agility ?? baseAttrs.agility,
+        intellect: heroAttrs.intellect ?? baseAttrs.intellect,
+        stamina: heroAttrs.stamina ?? baseAttrs.stamina,
+        spirit: heroAttrs.spirit ?? baseAttrs.spirit,
+      }
+    : baseAttrs
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}
   const formulaMap = {}
@@ -368,6 +378,8 @@ export function createCharacter(hero) {
   return {
     ...hero,
     level: 1,
+    xp: 0,
+    unassignedPoints: 0,
     ...initialAttrs,
   }
 }
