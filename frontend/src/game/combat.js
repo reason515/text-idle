@@ -356,6 +356,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         round,
         actorId: actor.id,
         actorName: actor.name,
+        actorAgility: actor.agility ?? 0,
         actorClass: actor.class || null,
         actorTier: actor.tier || null,
         action: action.action,

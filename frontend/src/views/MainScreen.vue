@@ -130,6 +130,7 @@
                 class="log-actor"
                 :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
               >{{ entry.actorName }}</span>
+              <span v-if="entry.actorAgility != null" class="log-agi" :title="'Higher agility acts first'">(AGI {{ entry.actorAgility }})</span>
               <span class="log-sep">used</span>
               <span class="log-action" :class="entry.action === 'skill' ? 'log-skill' : ''">{{ entry.action }}</span>
               <span class="log-sep">on</span>
@@ -1039,6 +1040,11 @@ onUnmounted(() => {
 .log-action { color: var(--text-label); }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
 .log-actor { font-weight: bold; }
+.log-agi {
+  color: #99ccaa;
+  font-size: 0.75rem;
+  font-weight: normal;
+}
 .log-target { }
 
 /* Damage colors: physical = white, magic = blue */

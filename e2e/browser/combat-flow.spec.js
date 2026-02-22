@@ -143,6 +143,20 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(calcText).toContain('=')
   })
 
+  test('combat log shows actor agility when character or monster acts', async ({ page }) => {
+    const email = `agi-log-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('.log-agi').first()).toBeVisible()
+    const agiText = await page.locator('.log-agi').first().textContent()
+    expect(agiText).toMatch(/\(AGI \d+\)/)
+  })
+
   test('combat log shows target HP change', async ({ page }) => {
     const email = `target-hp-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

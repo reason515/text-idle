@@ -247,6 +247,28 @@ describe('combat progression and systems', () => {
     }
   })
 
+  it('log entries include actorAgility so player sees higher agility acts first', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 12, strength: 12 })]
+    const monsters = [
+      createMonster(
+        {
+          id: 'kobold-1',
+          name: 'Kobold Miner',
+          damageType: 'physical',
+          base: { hp: 24, physAtk: 4, spellPower: 0, agility: 6, armor: 1, resistance: 1 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
+    const heroAction = result.log.find((e) => e.actorName === 'Hero One')
+    expect(heroAction.actorAgility).toBe(12)
+    const monsterAction = result.log.find((e) => e.actorName === 'Kobold Miner')
+    if (monsterAction) {
+      expect(monsterAction.actorAgility).toBe(6)
+    }
+  })
+
   it('log entries include correct tier for elite and boss monsters', () => {
     const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 20 })]
     const eliteMonster = createMonster(
