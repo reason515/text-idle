@@ -7,6 +7,6 @@
 export function hpBarColor(pct) {
   if (pct <= 0) return '#888888'
   if (pct <= 25) return '#ff4444'
-  if (pct <= 75) return '#ffaa00'
+  if (pct <= 75) return '#ffdd66'
   return '#44ff88'
 }

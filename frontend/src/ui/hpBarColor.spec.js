@@ -13,9 +13,9 @@ describe('hpBarColor', () => {
   })
 
   it('returns yellow for injured (26-75%)', () => {
-    expect(hpBarColor(26)).toBe('#ffaa00')
-    expect(hpBarColor(50)).toBe('#ffaa00')
-    expect(hpBarColor(75)).toBe('#ffaa00')
+    expect(hpBarColor(26)).toBe('#ffdd66')
+    expect(hpBarColor(50)).toBe('#ffdd66')
+    expect(hpBarColor(75)).toBe('#ffdd66')
   })
 
   it('returns green for healthy (76-100%)', () => {
