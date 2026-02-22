@@ -95,7 +95,8 @@
         <div class="log-list" ref="logListEl">
           <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
           <template v-for="(entry, i) in displayedLog" :key="i">
-            <div v-if="entry.type === 'separator'" class="log-separator"></div>
+            <div v-if="entry.type === 'separator'" class="log-separator log-separator-battle"></div>
+            <div v-else-if="entry.type === 'roundSeparator'" class="log-separator log-separator-round"></div>
             <div v-else-if="entry.type === 'encounter'" class="log-encounter">
               Your adventure party encountered <template v-if="entry.isBoss">the fearsome </template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">, </span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>!
             </div>
@@ -479,7 +480,8 @@ async function sleepMsRespectingPause(ms) {
 async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
-  for (const entry of result.log) {
+  for (let i = 0; i < result.log.length; i++) {
+    const entry = result.log[i]
     if (!isRunning.value) return
     await sleepMsRespectingPause(2000)
     if (!isRunning.value) return
@@ -501,6 +503,14 @@ async function animateCombatLog(result) {
     }
 
     await scrollLog()
+
+    const nextEntry = result.log[i + 1]
+    const isLastOfRound = !nextEntry || nextEntry.round !== entry.round
+    if (isLastOfRound) {
+      addLogEntry({ type: 'roundSeparator' })
+      await scrollLog()
+      await sleepMsRespectingPause(2000)
+    }
   }
   currentActorId.value = null
   currentTargetId.value = null
@@ -963,8 +973,15 @@ onUnmounted(() => {
 }
 
 .log-separator {
-  border-top: 2px solid #224422;
   margin: 0.6rem 0;
+}
+.log-separator-battle {
+  border-top: 2px solid #336633;
+  margin: 0.8rem 0;
+}
+.log-separator-round {
+  border-top: 1px dashed #2a3a2a;
+  margin: 0.3rem 0;
 }
 
 .log-encounter {
