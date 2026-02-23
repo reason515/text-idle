@@ -308,6 +308,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Name colors**: Hero names in combat log use their WoW class color (same as hero card). Monster names use tier-based colors: Normal (#66aa88), Elite (#cc88ff), Boss (#ff6644). Monster name color is **consistent** whether the monster is acting or being targeted.
+- **Skill name and damage colors**: When a skill is used, the skill name and the damage dealt are displayed in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing.
 - **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
 - **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `ATK(raw) - Armor(defVal) = final` (or Resist for magic). All values in parentheses for consistency.
 - **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 15%. CritMultiplier = 1.5.
@@ -352,6 +353,7 @@ Then [expected result/verifiable behavior].
 | AC25 | Player opens hero detail modal | Hero has Stamina 9, Level 1, Warrior class | HP in basic info and HP in secondary attributes both show 48 (10 + 9*4 + 1*2); values are consistent |
 | AC26 | Combat log displays entries | Player views [Rx], used, on, for, (physical), (magic) | These elements use distinct colors/backgrounds for readability (e.g. #66aa88, #88bb99, #99ccaa) |
 | AC27 | Combat log displays an action | A hero or monster acts | The actor's Agility value is shown next to the actor name (e.g. "HeroName (AGI 12) used..."), so the player can see that higher agility acts first |
+| AC28 | Combat log displays a skill action | Player views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |
 
 ---
 
@@ -388,6 +390,73 @@ Then [expected result/verifiable behavior].
 | AC8 | Player views a hero's status (e.g., hero card or detail panel) | Player inspects the hero | An XP bar or equivalent shows current XP progress toward the next level; the XP required for the next level is visible |
 | AC9 | A battle is won with monsters of different tiers (Normal, Elite, Boss) | XP is calculated | Higher-tier monsters (Elite, Boss) contribute more XP per kill than Normal monsters; total battle XP reflects monster composition |
 | AC10 | A hero is at level 1 and needs 50 XP to reach level 2 (Base_XP=50) | The hero gains 50 XP | The hero levels up to level 2; XP resets or carries over according to the curve (e.g., excess XP toward level 3) |
+
+---
+
+## Example 12: Warrior Initial Skill Selection
+
+**User Story**
+
+> As a player,  
+> I want to choose one initial skill when recruiting a Warrior hero,  
+> So that I can shape the Warrior's role (Arms DPS, Fury sustain, or Protection tank) from the start.
+
+**Design Reference (from design doc)**
+
+- **Trigger**: When a Warrior hero joins the squad (during recruitment flow).
+- **Options**: Exactly 3 skills, one from each spec (Arms, Fury, Protection). Player must pick 1.
+- **Result**: The chosen skill becomes the Warrior's first and only skill until level 5 (when more skills unlock).
+- **Initial skills**:
+  | Spec | Skill | English | Cost | Effect |
+  |------|-------|---------|------|--------|
+  | Arms | 英勇打击 | Heroic Strike | 15 Rage | Single-target physical damage, 1.2x coefficient |
+  | Fury | 嗜血 | Bloodthirst | 20 Rage | Single-target physical damage 1.2x, heal 15% of damage dealt |
+  | Protection | 破甲 | Sunder Armor | 15 Rage | Single-target 0.8x damage, target Armor -8 for 3 rounds; if target already has Sunder debuff: refresh duration and deal 1.1x damage |
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player is recruiting a Warrior hero (e.g., from character selection or squad expansion) | Recruitment flow reaches the Warrior skill selection step | A skill selection UI is shown with exactly 3 options: Heroic Strike (Arms), Bloodthirst (Fury), Sunder Armor (Protection) |
+| AC2 | Player is on the Warrior initial skill selection screen | Player views each option | Each skill displays its name, spec label (Arms/Fury/Protection), cost, and effect summary |
+| AC3 | Player is on the Warrior initial skill selection screen | Player selects one skill (e.g., Bloodthirst) and confirms | The selected skill is assigned to the Warrior; the Warrior joins the squad with that skill as their only available skill |
+| AC4 | Player has recruited a Warrior with Heroic Strike | Player views the Warrior's skill list or combat UI | Heroic Strike is the only skill shown (until level 5 unlocks) |
+| AC5 | Player has recruited a Warrior with Bloodthirst | Player views the Warrior's skill list or combat UI | Bloodthirst is the only skill shown (until level 5 unlocks) |
+| AC6 | Player has recruited a Warrior with Sunder Armor | Player views the Warrior's skill list or combat UI | Sunder Armor is the only skill shown (until level 5 unlocks) |
+| AC7 | Player has not yet completed the skill selection | Player attempts to proceed without selecting | The flow does not complete; player must select one of the 3 skills before the Warrior joins the squad |
+
+---
+
+## Example 13: Warrior Initial Skills (Implementation and Use)
+
+**User Story**
+
+> As a player,  
+> I want my Warrior's initial skill to perform correctly in combat (damage, lifesteal, or armor debuff),  
+> So that my pre-configured tactics produce the expected outcomes and I can verify the skill mechanics from the combat log.
+
+**Design Reference (from design doc)**
+
+- **Rage**: Warriors start combat at 0 Rage; Rage gains from taking damage (+1 per 2 damage) and dealing damage (+1 per 4 damage); max 100. Skills consume Rage; insufficient Rage prevents use.
+- **Damage formula**: `rawDamage = PhysAtk * SkillCoeff * [1.5 if crit]`; `finalDamage = max(1, rawDamage - targetArmor)`.
+- **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage.
+- **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt.
+- **Sunder Armor**: 15 Rage, 0 CD. Base: 0.8x damage, target Armor -8 for 3 rounds. If target already has Sunder debuff: refresh duration and deal 1.1x damage instead.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Warrior has Heroic Strike, 20 Rage, PhysAtk 15, target has Armor 5 | Warrior uses Heroic Strike | 15 Rage is consumed; raw damage = 15 * 1.2 = 18; final = max(1, 18 - 5) = 13; combat log shows damage dealt |
+| AC2 | Warrior has Heroic Strike, 10 Rage | Warrior's turn and AI/tactics select Heroic Strike | Skill is not used (insufficient Rage); Warrior performs basic attack or waits instead |
+| AC3 | Warrior has Bloodthirst, 25 Rage, PhysAtk 20, target has Armor 3 | Warrior uses Bloodthirst | 20 Rage consumed; raw = 20 * 1.2 = 24; final = max(1, 24 - 3) = 21 damage; Warrior heals 21 * 0.15 = 3.15 (round as defined); combat log shows damage and heal |
+| AC4 | Warrior has Bloodthirst, 15 Rage | Warrior's turn and AI selects Bloodthirst | Skill is not used (insufficient Rage); Warrior performs basic attack or waits |
+| AC5 | Warrior has Sunder Armor, 20 Rage, target has no Sunder debuff, PhysAtk 12, target Armor 10 | Warrior uses Sunder Armor | 15 Rage consumed; 0.8x damage: raw = 12 * 0.8 = 9.6; final = max(1, 9.6 - 10) = 1; target gains Sunder debuff: Armor -8 for 3 rounds; combat log shows damage and debuff applied |
+| AC6 | Warrior has Sunder Armor, target already has Sunder debuff (Armor -8, 2 rounds remaining) | Warrior uses Sunder Armor again | 15 Rage consumed; 1.1x damage (refresh bonus): raw = 12 * 1.1 = 13.2; final = max(1, 13.2 - targetArmor); Sunder debuff duration refreshes to 3 rounds; combat log shows damage and debuff refreshed |
+| AC7 | Target has Sunder debuff (Armor -8) | Any physical damage is dealt to the target | Target's effective Armor is reduced by 8 for damage calculation; debuff expires after 3 rounds if not refreshed |
+| AC8 | Warrior uses their initial skill in combat | Combat log records the action | Log shows skill name, target, damage dealt (and heal for Bloodthirst, debuff for Sunder Armor); damage calculation sub-line is visible (ATK - Armor = final) |
+| AC9 | Warrior has Rage 0 at combat start | First turn begins | Warrior cannot use any Rage-costing skill; must use basic attack or wait to build Rage |
+| AC10 | Combat log displays a skill action | User views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |
 
 ---
 
