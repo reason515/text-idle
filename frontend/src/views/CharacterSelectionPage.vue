@@ -1,7 +1,13 @@
 <template>
   <div class="panel character-select-panel">
-    <h2>Choose Your Hero</h2>
-    <p class="subtitle">Select a hero to join your squad and begin the adventure.</p>
+    <template v-if="selectedHero && selectedHero.class === 'Warrior' && !selectedSkillId">
+      <h2>Choose Initial Skill</h2>
+      <p class="subtitle">Each spec grants a unique combat style. You must choose one before <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> joins your squad.</p>
+    </template>
+    <template v-else>
+      <h2>Choose Your Hero</h2>
+      <p class="subtitle">Select a hero to join your squad and begin the adventure.</p>
+    </template>
 
     <!-- Selection step -->
     <template v-if="!selectedHero">
@@ -41,10 +47,6 @@
     <!-- Warrior skill selection step -->
     <template v-else-if="selectedHero && selectedHero.class === 'Warrior' && !selectedSkillId">
       <div class="skill-selection-step">
-        <p class="skill-selection-title">
-          Choose an initial skill for <strong>{{ selectedHero.name }}</strong> (Warrior)
-        </p>
-        <p class="skill-selection-hint">Each spec grants a unique combat style. You must choose one before {{ selectedHero.name }} joins your squad.</p>
         <div class="skill-options">
           <button
             v-for="skill in warriorSkills"
@@ -400,7 +402,7 @@ function confirmSelection() {
   bottom: 100%;
   transform: translateX(-50%) translateY(-0.35rem);
   padding: 0.4rem 0.6rem;
-  font-family: var(--font-mono, monospace);
+  font-family: 'Ark Pixel', 'Press Start 2P', monospace;
   font-size: 0.72rem;
   line-height: 1.4;
   color: var(--text);
@@ -409,8 +411,6 @@ function confirmSelection() {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
-  max-width: 28rem;
-  white-space: normal;
   z-index: 10;
   pointer-events: none;
 }
@@ -517,17 +517,6 @@ function confirmSelection() {
 
 .skill-selection-step {
   margin-top: 0.5rem;
-}
-
-.skill-selection-title {
-  font-size: 1rem;
-  margin-bottom: 0.35rem;
-}
-
-.skill-selection-hint {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
 }
 
 .skill-options {
