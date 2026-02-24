@@ -74,13 +74,45 @@ export function getSunderDebuff(unit) {
 }
 
 /**
- * Get the effective armor of a unit, accounting for Sunder Armor debuff.
+ * Sum armor reduction from all debuffs (sunder, dazed, etc).
+ * @param {Object} unit
+ * @returns {number}
+ */
+function getTotalArmorReduction(unit) {
+  if (!Array.isArray(unit.debuffs)) return 0
+  return unit.debuffs
+    .filter((d) => d.armorReduction != null)
+    .reduce((sum, d) => sum + d.armorReduction, 0)
+}
+
+/**
+ * Get the effective armor of a unit, accounting for all armor-reducing debuffs.
  * @param {Object} unit
  * @returns {number}
  */
 export function getEffectiveArmor(unit) {
-  const sunder = getSunderDebuff(unit)
-  return Math.max(0, (unit.armor || 0) - (sunder ? sunder.armorReduction : 0))
+  return Math.max(0, (unit.armor || 0) - getTotalArmorReduction(unit))
+}
+
+/**
+ * Sum resistance reduction from all debuffs (splinter, etc).
+ * @param {Object} unit
+ * @returns {number}
+ */
+function getTotalResistanceReduction(unit) {
+  if (!Array.isArray(unit.debuffs)) return 0
+  return unit.debuffs
+    .filter((d) => d.resistanceReduction != null)
+    .reduce((sum, d) => sum + d.resistanceReduction, 0)
+}
+
+/**
+ * Get the effective resistance of a unit, accounting for all resistance-reducing debuffs.
+ * @param {Object} unit
+ * @returns {number}
+ */
+export function getEffectiveResistance(unit) {
+  return Math.max(0, (unit.resistance || 0) - getTotalResistanceReduction(unit))
 }
 
 /**

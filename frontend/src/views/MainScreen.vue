@@ -145,6 +145,10 @@
           <template v-for="(entry, i) in displayedLog" :key="i">
             <div v-if="entry.type === 'separator'" class="log-separator log-separator-battle"></div>
             <div v-else-if="entry.type === 'roundSeparator'" class="log-separator log-separator-round"></div>
+            <div v-else-if="entry.type === 'mapEntry'" class="log-map-entry">
+              <span class="log-map-entry-label">Arriving at {{ entry.mapName }}:</span>
+              <span class="log-map-entry-desc">{{ entry.description }}</span>
+            </div>
             <div v-else-if="entry.type === 'encounter'" class="log-encounter">
               Your adventure party encountered <template v-if="entry.isBoss">the fearsome </template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">, </span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>!
             </div>
@@ -166,6 +170,20 @@
               <template v-else>
                 Draw after {{ entry.rounds }} round(s).
               </template>
+            </div>
+            <div v-else-if="entry.type === 'dot'" class="log-entry log-dot">
+              <span class="log-round">[R{{ entry.round }}]</span>
+              <span
+                class="log-target"
+                :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+              >{{ entry.targetName }}</span>
+              <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
+              <span class="log-sep">ticks for</span>
+              <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
+              <span class="log-sep">HP:</span>
+              <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
+              <span class="log-sep">-></span>
+              <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
@@ -220,11 +238,15 @@
               </div>
               <div v-if="entry.debuffApplied" class="log-debuff">
                 <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                <span class="log-debuff-name"> Sunder Armor</span>: Armor -{{ entry.debuffArmorReduction }} for {{ entry.debuffDuration }} rounds
+                <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
+                <template v-if="entry.debuffArmorReduction != null"> Armor -{{ entry.debuffArmorReduction }}</template>
+                <template v-if="entry.debuffResistanceReduction != null"> Resistance -{{ entry.debuffResistanceReduction }}</template>
+                <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} damage/round</template>
+                for {{ entry.debuffDuration }} rounds
               </div>
               <div v-if="entry.debuffRefreshed" class="log-debuff">
                 <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                <span class="log-debuff-name"> Sunder Armor</span> refreshed ({{ entry.debuffDuration }} rounds)
+                <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: 'Debuff' }).name }}</span> refreshed ({{ entry.debuffDuration }} rounds)
               </div>
             </div>
           </template>
@@ -379,6 +401,24 @@
               <span class="detail-value">{{ selectedMonster.agility }}</span>
             </div>
           </div>
+          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-sep-line">Skill</div>
+          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Skill</span>
+              <span class="detail-value skill-spec-tag">{{ getMonsterSkillDisplay(selectedMonster.skill).name }}</span>
+            </div>
+            <div class="detail-row skill-desc-row">
+              <span class="skill-desc-text">{{ getMonsterSkillDisplay(selectedMonster.skill).effectDesc }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Skill Chance</span>
+              <span class="detail-value">{{ Math.round((selectedMonster.skillChance ?? 0) * 100) }}%</span>
+            </div>
+            <div v-if="getMonsterSkillDisplay(selectedMonster.skill).cooldown" class="detail-row">
+              <span class="detail-label">Cooldown</span>
+              <span class="detail-value">{{ getMonsterSkillDisplay(selectedMonster.skill).cooldown }} rounds</span>
+            </div>
+          </div>
           <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">Debuffs</div>
           <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedMonster)" :key="d.type" class="detail-row">
@@ -431,6 +471,7 @@ import {
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 
 const RESOURCE_MAP = {
@@ -649,6 +690,10 @@ function getHeroSkillDisplay(skillId) {
   return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
 }
 
+function getMonsterSkillDisplay(skillId) {
+  return getMonsterSkillById(skillId) ?? { name: '', effectDesc: '', cooldown: 0 }
+}
+
 function goRecruit() {
   router.push('/character-select')
 }
@@ -674,6 +719,16 @@ async function sleepMsRespectingPause(ms) {
   }
 }
 
+function buildDebuffFromEntry(entry) {
+  const type = entry.debuffType ?? 'sunder'
+  const debuff = { type, remainingRounds: entry.debuffDuration ?? 3 }
+  if (entry.debuffArmorReduction != null) debuff.armorReduction = entry.debuffArmorReduction
+  if (entry.debuffResistanceReduction != null) debuff.resistanceReduction = entry.debuffResistanceReduction
+  if (entry.debuffDamagePerRound != null) debuff.damagePerRound = entry.debuffDamagePerRound
+  if (entry.debuffDamageType != null) debuff.damageType = entry.debuffDamageType
+  return debuff
+}
+
 async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
@@ -683,11 +738,13 @@ async function animateCombatLog(result) {
     await sleepMsRespectingPause(2000)
     if (!isRunning.value) return
     currentActorId.value = entry.actorId ?? null
-    currentTargetId.value = entry.finalDamage > 0 && entry.targetId ? entry.targetId : null
+    currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
     addLogEntry(entry)
 
-    if (entry.targetId && entry.finalDamage > 0) {
-      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : 'Skill') : null)
+    if (entry.type === 'dot') {
+      pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
+    } else if (entry.targetId && entry.finalDamage > 0) {
+      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : 'Skill') : null)
       pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, {
         skillName: skillName ?? null,
         type: 'damage',
@@ -698,17 +755,18 @@ async function animateCombatLog(result) {
       pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
     }
 
+    const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
+
     const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
     if (mi >= 0) {
       const updated = [...currentMonsters.value]
-      updated[mi] = { ...updated[mi], currentHP: Math.max(0, entry.targetHPAfter) }
+      updated[mi] = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
       if (entry.debuffApplied || entry.debuffRefreshed) {
+        const newDebuff = buildDebuffFromEntry(entry)
         const debuffs = [...(updated[mi].debuffs || [])]
-        const existing = debuffs.find((d) => d.type === 'sunder')
-        const newDebuff = { type: 'sunder', armorReduction: entry.debuffArmorReduction ?? 8, remainingRounds: entry.debuffDuration ?? 3 }
+        const existing = debuffs.find((d) => d.type === newDebuff.type)
         if (existing) {
-          existing.remainingRounds = newDebuff.remainingRounds
-          existing.armorReduction = newDebuff.armorReduction
+          Object.assign(existing, newDebuff)
         } else {
           debuffs.push(newDebuff)
         }
@@ -719,17 +777,16 @@ async function animateCombatLog(result) {
     let updated = [...displayHeroes.value]
     const hi = updated.findIndex((h) => h.id === entry.targetId)
     if (hi >= 0) {
-      updated[hi] = { ...updated[hi], currentHP: Math.max(0, entry.targetHPAfter) }
+      updated[hi] = { ...updated[hi], currentHP: Math.max(0, targetHpAfter ?? updated[hi].currentHP) }
       if (entry.targetRageAfter !== undefined) {
         updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
       }
       if (entry.debuffApplied || entry.debuffRefreshed) {
+        const newDebuff = buildDebuffFromEntry(entry)
         const debuffs = [...(updated[hi].debuffs || [])]
-        const existing = debuffs.find((d) => d.type === 'sunder')
-        const newDebuff = { type: 'sunder', armorReduction: entry.debuffArmorReduction ?? 8, remainingRounds: entry.debuffDuration ?? 3 }
+        const existing = debuffs.find((d) => d.type === newDebuff.type)
         if (existing) {
-          existing.remainingRounds = newDebuff.remainingRounds
-          existing.armorReduction = newDebuff.armorReduction
+          Object.assign(existing, newDebuff)
         } else {
           debuffs.push(newDebuff)
         }
@@ -802,13 +859,34 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
 
 async function runCombatLoop() {
   let isFirstBattle = true
+  let lastMapId = null
   while (isRunning.value) {
     if (squad.value.length === 0) {
       await sleepMs(1000)
       continue
     }
 
-    if (!isFirstBattle) {
+    const currentMapId = progress.value.currentMapId
+    const isNewMap = currentMapId !== lastMapId
+
+    if (isNewMap) {
+      if (!isFirstBattle) {
+        addLogEntry({ type: 'separator' })
+        await scrollLog()
+        await sleepMs(300)
+      }
+      const map = MAPS.find((m) => m.id === currentMapId)
+      if (map?.description) {
+        addLogEntry({
+          type: 'mapEntry',
+          mapName: map.name,
+          description: map.description,
+        })
+        await scrollLog()
+        await sleepMs(1800)
+      }
+      lastMapId = currentMapId
+    } else if (!isFirstBattle) {
       addLogEntry({ type: 'separator' })
       await scrollLog()
       await sleepMs(300)
@@ -1256,6 +1334,26 @@ onUnmounted(() => {
 .log-separator-round {
   border-top: 1px dashed #2a3a2a;
   margin: 0.3rem 0;
+}
+
+.log-map-entry {
+  font-size: 0.84rem;
+  padding: 0.4rem 0.5rem;
+  margin: 0.25rem 0;
+  background: rgba(68, 102, 136, 0.12);
+  border-left: 3px solid #4a6a8a;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-muted);
+}
+.log-map-entry-label {
+  color: var(--color-gold);
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.log-map-entry-desc {
+  font-style: italic;
+  color: var(--text);
 }
 
 .log-encounter {

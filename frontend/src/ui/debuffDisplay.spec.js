@@ -20,6 +20,21 @@ describe('debuffDisplay', () => {
     it('returns generic rounds for unknown type', () => {
       expect(getDebuffTip({ type: 'unknown', remainingRounds: 5 })).toBe('5 round(s)')
     })
+    it('returns Dazed tip with armor reduction', () => {
+      expect(getDebuffTip({ type: 'dazed', armorReduction: 3, remainingRounds: 2 })).toBe(
+        'Armor -3 for 2 round(s)'
+      )
+    })
+    it('returns Splinter tip with resistance reduction', () => {
+      expect(getDebuffTip({ type: 'splinter', resistanceReduction: 2, remainingRounds: 2 })).toBe(
+        'Resistance -2 for 2 round(s)'
+      )
+    })
+    it('returns Bleed tip with damage per round', () => {
+      expect(getDebuffTip({ type: 'bleed', damagePerRound: 3, remainingRounds: 2 })).toBe(
+        '3 damage/round for 2 round(s)'
+      )
+    })
   })
 
   describe('unitDebuffs', () => {

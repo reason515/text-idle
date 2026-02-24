@@ -46,6 +46,19 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
   })
 
+  test('map entry description appears when entering new map', async ({ page }) => {
+    const email = `map-entry-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const mapEntry = page.locator('.log-map-entry')
+    await expect(mapEntry).toBeVisible({ timeout: 5000 })
+    await expect(mapEntry).toContainText('Arriving at Elwynn Forest')
+    await expect(mapEntry).toContainText('peaceful woodland')
+  })
+
   test('hero card shows name, class, level and resource bars', async ({ page }) => {
     const email = `hero-card-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

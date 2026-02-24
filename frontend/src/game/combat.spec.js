@@ -50,6 +50,14 @@ describe('combat progression and systems', () => {
     expect(getRecruitLimit(progress)).toBe(1)
   })
 
+  it('each map has a description for combat log map entry', () => {
+    for (const map of MAPS) {
+      expect(map.description).toBeDefined()
+      expect(typeof map.description).toBe('string')
+      expect(map.description.length).toBeGreaterThan(0)
+    }
+  })
+
   it('Example5: normal kill gives less progress than elite kill', () => {
     const progress = createInitialProgress()
     const afterNormal = addExplorationProgress(progress, 'normal')
@@ -307,6 +315,86 @@ describe('combat progression and systems', () => {
     }
   })
 
+  it('monster skill has cooldown: cannot use skill next round', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 5, strength: 20 })]
+    const eliteMonster = createMonster(
+      {
+        id: 'geomancer',
+        name: 'Kobold Geomancer',
+        damageType: 'magic',
+        skill: 'stone-shard',
+        base: { hp: 200, physAtk: 0, spellPower: 10, agility: 6, armor: 1, resistance: 1 },
+      },
+      { tier: 'elite', level: 1 }
+    )
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes, monsters: [eliteMonster], rng, maxRounds: 4 })
+    const skillEntries = result.log.filter((e) => e.skillId === 'stone-shard')
+    const roundGaps = skillEntries.map((e, i) => (i > 0 ? e.round - skillEntries[i - 1].round : 0))
+    for (const gap of roundGaps) {
+      if (gap > 0) expect(gap).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('monster skill applies debuff and DOT ticks in log', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 5, strength: 20 })]
+    const eliteMonster = createMonster(
+      {
+        id: 'cutpurse',
+        name: 'Defias Cutpurse',
+        damageType: 'physical',
+        skill: 'swift-cut',
+        base: { hp: 100, physAtk: 10, spellPower: 0, agility: 6, armor: 1, resistance: 1 },
+      },
+      { tier: 'elite', level: 1 }
+    )
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes, monsters: [eliteMonster], rng, maxRounds: 6 })
+    const skillEntry = result.log.find((e) => e.skillId === 'swift-cut')
+    expect(skillEntry).toBeDefined()
+    expect(skillEntry.debuffType).toBe('bleed')
+    expect(skillEntry.debuffDamagePerRound).toBe(3)
+    const dotEntry = result.log.find((e) => e.type === 'dot' && e.debuffType === 'bleed')
+    expect(dotEntry).toBeDefined()
+    expect(dotEntry.damage).toBe(3)
+  })
+
+  it('elite monster with skill: log entry has skillId and skillName when using skill', () => {
+    const heroes = [sampleHero({ id: 'h1', agility: 5, strength: 20 })]
+    const eliteMonster = createMonster(
+      {
+        id: 'geomancer',
+        name: 'Kobold Geomancer',
+        damageType: 'magic',
+        skill: 'stone-shard',
+        base: { hp: 100, physAtk: 0, spellPower: 10, agility: 6, armor: 1, resistance: 1 },
+      },
+      { tier: 'elite', level: 1 }
+    )
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes, monsters: [eliteMonster], rng, maxRounds: 5 })
+    const monsterSkillEntry = result.log.find(
+      (e) => e.actorName === 'Kobold Geomancer' && e.action === 'skill'
+    )
+    expect(monsterSkillEntry).toBeDefined()
+    expect(monsterSkillEntry.skillId).toBe('stone-shard')
+    expect(monsterSkillEntry.skillName).toBe('Stone Shard')
+  })
+
+  it('createMonster copies skill from template', () => {
+    const monster = createMonster(
+      {
+        id: 'hogger',
+        name: 'Hogger',
+        damageType: 'mixed',
+        skill: 'rend',
+        base: { hp: 90, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },
+      },
+      { tier: 'boss', level: 1 }
+    )
+    expect(monster.skill).toBe('rend')
+  })
+
   it('log entries include correct tier for elite and boss monsters', () => {
     const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 20 })]
     const eliteMonster = createMonster(
@@ -314,6 +402,7 @@ describe('combat progression and systems', () => {
         id: 'geomancer',
         name: 'Kobold Geomancer',
         damageType: 'magic',
+        skill: 'stone-shard',
         base: { hp: 20, physAtk: 0, spellPower: 5, agility: 4, armor: 1, resistance: 1 },
       },
       { tier: 'elite', level: 1 }
@@ -327,6 +416,7 @@ describe('combat progression and systems', () => {
         id: 'hogger',
         name: 'Hogger',
         damageType: 'mixed',
+        skill: 'rend',
         base: { hp: 20, physAtk: 5, spellPower: 3, agility: 4, armor: 1, resistance: 1 },
       },
       { tier: 'boss', level: 1 }

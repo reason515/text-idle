@@ -4,18 +4,45 @@ import {
   rageFromDamageTaken,
   rageFromDamageDealt,
   getEffectiveArmor,
+  getEffectiveResistance,
   tickDebuffs,
   executeWarriorSkill,
 } from './warriorSkills.js'
+import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
 export const MAPS = [
-  { id: 'elwynn-forest', name: 'Elwynn Forest', bossName: 'Hogger' },
-  { id: 'westfall', name: 'Westfall', bossName: 'Edwin VanCleef' },
-  { id: 'duskwood', name: 'Duskwood', bossName: 'Stitches' },
-  { id: 'redridge-mountains', name: 'Redridge Mountains', bossName: 'Kazon' },
-  { id: 'stranglethorn-vale', name: 'Stranglethorn Vale', bossName: 'King Bangalash' },
+  {
+    id: 'elwynn-forest',
+    name: 'Elwynn Forest',
+    bossName: 'Hogger',
+    description: 'A peaceful woodland where young adventurers begin their journey. Wolves and kobolds lurk among the ancient oaks.',
+  },
+  {
+    id: 'westfall',
+    name: 'Westfall',
+    bossName: 'Edwin VanCleef',
+    description: 'Golden wheat fields stretch to the horizon. The Defias Brotherhood has turned this once-prosperous land into a bandit stronghold.',
+  },
+  {
+    id: 'duskwood',
+    name: 'Duskwood',
+    bossName: 'Stitches',
+    description: 'A cursed forest shrouded in eternal twilight. Undead and worgen roam the twisted paths.',
+  },
+  {
+    id: 'redridge-mountains',
+    name: 'Redridge Mountains',
+    bossName: 'Kazon',
+    description: 'Rugged peaks and deep valleys. Blackrock orcs and giant spiders guard the mountain passes.',
+  },
+  {
+    id: 'stranglethorn-vale',
+    name: 'Stranglethorn Vale',
+    bossName: 'King Bangalash',
+    description: 'A dense jungle teeming with predators. The Bloodscalp tribe and shadowmaw panthers await the unwary.',
+  },
 ]
 
 export const MAP_MONSTER_POOLS = {
@@ -57,18 +84,21 @@ export const MAP_MONSTER_POOLS = {
         id: 'kobold-geomancer',
         name: 'Kobold Geomancer',
         damageType: 'magic',
+        skill: 'stone-shard',
         base: { hp: 45, physAtk: 0, spellPower: 10, agility: 7, armor: 2, resistance: 3 },
       },
       {
         id: 'defias-smuggler',
         name: 'Defias Smuggler',
         damageType: 'mixed',
+        skill: 'blackjack',
         base: { hp: 46, physAtk: 9, spellPower: 7, agility: 8, armor: 2, resistance: 2 },
       },
       {
         id: 'defias-cutpurse',
         name: 'Defias Cutpurse',
         damageType: 'physical',
+        skill: 'swift-cut',
         base: { hp: 42, physAtk: 10, spellPower: 0, agility: 9, armor: 2, resistance: 1 },
       },
     ],
@@ -76,6 +106,7 @@ export const MAP_MONSTER_POOLS = {
       id: 'hogger',
       name: 'Hogger',
       damageType: 'mixed',
+        skill: 'rend',
       base: { hp: 90, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },
     },
     levelRange: { min: -1, max: 2 },
@@ -179,6 +210,7 @@ export function createMonster(template, options = {}) {
     tier,
     level,
     damageType: template.damageType ?? 'physical',
+    skill: template.skill ?? null,
     maxHP: Math.round(base.hp * factor),
     currentHP: Math.round(base.hp * factor),
     physAtk: Math.round(base.physAtk * factor),
@@ -226,12 +258,12 @@ export function buildEncounterMonsters({
 
 /**
  * 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed.
- * Sunder Armor debuff reduces effective armor for physical damage.
+ * Sunder/Dazed reduce effective armor; Splinter reduces effective resistance.
  */
 export function applyDamage(rawDamage, damageType, target) {
   let defense
   if (damageType === 'magic') {
-    defense = target.resistance || 0
+    defense = getEffectiveResistance(target)
   } else {
     defense = getEffectiveArmor(target)
   }
@@ -324,7 +356,7 @@ function pickTarget(actor, heroes, monsters) {
   return alive(heroes)[0] ?? null
 }
 
-function actorDamage(actor, rng) {
+function actorDamage(actor, rng, round) {
   if (actor.side === 'hero') {
     if (actor.spellPower > actor.physAtk && rng() < 0.5) {
       return { action: 'skill', damageType: 'magic', rawDamage: actor.spellPower }
@@ -332,7 +364,12 @@ function actorDamage(actor, rng) {
     return { action: 'basic', damageType: 'physical', rawDamage: actor.physAtk }
   }
 
-  const canUseSkill = actor.skillChance > 0 && rng() < actor.skillChance
+  const skillDef = getMonsterSkillById(actor.skill)
+  const cooldown = skillDef?.cooldown ?? 0
+  const lastUsed = actor.lastSkillRound ?? 0
+  const onCooldown = cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown
+
+  const canUseSkill = actor.skillChance > 0 && actor.skill && !onCooldown && rng() < actor.skillChance
   if (!canUseSkill) {
     if (actor.damageType === 'magic') return { action: 'basic', damageType: 'magic', rawDamage: actor.spellPower }
     if (actor.damageType === 'mixed') {
@@ -346,16 +383,23 @@ function actorDamage(actor, rng) {
     return { action: 'basic', damageType: 'physical', rawDamage: actor.physAtk }
   }
 
-  if (actor.damageType === 'magic') return { action: 'skill', damageType: 'magic', rawDamage: Math.round(actor.spellPower * 1.25) }
+  const skillId = skillDef?.id ?? actor.skill
+  const skillName = skillDef?.name ?? 'Skill'
+  const coeff = skillDef?.coefficient ?? 1.25
+  if (actor.damageType === 'magic') {
+    return { action: 'skill', skillId, skillName, damageType: 'magic', rawDamage: Math.round(actor.spellPower * coeff) }
+  }
   if (actor.damageType === 'mixed') {
     const chooseMagic = rng() < 0.5
     return {
       action: 'skill',
+      skillId,
+      skillName,
       damageType: chooseMagic ? 'magic' : 'physical',
-      rawDamage: Math.round((chooseMagic ? actor.spellPower : actor.physAtk) * 1.25),
+      rawDamage: Math.round((chooseMagic ? actor.spellPower : actor.physAtk) * coeff),
     }
   }
-  return { action: 'skill', damageType: 'physical', rawDamage: Math.round(actor.physAtk * 1.25) }
+  return { action: 'skill', skillId, skillName, damageType: 'physical', rawDamage: Math.round(actor.physAtk * coeff) }
 }
 
 function rewardForVictory(monsters) {
@@ -434,6 +478,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (sr.debuffApplied || sr.debuffRefreshed) {
             entry.debuffApplied = sr.debuffApplied
             entry.debuffRefreshed = sr.debuffRefreshed
+            entry.debuffType = 'sunder'
             entry.debuffArmorReduction = sr.debuffArmorReduction
             entry.debuffDuration = sr.debuffDuration
           }
@@ -444,7 +489,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
 
       // Basic attack / monster skill path
-      const action = actorDamage(actor, rng)
+      const action = actorDamage(actor, rng, round)
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)
         : (actor.physCrit || 0)
@@ -455,6 +500,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const targetHPBefore = target.currentHP
       const damage = applyDamage(rawAfterCrit, action.damageType, target)
       target.currentHP = damage.nextHP
+
+      if (actor.side === 'monster' && action.skillId) {
+        actor.lastSkillRound = round
+      }
+
+      let debuffResult = null
+      if (actor.side === 'monster' && action.skillId) {
+        const skillDef = getMonsterSkillById(actor.skill)
+        debuffResult = applyMonsterSkillDebuff(target, skillDef)
+      }
 
       // Rage gain for Warriors from dealing damage
       if (actor.side === 'hero' && actor.class === 'Warrior') {
@@ -475,6 +530,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorClass: actor.class || null,
         actorTier: actor.tier || null,
         action: action.action,
+        ...(action.skillId && { skillId: action.skillId, skillName: action.skillName }),
         targetId: target.id,
         targetName: target.name,
         targetClass: target.class || null,
@@ -495,7 +551,41 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (target.side === 'hero' && target.class === 'Warrior') {
         logEntry.targetRageAfter = target.currentMP
       }
+      if (debuffResult) {
+        logEntry.debuffApplied = !debuffResult.refreshed
+        logEntry.debuffRefreshed = debuffResult.refreshed
+        logEntry.debuffType = debuffResult.type
+        logEntry.debuffDuration = debuffResult.duration ?? 2
+        if (debuffResult.armorReduction != null) logEntry.debuffArmorReduction = debuffResult.armorReduction
+        if (debuffResult.resistanceReduction != null) logEntry.debuffResistanceReduction = debuffResult.resistanceReduction
+        if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound
+        if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
+      }
       log.push(logEntry)
+    }
+
+    // Process DOT (bleed, etc) at end of round
+    for (const unit of [...heroUnits, ...monsterUnits]) {
+      if (unit.currentHP <= 0) continue
+      const bleedDebuffs = (unit.debuffs || []).filter((d) => d.type === 'bleed' && d.damagePerRound > 0)
+      for (const d of bleedDebuffs) {
+        const dotDamage = d.damagePerRound
+        const hpBefore = unit.currentHP
+        unit.currentHP = Math.max(0, hpBefore - dotDamage)
+        log.push({
+          round,
+          type: 'dot',
+          targetId: unit.id,
+          targetName: unit.name,
+          targetClass: unit.class || null,
+          targetTier: unit.tier || null,
+          debuffType: 'bleed',
+          damage: dotDamage,
+          targetHPBefore: hpBefore,
+          targetHPAfter: unit.currentHP,
+          targetMaxHP: unit.maxHP,
+        })
+      }
     }
 
     // Tick debuffs at end of each round
