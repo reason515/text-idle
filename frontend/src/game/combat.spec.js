@@ -429,7 +429,7 @@ describe('combat progression and systems', () => {
   it('Example8: after victory rest phase blocks next combat until fully recovered', () => {
     const heroes = [
       {
-        ...sampleHero({ id: 'h-rest', spirit: 5 }),
+        ...sampleHero({ id: 'h-rest', class: 'Mage', spirit: 5 }),
         maxHP: 120,
         maxMP: 40,
         currentHP: 100,
@@ -444,6 +444,26 @@ describe('combat progression and systems', () => {
     expect(rest.heroes[0].currentMP).toBeGreaterThan(30)
     while (!rest.isComplete) {
       rest = applyRestStep(rest)
+    }
+    expect(canStartNextCombat(rest)).toBe(true)
+  })
+
+  it('Warrior rage: resets to 0 when entering rest, does not recover during rest', () => {
+    const warrior = {
+      ...sampleHero({ id: 'w-rest', class: 'Warrior', spirit: 5 }),
+      maxHP: 100,
+      maxMP: 100,
+      currentHP: 80,
+      currentMP: 50,
+    }
+    let rest = startRestPhase([warrior], { deathCount: 0, base: 4, spiritScale: 1 })
+    expect(rest.heroes[0].currentMP).toBe(0)
+    rest = applyRestStep(rest)
+    expect(rest.heroes[0].currentHP).toBeGreaterThan(80)
+    expect(rest.heroes[0].currentMP).toBe(0)
+    while (!rest.isComplete) {
+      rest = applyRestStep(rest)
+      expect(rest.heroes[0].currentMP).toBe(0)
     }
     expect(canStartNextCombat(rest)).toBe(true)
   })

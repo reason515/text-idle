@@ -119,13 +119,13 @@ describe('Example12: Warrior initial skill definitions', () => {
 describe('Example13: Rage generation', () => {
   it('AC9: gains 0 Rage for 0 damage', () => {
     expect(rageFromDamageTaken(0)).toBe(0)
+    expect(rageFromDamageTaken(1)).toBe(1)
     expect(rageFromDamageDealt(0)).toBe(0)
   })
 
-  it('gains Rage from taking damage: floor(damage / 2)', () => {
+  it('gains Rage from taking damage: floor(damage/2), min 1 when damage > 0', () => {
     expect(rageFromDamageTaken(10)).toBe(5)
     expect(rageFromDamageTaken(7)).toBe(3)
-    expect(rageFromDamageTaken(1)).toBe(0)
     expect(rageFromDamageTaken(2)).toBe(1)
   })
 

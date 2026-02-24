@@ -439,7 +439,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
       }
 
-      log.push({
+      const logEntry = {
         round,
         actorId: actor.id,
         actorName: actor.name,
@@ -460,7 +460,14 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         targetHPBefore,
         targetHPAfter: target.currentHP,
         targetMaxHP: target.maxHP,
-      })
+      }
+      if (actor.side === 'hero' && actor.class === 'Warrior') {
+        logEntry.actorRageAfter = actor.currentMP
+      }
+      if (target.side === 'hero' && target.class === 'Warrior') {
+        logEntry.targetRageAfter = target.currentMP
+      }
+      log.push(logEntry)
     }
 
     // Tick debuffs at end of each round
@@ -497,7 +504,8 @@ export function startRestPhase(
     heroes: heroes.map((hero) => ({
       ...hero,
       currentHP: hero.currentHP ?? hero.maxHP,
-      currentMP: hero.currentMP ?? hero.maxMP,
+      // Warriors: Rage resets to 0 after combat; does not recover during rest
+      currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? hero.maxMP),
     })),
     config: { deathCount, base, spiritScale, deathPenaltyScale },
     isComplete: false,
@@ -514,10 +522,17 @@ export function applyRestStep(restState) {
     const baseRecovery = base + hero.spirit * spiritScale + (hero.equipmentRecoveryBonus || 0)
     const effectiveRecovery = Math.max(1, Math.floor(baseRecovery / penaltyFactor))
     hero.currentHP = clamp(hero.currentHP + effectiveRecovery, 0, hero.maxHP)
-    hero.currentMP = clamp(hero.currentMP + effectiveRecovery, 0, hero.maxMP)
+    // Warriors: Rage does not recover during rest
+    if (hero.class !== 'Warrior') {
+      hero.currentMP = clamp(hero.currentMP + effectiveRecovery, 0, hero.maxMP)
+    }
   }
   next.step += 1
-  next.isComplete = next.heroes.every((hero) => hero.currentHP >= hero.maxHP && hero.currentMP >= hero.maxMP)
+  next.isComplete = next.heroes.every((hero) => {
+    const hpFull = hero.currentHP >= hero.maxHP
+    const mpFull = hero.class === 'Warrior' ? true : hero.currentMP >= hero.maxMP
+    return hpFull && mpFull
+  })
   return next
 }
 

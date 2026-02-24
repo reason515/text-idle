@@ -604,10 +604,20 @@ async function animateCombatLog(result) {
       updated[mi] = { ...updated[mi], currentHP: Math.max(0, entry.targetHPAfter) }
       currentMonsters.value = updated
     }
-    const hi = displayHeroes.value.findIndex((h) => h.id === entry.targetId)
+    let updated = [...displayHeroes.value]
+    const hi = updated.findIndex((h) => h.id === entry.targetId)
     if (hi >= 0) {
-      const updated = [...displayHeroes.value]
       updated[hi] = { ...updated[hi], currentHP: Math.max(0, entry.targetHPAfter) }
+      if (entry.targetRageAfter !== undefined) {
+        updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
+      }
+    }
+    const actorRage = entry.actorRageAfter ?? entry.rageAfter
+    const ai = updated.findIndex((h) => h.id === entry.actorId)
+    if (ai >= 0 && actorRage !== undefined) {
+      updated[ai] = { ...updated[ai], currentMP: actorRage }
+    }
+    if (hi >= 0 || (ai >= 0 && actorRage !== undefined)) {
       displayHeroes.value = updated
     }
 

@@ -45,12 +45,13 @@ export function getWarriorSkillById(skillId) {
 }
 
 /**
- * Rage gained from taking damage: floor(damage / 2).
+ * Rage gained from taking damage: floor(damage / 2), minimum 1 when damage > 0.
  * @param {number} damageTaken
  * @returns {number}
  */
 export function rageFromDamageTaken(damageTaken) {
-  return Math.floor(damageTaken / 2)
+  if (damageTaken <= 0) return 0
+  return Math.max(1, Math.floor(damageTaken / 2))
 }
 
 /**
