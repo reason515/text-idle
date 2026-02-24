@@ -375,8 +375,8 @@
             <div class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value tooltip-wrap has-tip">
-                {{ selectedMonster.armor }}
-                <span class="tooltip-text">Absorbs {{ selectedMonster.armor }} physical damage per hit</span>
+                {{ getEffectiveArmor(selectedMonster) }}
+                <span class="tooltip-text">Absorbs {{ getEffectiveArmor(selectedMonster) }} physical damage per hit</span>
               </span>
             </div>
             <div class="detail-row">
@@ -412,7 +412,7 @@ import {
 } from '../game/combat.js'
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
-import { getWarriorSkillById, tickDebuffs } from '../game/warriorSkills.js'
+import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 
 const RESOURCE_MAP = {
