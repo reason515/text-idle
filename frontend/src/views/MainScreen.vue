@@ -145,7 +145,7 @@
               >{{ entry.actorName }}</span>
               <span v-if="entry.actorAgility != null" class="log-agi" :title="'Higher agility acts first'">(AGI {{ entry.actorAgility }})</span>
               <span class="log-sep">used</span>
-              <span class="log-action" :class="entry.action === 'skill' ? 'log-skill' : ''">{{ entry.action }}</span>
+              <span class="log-action" :class="(entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
               <span class="log-sep">on</span>
               <span
                 class="log-target"
@@ -169,6 +169,21 @@
                   :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
                 >{{ entry.targetName }}</span>
                 HP: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+              </div>
+              <div v-if="entry.heal > 0" class="log-heal">
+                <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
+                healed <span class="log-heal-val">+{{ entry.heal }}</span> HP
+                <template v-if="entry.actorHPAfter != null">
+                  ({{ entry.actorHPAfter }}/{{ entry.actorMaxHP }})
+                </template>
+              </div>
+              <div v-if="entry.debuffApplied" class="log-debuff">
+                <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
+                <span class="log-debuff-name"> Sunder Armor</span>: Armor -{{ entry.debuffArmorReduction }} for {{ entry.debuffDuration }} rounds
+              </div>
+              <div v-if="entry.debuffRefreshed" class="log-debuff">
+                <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
+                <span class="log-debuff-name"> Sunder Armor</span> refreshed ({{ entry.debuffDuration }} rounds)
               </div>
             </div>
           </template>
@@ -247,6 +262,22 @@
               </span>
             </div>
           </div>
+          <template v-if="selectedHero.class === 'Warrior' && selectedHero.skill">
+            <div class="detail-sep-line">Skills</div>
+            <div class="detail-section">
+              <div class="detail-row">
+                <span class="detail-label">{{ getHeroSkillDisplay(selectedHero.skill).name }}</span>
+                <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(selectedHero.skill).spec }}</span>
+              </div>
+              <div class="detail-row skill-desc-row">
+                <span class="skill-desc-text">{{ getHeroSkillDisplay(selectedHero.skill).effectDesc }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Rage Cost</span>
+                <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(selectedHero.skill).rageCost }}</span>
+              </div>
+            </div>
+          </template>
           <div class="detail-sep-line">Secondary Attributes</div>
           <div class="detail-section">
             <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
@@ -336,6 +367,7 @@ import {
 } from '../game/combat.js'
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
+import { getWarriorSkillById } from '../game/warriorSkills.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: 'Rage', fillClass: 'rage-fill' },
@@ -373,14 +405,20 @@ function resourceFillClass(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).fillClass
 }
 function damageFormulaEquation(entry) {
-  const rawDisplay = entry.isCrit ? Math.round(entry.rawDamage * 1.5) : entry.rawDamage
   const final = entry.finalDamage
   const defLabel = entry.damageType === 'magic' ? 'Resist' : 'Armor'
   const defVal = entry.targetDefense
+  if (entry.skillId && entry.skillCoefficient != null) {
+    const coeff = entry.skillCoefficient
+    if (entry.isCrit) {
+      return `ATK(${entry.rawDamage}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${final}`
+    }
+    return `ATK(${entry.rawDamage}) x ${coeff} - ${defLabel}(${defVal}) = ${final}`
+  }
   if (entry.isCrit) {
     return `ATK(${entry.rawDamage}) x 1.5 - ${defLabel}(${defVal}) = ${final}`
   }
-  return `ATK(${rawDisplay}) - ${defLabel}(${defVal}) = ${final}`
+  return `ATK(${entry.rawDamage}) - ${defLabel}(${defVal}) = ${final}`
 }
 
 const router = useRouter()
@@ -435,12 +473,14 @@ function computeHeroDisplay(hero) {
   const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
   const level = hero.level ?? 1
   const xpRequired = level >= 60 ? 0 : calculateXPRequired(level)
+  // Warriors always start at 0 Rage (Rage is generated in combat, not stored)
+  const currentMP = hero.class === 'Warrior' ? 0 : (hero.currentMP ?? maxMP)
   return {
     ...hero,
     maxHP,
     maxMP,
     currentHP: hero.currentHP ?? maxHP,
-    currentMP: hero.currentMP ?? maxMP,
+    currentMP,
     xpRequired,
   }
 }
@@ -515,6 +555,10 @@ function assignPoint(attr) {
   saveSquad(squad.value)
   displayHeroes.value = squad.value.map(computeHeroDisplay)
   selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
+}
+
+function getHeroSkillDisplay(skillId) {
+  return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
 }
 
 function goRecruit() {
@@ -1381,4 +1425,35 @@ onUnmounted(() => {
 .attr-btn:hover { background: rgba(0, 255, 136, 0.12); }
 .attr-val { min-width: 1.5rem; }
 .xp-row .bar-num { color: var(--color-exp); }
+
+/* Skill display in hero detail */
+.skill-spec-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--color-gold);
+}
+.skill-rage-cost { color: #e06060; }
+.skill-desc-row { display: block; }
+.skill-desc-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Warrior skill log entries */
+.log-heal {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-left: 0.5rem;
+  margin-top: 0.1rem;
+}
+.log-heal-val { color: #5cb85c; font-weight: bold; }
+.log-debuff {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-left: 0.5rem;
+  margin-top: 0.1rem;
+}
+.log-debuff-name { color: #d4a017; font-style: italic; }
 </style>

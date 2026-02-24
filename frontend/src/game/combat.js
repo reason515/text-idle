@@ -1,4 +1,12 @@
 import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance } from '../data/heroes.js'
+import {
+  getWarriorSkillById,
+  rageFromDamageTaken,
+  rageFromDamageDealt,
+  getEffectiveArmor,
+  tickDebuffs,
+  executeWarriorSkill,
+} from './warriorSkills.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -188,15 +196,24 @@ export function buildEncounterMonsters({
   return monsters
 }
 
-/** 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. No cap, scales with equipment. */
+/**
+ * 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed.
+ * Sunder Armor debuff reduces effective armor for physical damage.
+ */
 export function applyDamage(rawDamage, damageType, target) {
-  const defense = damageType === 'magic' ? (target.resistance || 0) : (target.armor || 0)
+  let defense
+  if (damageType === 'magic') {
+    defense = target.resistance || 0
+  } else {
+    defense = getEffectiveArmor(target)
+  }
   const finalDamage = Math.max(1, Math.round(rawDamage) - defense)
   const absorbed = Math.round(rawDamage) - finalDamage
   return {
     damageType,
     absorbed,
     finalDamage,
+    effectiveDefense: defense,
     nextHP: Math.max(0, (target.currentHP || 0) - finalDamage),
   }
 }
@@ -230,9 +247,12 @@ function heroCombatStats(hero) {
     maxHP,
     currentHP: hero.currentHP ?? maxHP,
     maxMP,
-    currentMP: hero.currentMP ?? maxMP,
+    // Warriors start each combat at 0 Rage
+    currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? maxMP),
     equipmentRecoveryBonus: hero.equipmentRecoveryBonus ?? 0,
     spirit: hero.spirit,
+    skill: hero.skill ?? null,
+    debuffs: [],
   }
 }
 
@@ -321,7 +341,7 @@ function rewardForVictory(monsters) {
 
 export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds = 40 }) {
   const heroUnits = heroes.map((h) => heroCombatStats(h))
-  const monsterUnits = deepCopy(monsters).map((m) => ({ ...m, side: 'monster' }))
+  const monsterUnits = deepCopy(monsters).map((m) => ({ ...m, side: 'monster', debuffs: [] }))
   const log = []
   const turnActedByRound = {}
   let round = 1
@@ -337,6 +357,65 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.currentHP <= 0) continue
       const target = pickTarget(actor, heroUnits, monsterUnits)
       if (!target) break
+
+      turnActedByRound[round].push(actor.id)
+
+      // Warrior skill path
+      if (actor.side === 'hero' && actor.class === 'Warrior' && actor.skill) {
+        const skill = getWarriorSkillById(actor.skill)
+        const canUse = skill && (actor.currentMP || 0) >= skill.rageCost
+        if (canUse) {
+          const isCrit = rng() < (actor.physCrit || 0)
+          const actorHPBefore = actor.currentHP
+          const targetHPBefore = target.currentHP
+          const sr = executeWarriorSkill(actor, target, skill, { isCrit })
+          const entry = {
+            round,
+            actorId: actor.id,
+            actorName: actor.name,
+            actorAgility: actor.agility ?? 0,
+            actorClass: actor.class,
+            actorTier: null,
+            action: 'skill',
+            skillId: sr.skillId,
+            skillName: sr.skillName,
+            skillSpec: sr.skillSpec,
+            skillCoefficient: sr.skillCoefficient,
+            targetId: target.id,
+            targetName: target.name,
+            targetClass: target.class || null,
+            targetTier: target.tier || null,
+            damageType: 'physical',
+            rawDamage: sr.rawDamage,
+            isCrit: sr.isCrit,
+            finalDamage: sr.finalDamage,
+            absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
+            targetDefense: sr.effectiveArmor,
+            targetHPBefore,
+            targetHPAfter: target.currentHP,
+            targetMaxHP: target.maxHP,
+            rageConsumed: sr.rageConsumed,
+            rageAfter: actor.currentMP,
+          }
+          if (sr.heal > 0) {
+            entry.heal = sr.heal
+            entry.actorHPBefore = actorHPBefore
+            entry.actorHPAfter = actor.currentHP
+            entry.actorMaxHP = actor.maxHP
+          }
+          if (sr.debuffApplied || sr.debuffRefreshed) {
+            entry.debuffApplied = sr.debuffApplied
+            entry.debuffRefreshed = sr.debuffRefreshed
+            entry.debuffArmorReduction = sr.debuffArmorReduction
+            entry.debuffDuration = sr.debuffDuration
+          }
+          // Warrior gains Rage from taking damage (handled when hit); grant from dealt already done in executeWarriorSkill
+          log.push(entry)
+          continue
+        }
+      }
+
+      // Basic attack / monster skill path
       const action = actorDamage(actor, rng)
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)
@@ -348,10 +427,18 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const targetHPBefore = target.currentHP
       const damage = applyDamage(rawAfterCrit, action.damageType, target)
       target.currentHP = damage.nextHP
-      turnActedByRound[round].push(actor.id)
-      const targetDefense = action.damageType === 'magic'
-        ? (target.resistance || 0)
-        : (target.armor || 0)
+
+      // Rage gain for Warriors from dealing damage
+      if (actor.side === 'hero' && actor.class === 'Warrior') {
+        const gained = rageFromDamageDealt(damage.finalDamage)
+        actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
+      }
+      // Rage gain for Warriors from taking damage
+      if (target.side === 'hero' && target.class === 'Warrior') {
+        const gained = rageFromDamageTaken(damage.finalDamage)
+        target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
+      }
+
       log.push({
         round,
         actorId: actor.id,
@@ -369,12 +456,18 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         isCrit,
         finalDamage: damage.finalDamage,
         absorbed: damage.absorbed,
-        targetDefense,
+        targetDefense: damage.effectiveDefense,
         targetHPBefore,
         targetHPAfter: target.currentHP,
         targetMaxHP: target.maxHP,
       })
     }
+
+    // Tick debuffs at end of each round
+    for (const unit of [...heroUnits, ...monsterUnits]) {
+      tickDebuffs(unit)
+    }
+
     round += 1
   }
 

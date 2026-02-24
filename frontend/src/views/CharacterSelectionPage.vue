@@ -38,8 +38,42 @@
       </div>
     </template>
 
+    <!-- Warrior skill selection step -->
+    <template v-else-if="selectedHero && selectedHero.class === 'Warrior' && !selectedSkillId">
+      <div class="skill-selection-step">
+        <p class="skill-selection-title">
+          Choose an initial skill for <strong>{{ selectedHero.name }}</strong> (Warrior)
+        </p>
+        <p class="skill-selection-hint">Each spec grants a unique combat style. You must choose one before {{ selectedHero.name }} joins your squad.</p>
+        <div class="skill-options">
+          <button
+            v-for="skill in warriorSkills"
+            :key="skill.id"
+            class="skill-option"
+            :class="{ selected: pendingSkillId === skill.id }"
+            @click="pendingSkillId = skill.id"
+          >
+            <div class="skill-option-header">
+              <span class="skill-option-name">{{ skill.name }}</span>
+              <span class="skill-option-spec spec-badge">{{ skill.spec }}</span>
+            </div>
+            <div class="skill-option-meta">
+              <span class="skill-cost-label">Cost:</span>
+              <span class="skill-cost-value">{{ skill.rageCost }} Rage</span>
+            </div>
+            <p class="skill-option-desc">{{ skill.effectDesc }}</p>
+          </button>
+        </div>
+        <p v-if="showSkillError" class="skill-error">Please select a skill before continuing.</p>
+        <div class="confirmation-actions">
+          <button class="btn btn-secondary" @click="selectedHero = null; pendingSkillId = null; showSkillError = false">Back</button>
+          <button class="btn" @click="confirmSkillSelection">Next</button>
+        </div>
+      </div>
+    </template>
+
     <!-- Confirmation step -->
-    <template v-else>
+    <template v-else-if="selectedHero">
       <div class="confirmation-step">
         <p>Add <strong>{{ selectedHero.name }}</strong> to your squad?</p>
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
@@ -55,6 +89,15 @@
           <div v-if="selectedHero.bio" class="info-section hero-section">
             <span class="section-label">About</span>
             <p class="section-text">{{ selectedHero.bio }}</p>
+          </div>
+          <!-- Show chosen skill for Warriors -->
+          <div v-if="selectedHero.class === 'Warrior' && selectedSkillId" class="info-section skill-section">
+            <span class="section-label">Initial Skill</span>
+            <div class="chosen-skill">
+              <span class="chosen-skill-name">{{ getSkillDisplay(selectedSkillId).name }}</span>
+              <span class="chosen-skill-spec spec-badge">{{ getSkillDisplay(selectedSkillId).spec }}</span>
+            </div>
+            <p class="chosen-skill-desc">{{ getSkillDisplay(selectedSkillId).effectDesc }}</p>
           </div>
           <div class="hero-stats-grid">
             <div class="hero-attributes-section">
@@ -101,7 +144,10 @@
           </div>
         </div>
         <div class="confirmation-actions">
-          <button class="btn btn-secondary" @click="selectedHero = null">Back</button>
+          <button
+            class="btn btn-secondary"
+            @click="selectedHero.class === 'Warrior' ? (selectedSkillId = null) : (selectedHero = null)"
+          >Back</button>
           <button class="btn" @click="confirmSelection">Confirm</button>
         </div>
       </div>
@@ -112,8 +158,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquadWithSkill, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit } from '../game/combat.js'
+import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -136,8 +183,17 @@ function getSecondaryFormulas(heroClass) {
   return formulas
 }
 
+function getSkillDisplay(skillId) {
+  return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
+}
+
+const warriorSkills = WARRIOR_INITIAL_SKILLS
+
 const router = useRouter()
 const selectedHero = ref(null)
+const pendingSkillId = ref(null)
+const selectedSkillId = ref(null)
+const showSkillError = ref(false)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 const squadIds = computed(() => new Set(getSquad().map((c) => c.id)))
@@ -158,18 +214,33 @@ const availableHeroes = computed(() =>
 
 function selectHero(hero) {
   selectedHero.value = hero
+  pendingSkillId.value = null
+  selectedSkillId.value = null
+  showSkillError.value = false
+}
+
+function confirmSkillSelection() {
+  if (!pendingSkillId.value) {
+    showSkillError.value = true
+    return
+  }
+  showSkillError.value = false
+  selectedSkillId.value = pendingSkillId.value
 }
 
 function confirmSelection() {
   if (!selectedHero.value) return
   if (squadSize.value >= recruitLimit.value) {
     selectedHero.value = null
+    selectedSkillId.value = null
     router.push('/main')
     return
   }
-  const ok = addHeroToSquad(selectedHero.value)
+  const skillId = selectedHero.value.class === 'Warrior' ? selectedSkillId.value : null
+  const ok = addHeroToSquadWithSkill(selectedHero.value, skillId)
   if (ok) {
     selectedHero.value = null
+    selectedSkillId.value = null
     router.push('/main')
   }
 }
@@ -442,6 +513,139 @@ function confirmSelection() {
 
 .no-heroes p {
   margin-bottom: 1rem;
+}
+
+.skill-selection-step {
+  margin-top: 0.5rem;
+}
+
+.skill-selection-title {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.skill-selection-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.skill-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.skill-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  background: var(--bg-dark);
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.skill-option:hover {
+  background: rgba(0, 255, 136, 0.05);
+  border-color: var(--color-green);
+}
+
+.skill-option.selected {
+  border-color: var(--color-green);
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+}
+
+.skill-option-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.skill-option-name {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-value);
+}
+
+.spec-badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--color-gold);
+  background: rgba(255, 204, 68, 0.07);
+}
+
+.skill-option-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.skill-cost-label {
+  color: var(--text-label);
+}
+
+.skill-cost-value {
+  color: #e06060;
+  font-weight: bold;
+}
+
+.skill-option-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.skill-error {
+  color: #e06060;
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+}
+
+.skill-section {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.chosen-skill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.chosen-skill-name {
+  font-weight: bold;
+  color: var(--text-value);
+}
+
+.chosen-skill-spec {
+  font-size: 0.7rem;
+}
+
+.chosen-skill-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+}
+
+@media (max-width: 600px) {
+  .skill-options {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {

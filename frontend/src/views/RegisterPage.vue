@@ -79,6 +79,7 @@ async function submit() {
       // Clear any existing game data for new user
       localStorage.removeItem('teamName')
       localStorage.removeItem('squad')
+      localStorage.removeItem('combatProgress')
       router.push('/intro')
     } else {
       if (res.status === 409) {

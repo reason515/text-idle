@@ -12,6 +12,18 @@ async function registerAndCompleteIntro(page, email) {
   await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
 }
 
+/** Recruit a Warrior through skill selection + confirmation. */
+async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
+  await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
+  if (skillId) {
+    await page.locator('.skill-option').filter({ hasText: skillId }).click()
+  } else {
+    await page.locator('.skill-option').first().click()
+  }
+  await page.getByRole('button', { name: 'Next' }).click()
+  await page.getByRole('button', { name: 'Confirm' }).click()
+}
+
 test.describe('Character Recruitment (Example 4)', () => {
   test('AC1: Start Adventure shows character selection with WoW-style heroes', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
@@ -46,6 +58,11 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
+    // Warrior shows skill selection step first
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    // Now shows confirmation
     await expect(page.getByText(/Add.*Varian Wrynn.*Warrior/)).toBeVisible()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
@@ -100,8 +117,8 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.locator('.recruit-btn').click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    // Varian is a Warrior, needs skill selection
+    await recruitWarrior(page)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.getByText('Rexxar').first()).toBeVisible()
@@ -112,7 +129,10 @@ test.describe('Character Recruitment (Example 4)', () => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
+    // Warrior: click hero, select any skill, click Next to reach confirmation
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible()
 
     await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
@@ -153,8 +173,13 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.reload()
 
     const heroes = ['Varian Wrynn', 'Jaina Proudmoore', 'Rexxar', 'Uther', 'Anduin Wrynn']
+    const warriorHeroes = new Set(['Varian Wrynn'])
     for (const hero of heroes) {
       await page.getByRole('button', { name: new RegExp(`^${hero}\\b`) }).click()
+      if (warriorHeroes.has(hero)) {
+        await page.locator('.skill-option').first().click()
+        await page.getByRole('button', { name: 'Next' }).click()
+      }
       await page.getByRole('button', { name: 'Confirm' }).click()
       await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
       if (hero !== heroes[heroes.length - 1]) {

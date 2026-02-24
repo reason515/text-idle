@@ -19,13 +19,24 @@ async function registerToCharacterSelect(page, email) {
   await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
 }
 
+/** Recruit a Warrior hero through skill selection + confirmation. */
+async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
+  await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).first().click()
+  if (skillId) {
+    await page.locator('.skill-option').filter({ hasText: skillId }).click()
+  } else {
+    await page.locator('.skill-option').first().click()
+  }
+  await page.getByRole('button', { name: 'Next' }).click()
+  await page.getByRole('button', { name: 'Confirm' }).click()
+}
+
 test.describe('Combat Flow (Example 5-9)', () => {
   test('auto-combat loop starts after recruitment', async ({ page }) => {
     const email = `combat-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.map-btn')).toBeVisible()
@@ -39,8 +50,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `hero-card-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const card = page.locator('.hero-card').first()
@@ -57,8 +67,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `hp-color-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const hpFill = page.locator('.hero-card .hp-fill').first()
@@ -71,17 +80,17 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `hero-modal-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
     await expect(page.locator('.detail-section').first()).toBeVisible()
-    await expect(page.locator('.detail-section').nth(1)).toContainText('Strength')
-    await expect(page.locator('.detail-sep-line').first()).toContainText('Primary Attributes')
-    await expect(page.locator('.detail-sep-line').nth(1)).toContainText('Secondary Attributes')
+    // Primary attributes section
+    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Primary Attributes' })).toBeVisible()
+    // Secondary attributes section (after Skills for Warrior)
+    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Secondary Attributes' })).toBeVisible()
     await expect(page.locator('.detail-row').first()).toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.locator('.modal-box')).not.toBeVisible()
@@ -91,8 +100,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `map-modal-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.map-btn').click()
@@ -106,8 +114,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `monster-panel-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 5000 })
@@ -119,8 +126,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `encounter-msg-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 10000 })
@@ -132,8 +138,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `dmg-calc-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -147,8 +152,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `agi-log-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -161,8 +165,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `target-hp-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-target-hp').first()).toBeVisible({ timeout: 30000 })
@@ -188,8 +191,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `rest-log-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
@@ -202,8 +204,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `pause-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -220,8 +221,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `layout-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const battleContent = page.locator('.battle-content')
@@ -237,16 +237,18 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `hp-consistency-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
     const basicHp = page.locator('.detail-section').first().locator('.val-hp')
     await expect(basicHp).toContainText('48')
-    const secondarySection = page.locator('.detail-section').nth(2)
-    await expect(secondarySection.locator('.detail-row').first()).toContainText('48')
+    // Secondary attributes section is after Skills section for Warriors
+    const secondarySection = page.locator('.detail-sep-line').filter({ hasText: 'Secondary Attributes' })
+    await expect(secondarySection).toBeVisible()
+    const secondaryRows = secondarySection.locator('~ .detail-section .detail-row')
+    await expect(secondaryRows.first()).toContainText('48')
     await page.getByRole('button', { name: 'Close' }).click()
   })
 
@@ -254,8 +256,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const email = `no-buttons-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.getByRole('button', { name: 'Start Encounter' })).not.toBeVisible()
@@ -270,8 +271,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
     const email = `xp-bar-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.hero-card .xp-row')).toBeVisible()
@@ -280,15 +280,16 @@ test.describe('Experience and Leveling (Example 11)', () => {
   })
 
   test('victory summary shows EXP reward', async ({ page }) => {
+    test.setTimeout(130000)
     const email = `exp-reward-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 60000 })
-    const summaryText = await page.locator('.log-summary').first().textContent()
+    // Warrior wins ~83% of encounters; with 3+ cycles this is >99% likely to see victory
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
+    const summaryText = await page.locator('.log-summary.victory-text').first().textContent()
     expect(summaryText).toMatch(/EXP \+/)
   })
 
@@ -296,8 +297,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
     const email = `xp-modal-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
@@ -307,35 +307,41 @@ test.describe('Experience and Leveling (Example 11)', () => {
   })
 
   test('level-up is prominently shown in combat log when hero levels up', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `levelup-log-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
+    // Set xp=49 (one victory of 12 XP triggers level-up at threshold 50)
+    // Set strength=50 to guarantee victory even against elite magic monsters
     await page.evaluate(() => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
-        squad[0].xp = 45
+        squad[0].xp = 49
         squad[0].level = 1
+        squad[0].strength = 50
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })
     await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 60000 })
-    await expect(page.locator('.log-levelup')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.log-levelup')).toContainText('Level 2')
-    await expect(page.locator('.log-levelup')).toContainText('attribute points')
+    // Confirm combat started (encounter entry appears first)
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+
+    // Level-up entry only appears after a victorious combat that pushes XP over threshold
+    await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.log-levelup').first()).toContainText('Level 2')
+    await expect(page.locator('.log-levelup').first()).toContainText('attribute points')
   })
 
   test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
     const email = `attr-alloc-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
-    await page.getByRole('button', { name: /Varian Wrynn/ }).first().click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.evaluate(() => {

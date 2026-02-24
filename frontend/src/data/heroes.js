@@ -369,25 +369,45 @@ export function saveSquad(squad) {
 }
 
 /**
- * Create a character from a hero template with initial attributes
+ * Create a character from a hero template with initial attributes.
  * @param {Object} hero - Hero template object (id, name, class)
+ * @param {Object} opts - { skill?: string } optional skill id for Warriors
  * @returns {Object} Character object with level and initial attributes
  */
-export function createCharacter(hero) {
+export function createCharacter(hero, opts = {}) {
   const initialAttrs = getInitialAttributes(hero.class)
-  return {
+  const character = {
     ...hero,
     level: 1,
     xp: 0,
     unassignedPoints: 0,
     ...initialAttrs,
   }
+  if (opts.skill) {
+    character.skill = opts.skill
+  }
+  return character
 }
 
 export function addHeroToSquad(hero) {
   const squad = getSquad()
   if (squad.length >= MAX_SQUAD_SIZE) return false
   const character = createCharacter(hero)
+  squad.push(character)
+  saveSquad(squad)
+  return true
+}
+
+/**
+ * Add a hero to the squad with an optional initial skill (for Warriors).
+ * @param {Object} hero - Hero template object
+ * @param {string|null} skillId - Skill id to assign (for Warriors)
+ * @returns {boolean} true if added successfully
+ */
+export function addHeroToSquadWithSkill(hero, skillId = null) {
+  const squad = getSquad()
+  if (squad.length >= MAX_SQUAD_SIZE) return false
+  const character = createCharacter(hero, skillId ? { skill: skillId } : {})
   squad.push(character)
   saveSquad(squad)
   return true
