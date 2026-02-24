@@ -461,6 +461,25 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 14: Buff/Debuff Display on Unit Panels
+
+**User Story**
+
+> As a player,  
+> I want to see buff/debuff indicators on hero and monster panels during combat,  
+> So that I can quickly identify which units are affected and hover to view details.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A unit (hero or monster) has an active debuff (e.g. Sunder Armor) | User views the unit's panel (Squad or Monsters column) | A debuff badge is shown on the panel (e.g. "SA" for Sunder Armor) |
+| AC2 | User hovers over a debuff badge on a unit panel | Tooltip appears | Tooltip shows debuff name and details (e.g. "Sunder Armor: Armor -8 for 3 round(s)") |
+| AC3 | User opens the detail modal for a unit that has debuffs | Modal displays | A "Debuffs" section lists active debuffs with their remaining duration and effect |
+| AC4 | Debuff expires (remaining rounds reaches 0) | Round ends | The debuff badge is removed from the unit panel |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

@@ -53,6 +53,17 @@
               </div>
               <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
             </div>
+            <div v-if="unitDebuffs(hero).length > 0" class="status-effects-row">
+              <span
+                v-for="d in unitDebuffs(hero)"
+                :key="d.type + '-' + (d.remainingRounds ?? 0)"
+                class="status-badge status-debuff tooltip-wrap"
+                :title="getDebuffTip(d)"
+              >
+                {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
+                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+              </span>
+            </div>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">No heroes. Recruit to begin.</div>
         </div>
@@ -80,6 +91,17 @@
                 <div class="bar-fill monster-hp-fill" :style="{ width: monsterHpPct(m) + '%', background: hpBarColor(monsterHpPct(m)) }"></div>
               </div>
               <span class="bar-num" :style="{ color: hpBarColor(monsterHpPct(m)) }">{{ m.currentHP }}/{{ m.maxHP }}</span>
+            </div>
+            <div v-if="unitDebuffs(m).length > 0" class="status-effects-row">
+              <span
+                v-for="d in unitDebuffs(m)"
+                :key="d.type + '-' + (d.remainingRounds ?? 0)"
+                class="status-badge status-debuff tooltip-wrap"
+                :title="getDebuffTip(d)"
+              >
+                {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
+                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+              </span>
             </div>
           </div>
           <div v-if="currentMonsters.length === 0" class="empty-hint">No active encounter.</div>
@@ -279,6 +301,15 @@
               </div>
             </div>
           </template>
+          <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">Debuffs</div>
+          <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-section">
+            <div v-for="d in unitDebuffs(selectedHero)" :key="d.type" class="detail-row">
+              <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
+              <span class="detail-value tooltip-wrap has-tip">{{ getDebuffTip(d) }}
+                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+              </span>
+            </div>
+          </div>
           <div class="detail-sep-line">Secondary Attributes</div>
           <div class="detail-section">
             <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
@@ -330,6 +361,15 @@
               <span class="detail-value">{{ selectedMonster.agility }}</span>
             </div>
           </div>
+          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">Debuffs</div>
+          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-section">
+            <div v-for="d in unitDebuffs(selectedMonster)" :key="d.type" class="detail-row">
+              <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
+              <span class="detail-value tooltip-wrap has-tip">{{ getDebuffTip(d) }}
+                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+              </span>
+            </div>
+          </div>
           <div class="detail-sep-line">Defense</div>
           <div class="detail-section">
             <div class="detail-row">
@@ -372,7 +412,8 @@ import {
 } from '../game/combat.js'
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
-import { getWarriorSkillById } from '../game/warriorSkills.js'
+import { getWarriorSkillById, tickDebuffs } from '../game/warriorSkills.js'
+import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: 'Rage', fillClass: 'rage-fill' },
@@ -607,6 +648,18 @@ async function animateCombatLog(result) {
     if (mi >= 0) {
       const updated = [...currentMonsters.value]
       updated[mi] = { ...updated[mi], currentHP: Math.max(0, entry.targetHPAfter) }
+      if (entry.debuffApplied || entry.debuffRefreshed) {
+        const debuffs = [...(updated[mi].debuffs || [])]
+        const existing = debuffs.find((d) => d.type === 'sunder')
+        const newDebuff = { type: 'sunder', armorReduction: entry.debuffArmorReduction ?? 8, remainingRounds: entry.debuffDuration ?? 3 }
+        if (existing) {
+          existing.remainingRounds = newDebuff.remainingRounds
+          existing.armorReduction = newDebuff.armorReduction
+        } else {
+          debuffs.push(newDebuff)
+        }
+        updated[mi] = { ...updated[mi], debuffs }
+      }
       currentMonsters.value = updated
     }
     let updated = [...displayHeroes.value]
@@ -615,6 +668,18 @@ async function animateCombatLog(result) {
       updated[hi] = { ...updated[hi], currentHP: Math.max(0, entry.targetHPAfter) }
       if (entry.targetRageAfter !== undefined) {
         updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
+      }
+      if (entry.debuffApplied || entry.debuffRefreshed) {
+        const debuffs = [...(updated[hi].debuffs || [])]
+        const existing = debuffs.find((d) => d.type === 'sunder')
+        const newDebuff = { type: 'sunder', armorReduction: entry.debuffArmorReduction ?? 8, remainingRounds: entry.debuffDuration ?? 3 }
+        if (existing) {
+          existing.remainingRounds = newDebuff.remainingRounds
+          existing.armorReduction = newDebuff.armorReduction
+        } else {
+          debuffs.push(newDebuff)
+        }
+        updated[hi] = { ...updated[hi], debuffs }
       }
     }
     const actorRage = entry.actorRageAfter ?? entry.rageAfter
@@ -632,6 +697,13 @@ async function animateCombatLog(result) {
     const isLastOfRound = !nextEntry || nextEntry.round !== entry.round
     if (isLastOfRound) {
       addLogEntry({ type: 'roundSeparator' })
+      for (const unit of [...displayHeroes.value, ...currentMonsters.value]) {
+        if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) {
+          tickDebuffs(unit)
+        }
+      }
+      displayHeroes.value = [...displayHeroes.value]
+      currentMonsters.value = [...currentMonsters.value]
       await scrollLog()
       await sleepMsRespectingPause(2000)
     }
@@ -696,8 +768,8 @@ async function runCombatLoop() {
       forceBoss: progress.value.bossAvailable,
     })
 
-    currentMonsters.value = monsters.map((m) => ({ ...m }))
-    displayHeroes.value = squad.value.map(computeHeroDisplay)
+    currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
+    displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, loot: [] }
 
@@ -1478,4 +1550,27 @@ onUnmounted(() => {
   margin-top: 0.1rem;
 }
 .log-debuff-name { color: #d4a017; font-style: italic; }
+
+/* Status effects (buffs/debuffs) on unit panels */
+.status-effects-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+}
+.status-badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  cursor: help;
+}
+.status-debuff {
+  background: rgba(212, 160, 23, 0.25);
+  border: 1px solid #d4a017;
+  color: #e8c547;
+}
+.status-badge.tooltip-wrap .tooltip-text {
+  white-space: normal;
+  max-width: 12rem;
+}
 </style>

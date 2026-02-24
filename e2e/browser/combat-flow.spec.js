@@ -264,6 +264,23 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.getByRole('button', { name: 'Explore Normal' })).not.toBeVisible()
     await expect(page.getByRole('button', { name: 'Explore Elite' })).not.toBeVisible()
   })
+
+  test('debuff badge and tooltip on monster panel when Sunder Armor is applied (Example 14)', async ({ page }) => {
+    test.setTimeout(60000)
+    const email = `debuff-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 5000 })
+    const debuffBadge = page.locator('.monster-card .status-debuff').first()
+    await expect(debuffBadge).toBeVisible({ timeout: 45000 })
+    await expect(debuffBadge).toContainText('SA')
+    await debuffBadge.hover()
+    await expect(page.locator('.tooltip-text').filter({ hasText: 'Sunder Armor' })).toBeVisible({ timeout: 2000 })
+    await expect(page.locator('.tooltip-text').filter({ hasText: 'Armor -8' })).toBeVisible()
+  })
 })
 
 test.describe('Experience and Leveling (Example 11)', () => {
