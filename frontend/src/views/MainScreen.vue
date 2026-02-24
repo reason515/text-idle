@@ -21,7 +21,7 @@
 
     <div class="battle-content">
       <div class="squad-col">
-        <div class="col-header">Squad</div>
+        <div class="col-header">{{ squadDisplayName }}</div>
         <div class="squad-list">
           <div
             v-for="(hero, i) in displayHeroes"
@@ -532,6 +532,7 @@ function damageFormulaEquation(entry) {
 }
 
 const router = useRouter()
+const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim() || 'Squad')
 const squad = ref([])
 const displayHeroes = ref([])
 const currentMonsters = ref([])
