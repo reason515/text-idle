@@ -604,6 +604,44 @@ describe('combat progression and systems', () => {
     expect(canStartNextCombat(rest)).toBe(true)
   })
 
+  it('Example8: death penalty increases rest steps (more deaths = longer recovery)', () => {
+    const hero = {
+      ...sampleHero({ id: 'h-penalty', class: 'Mage', spirit: 5 }),
+      maxHP: 100,
+      maxMP: 40,
+      currentHP: 0,
+      currentMP: 0,
+      equipmentRecoveryBonus: 0,
+    }
+    const base = 4
+    const spiritScale = 1
+    const deathPenaltyScale = 0.2
+
+    let restNoDeath = startRestPhase([{ ...hero }], { deathCount: 0, base, spiritScale, deathPenaltyScale })
+    let stepsNoDeath = 0
+    while (!restNoDeath.isComplete) {
+      restNoDeath = applyRestStep(restNoDeath)
+      stepsNoDeath += 1
+    }
+
+    let restOneDeath = startRestPhase([{ ...hero }], { deathCount: 1, base, spiritScale, deathPenaltyScale })
+    let stepsOneDeath = 0
+    while (!restOneDeath.isComplete) {
+      restOneDeath = applyRestStep(restOneDeath)
+      stepsOneDeath += 1
+    }
+
+    let restTwoDeaths = startRestPhase([{ ...hero }], { deathCount: 2, base, spiritScale, deathPenaltyScale })
+    let stepsTwoDeaths = 0
+    while (!restTwoDeaths.isComplete) {
+      restTwoDeaths = applyRestStep(restTwoDeaths)
+      stepsTwoDeaths += 1
+    }
+
+    expect(stepsOneDeath).toBeGreaterThan(stepsNoDeath)
+    expect(stepsTwoDeaths).toBeGreaterThan(stepsOneDeath)
+  })
+
   it('Warrior rage: resets to 0 when entering rest, does not recover during rest', () => {
     const warrior = {
       ...sampleHero({ id: 'w-rest', class: 'Warrior', spirit: 5 }),

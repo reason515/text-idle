@@ -832,6 +832,13 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     ? 'Recovering from defeat...'
     : 'Resting... recovering HP and MP'
   addLogEntry({ type: 'rest', message: startMsg, complete: false })
+  if (deathCount > 0) {
+    addLogEntry({
+      type: 'rest',
+      message: `Death penalty: ${deathCount} hero(s) died, recovery slowed`,
+      complete: false,
+    })
+  }
   await scrollLog()
 
   while (!rest.isComplete && isRunning.value) {
