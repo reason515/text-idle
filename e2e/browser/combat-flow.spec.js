@@ -200,6 +200,20 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(hasRecovering).toBe(true)
   })
 
+  test('monster area is cleared during rest phase (no previous battle monsters)', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = `rest-monsters-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
+    await expect(page.locator('.monsters-col .empty-hint')).toContainText('No active encounter.')
+    await expect(page.locator('.monster-card')).toHaveCount(0)
+  })
+
   test('pause button pauses combat log scrolling', async ({ page }) => {
     const email = `pause-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

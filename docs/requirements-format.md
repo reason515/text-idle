@@ -262,6 +262,7 @@ Then [expected result/verifiable behavior].
 | AC6 | Squad won the last combat with 2 heroes having died | Rest phase begins | Recovery takes even longer than with 1 death; penalty scales with number of deaths (e.g., N deaths → N * penalty factor) |
 | AC7 | Player views a hero's recovery rate | Player inspects the hero or rest UI | Recovery formula or effective rate is visible (Spirit, equipment, death penalty), supporting transparent optimization |
 | AC8 | Squad has not yet fully recovered | Auto-combat loop runs | Rest phase and recovery proceed automatically; next combat starts automatically after rest completes; no player action is required |
+| AC9 | Squad enters rest phase (after victory or defeat) | Player views the monster area | Monster area is cleared; shows "No active encounter." instead of previous battle's monsters |
 
 ---
 

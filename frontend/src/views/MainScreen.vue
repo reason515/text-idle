@@ -713,6 +713,7 @@ async function animateCombatLog(result) {
 }
 
 async function autoRest(heroesAfter, { isDefeat = false } = {}) {
+  currentMonsters.value = []
   const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
   let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
 
