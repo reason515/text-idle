@@ -22,11 +22,20 @@
           <div
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
-            class="hero-card"
+            class="hero-card card-with-float"
             :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
+            <div
+              v-for="fn in getFloatingNumbers(hero.id)"
+              :key="fn.id"
+              class="float-num"
+              :class="[fn.type === 'heal' ? 'float-heal' : 'float-damage', fn.skillName ? 'float-skill' : '']"
+            >
+              <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
+              <span class="float-value">{{ fn.text }}</span>
+            </div>
             <div class="card-top">
               <span class="hero-name">{{ hero.name }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
@@ -76,10 +85,19 @@
           <div
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
-            class="monster-card"
+            class="monster-card card-with-float"
             :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId }"
             @click="selectedMonster = m"
           >
+            <div
+              v-for="fn in getFloatingNumbers(m.id)"
+              :key="fn.id"
+              class="float-num"
+              :class="[fn.type === 'heal' ? 'float-heal' : 'float-damage', fn.skillName ? 'float-skill' : '']"
+            >
+              <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
+              <span class="float-value">{{ fn.text }}</span>
+            </div>
             <div class="card-top">
               <span class="monster-name">{{ m.name }}</span>
               <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
@@ -483,7 +501,31 @@ const isRunning = ref(false)
 const isPaused = ref(false)
 const currentActorId = ref(null)
 const currentTargetId = ref(null)
+const unitFloatingNumbers = ref({})
+let floatNumId = 0
 const COMBAT_PROGRESS_KEY = 'combatProgress'
+
+function getFloatingNumbers(unitId) {
+  return unitFloatingNumbers.value[unitId] ?? []
+}
+
+function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } = {}) {
+  if (!unitId) return
+  const id = ++floatNumId
+  const list = unitFloatingNumbers.value[unitId] ?? []
+  list.push({ id, text, skillName, type })
+  unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: [...list] }
+  setTimeout(() => {
+    const arr = (unitFloatingNumbers.value[unitId] ?? []).filter((f) => f.id !== id)
+    if (arr.length === 0) {
+      const next = { ...unitFloatingNumbers.value }
+      delete next[unitId]
+      unitFloatingNumbers.value = next
+    } else {
+      unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: arr }
+    }
+  }, 1400)
+}
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
@@ -644,6 +686,18 @@ async function animateCombatLog(result) {
     currentTargetId.value = entry.finalDamage > 0 && entry.targetId ? entry.targetId : null
     addLogEntry(entry)
 
+    if (entry.targetId && entry.finalDamage > 0) {
+      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : 'Skill') : null)
+      pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, {
+        skillName: skillName ?? null,
+        type: 'damage',
+      })
+    }
+    if (entry.heal > 0 && entry.actorId) {
+      const skillName = entry.skillName ?? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : null)
+      pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
+    }
+
     const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
     if (mi >= 0) {
       const updated = [...currentMonsters.value]
@@ -771,6 +825,7 @@ async function runCombatLoop() {
 
     currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
     displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
+    unitFloatingNumbers.value = {}
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, loot: [] }
 
@@ -1573,5 +1628,56 @@ onUnmounted(() => {
 .status-badge.tooltip-wrap .tooltip-text {
   white-space: normal;
   max-width: 12rem;
+}
+
+/* Floating damage/heal numbers on unit panels */
+.card-with-float {
+  position: relative;
+  overflow: visible;
+}
+.float-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  animation: float-up-fade 1.2s ease-out forwards;
+  white-space: nowrap;
+}
+.float-value {
+  font-size: 1rem;
+  font-weight: bold;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 1px 2px #000;
+}
+.float-damage .float-value {
+  color: #ff6666;
+}
+.float-heal .float-value {
+  color: #5cb85c;
+}
+.float-skill-name {
+  font-size: 0.65rem;
+  color: var(--color-skill);
+  font-style: italic;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+@keyframes float-up-fade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -80%) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(1.1);
+  }
 }
 </style>

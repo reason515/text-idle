@@ -481,6 +481,26 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 15: Floating Damage/Heal Numbers on Unit Panels
+
+**User Story**
+
+> As a player,  
+> I want to see floating damage and heal numbers on hero and monster panels when they are hit or healed,  
+> So that I can quickly perceive combat feedback and which skills caused the effect.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A unit (hero or monster) receives normal attack damage | Damage is applied | A floating "-X" animation appears on the unit's panel, where X is the damage dealt; animation floats up and fades out |
+| AC2 | A unit receives skill damage (e.g. Heroic Strike, Sunder Armor) | Skill damage is applied | A floating animation shows the skill name and "-X" (damage value) on the target's panel |
+| AC3 | A hero receives skill-based healing (e.g. Bloodthirst) | Healing is applied | A floating animation shows the skill name and "+X" (heal value) on the healer's panel |
+| AC4 | A floating number animation is displayed | Animation plays | Damage numbers use red color; heal numbers use green color; skill names use skill color and italic style |
+| AC5 | A new combat encounter starts | Battle begins | Any floating numbers from the previous encounter are cleared |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

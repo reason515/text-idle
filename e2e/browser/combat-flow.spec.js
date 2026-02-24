@@ -279,6 +279,18 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.getByRole('button', { name: 'Explore Elite' })).not.toBeVisible()
   })
 
+  test('floating damage number appears on unit panel when hit (Example 15)', async ({ page }) => {
+    const email = `float-dmg-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('.float-num').first()).toBeVisible({ timeout: 4000 })
+    await expect(page.locator('.float-damage .float-value').first()).toContainText('-')
+  })
+
   test('debuff badge and tooltip on monster panel when Sunder Armor is applied (Example 14)', async ({ page }) => {
     test.setTimeout(60000)
     const email = `debuff-e2e-${Date.now()}@example.com`
