@@ -80,6 +80,7 @@ async function submit() {
       localStorage.removeItem('teamName')
       localStorage.removeItem('squad')
       localStorage.removeItem('combatProgress')
+      localStorage.removeItem('playerGold')
       router.push('/intro')
     } else {
       if (res.status === 409) {

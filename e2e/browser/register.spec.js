@@ -59,6 +59,7 @@ test.describe('Register E2E', () => {
     // Pre-populate localStorage with old game data (simulating previous session)
     await page.evaluate(() => {
       localStorage.setItem('teamName', 'Old Team')
+      localStorage.setItem('playerGold', '999')
       localStorage.setItem('squad', JSON.stringify([
         { id: 'varian', name: 'Varian Wrynn', class: 'Warrior', hp: 180, atk: 14, def: 12 },
         { id: 'uther', name: 'Uther', class: 'Paladin', hp: 160, atk: 10, def: 12 },
@@ -80,8 +81,10 @@ test.describe('Register E2E', () => {
     // Verify old data was cleared
     const teamName = await page.evaluate(() => localStorage.getItem('teamName'))
     const squad = await page.evaluate(() => localStorage.getItem('squad'))
+    const gold = await page.evaluate(() => localStorage.getItem('playerGold'))
     expect(teamName).toBeNull()
     expect(squad).toBeNull()
+    expect(gold).toBeNull()
     
     // Verify we're on intro page, not main screen with squad
     await expect(page.getByText('No characters in squad')).not.toBeVisible()

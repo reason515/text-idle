@@ -419,3 +419,38 @@ test.describe('Experience and Leveling (Example 11)', () => {
     await expect(page.locator('.attr-alloc')).toContainText('4')
   })
 })
+
+test.describe('Gold System (Example 16)', () => {
+  test('gold balance is displayed in top bar (AC3)', async ({ page }) => {
+    const email = `gold-display-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const goldDisplay = page.locator('.gold-display')
+    await expect(goldDisplay).toBeVisible()
+    await expect(goldDisplay).toContainText('Gold')
+    await expect(goldDisplay.locator('.gold-value')).toBeVisible()
+  })
+
+  test('gold increases after victory (AC1, AC4)', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = `gold-victory-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const goldValueEl = page.locator('.gold-display .gold-value')
+    await expect(goldValueEl).toBeVisible()
+    const initialText = await goldValueEl.textContent()
+    const initialGold = parseInt(initialText || '0', 10)
+
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 85000 })
+    const afterVictoryText = await goldValueEl.textContent()
+    const afterGold = parseInt(afterVictoryText || '0', 10)
+    expect(afterGold).toBeGreaterThanOrEqual(initialGold)
+    expect(afterGold).toBeGreaterThan(0)
+  })
+})

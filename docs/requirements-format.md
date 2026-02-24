@@ -501,6 +501,33 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 16: Gold System (Player Account)
+
+**User Story**
+
+> As a player,  
+> I want gold earned from victorious battles to be stored in my account and accumulated,  
+> So that I can view my balance at any time and use it for future purposes (e.g. purchases, upgrades).
+
+**Design Reference (from design doc)**
+
+- **Gold source**: Granted only on **victory**; defeat grants no gold.
+- **Storage**: Gold is persisted in the player account and accumulates over time.
+- **Display**: Player can view gold balance at any time (e.g. in the main screen top bar).
+- **Future use**: Gold will be used for various purposes (shops, crafting, etc.); not yet implemented.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Squad wins a combat encounter | Victory is triggered | Gold from the battle rewards is added to the player's account; total gold increases |
+| AC2 | Squad loses a combat encounter | Defeat is triggered | No gold is added to the player's account |
+| AC3 | Player is on the main screen | Player views the top bar | Gold balance is displayed (e.g. "Gold 123"); player can see their account at any time |
+| AC4 | Player has 100 gold and wins a battle that yields 21 gold | Victory is triggered | Player's gold becomes 121; balance persists across page reloads |
+| AC5 | New player registers | Registration completes | Player starts with 0 gold (any previous gold on the device is cleared for the new account) |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

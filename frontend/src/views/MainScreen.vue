@@ -5,6 +5,10 @@
         <span class="map-name">{{ currentMapName }}</span>
         <span class="map-arrow">&#9660;</span>
       </button>
+      <div class="gold-display" :title="'Gold: ' + gold">
+        <span class="gold-label">Gold</span>
+        <span class="gold-value">{{ gold }}</span>
+      </div>
       <div class="explore-bar-wrap">
         <div class="explore-track">
           <div class="explore-fill" :style="{ width: progress.currentProgress + '%' }"></div>
@@ -473,6 +477,7 @@ import { hpBarColor } from '../ui/hpBarColor.js'
 import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
+import { getGold, addGold } from '../game/gold.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: 'Rage', fillClass: 'rage-fill' },
@@ -534,6 +539,7 @@ const displayedLog = ref([])
 const lastOutcome = ref('')
 const lastRewards = ref({ exp: 0, gold: 0, loot: [] })
 const progress = ref(createInitialProgress())
+const gold = ref(0)
 const showMapModal = ref(false)
 const selectedHero = ref(null)
 const selectedMonster = ref(null)
@@ -942,6 +948,7 @@ async function runCombatLoop() {
 
       const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
       saveSquad(squad.value)
+      gold.value = addGold(result.rewards.gold)
       displayHeroes.value = squad.value.map(computeHeroDisplay)
 
       for (let i = 0; i < squad.value.length; i += 1) {
@@ -996,6 +1003,7 @@ async function runCombatLoop() {
 onMounted(() => {
   loadSquad()
   loadProgress()
+  gold.value = getGold()
   isRunning.value = true
   runCombatLoop()
 })
@@ -1049,6 +1057,26 @@ onUnmounted(() => {
 .map-arrow {
   font-size: 0.65rem;
   color: var(--text-muted);
+}
+
+.gold-display {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--color-gold);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.gold-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.gold-value {
+  font-weight: 600;
+  min-width: 2ch;
 }
 
 .explore-bar-wrap {
