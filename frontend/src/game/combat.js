@@ -119,7 +119,8 @@ const TIER_MULTIPLIER = {
   boss: 4,
 }
 
-const DEFAULT_LEVEL_SCALE = 0.08
+/** Per-level stat scaling. ~14% per level to match player 5 attr points impact. Was 0.08 (~7%/level). */
+const DEFAULT_LEVEL_SCALE = 0.16
 
 function deepCopy(value) {
   return JSON.parse(JSON.stringify(value))
@@ -216,8 +217,8 @@ export function createMonster(template, options = {}) {
     physAtk: Math.round(base.physAtk * factor),
     spellPower: Math.round(base.spellPower * factor),
     agility: Math.round(base.agility * factor),
-    armor: Math.round(base.armor * factor),
-    resistance: Math.round(base.resistance * factor),
+    armor: Math.round(base.armor * factor) + Math.floor(level * 0.5),
+    resistance: Math.round(base.resistance * factor) + Math.floor(level * 0.5),
     skillChance: tier === 'normal' ? 0 : tier === 'elite' ? 0.35 : 0.55,
     physCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.15,
     spellCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.15,

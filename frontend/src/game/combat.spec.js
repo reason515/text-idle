@@ -177,6 +177,34 @@ describe('combat progression and systems', () => {
     expect(high.physAtk).toBeGreaterThan(low.physAtk)
   })
 
+  it('monster level scaling: level 5 vs level 1 has at least 50% stat growth (matches player 5 attr/level)', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const low = createMonster(template, { tier: 'normal', level: 1 })
+    const high = createMonster(template, { tier: 'normal', level: 5 })
+    expect(high.maxHP).toBeGreaterThanOrEqual(low.maxHP * 1.5)
+    expect(high.physAtk).toBeGreaterThanOrEqual(low.physAtk * 1.5)
+  })
+
+  it('monster armor and resistance scale with level (all attributes grow)', () => {
+    const template = { id: 't', name: 'T', damageType: 'physical', base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 3, resistance: 2 } }
+    const low = createMonster(template, { tier: 'normal', level: 1 })
+    const high = createMonster(template, { tier: 'normal', level: 10 })
+    expect(high.armor).toBeGreaterThan(low.armor)
+    expect(high.resistance).toBeGreaterThan(low.resistance)
+    expect(high.armor).toBeGreaterThanOrEqual(low.armor * 1.5)
+    expect(high.resistance).toBeGreaterThanOrEqual(low.resistance * 1.5)
+  })
+
+  it('monster with base 0 armor/resistance gains level floor (floor(level * 0.5))', () => {
+    const template = { id: 't', name: 'T', damageType: 'physical', base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 0, resistance: 0 } }
+    const level1 = createMonster(template, { tier: 'normal', level: 1 })
+    const level10 = createMonster(template, { tier: 'normal', level: 10 })
+    expect(level1.armor).toBe(0)
+    expect(level1.resistance).toBe(0)
+    expect(level10.armor).toBe(5)
+    expect(level10.resistance).toBe(5)
+  })
+
   it('buildEncounterMonsters: pool includes Forest Spider, Timber Wolf, Defias Cutpurse', () => {
     const pool = MAP_MONSTER_POOLS['elwynn-forest']
     const normalIds = pool.normal.map((m) => m.id)
