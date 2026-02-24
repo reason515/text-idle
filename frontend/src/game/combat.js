@@ -39,6 +39,18 @@ export const MAP_MONSTER_POOLS = {
         damageType: 'physical',
         base: { hp: 34, physAtk: 7, spellPower: 0, agility: 8, armor: 1, resistance: 1 },
       },
+      {
+        id: 'forest-spider',
+        name: 'Forest Spider',
+        damageType: 'physical',
+        base: { hp: 32, physAtk: 8, spellPower: 0, agility: 9, armor: 1, resistance: 1 },
+      },
+      {
+        id: 'timber-wolf',
+        name: 'Timber Wolf',
+        damageType: 'physical',
+        base: { hp: 38, physAtk: 9, spellPower: 0, agility: 8, armor: 2, resistance: 0 },
+      },
     ],
     elite: [
       {
@@ -53,6 +65,12 @@ export const MAP_MONSTER_POOLS = {
         damageType: 'mixed',
         base: { hp: 46, physAtk: 9, spellPower: 7, agility: 8, armor: 2, resistance: 2 },
       },
+      {
+        id: 'defias-cutpurse',
+        name: 'Defias Cutpurse',
+        damageType: 'physical',
+        base: { hp: 42, physAtk: 10, spellPower: 0, agility: 9, armor: 2, resistance: 1 },
+      },
     ],
     boss: {
       id: 'hogger',
@@ -60,13 +78,14 @@ export const MAP_MONSTER_POOLS = {
       damageType: 'mixed',
       base: { hp: 90, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },
     },
+    levelRange: { min: -1, max: 2 },
   },
 }
 
 const TIER_MULTIPLIER = {
-  normal: 1,
-  elite: 2,
-  boss: 5,
+  normal: 1.15,
+  elite: 1.5,
+  boss: 4,
 }
 
 const DEFAULT_LEVEL_SCALE = 0.08
@@ -173,6 +192,12 @@ export function createMonster(template, options = {}) {
   }
 }
 
+function randomLevelInRange(baseLevel, range, rng) {
+  const { min: offsetMin, max: offsetMax } = range ?? { min: -1, max: 2 }
+  const offset = Math.floor(rng() * (offsetMax - offsetMin + 1)) + offsetMin
+  return clamp(baseLevel + offset, 1, 60)
+}
+
 export function buildEncounterMonsters({
   mapId,
   squadSize,
@@ -182,8 +207,10 @@ export function buildEncounterMonsters({
   forceBoss = false,
 }) {
   const pool = MAP_MONSTER_POOLS[mapId] ?? MAP_MONSTER_POOLS['elwynn-forest']
+  const levelRange = pool.levelRange ?? { min: -1, max: 2 }
   if (forceBoss) {
-    return [createMonster(pool.boss, { tier: 'boss', level })]
+    const bossLevel = randomLevelInRange(level, levelRange, rng)
+    return [createMonster(pool.boss, { tier: 'boss', level: bossLevel })]
   }
   const count = generateEncounterSize(squadSize, distribution, rng)
   const monsters = []
@@ -191,7 +218,8 @@ export function buildEncounterMonsters({
     const isElite = rng() < 0.25
     const tier = isElite ? 'elite' : 'normal'
     const template = isElite ? pickRandom(pool.elite, rng) : pickRandom(pool.normal, rng)
-    monsters.push(createMonster(template, { tier, level }))
+    const monsterLevel = randomLevelInRange(level, levelRange, rng)
+    monsters.push(createMonster(template, { tier, level: monsterLevel }))
   }
   return monsters
 }

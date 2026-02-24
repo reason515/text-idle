@@ -73,6 +73,7 @@
               <span class="monster-name">{{ m.name }}</span>
               <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
             </div>
+            <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
             <div class="bar-row">
               <span class="bar-label">HP</span>
               <div class="bar-track">
@@ -301,6 +302,10 @@
             <span class="modal-tier-tag" :class="'tier-' + selectedMonster.tier">{{ selectedMonster.tier }}</span>
           </div>
           <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Level</span>
+              <span class="detail-value">{{ selectedMonster.level ?? 1 }}</span>
+            </div>
             <div class="detail-row">
               <span class="detail-label">HP</span>
               <span class="detail-value val-hp" :style="{ color: hpBarColor(monsterHpPct(selectedMonster)) }">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
@@ -683,9 +688,11 @@ async function runCombatLoop() {
     }
     isFirstBattle = false
 
+    const squadLevel = Math.max(1, ...squad.value.map((h) => h.level ?? 1))
     const monsters = buildEncounterMonsters({
       mapId: progress.value.currentMapId,
       squadSize: squad.value.length,
+      level: squadLevel,
       forceBoss: progress.value.bossAvailable,
     })
 
@@ -1282,6 +1289,11 @@ onUnmounted(() => {
 .tier-normal { color: var(--color-normal); }
 .tier-elite { color: var(--color-elite); }
 .tier-boss { color: var(--color-boss); font-weight: bold; }
+.monster-level {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
 
 .empty-hint {
   color: var(--text-muted);

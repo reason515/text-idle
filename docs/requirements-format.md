@@ -275,11 +275,11 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Monster tiers**: Normal (basic stats), Elite (~2x stats, uses skills), Boss (~5x stats, multi-skill).
+- **Monster tiers**: Normal (~1.15x base), Elite (~1.5x stats, uses skills), Boss (~4x stats, multi-skill). Normal/Elite gap reduced for smoother progression.
 - **Core attributes**: HP, PhysAtk, SpellPower, Agility, Armor, Resistance. Same damage/reduction formulas as heroes.
 - **Damage types**: Physical (reduced by Armor), Magic (reduced by Resistance). Monsters can be pure physical, pure magic, or mixed (PhysRatio/MagicRatio).
 - **Defense formula**: 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. Flat subtraction, no cap.
-- **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner (physical); Kobold Geomancer (magic); Hogger (Boss).
+- **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner, Defias Trapper, Forest Spider, Timber Wolf (normal); Kobold Geomancer, Defias Smuggler, Defias Cutpurse (elite); Hogger (Boss).
 
 **Acceptance Criteria**
 
@@ -292,8 +292,9 @@ Then [expected result/verifiable behavior].
 | AC5 | A magic monster (e.g., Kobold Geomancer, PhysAtk=0, SpellPower=10) attacks a hero | Monster deals damage | Hero's Resistance absorbs the damage; combat log indicates damage type as Magic |
 | AC6 | An Elite or Boss monster (e.g., Kobold Geomancer elite, Hogger) is in combat | Monster acts | Monster has higher HP/Atk than Normal (TierMult); Elite/Boss may use skills; combat log shows damage type when applicable |
 | AC7 | Player views monster info (e.g., in bestiary, combat log, or pre-encounter tooltip) | Player inspects a monster type | Core attributes (HP, PhysAtk, SpellPower, Agility, Armor, Resistance) and damage type (Physical/Magic/Mixed) are visible or inferable |
-| AC8 | Squad enters combat on a specific map (e.g., Elwynn Forest) | Encounter is generated | Monsters are drawn from that map's pool (e.g., Kobold Miner, Young Wolf, Defias Trapper for Normal; Kobold Geomancer, Defias Smuggler for Elite; Hogger for Boss) |
+| AC8 | Squad enters combat on a specific map (e.g., Elwynn Forest) | Encounter is generated | Monsters are drawn from that map's pool (e.g., Kobold Miner, Young Wolf, Defias Trapper, Forest Spider, Timber Wolf for Normal; Kobold Geomancer, Defias Smuggler, Defias Cutpurse for Elite; Hogger for Boss) |
 | AC9 | Two monsters have the same Agility | Turn order is determined | Order between them is random (see Example 6 AC2); monsters participate in the same Agility-based turn order as heroes |
+| AC10 | Squad level is 5 and map has level range [-1, +2] | Encounter is generated | Each monster has a level in [4, 7]; same monster type at different levels has different stats (higher level = stronger) |
 
 ---
 

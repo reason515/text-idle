@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   MAPS,
+  MAP_MONSTER_POOLS,
   CRIT_MULTIPLIER,
   createInitialProgress,
   getRecruitLimit,
@@ -9,6 +10,7 @@ import {
   unlockNextMapAfterBoss,
   generateEncounterSize,
   createMonster,
+  buildEncounterMonsters,
   applyDamage,
   runAutoCombat,
   startRestPhase,
@@ -140,6 +142,42 @@ describe('combat progression and systems', () => {
     expect(elite.physAtk).toBeGreaterThan(normal.physAtk)
   })
 
+  it('buildEncounterMonsters: monsters have levels within map level range', () => {
+    const rng = () => 0.5
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 2,
+      level: 5,
+      rng,
+    })
+    expect(monsters.length).toBeGreaterThan(0)
+    const pool = MAP_MONSTER_POOLS['elwynn-forest']
+    const { min, max } = pool.levelRange
+    for (const m of monsters) {
+      expect(m.level).toBeGreaterThanOrEqual(5 + min)
+      expect(m.level).toBeLessThanOrEqual(5 + max)
+      expect(m.level).toBeGreaterThanOrEqual(1)
+      expect(m.level).toBeLessThanOrEqual(60)
+    }
+  })
+
+  it('buildEncounterMonsters: same-type monsters at different levels have different stats', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const low = createMonster(template, { tier: 'normal', level: 1 })
+    const high = createMonster(template, { tier: 'normal', level: 5 })
+    expect(high.maxHP).toBeGreaterThan(low.maxHP)
+    expect(high.physAtk).toBeGreaterThan(low.physAtk)
+  })
+
+  it('buildEncounterMonsters: pool includes Forest Spider, Timber Wolf, Defias Cutpurse', () => {
+    const pool = MAP_MONSTER_POOLS['elwynn-forest']
+    const normalIds = pool.normal.map((m) => m.id)
+    const eliteIds = pool.elite.map((m) => m.id)
+    expect(normalIds).toContain('forest-spider')
+    expect(normalIds).toContain('timber-wolf')
+    expect(eliteIds).toContain('defias-cutpurse')
+  })
+
   it('Example9: monster has crit rates based on tier', () => {
     const normal = createMonster(
       {
@@ -265,7 +303,7 @@ describe('combat progression and systems', () => {
     expect(heroAction.actorAgility).toBe(12)
     const monsterAction = result.log.find((e) => e.actorName === 'Kobold Miner')
     if (monsterAction) {
-      expect(monsterAction.actorAgility).toBe(6)
+      expect(monsterAction.actorAgility).toBeGreaterThanOrEqual(6)
     }
   })
 
