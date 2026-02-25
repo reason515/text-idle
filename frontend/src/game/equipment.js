@@ -405,3 +405,20 @@ export function canEquip(hero, item) {
   if ((hero.spirit || 0) < (item.spiReq || 0)) return false
   return true
 }
+
+/**
+ * Get reasons why hero cannot equip item (empty if can equip)
+ * @returns {string[]} Human-readable reasons
+ */
+export function getEquipReasons(hero, item) {
+  if (!hero || !item) return ['Invalid hero or item']
+  const reasons = []
+  const level = hero.level || 1
+  const lvlReq = item.levelReq || 0
+  if (level < lvlReq) reasons.push(`Level ${lvlReq} required (current: ${level})`)
+  if ((hero.strength || 0) < (item.strReq || 0)) reasons.push(`Str ${item.strReq} required (current: ${hero.strength || 0})`)
+  if ((hero.agility || 0) < (item.agiReq || 0)) reasons.push(`Agi ${item.agiReq} required (current: ${hero.agility || 0})`)
+  if ((hero.intellect || 0) < (item.intReq || 0)) reasons.push(`Int ${item.intReq} required (current: ${hero.intellect || 0})`)
+  if ((hero.spirit || 0) < (item.spiReq || 0)) reasons.push(`Spi ${item.spiReq} required (current: ${hero.spirit || 0})`)
+  return reasons
+}

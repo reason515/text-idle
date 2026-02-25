@@ -70,29 +70,47 @@ export function removeFromInventory(itemId) {
 }
 
 /**
- * Get sell price for an item (quality + tier)
- * Normal < Magic < Rare < Unique; Elite > Exceptional > Normal
+ * Slot multiplier for sell price (weapons > armor > accessories)
+ */
+const SLOT_SELL_MULT = {
+  MainHand: 1.5,
+  TwoHand: 1.5,
+  OffHand: 1.3,
+  Armor: 1.2,
+  Helm: 1.1,
+  Gloves: 1,
+  Boots: 1,
+  Belt: 0.9,
+  Amulet: 1.1,
+  Ring1: 1.1,
+  Ring2: 1.1,
+}
+
+/**
+ * Get sell price for an item (quality + tier + slot)
+ * Normal < Magic < Rare < Unique; Elite > Exceptional > Normal; weapons > armor > accessories
  */
 export function getSellPrice(item) {
   if (!item) return 0
-  let base = 2
+  let base = 8
   switch (item.quality) {
     case QUALITY_MAGIC:
-      base = 8
-      break
-    case QUALITY_RARE:
       base = 25
       break
+    case QUALITY_RARE:
+      base = 60
+      break
     case QUALITY_UNIQUE:
-      base = 80
+      base = 150
       break
     default:
-      base = 2
+      base = 8
   }
   let tierMult = 1
   if (item.itemTier === 'exceptional') tierMult = 2
   else if (item.itemTier === 'elite') tierMult = 4
-  return Math.max(1, Math.floor(base * tierMult))
+  const slotMult = SLOT_SELL_MULT[item.slot] ?? 1
+  return Math.max(1, Math.floor(base * tierMult * slotMult))
 }
 
 /**

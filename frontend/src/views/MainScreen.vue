@@ -214,6 +214,10 @@
               </template>
               <template v-else>{{ entry.message }}</template>
             </div>
+            <div v-else-if="entry.type === 'sell'" class="log-sell">
+              <span class="val-gold">Gold +{{ entry.gold }}</span>
+              <span class="log-sell-text">(sold {{ entry.itemName }})</span>
+            </div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span
@@ -341,7 +345,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null">
+      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null">
         <div class="modal-box item-detail-modal">
           <div class="modal-title" :style="{ color: getQualityColor(selectedItem.quality) }">
             {{ formatItemDisplayName(selectedItem) }}
@@ -353,15 +357,15 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">Level Req</span>
-              <span class="detail-value" :class="{ 'req-unmet': (selectedHero?.level || 1) < (selectedItem.levelReq || 0) }">{{ selectedItem.levelReq || 0 }}</span>
+              <span class="detail-value detail-value-req">{{ selectedItem.levelReq || 0 }}</span>
             </div>
             <div v-if="(selectedItem.strReq || 0) > 0 || (selectedItem.agiReq || 0) > 0 || (selectedItem.intReq || 0) > 0 || (selectedItem.spiReq || 0) > 0" class="detail-row">
               <span class="detail-label">Requirements</span>
-              <span class="detail-value">
-                <span v-if="(selectedItem.strReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.strength || 0) < (selectedItem.strReq || 0) }">Str {{ selectedItem.strReq }}</span>
-                <span v-if="(selectedItem.agiReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.agility || 0) < (selectedItem.agiReq || 0) }">Agi {{ selectedItem.agiReq }}</span>
-                <span v-if="(selectedItem.intReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.intellect || 0) < (selectedItem.intReq || 0) }">Int {{ selectedItem.intReq }}</span>
-                <span v-if="(selectedItem.spiReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.spirit || 0) < (selectedItem.spiReq || 0) }">Spi {{ selectedItem.spiReq }}</span>
+              <span class="detail-value detail-value-req">
+                <span v-if="(selectedItem.strReq || 0) > 0">Str {{ selectedItem.strReq }}</span>
+                <span v-if="(selectedItem.agiReq || 0) > 0">Agi {{ selectedItem.agiReq }}</span>
+                <span v-if="(selectedItem.intReq || 0) > 0">Int {{ selectedItem.intReq }}</span>
+                <span v-if="(selectedItem.spiReq || 0) > 0">Spi {{ selectedItem.spiReq }}</span>
               </span>
             </div>
             <div v-if="(selectedItem.armor || 0) > 0" class="detail-row">
@@ -389,11 +393,38 @@
               <span class="detail-label">Suffix</span>
               <span class="detail-value">{{ s.name }} — +{{ s.value }} {{ s.stat }} [{{ s.min }}~{{ s.max }}]</span>
             </div>
+            <div v-if="isItemInInventory(selectedItem)" class="detail-row">
+              <span class="detail-label">Sell Price</span>
+              <span class="detail-value val-gold">{{ getSellPrice(selectedItem) }} gold</span>
+            </div>
           </div>
-          <div class="item-detail-actions">
-            <button v-if="selectedHero && canEquip(selectedHero, selectedItem)" class="btn" @click="equipItem(selectedItem); selectedItem = null">Equip</button>
-            <button v-if="isItemInInventory(selectedItem)" class="btn btn-sell" @click="doSellItem(selectedItem); selectedItem = null">Sell</button>
-            <button class="btn" @click="selectedItem = null">Close</button>
+          <div v-if="sellConfirmingItem?.id === selectedItem?.id" class="item-detail-sell-confirm">
+            <span class="sell-confirm-text">Sell for {{ getSellPrice(selectedItem) }} gold?</span>
+            <div class="item-detail-actions">
+              <button class="btn btn-sell" @click="confirmSellItem(selectedItem)">Confirm</button>
+              <button class="btn" @click="sellConfirmingItem = null">Cancel</button>
+            </div>
+          </div>
+          <div v-else class="item-detail-actions">
+            <div v-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
+              <span class="equip-to-label">Equip to:</span>
+              <span v-for="h in squad" :key="h.id" class="equip-to-row">
+                <button
+                  v-if="canEquip(h, selectedItem)"
+                  class="btn btn-sm"
+                  @click="equipItem(selectedItem, h); selectedItem = null"
+                >{{ h.name }}</button>
+                <span
+                  v-else
+                  class="equip-to-unmet tooltip-wrap has-tip"
+                >
+                  {{ h.name }}
+                  <span class="tooltip-text">{{ getEquipReasons(h, selectedItem).join('; ') }}</span>
+                </span>
+              </span>
+            </div>
+            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn btn-sell" @click="sellConfirmingItem = selectedItem">Sell</button>
+            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null">Close</button>
           </div>
         </div>
       </div>
@@ -610,13 +641,14 @@ import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/war
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 import { getGold, addGold } from '../game/gold.js'
-import { addToInventory, getInventory, sellItem, removeFromInventory } from '../game/inventory.js'
+import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
 import {
   formatItemDisplayName,
   getQualityColor,
   SLOT_LABELS,
   EQUIPMENT_SLOTS,
   canEquip,
+  getEquipReasons,
   getEquipmentBonuses,
 } from '../game/equipment.js'
 
@@ -687,6 +719,7 @@ const showBackpackModal = ref(false)
 const selectedHero = ref(null)
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
+const sellConfirmingItem = ref(null)
 const pendingEquipSlot = ref(null)
 const hoveredBackpackItem = ref(null)
 const backpackTooltipRect = ref(null)
@@ -757,24 +790,28 @@ function isItemInInventory(item) {
   return getInventory().some((i) => i.id === item.id)
 }
 
-function equipItem(item) {
-  if (!selectedHero.value || !item || !canEquip(selectedHero.value, item)) return
-  const hero = squad.value.find((h) => h.id === selectedHero.value.id)
-  if (!hero) return
-  hero.equipment = hero.equipment || {}
-  hero.equipment[item.slot] = item
+function equipItem(item, targetHero) {
+  const hero = targetHero || selectedHero.value
+  if (!hero || !item || !canEquip(hero, item)) return
+  const heroInSquad = squad.value.find((h) => h.id === hero.id)
+  if (!heroInSquad) return
+  heroInSquad.equipment = heroInSquad.equipment || {}
+  heroInSquad.equipment[item.slot] = item
   removeFromInventory(item.id)
   inventoryVersion.value++
   saveSquad(squad.value)
   displayHeroes.value = squad.value.map(computeHeroDisplay)
 }
 
-function doSellItem(item) {
+function confirmSellItem(item) {
   if (!item?.id) return
   const result = sellItem(item.id)
   if (result.success) {
     gold.value = getGold()
     inventoryVersion.value++
+    addLogEntry({ type: 'sell', itemName: formatItemDisplayName(item), gold: result.gold })
+    selectedItem.value = null
+    sellConfirmingItem.value = null
   }
 }
 
@@ -1434,8 +1471,16 @@ onUnmounted(() => {
 .log-item-drop:hover { opacity: 0.9; }
 .log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: 0.9rem; }
 
-.item-detail-modal .req-unmet { color: var(--error); }
+.item-detail-modal .detail-value-req { color: var(--text-value); }
 .item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.item-detail-sell-confirm { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.sell-confirm-text { font-size: 0.9rem; color: var(--text-muted); margin-right: 0.5rem; }
+.equip-to-section { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+.equip-to-label { font-size: 0.85rem; color: var(--text-label); flex-shrink: 0; }
+.equip-to-row { display: inline-flex; }
+.equip-to-unmet { font-size: 0.85rem; color: var(--text-muted); cursor: help; }
+.log-sell { font-size: 0.9rem; padding: 0.2rem 0; }
+.log-sell .log-sell-text { color: var(--text-muted); margin-left: 0.25rem; }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
 .btn-sell:hover { background: rgba(255, 204, 68, 0.1); }
 

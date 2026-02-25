@@ -111,7 +111,7 @@ test.describe('Inventory (Example 22)', () => {
     await expect(tooltip).toContainText('Armor')
   })
 
-  test('click item opens detail modal with Slot, Level Req, Sell', async ({ page }) => {
+  test('click item opens detail modal with Slot, Level Req, Sell Price, Sell', async ({ page }) => {
     const email = `inv-detail-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
@@ -130,6 +130,7 @@ test.describe('Inventory (Example 22)', () => {
     await expect(page.locator('.item-detail-modal')).toContainText('Cap')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Slot' })).toContainText('Helm')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Level Req' })).toBeVisible()
+    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Sell Price' })).toBeVisible()
     await expect(page.locator('.item-detail-modal').getByRole('button', { name: 'Sell' })).toBeVisible()
     await page.locator('.item-detail-modal').getByRole('button', { name: 'Close' }).click()
   })
@@ -153,6 +154,7 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await page.locator('.item-detail-modal').getByRole('button', { name: 'Sell' }).click()
+    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
     await page.locator('.backpack-btn').click()

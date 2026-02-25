@@ -87,15 +87,26 @@ describe('inventory', () => {
 
   describe('getSellPrice', () => {
     it('Normal quality has lower price than Magic', () => {
-      const normal = { quality: QUALITY_NORMAL, itemTier: 'normal' }
-      const magic = { quality: QUALITY_MAGIC, itemTier: 'normal' }
+      const normal = { quality: QUALITY_NORMAL, itemTier: 'normal', slot: 'Helm' }
+      const magic = { quality: QUALITY_MAGIC, itemTier: 'normal', slot: 'Helm' }
       expect(getSellPrice(normal)).toBeLessThan(getSellPrice(magic))
     })
 
     it('Elite tier has higher price than Normal tier', () => {
-      const normalTier = { quality: QUALITY_NORMAL, itemTier: 'normal' }
-      const eliteTier = { quality: QUALITY_NORMAL, itemTier: 'elite' }
+      const normalTier = { quality: QUALITY_NORMAL, itemTier: 'normal', slot: 'Helm' }
+      const eliteTier = { quality: QUALITY_NORMAL, itemTier: 'elite', slot: 'Helm' }
       expect(getSellPrice(eliteTier)).toBeGreaterThan(getSellPrice(normalTier))
+    })
+
+    it('MainHand has higher price than Belt for same quality/tier', () => {
+      const mainHand = { quality: QUALITY_NORMAL, itemTier: 'normal', slot: 'MainHand' }
+      const belt = { quality: QUALITY_NORMAL, itemTier: 'normal', slot: 'Belt' }
+      expect(getSellPrice(mainHand)).toBeGreaterThan(getSellPrice(belt))
+    })
+
+    it('Normal Helm normal tier sells for at least 8 gold', () => {
+      const helm = { quality: QUALITY_NORMAL, itemTier: 'normal', slot: 'Helm' }
+      expect(getSellPrice(helm)).toBeGreaterThanOrEqual(8)
     })
   })
 

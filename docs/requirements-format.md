@@ -723,7 +723,7 @@ Then [expected result/verifiable behavior].
 - **Capacity**: Each player account has exactly **100 inventory slots**; each slot holds one item (no stacking).
 - **Full inventory rule**: When all 100 slots are occupied, any newly dropped equipment is **discarded** (does not enter the backpack); EXP and Gold from the same battle are still awarded normally.
 - **Full inventory notification**: When a drop is discarded due to full inventory, the combat log or top bar shows a warning (e.g., `"Inventory full — loot discarded!"`).
-- **Selling**: Player selects an item in the backpack and sells it; item is removed and gold is added to the account immediately; sell price is determined by item quality and tier (Normal < Magic < Rare < Unique; Elite tier > Exceptional > Normal); configurable.
+- **Selling**: Player selects an item in the backpack and sells it; item is removed and gold is added to the account immediately; sell price = base(quality) × tier_mult × slot_mult (quality: Normal 8, Magic 25, Rare 60, Unique 150; tier: normal 1, exceptional 2, elite 4; slot: MainHand/TwoHand 1.5, OffHand 1.3, Armor 1.2, Helm 1.1, Gloves/Boots 1, Belt 0.9, Amulet/Ring 1.1); configurable.
 - **Sell is irreversible**: Sold items cannot be recovered.
 - **UI entry**: Backpack button/icon in the top bar or main screen; opens a Modal grid view; slot counter "N / 100" visible at top.
 - **Item display in grid**: Each slot shows item name (per Example 23 naming rules) colored by quality; clicking a slot opens item detail (same detail view as Example 18) with a Sell button added.
