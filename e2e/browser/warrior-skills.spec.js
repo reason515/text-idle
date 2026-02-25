@@ -91,7 +91,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Skills' })).toBeVisible()
+    await page.getByRole('button', { name: 'Skills' }).click()
     await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
   })
@@ -109,7 +109,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Skills' })).toBeVisible()
+    await page.getByRole('button', { name: 'Skills' }).click()
     await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).not.toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).not.toBeVisible()
@@ -127,6 +127,8 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await page.getByRole('button', { name: 'Skills' }).click()
     await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).not.toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
@@ -143,6 +145,8 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await page.getByRole('button', { name: 'Skills' }).click()
     await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).not.toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
@@ -241,8 +245,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
 
-    // Skills section
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Skills' })).toBeVisible()
+    await page.getByRole('button', { name: 'Skills' }).click()
     await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible()
     await expect(page.locator('.skill-spec-tag')).toContainText('Protection')
     await expect(page.locator('.skill-rage-cost')).toBeVisible()

@@ -53,7 +53,7 @@ const SAMPLE_HELM = {
 }
 
 test.describe('Equipment Equip (Example 19, 20)', () => {
-  test('hero detail shows Equipment section with 11 slots', async ({ page }) => {
+  test('hero detail shows Equipment section with 10 slots (MainHand, OffHand, no TwoHand)', async ({ page }) => {
     const email = `eq-slots-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
@@ -64,7 +64,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.modal-box')).toBeVisible()
     await expect(page.locator('.detail-sep-line').filter({ hasText: 'Equipment' })).toBeVisible()
     const slotRows = page.locator('.equipment-slot-row')
-    await expect(slotRows).toHaveCount(11)
+    await expect(slotRows).toHaveCount(10)
     await expect(slotRows.first()).toContainText('Empty')
   })
 

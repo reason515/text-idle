@@ -312,7 +312,7 @@
               :key="item.id"
               class="inventory-slot tooltip-wrap has-tip"
               :style="{ color: getQualityColor(item.quality) }"
-              :class="{ 'slot-match': pendingEquipSlot && item.slot === pendingEquipSlot }"
+              :class="{ 'slot-match': pendingEquipSlot && (pendingEquipSlot === 'MainHand' ? (item.slot === 'MainHand' || item.slot === 'TwoHand') : item.slot === pendingEquipSlot) }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
               @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
               @mouseleave="hoveredBackpackItem = null"
@@ -437,6 +437,22 @@
             <span class="modal-hero-name">{{ selectedHero.name }}</span>
             <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
           </div>
+          <div class="detail-tabs">
+            <button
+              type="button"
+              class="detail-tab"
+              :class="{ active: heroDetailTab === 'attrs' }"
+              @click="heroDetailTab = 'attrs'"
+            >Attributes</button>
+            <button
+              type="button"
+              class="detail-tab"
+              :class="{ active: heroDetailTab === 'skills' }"
+              @click="heroDetailTab = 'skills'"
+            >Skills</button>
+          </div>
+          <div class="detail-tab-content">
+          <div v-show="heroDetailTab === 'attrs'" class="detail-tab-pane">
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">Level</span>
@@ -455,57 +471,59 @@
               <span class="detail-value">{{ selectedHero.currentMP ?? selectedHero.maxMP }} / {{ selectedHero.maxMP }}</span>
             </div>
           </div>
-          <div class="detail-sep-line">Primary Attributes</div>
-          <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section attr-alloc">
-            <div class="detail-row">
-              <span class="detail-label">Unassigned</span>
-              <span class="detail-value">{{ selectedHero.unassignedPoints }}</span>
-            </div>
-            <div class="attr-buttons-hint">Click + to assign a point</div>
-          </div>
-          <div class="detail-section">
-            <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
-              <span class="detail-label">{{ attr.label }}</span>
-              <span class="detail-value">
-                <button
-                  v-if="(selectedHero.unassignedPoints || 0) > 0"
-                  type="button"
-                  class="btn btn-sm attr-btn"
-                  :title="'Add 1 to ' + attr.label"
-                  @click="assignPoint(attr.key)"
-                >+</button>
-                <span class="attr-val">{{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}</span>
-              </span>
-            </div>
-          </div>
-          <template v-if="selectedHero.class === 'Warrior' && selectedHero.skill">
-            <div class="detail-sep-line">Skills</div>
-            <div class="detail-section">
-              <div class="detail-row">
-                <span class="detail-label">{{ getHeroSkillDisplay(selectedHero.skill).name }}</span>
-                <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(selectedHero.skill).spec }}</span>
+          <div class="detail-attr-equip-row">
+            <div class="detail-attr-col">
+              <div class="detail-sep-line">Primary Attributes</div>
+              <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section attr-alloc">
+                <div class="detail-row">
+                  <span class="detail-label">Unassigned</span>
+                  <span class="detail-value">{{ selectedHero.unassignedPoints }}</span>
+                </div>
+                <div class="attr-buttons-hint">Click + to assign a point</div>
               </div>
-              <div class="detail-row skill-desc-row">
-                <span class="skill-desc-text">{{ getHeroSkillDisplay(selectedHero.skill).effectDesc }}</span>
+              <div class="detail-section">
+                <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
+                  <span class="detail-label">{{ attr.label }}</span>
+                  <span class="detail-value">
+                    <button
+                      v-if="(selectedHero.unassignedPoints || 0) > 0"
+                      type="button"
+                      class="btn btn-sm attr-btn"
+                      :title="'Add 1 to ' + attr.label"
+                      @click="assignPoint(attr.key)"
+                    >+</button>
+                    <span class="attr-val">{{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}</span>
+                  </span>
+                </div>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">Rage Cost</span>
-                <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(selectedHero.skill).rageCost }}</span>
+              <div class="detail-sep-line">Secondary Attributes</div>
+              <div class="detail-section">
+                <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
+                  <span class="detail-label">{{ attr.label }}</span>
+                  <span class="detail-value tooltip-wrap" :class="{ 'has-tip': attr.formula && attr.formula !== '-' }">
+                    {{ attr.value }}
+                    <span v-if="attr.formula && attr.formula !== '-'" class="tooltip-text">{{ attr.formula }}</span>
+                  </span>
+                </div>
               </div>
             </div>
-          </template>
-          <div class="detail-sep-line">Equipment</div>
-          <div class="detail-section equipment-slots">
-            <div v-for="slot in EQUIPMENT_SLOTS" :key="slot" class="equipment-slot-row">
-              <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
-              <span
-                class="detail-value equipment-slot-val tooltip-wrap has-tip"
-                :style="{ color: getEquippedItemColor(slot) }"
-                @click="toggleEquipmentSlot(slot)"
-              >
-                {{ getEquippedItemName(slot) || 'Empty' }}
-                <span class="tooltip-text">Click to equip from backpack or unequip</span>
-              </span>
+            <div class="detail-equip-col">
+              <div class="detail-sep-line">Equipment</div>
+              <div class="detail-section equipment-slots">
+                <div v-for="slot in EQUIPMENT_SLOTS" :key="slot" class="equipment-slot-row">
+                  <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
+                  <span
+                    class="detail-value equipment-slot-val tooltip-wrap"
+                    :class="{ 'has-tip': !(slot === 'OffHand' && isOffHandBlockedForSelected()), 'equip-blocked': slot === 'OffHand' && isOffHandBlockedForSelected() }"
+                    :style="{ color: getEquippedItemColor(slot) }"
+                    @click="toggleEquipmentSlot(slot)"
+                  >
+                    {{ getEquippedItemName(slot) || 'Empty' }}
+                    <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text">Blocked by two-hand weapon</span>
+                    <span v-else class="tooltip-text">Click to equip from backpack or unequip</span>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">Debuffs</div>
@@ -517,15 +535,25 @@
               </span>
             </div>
           </div>
-          <div class="detail-sep-line">Secondary Attributes</div>
-          <div class="detail-section">
-            <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
-              <span class="detail-label">{{ attr.label }}</span>
-              <span class="detail-value tooltip-wrap" :class="{ 'has-tip': attr.formula && attr.formula !== '-' }">
-                {{ attr.value }}
-                <span v-if="attr.formula && attr.formula !== '-'" class="tooltip-text">{{ attr.formula }}</span>
-              </span>
-            </div>
+          </div>
+          <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
+            <template v-if="selectedHero.class === 'Warrior' && selectedHero.skill">
+              <div class="detail-section">
+                <div class="detail-row">
+                  <span class="detail-label">{{ getHeroSkillDisplay(selectedHero.skill).name }}</span>
+                  <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(selectedHero.skill).spec }}</span>
+                </div>
+                <div class="detail-row skill-desc-row">
+                  <span class="skill-desc-text">{{ getHeroSkillDisplay(selectedHero.skill).effectDesc }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Rage Cost</span>
+                  <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(selectedHero.skill).rageCost }}</span>
+                </div>
+              </div>
+            </template>
+            <div v-else class="detail-empty-hint">No skills learned yet.</div>
+          </div>
           </div>
           <button class="btn" @click="selectedHero = null">Close</button>
         </div>
@@ -620,7 +648,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSquad, saveSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
 import {
@@ -717,6 +745,7 @@ const gold = ref(0)
 const showMapModal = ref(false)
 const showBackpackModal = ref(false)
 const selectedHero = ref(null)
+const heroDetailTab = ref('attrs')
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
 const sellConfirmingItem = ref(null)
@@ -796,6 +825,17 @@ function equipItem(item, targetHero) {
   const heroInSquad = squad.value.find((h) => h.id === hero.id)
   if (!heroInSquad) return
   heroInSquad.equipment = heroInSquad.equipment || {}
+  if (item.slot === 'TwoHand') {
+    const mh = heroInSquad.equipment.MainHand
+    const oh = heroInSquad.equipment.OffHand
+    if (mh) { addToInventory(mh); delete heroInSquad.equipment.MainHand }
+    if (oh) { addToInventory(oh); delete heroInSquad.equipment.OffHand }
+  } else if (item.slot === 'MainHand' || item.slot === 'OffHand') {
+    if (heroInSquad.equipment.TwoHand) {
+      addToInventory(heroInSquad.equipment.TwoHand)
+      delete heroInSquad.equipment.TwoHand
+    }
+  }
   heroInSquad.equipment[item.slot] = item
   removeFromInventory(item.id)
   inventoryVersion.value++
@@ -815,15 +855,38 @@ function confirmSellItem(item) {
   }
 }
 
+function getMainHandItem(hero) {
+  return hero?.equipment?.MainHand ?? hero?.equipment?.TwoHand ?? null
+}
+
+function isOffHandBlocked(hero) {
+  return !!(hero?.equipment?.TwoHand)
+}
+
+function isOffHandBlockedForSelected() {
+  const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
+  return isOffHandBlocked(hero)
+}
+
 function getEquippedItemName(slot) {
   if (!selectedHero.value) return null
   const hero = squad.value.find((h) => h.id === selectedHero.value.id)
+  if (slot === 'MainHand') {
+    const item = getMainHandItem(hero)
+    return item ? formatItemDisplayName(item) : null
+  }
+  if (slot === 'OffHand' && isOffHandBlocked(hero)) return '\u2014'
   const item = hero?.equipment?.[slot]
   return item ? formatItemDisplayName(item) : null
 }
 
 function getEquippedItemColor(slot) {
   const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
+  if (slot === 'MainHand') {
+    const item = getMainHandItem(hero)
+    return item ? getQualityColor(item.quality) : 'var(--text-muted)'
+  }
+  if (slot === 'OffHand' && isOffHandBlocked(hero)) return 'var(--text-muted)'
   const item = hero?.equipment?.[slot]
   return item ? getQualityColor(item.quality) : 'var(--text-muted)'
 }
@@ -846,14 +909,21 @@ function getItemTooltipLines(item) {
   return lines
 }
 
+function getItemInSlot(hero, slot) {
+  if (slot === 'MainHand') return getMainHandItem(hero)
+  return hero?.equipment?.[slot] ?? null
+}
+
 function toggleEquipmentSlot(slot) {
   const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
   if (!hero) return
   hero.equipment = hero.equipment || {}
-  const item = hero.equipment[slot]
+  if (slot === 'OffHand' && isOffHandBlocked(hero)) return
+  const item = getItemInSlot(hero, slot)
+  const storageKey = item?.slot ?? slot
   if (item) {
     addToInventory(item)
-    delete hero.equipment[slot]
+    delete hero.equipment[storageKey]
     inventoryVersion.value++
     saveSquad(squad.value)
     displayHeroes.value = squad.value.map(computeHeroDisplay)
@@ -865,7 +935,10 @@ function toggleEquipmentSlot(slot) {
 
 function tryEquipFromBackpack(item) {
   if (!pendingEquipSlot.value || !selectedHero.value) return false
-  if (item.slot !== pendingEquipSlot.value) return false
+  const slotMatch = pendingEquipSlot.value === 'MainHand'
+    ? (item.slot === 'MainHand' || item.slot === 'TwoHand')
+    : item.slot === pendingEquipSlot.value
+  if (!slotMatch) return false
   const hero = squad.value.find((h) => h.id === selectedHero.value.id)
   if (!hero || !canEquip(hero, item)) return false
   equipItem(item)
@@ -1285,6 +1358,10 @@ async function runCombatLoop() {
   }
 }
 
+watch(selectedHero, (val) => {
+  if (val) heroDetailTab.value = 'attrs'
+})
+
 onMounted(() => {
   loadSquad()
   loadProgress()
@@ -1484,19 +1561,43 @@ onUnmounted(() => {
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
 .btn-sell:hover { background: rgba(255, 204, 68, 0.1); }
 
-.equipment-slots .equipment-slot-row {
+.detail-attr-equip-row {
   display: flex;
-  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+.detail-attr-col {
+  flex: 1;
+  min-width: 0;
+}
+.detail-equip-col {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 520px) {
+  .detail-attr-equip-row {
+    flex-direction: column;
+  }
+}
+
+.equipment-slots .equipment-slot-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0 0.75rem;
   align-items: center;
   padding: 0.2rem 0;
 }
 .equipment-slot-val {
   cursor: pointer;
-  max-width: 18rem;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 .equipment-slot-val:hover { text-decoration: underline; }
+.equipment-slot-val.equip-blocked { cursor: default; }
+.equipment-slot-val.equip-blocked:hover { text-decoration: none; }
 
 .explore-bar-wrap {
   flex: 1;
@@ -1645,29 +1746,34 @@ onUnmounted(() => {
 /* Shared scrollbar styling */
 .squad-list,
 .monster-list,
-.detail-modal {
+.detail-modal,
+.detail-tab-content {
   scrollbar-width: thin;
   scrollbar-color: #1a3a1a #0a0a0a;
 }
 .squad-list::-webkit-scrollbar,
 .monster-list::-webkit-scrollbar,
-.detail-modal::-webkit-scrollbar {
+.detail-modal::-webkit-scrollbar,
+.detail-tab-content::-webkit-scrollbar {
   width: 6px;
 }
 .squad-list::-webkit-scrollbar-track,
 .monster-list::-webkit-scrollbar-track,
-.detail-modal::-webkit-scrollbar-track {
+.detail-modal::-webkit-scrollbar-track,
+.detail-tab-content::-webkit-scrollbar-track {
   background: #0a0a0a;
 }
 .squad-list::-webkit-scrollbar-thumb,
 .monster-list::-webkit-scrollbar-thumb,
-.detail-modal::-webkit-scrollbar-thumb {
+.detail-modal::-webkit-scrollbar-thumb,
+.detail-tab-content::-webkit-scrollbar-thumb {
   background: #1a3a1a;
   border-radius: 3px;
 }
 .squad-list::-webkit-scrollbar-thumb:hover,
 .monster-list::-webkit-scrollbar-thumb:hover,
-.detail-modal::-webkit-scrollbar-thumb:hover {
+.detail-modal::-webkit-scrollbar-thumb:hover,
+.detail-tab-content::-webkit-scrollbar-thumb:hover {
   background: #2a5a2a;
 }
 
@@ -2025,11 +2131,17 @@ onUnmounted(() => {
   max-width: 32rem;
   box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
 }
-.detail-modal {
-  min-width: 24rem;
-  max-width: 38rem;
-  max-height: 80vh;
+.modal-box.detail-modal {
+  width: min(92vw, 48rem);
+  min-width: 28rem;
+  max-width: 48rem;
+  height: fit-content;
+  overflow: visible;
+}
+.detail-tab-content {
+  height: 32rem;
   overflow-y: auto;
+  flex-shrink: 0;
 }
 .item-detail-modal {
   max-width: 36rem;
@@ -2084,24 +2196,55 @@ onUnmounted(() => {
 .locked-tag { color: var(--text-muted); font-size: 0.8rem; }
 .current-tag { color: var(--accent); font-size: 0.8rem; }
 
+/* Hero detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.detail-tab {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.88rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+.detail-tab:hover { color: var(--text); }
+.detail-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.detail-empty-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
 /* Detail panel */
 .detail-section {
   margin-bottom: 0.5rem;
 }
 .detail-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0 0.75rem;
   align-items: baseline;
   padding: 0.15rem 0;
   font-size: 0.92rem;
 }
 .detail-label {
   color: var(--text-label);
-  flex-shrink: 0;
 }
 .detail-value {
-  text-align: right;
+  text-align: left;
   color: var(--text-value);
+  min-width: 0;
 }
 .detail-sep-line {
   color: var(--text-muted);
@@ -2142,7 +2285,7 @@ onUnmounted(() => {
 /* Attribute allocation */
 .attr-alloc { background: rgba(0, 255, 136, 0.04); padding: 0.35rem; border-radius: 4px; }
 .attr-buttons-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
-.attr-row .detail-value { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
+.attr-row .detail-value { display: flex; align-items: center; justify-content: flex-start; gap: 0.35rem; }
 .attr-btn {
   font-size: 0.8rem;
   padding: 0.1rem 0.35rem;
@@ -2158,11 +2301,14 @@ onUnmounted(() => {
 
 /* Skill display in hero detail */
 .skill-spec-tag {
+  display: inline-block;
   font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
+  padding: 0.08rem 0.3rem;
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--color-gold);
+  width: fit-content;
+  white-space: nowrap;
 }
 .skill-rage-cost { color: #e06060; }
 .skill-desc-row { display: block; }

@@ -611,8 +611,8 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **11 slots per hero**: MainHand, OffHand (Shield or Orb), TwoHand (occupies both MainHand + OffHand), Helm, Armor, Gloves, Boots, Belt, Amulet, Ring × 2.
-- **Two-hand rule**: Equipping a Two-Hand weapon occupies both MainHand and OffHand; cannot simultaneously equip Shield or Orb.
+- **10 display slots per hero**: Main Hand, Off Hand, Helm, Armor, Gloves, Boots, Belt, Amulet, Ring × 2. TwoHand is not a slot; two-hand weapons equip to Main Hand and block Off Hand.
+- **Two-hand rule**: Equipping a Two-Hand weapon occupies Main Hand; Off Hand shows "—" (blocked) and cannot equip Shield or Orb.
 - **Orb vs. Scepter/Wand**: Orb is a passive OffHand (no weapon damage, only attribute bonuses); Scepter/Wand is a MainHand weapon (deals spell damage). They are distinct item types.
 - **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower, HP, etc.) update immediately.
 - **Cannot equip if requirements not met**: Level or attribute requirements block equipping.
@@ -627,7 +627,7 @@ Then [expected result/verifiable behavior].
 | AC2 | Player equips a Two-Hand weapon (e.g., Claymore) to a hero | Equip action completes | Both MainHand and OffHand slots are occupied; attempting to equip a Shield or Orb to OffHand while a Two-Hand weapon is equipped is blocked |
 | AC3 | Hero has a Two-Hand weapon equipped | Player unequips the Two-Hand weapon | Both MainHand and OffHand slots become empty and available; player can now equip a one-hand weapon to MainHand and a Shield/Orb to OffHand |
 | AC4 | Player equips a one-hand weapon (MainHand) and an Orb (OffHand) | Both items are equipped | MainHand shows the weapon; OffHand shows the Orb; the Orb's attribute bonuses (SpellPower, Resistance, etc.) are added to hero stats; the Orb does not contribute weapon damage |
-| AC5 | Player opens the hero detail modal | Hero has items equipped in some slots | All 11 slots are visible; slots with items show the item name and quality color; empty slots show "Empty" |
+| AC5 | Player opens the hero detail modal | Hero has items equipped in some slots | 10 slots are visible (Main Hand, Off Hand, Helm, etc.); slots with items show the item name and quality color; empty slots show "Empty"; Off Hand shows "—" when two-hand weapon is equipped |
 | AC6 | Player equips two rings with the same "+Str" affix family | Both Ring slots have rings equipped | Both rings' Str bonuses apply independently and stack (e.g., two rings each giving +5 Str = +10 Str total) |
 | AC7 | Player attempts to equip an item that requires Level 8, but hero is Level 5 | Player triggers equip | Action is blocked; an error or red highlight indicates the level requirement is not met; item remains unequipped |
 | AC8 | Player attempts to equip an item requiring Str 14, but hero has Str 10 | Player triggers equip | Action is blocked; the unmet Str requirement is highlighted in red in the item detail or slot tooltip |

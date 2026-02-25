@@ -5,11 +5,10 @@
  * Design reference: 设计文档.md section 4.3, 4.4
  */
 
-/** Slot identifiers for 11 equipment slots */
+/** Slot identifiers for equipment display. TwoHand is not a slot: two-hand weapons equip to MainHand and block OffHand. */
 export const EQUIPMENT_SLOTS = [
   'MainHand',
   'OffHand',
-  'TwoHand',
   'Helm',
   'Armor',
   'Gloves',
@@ -20,7 +19,7 @@ export const EQUIPMENT_SLOTS = [
   'Ring2',
 ]
 
-/** Slot display labels */
+/** Slot display labels. TwoHand kept for item tooltips (items can have slot TwoHand). */
 export const SLOT_LABELS = {
   MainHand: 'Main Hand',
   OffHand: 'Off Hand',
