@@ -91,6 +91,26 @@ test.describe('Inventory (Example 22)', () => {
     await expect(page.locator('.inventory-slot:not(.empty)').first()).toContainText('Cap')
   })
 
+  test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
+    const email = `inv-tooltip-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate((item) => {
+      localStorage.setItem('playerInventory', JSON.stringify([item]))
+    }, SAMPLE_ITEM)
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.backpack-btn').click()
+    await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).hover()
+    const tooltip = page.locator('.inventory-slot-tooltip')
+    await expect(tooltip).toBeVisible({ timeout: 2000 })
+    await expect(tooltip).toContainText('Armor')
+  })
+
   test('click item opens detail modal with Slot, Level Req, Sell', async ({ page }) => {
     const email = `inv-detail-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)

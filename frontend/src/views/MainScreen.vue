@@ -298,26 +298,45 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null">
+      <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">
         <div class="modal-box inventory-modal">
           <div class="modal-title">Backpack</div>
           <div class="inventory-counter">{{ inventoryCount }} / 100</div>
-          <div class="inventory-grid">
+          <div class="inventory-grid" @scroll="hoveredBackpackItem = null">
             <div
               v-for="(item, idx) in inventoryItems"
               :key="item.id"
-              class="inventory-slot"
+              class="inventory-slot tooltip-wrap has-tip"
               :style="{ color: getQualityColor(item.quality) }"
               :class="{ 'slot-match': pendingEquipSlot && item.slot === pendingEquipSlot }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
+              @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
+              @mouseleave="hoveredBackpackItem = null"
             >
               <span class="slot-name">{{ formatItemDisplayName(item) }}</span>
               <span class="slot-lvl">Lv.{{ item.levelReq || 0 }}</span>
             </div>
             <div v-for="i in (100 - inventoryItems.length)" :key="'empty-' + i" class="inventory-slot empty"></div>
           </div>
-          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null">Close</button>
+          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">Close</button>
         </div>
+      </div>
+      <div
+        v-if="showBackpackModal && hoveredBackpackItem && backpackTooltipRect"
+        class="inventory-slot-tooltip"
+        :style="{
+          top: (backpackTooltipRect.top - 4) + 'px',
+          left: backpackTooltipRect.left + 'px',
+          transform: 'translateY(-100%)'
+        }"
+      >
+        <template v-if="getItemTooltipLines(hoveredBackpackItem).length">
+          <div v-for="(line, i) in getItemTooltipLines(hoveredBackpackItem)" :key="i" class="tip-line">
+            <span class="tip-label">{{ line.label }}:</span>
+            <span class="tip-value">{{ line.value }}</span>
+          </div>
+        </template>
+        <div v-else class="tip-empty">No bonuses</div>
       </div>
     </Teleport>
 
@@ -669,6 +688,8 @@ const selectedHero = ref(null)
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
 const pendingEquipSlot = ref(null)
+const hoveredBackpackItem = ref(null)
+const backpackTooltipRect = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
 const isRunning = ref(false)
@@ -768,6 +789,24 @@ function getEquippedItemColor(slot) {
   const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
   const item = hero?.equipment?.[slot]
   return item ? getQualityColor(item.quality) : 'var(--text-muted)'
+}
+
+function getItemTooltipLines(item) {
+  if (!item) return []
+  const lines = []
+  const reqs = []
+  if ((item.strReq || 0) > 0) reqs.push('Str ' + item.strReq)
+  if ((item.agiReq || 0) > 0) reqs.push('Agi ' + item.agiReq)
+  if ((item.intReq || 0) > 0) reqs.push('Int ' + item.intReq)
+  if ((item.spiReq || 0) > 0) reqs.push('Spi ' + item.spiReq)
+  if (reqs.length) lines.push({ label: 'Req', value: reqs.join(' ') })
+  if ((item.armor || 0) > 0) lines.push({ label: 'Armor', value: String(item.armor) })
+  if ((item.resistance || 0) > 0) lines.push({ label: 'Resist', value: String(item.resistance) })
+  if ((item.physAtk || 0) > 0) lines.push({ label: 'Phys Atk', value: String(item.physAtk) })
+  if ((item.spellPower || 0) > 0) lines.push({ label: 'Spell Power', value: String(item.spellPower) })
+  for (const p of item.prefixes || []) lines.push({ label: 'Prefix', value: p.name + ' +' + p.value + ' ' + p.stat })
+  for (const s of item.suffixes || []) lines.push({ label: 'Suffix', value: s.name + ' +' + s.value + ' ' + s.stat })
+  return lines
 }
 
 function toggleEquipmentSlot(slot) {
@@ -1334,7 +1373,7 @@ onUnmounted(() => {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -1352,6 +1391,39 @@ onUnmounted(() => {
 .inventory-slot:hover { border-color: var(--color-gold); }
 .inventory-slot.empty { color: var(--text-muted); cursor: default; }
 .inventory-slot.slot-match { border-color: var(--color-victory); background: rgba(68, 255, 136, 0.08); }
+.inventory-slot.tooltip-wrap .tooltip-text {
+  white-space: pre-line;
+  max-width: 14rem;
+  text-align: left;
+}
+.inventory-slot-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.75rem;
+  max-width: 14rem;
+  text-align: left;
+  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
+  pointer-events: none;
+}
+.inventory-slot-tooltip .tip-line {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.08rem 0;
+}
+.inventory-slot-tooltip .tip-label {
+  color: var(--text-label);
+  flex-shrink: 0;
+}
+.inventory-slot-tooltip .tip-value {
+  color: var(--text-value);
+}
+.inventory-slot-tooltip .tip-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 .log-item-drop {
   cursor: pointer;
