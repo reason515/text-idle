@@ -546,6 +546,7 @@ Then [expected result/verifiable behavior].
 - **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
 - **Blue vs. Yellow range rule**: Blue affix range = base × 0.7 (floor) to base × 1.3 (ceil); Yellow affix range = base range (narrower, relies on count).
 - **Monster tier modifier**: Elite monsters have higher drop probability and higher chance of blue/yellow quality than Normal; Boss has the highest drop probability and quality chance; **Boss always drops at least 1 item with quality ≥ Magic (blue)**.
+- **Ring and Amulet quality floor**: Rings and amulets have no base stats; white quality has no value. They **only drop at Magic (blue) or higher**; if rolled as Normal, quality is upgraded to Magic.
 - **Item naming**: White = base name only; Blue = prefix + base + suffix (1 affix: prefix+base or base+suffix); Yellow = primary prefix + base + primary suffix + ", the [Epithet]" (epithet from pool); Unique = fixed name.
 
 **Acceptance Criteria**
@@ -564,6 +565,7 @@ Then [expected result/verifiable behavior].
 | AC10 | Squad defeats an Elite monster encounter (e.g., Kobold Geomancer, Defias Smuggler) | Victory is triggered | Equipment drop probability is higher than for a Normal-only encounter; when drops occur, blue/yellow quality appears more often than in Normal encounters |
 | AC11 | Squad defeats a Boss encounter (e.g., Hogger, Edwin VanCleef) | Victory is triggered | Equipment drop probability is highest; **at least 1 dropped item has quality ≥ Magic (blue)**; if Boss would drop 0 items by roll, the system grants 1 blue item as a guaranteed reward |
 | AC12 | Squad defeats a Boss and receives multiple drops | Drops are resolved | Among the dropped items, at least one is Magic (blue), Rare (yellow), or Unique; the rest may be any quality |
+| AC13 | A Ring or Amulet drops | Drop is resolved | The item has quality Magic (blue) or higher; rings and amulets never drop as Normal (white) because they have no base stats |
 
 ---
 

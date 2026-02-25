@@ -149,6 +149,12 @@ function generateOneItem(monsterLevel, monsterTier, rng) {
     else quality = QUALITY_NORMAL
   }
 
+  // Rings and amulets have no base stats; white quality has no value. Drop blue+ only.
+  const noBaseStatSlots = ['Amulet', 'Ring1', 'Ring2']
+  if (noBaseStatSlots.includes(resolvedSlot) && quality === QUALITY_NORMAL) {
+    quality = QUALITY_MAGIC
+  }
+
   const item = {
     id: `item-${Date.now()}-${Math.floor(rng() * 100000)}`,
     slot: resolvedSlot,

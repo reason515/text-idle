@@ -69,6 +69,18 @@ describe('equipment', () => {
         expect(item).toHaveProperty('levelReq')
       }
     })
+
+    it('rings and amulets never drop as Normal (white) quality', () => {
+      // Force drop + Ring slot + would-be Normal quality; result must be Magic
+      // RNG sequence: drop(0.01), slot Ring1(0.65), base(0), quality Normal(0.95), affix count(0.3), prefix(0), suffix(0)
+      const monsters = [{ tier: 'normal', level: 1 }]
+      const rng = fixedRng([0.01, 0.65, 0, 0.95, 0.3, 0, 0])
+      const result = generateEquipmentDrop(monsters, rng)
+      expect(result.length).toBeGreaterThan(0)
+      const ringOrAmulet = result.find((i) => i.slot === 'Amulet' || i.slot === 'Ring1' || i.slot === 'Ring2')
+      expect(ringOrAmulet).toBeDefined()
+      expect(ringOrAmulet.quality).toBe(QUALITY_MAGIC)
+    })
   })
 
   describe('formatItemDisplayName', () => {
