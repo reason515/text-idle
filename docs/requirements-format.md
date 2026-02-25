@@ -631,7 +631,8 @@ Then [expected result/verifiable behavior].
 | AC6 | Player equips two rings with the same "+Str" affix family | Both Ring slots have rings equipped | Both rings' Str bonuses apply independently and stack (e.g., two rings each giving +5 Str = +10 Str total) |
 | AC7 | Player attempts to equip an item that requires Level 8, but hero is Level 5 | Player triggers equip | Action is blocked; an error or red highlight indicates the level requirement is not met; item remains unequipped |
 | AC8 | Player attempts to equip an item requiring Str 14, but hero has Str 10 | Player triggers equip | Action is blocked; the unmet Str requirement is highlighted in red in the item detail or slot tooltip |
-| AC9 | Player unequips an item from a hero | Unequip action completes | The slot becomes empty; hero's secondary attributes revert to the values without that item's bonuses |
+| AC9 | Player unequips an item from a hero | Player clicks the equipped slot (item detail appears), clicks Unequip, then confirms | The slot becomes empty; hero's secondary attributes revert to the values without that item's bonuses |
+| AC9a | Hero has an item equipped in a slot | Player clicks the equipped slot | Equipment detail modal appears with full item stats; Unequip and Close buttons are visible; player must click Unequip then Confirm to unequip |
 | AC10 | Hero has a new item equipped | Hero participates in the next combat encounter | The item's Armor/Resistance/PhysAtk/SpellPower bonuses are applied in the actual damage and defense calculations during combat |
 
 ---

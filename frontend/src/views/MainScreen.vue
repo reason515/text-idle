@@ -427,7 +427,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null">
+      <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">
         <div class="modal-box detail-modal">
           <div class="modal-title">
             <span class="modal-hero-name">{{ selectedHero.name }}</span>
@@ -516,7 +516,7 @@
                   >
                     {{ getEquippedItemName(slot) || 'Empty' }}
                     <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text">Blocked by two-hand weapon</span>
-                    <span v-else class="tooltip-text">Click to equip from backpack or unequip</span>
+                    <span v-else class="tooltip-text">Click to view details or equip from backpack</span>
                   </span>
                 </div>
               </div>
@@ -551,7 +551,72 @@
             <div v-else class="detail-empty-hint">No skills learned yet.</div>
           </div>
           </div>
-          <button class="btn" @click="selectedHero = null">Close</button>
+          <button class="btn" @click="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="selectedEquippedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedEquippedItem = null; equippedUnequipConfirming = false">
+        <div class="modal-box item-detail-modal">
+          <div class="modal-title" :style="{ color: getQualityColor(selectedEquippedItem.item.quality) }">
+            {{ formatItemDisplayName(selectedEquippedItem.item) }}
+          </div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Slot</span>
+              <span class="detail-value">{{ SLOT_LABELS[selectedEquippedItem.item.slot] || selectedEquippedItem.item.slot }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Level Req</span>
+              <span class="detail-value detail-value-req">{{ selectedEquippedItem.item.levelReq || 0 }}</span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.strReq || 0) > 0 || (selectedEquippedItem.item.agiReq || 0) > 0 || (selectedEquippedItem.item.intReq || 0) > 0 || (selectedEquippedItem.item.spiReq || 0) > 0" class="detail-row">
+              <span class="detail-label">Requirements</span>
+              <span class="detail-value detail-value-req">
+                <span v-if="(selectedEquippedItem.item.strReq || 0) > 0">Str {{ selectedEquippedItem.item.strReq }}</span>
+                <span v-if="(selectedEquippedItem.item.agiReq || 0) > 0">Agi {{ selectedEquippedItem.item.agiReq }}</span>
+                <span v-if="(selectedEquippedItem.item.intReq || 0) > 0">Int {{ selectedEquippedItem.item.intReq }}</span>
+                <span v-if="(selectedEquippedItem.item.spiReq || 0) > 0">Spi {{ selectedEquippedItem.item.spiReq }}</span>
+              </span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.armor || 0) > 0" class="detail-row">
+              <span class="detail-label">Armor</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.armor }}</span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0" class="detail-row">
+              <span class="detail-label">Resistance</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.physAtk || 0) > 0" class="detail-row">
+              <span class="detail-label">Phys Atk</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.physAtk }}</span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.spellPower || 0) > 0" class="detail-row">
+              <span class="detail-label">Spell Power</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.spellPower }}</span>
+            </div>
+            <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
+            <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="detail-row">
+              <span class="detail-label">Prefix</span>
+              <span class="detail-value">{{ p.name }} — +{{ p.value }} {{ p.stat }} [{{ p.min }}~{{ p.max }}]</span>
+            </div>
+            <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="detail-row">
+              <span class="detail-label">Suffix</span>
+              <span class="detail-value">{{ s.name }} — +{{ s.value }} {{ s.stat }} [{{ s.min }}~{{ s.max }}]</span>
+            </div>
+          </div>
+          <div v-if="equippedUnequipConfirming" class="item-detail-sell-confirm">
+            <span class="sell-confirm-text">Unequip and move to backpack?</span>
+            <div class="item-detail-actions">
+              <button class="btn btn-sell" @click="confirmUnequipEquipment">Confirm</button>
+              <button class="btn" @click="equippedUnequipConfirming = false">Cancel</button>
+            </div>
+          </div>
+          <div v-else class="item-detail-actions">
+            <button class="btn btn-sell" @click="equippedUnequipConfirming = true">Unequip</button>
+            <button class="btn" @click="selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -768,6 +833,8 @@ const heroDetailTab = ref('attrs')
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
 const sellConfirmingItem = ref(null)
+const selectedEquippedItem = ref(null)
+const equippedUnequipConfirming = ref(false)
 const pendingEquipSlot = ref(null)
 const hoveredBackpackItem = ref(null)
 const backpackTooltipRect = ref(null)
@@ -951,17 +1018,29 @@ function toggleEquipmentSlot(slot) {
   hero.equipment = hero.equipment || {}
   if (slot === 'OffHand' && isOffHandBlocked(hero)) return
   const item = getItemInSlot(hero, slot)
-  const storageKey = item?.slot ?? slot
   if (item) {
-    addToInventory(item)
-    delete hero.equipment[storageKey]
-    inventoryVersion.value++
-    saveSquad(squad.value)
-    displayHeroes.value = squad.value.map(computeHeroDisplay)
+    selectedEquippedItem.value = { item, slot }
+    equippedUnequipConfirming.value = false
   } else {
     pendingEquipSlot.value = slot
     showBackpackModal.value = true
   }
+}
+
+function confirmUnequipEquipment() {
+  const ctx = selectedEquippedItem.value
+  if (!ctx) return
+  const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
+  if (!hero) return
+  hero.equipment = hero.equipment || {}
+  const storageKey = ctx.item?.slot ?? ctx.slot
+  addToInventory(ctx.item)
+  delete hero.equipment[storageKey]
+  inventoryVersion.value++
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  selectedEquippedItem.value = null
+  equippedUnequipConfirming.value = false
 }
 
 function tryEquipFromBackpack(item) {
