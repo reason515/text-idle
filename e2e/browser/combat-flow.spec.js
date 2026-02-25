@@ -336,15 +336,26 @@ test.describe('Experience and Leveling (Example 11)', () => {
   })
 
   test('victory summary shows EXP reward', async ({ page }) => {
-    test.setTimeout(130000)
+    test.setTimeout(60000)
     const email = `exp-reward-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Warrior wins ~83% of encounters; with 3+ cycles this is >99% likely to see victory
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
+    // Strengthen warrior to guarantee victory in first encounter
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].strength = 50
+        squad[0].stamina = 30
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 45000 })
     const summaryText = await page.locator('.log-summary.victory-text').first().textContent()
     expect(summaryText).toMatch(/EXP \+/)
   })

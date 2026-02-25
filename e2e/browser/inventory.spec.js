@@ -157,8 +157,8 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
-    await page.locator('.backpack-btn').click()
-    await expect(page.locator('.inventory-slot').filter({ hasText: 'Cap' })).toHaveCount(0)
+    // Backpack modal stays open after sell; item removed from grid
+    await expect(page.locator('.inventory-modal .inventory-slot').filter({ hasText: 'Cap' })).toHaveCount(0)
     const goldAfter = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0
     expect(goldAfter).toBeGreaterThanOrEqual(goldBefore)
   })
