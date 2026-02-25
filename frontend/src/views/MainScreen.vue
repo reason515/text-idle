@@ -311,9 +311,10 @@
               :class="{ 'slot-match': pendingEquipSlot && item.slot === pendingEquipSlot }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
             >
-              {{ formatItemDisplayName(item) }}
+              <span class="slot-name">{{ formatItemDisplayName(item) }}</span>
+              <span class="slot-lvl">Lv.{{ item.levelReq || 0 }}</span>
             </div>
-            <div v-for="i in (100 - inventoryItems.length)" :key="'empty-' + i" class="inventory-slot empty">Empty</div>
+            <div v-for="i in (100 - inventoryItems.length)" :key="'empty-' + i" class="inventory-slot empty"></div>
           </div>
           <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null">Close</button>
         </div>
@@ -1287,7 +1288,14 @@ onUnmounted(() => {
   min-width: 2ch;
 }
 
-.inventory-modal { max-width: 36rem; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+.modal-box.inventory-modal {
+  width: min(60vw, 44rem);
+  max-width: min(60vw, 44rem);
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .inventory-counter {
   font-size: 0.9rem;
   color: var(--text-muted);
@@ -1295,21 +1303,51 @@ onUnmounted(() => {
 }
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 0.25rem;
+  grid-template-columns: repeat(5, minmax(5rem, 1fr));
+  gap: 0.35rem;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   margin-bottom: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: #0d6633 #0a0a0a;
+}
+.inventory-grid::-webkit-scrollbar {
+  width: 8px;
+}
+.inventory-grid::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.inventory-grid::-webkit-scrollbar-thumb {
+  background: #0d6633;
+  border-radius: 4px;
+}
+.inventory-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 .inventory-slot {
-  padding: 0.35rem 0.4rem;
-  font-size: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  min-height: 2.8rem;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   cursor: pointer;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+}
+.inventory-slot .slot-name {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.inventory-slot .slot-lvl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 .inventory-slot:hover { border-color: var(--color-gold); }
 .inventory-slot.empty { color: var(--text-muted); cursor: default; }
@@ -1337,7 +1375,7 @@ onUnmounted(() => {
 }
 .equipment-slot-val {
   cursor: pointer;
-  max-width: 12rem;
+  max-width: 18rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1866,15 +1904,18 @@ onUnmounted(() => {
   background: var(--bg-panel);
   border: 2px solid var(--border);
   padding: 1.25rem;
-  min-width: 16rem;
-  max-width: 22rem;
+  min-width: 20rem;
+  max-width: 32rem;
   box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
 }
 .detail-modal {
-  min-width: 20rem;
-  max-width: 26rem;
+  min-width: 24rem;
+  max-width: 38rem;
   max-height: 80vh;
   overflow-y: auto;
+}
+.item-detail-modal {
+  max-width: 36rem;
 }
 .modal-title {
   font-size: 1.1rem;

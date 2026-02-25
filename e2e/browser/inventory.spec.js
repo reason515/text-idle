@@ -88,7 +88,7 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.backpack-btn').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await expect(page.locator('.inventory-counter')).toContainText('1 / 100')
-    await expect(page.locator('.inventory-slot').filter({ hasNotText: 'Empty' }).first()).toContainText('Cap')
+    await expect(page.locator('.inventory-slot:not(.empty)').first()).toContainText('Cap')
   })
 
   test('click item opens detail modal with Slot, Level Req, Sell', async ({ page }) => {
