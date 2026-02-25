@@ -58,6 +58,19 @@ describe('equipment', () => {
       }
     })
 
+    it('low-level monsters only drop items with levelReq <= monster level', () => {
+      const monsters = [{ tier: 'normal', level: 5 }]
+      const drops = []
+      for (let i = 0; i < 200; i++) {
+        const rng = () => 0.01
+        const result = generateEquipmentDrop(monsters, rng)
+        drops.push(...result)
+      }
+      for (const item of drops) {
+        expect(item.levelReq).toBeLessThanOrEqual(5)
+      }
+    })
+
     it('returns items with correct structure', () => {
       const monsters = [{ tier: 'boss', level: 5 }]
       const result = generateEquipmentDrop(monsters, () => 0.01)

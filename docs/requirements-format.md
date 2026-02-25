@@ -707,6 +707,7 @@ Then [expected result/verifiable behavior].
 | AC7 | A Rare item drops from a Lv 25 monster | Item is generated | Item base is Exceptional tier; its affixes may be Normal-tier or Exceptional-tier rolls (not Elite-tier); affix roll ranges reflect this ceiling |
 | AC8 | Player is on Elwynn Forest (Lv 1–5 monsters) and on Westfall (Lv 6–10 monsters) | Equipment drops from each map | Items from higher-level maps have higher level requirements within the same Normal tier (e.g., Skull Cap Lv 4 on Westfall vs. Cap Lv 1 on Elwynn); stat differences are visible |
 | AC9 | Player progresses from map 1 to map 3 | Player views dropped items over time | Item base names progress through the Normal tier families (F1→F6 gradually) as monster levels increase; equipment visibly improves with map progression |
+| AC10 | Squad defeats Lv 5 monsters | Equipment drops | All dropped items have levelReq <= 5 (no Great Helm Lv 16, Crown Lv 20, etc.); base selection is restricted to families whose levelReq <= monster level |
 
 ---
 

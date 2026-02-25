@@ -126,7 +126,9 @@ function generateOneItem(monsterLevel, monsterTier, rng) {
   if (!bases || !bases[itemTier]) return null
 
   const tierBases = bases[itemTier]
-  const baseDef = pickRandom(tierBases, rng)
+  const eligibleBases = tierBases.filter((b) => b.levelReq <= monsterLevel)
+  const pool = eligibleBases.length ? eligibleBases : tierBases
+  const baseDef = pickRandom(pool, rng)
   if (!baseDef) return null
 
   const resolvedSlot = baseKey === 'Shield' ? 'OffHand' : slot
