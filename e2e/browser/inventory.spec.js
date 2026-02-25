@@ -62,7 +62,7 @@ test.describe('Inventory (Example 22)', () => {
 
     const backpackBtn = page.locator('.backpack-btn')
     await expect(backpackBtn).toBeVisible()
-    await expect(backpackBtn).toContainText('0 / 100')
+    await expect(backpackBtn).toContainText('0/100')
 
     await backpackBtn.click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
@@ -84,7 +84,7 @@ test.describe('Inventory (Example 22)', () => {
     await page.reload()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.backpack-btn')).toContainText('1 / 100')
+    await expect(page.locator('.backpack-btn')).toContainText('1/100')
     await page.locator('.backpack-btn').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await expect(page.locator('.inventory-counter')).toContainText('1 / 100')

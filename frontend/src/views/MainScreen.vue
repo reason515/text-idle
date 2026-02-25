@@ -9,10 +9,6 @@
         <span class="gold-label">Gold</span>
         <span class="gold-value">{{ gold }}</span>
       </div>
-      <button class="btn backpack-btn" @click="showBackpackModal = true" title="Backpack">
-        <span class="backpack-label">Backpack</span>
-        <span class="backpack-count">{{ inventoryCount }} / 100</span>
-      </button>
       <div class="explore-bar-wrap">
         <div class="explore-track">
           <div class="explore-fill" :style="{ width: progress.currentProgress + '%' }"></div>
@@ -144,6 +140,9 @@
               @click="isPaused = !isPaused"
             >
               {{ isPaused ? 'Resume' : 'Pause' }}
+            </button>
+            <button class="btn btn-sm backpack-btn" title="Backpack" @click="showBackpackModal = true">
+              Pack {{ inventoryCount }}/100
             </button>
             <!-- Reserved for future: speed, settings, etc. -->
           </div>
@@ -1288,27 +1287,6 @@ onUnmounted(() => {
   min-width: 2ch;
 }
 
-.backpack-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.backpack-btn:hover {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
-}
-.backpack-label { font-size: 0.8rem; }
-.backpack-count { font-size: 0.7rem; color: var(--text-muted); }
-
 .inventory-modal { max-width: 36rem; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
 .inventory-counter {
   font-size: 0.9rem;
@@ -1367,6 +1345,7 @@ onUnmounted(() => {
 
 .explore-bar-wrap {
   flex: 1;
+  min-width: 10rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1455,14 +1434,22 @@ onUnmounted(() => {
 
 .log-actions {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.25rem;
-  min-width: 6rem;
+  gap: 0.35rem;
+}
+
+.log-actions .btn {
+  width: auto;
+  min-width: 5rem;
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 .btn-sm {
   font-size: 0.7rem;
-  padding: 0.12rem 0.35rem;
+  padding: 0.2rem 0.5rem;
 }
 .pause-btn {
   background: var(--bg-dark);
@@ -1475,6 +1462,16 @@ onUnmounted(() => {
   color: var(--accent);
 }
 .pause-btn.paused {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.backpack-btn {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.backpack-btn:hover {
   border-color: var(--color-gold);
   color: var(--color-gold);
 }
