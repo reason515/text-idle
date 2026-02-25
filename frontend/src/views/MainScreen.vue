@@ -214,10 +214,6 @@
               </template>
               <template v-else>{{ entry.message }}</template>
             </div>
-            <div v-else-if="entry.type === 'sell'" class="log-sell">
-              <span class="val-gold">Gold +{{ entry.gold }}</span>
-              <span class="log-sell-text">(sold {{ entry.itemName }})</span>
-            </div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span
@@ -644,6 +640,29 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div class="toast-container">
+        <div
+          v-for="t in toastMessages"
+          :key="t.id"
+          class="toast"
+          :class="'toast-' + t.type"
+        >
+          <template v-if="t.type === 'equip'">
+            <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
+            equipped to {{ t.heroName }}
+          </template>
+          <template v-else-if="t.type === 'sell'">
+            <span class="toast-gold">Gold +{{ t.gold }}</span>
+            <span class="toast-sold"> (sold </span>
+            <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
+            <span class="toast-sold">)</span>
+          </template>
+          <template v-else>{{ t.text }}</template>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -760,7 +779,18 @@ const currentActorId = ref(null)
 const currentTargetId = ref(null)
 const unitFloatingNumbers = ref({})
 let floatNumId = 0
+const toastMessages = ref([])
+let toastId = 0
 const COMBAT_PROGRESS_KEY = 'combatProgress'
+
+function showToast(payload) {
+  const id = ++toastId
+  const entry = typeof payload === 'string' ? { text: payload, type: 'info' } : { ...payload }
+  toastMessages.value = [...toastMessages.value, { id, ...entry }]
+  setTimeout(() => {
+    toastMessages.value = toastMessages.value.filter((t) => t.id !== id)
+  }, 2800)
+}
 
 function getFloatingNumbers(unitId) {
   return unitFloatingNumbers.value[unitId] ?? []
@@ -841,6 +871,7 @@ function equipItem(item, targetHero) {
   inventoryVersion.value++
   saveSquad(squad.value)
   displayHeroes.value = squad.value.map(computeHeroDisplay)
+  showToast({ type: 'equip', itemName: formatItemDisplayName(item), heroName: hero.name, quality: item.quality })
 }
 
 function confirmSellItem(item) {
@@ -849,7 +880,7 @@ function confirmSellItem(item) {
   if (result.success) {
     gold.value = getGold()
     inventoryVersion.value++
-    addLogEntry({ type: 'sell', itemName: formatItemDisplayName(item), gold: result.gold })
+    showToast({ type: 'sell', itemName: formatItemDisplayName(item), gold: result.gold, quality: item.quality })
     selectedItem.value = null
     sellConfirmingItem.value = null
   }
@@ -1556,8 +1587,6 @@ onUnmounted(() => {
 .equip-to-label { font-size: 0.85rem; color: var(--text-label); flex-shrink: 0; }
 .equip-to-row { display: inline-flex; }
 .equip-to-unmet { font-size: 0.85rem; color: var(--text-muted); cursor: help; }
-.log-sell { font-size: 0.9rem; padding: 0.2rem 0; }
-.log-sell .log-sell-text { color: var(--text-muted); margin-left: 0.25rem; }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
 .btn-sell:hover { background: rgba(255, 204, 68, 0.1); }
 
@@ -2404,6 +2433,48 @@ onUnmounted(() => {
   100% {
     opacity: 0;
     transform: translate(-50%, -150%) scale(1.1);
+  }
+}
+
+/* Toast notifications - above modals */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.toast {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.3s ease-out;
+}
+.toast-equip {
+  background: rgba(40, 80, 50, 0.95);
+  color: #8fdc8f;
+  border: 1px solid rgba(143, 220, 143, 0.4);
+}
+.toast-sell {
+  background: rgba(80, 65, 30, 0.95);
+  color: #ffcc44;
+  border: 1px solid rgba(255, 204, 68, 0.4);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
