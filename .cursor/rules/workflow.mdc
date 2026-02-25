@@ -24,6 +24,14 @@ On every change, check whether these need updates:
 
 Update them when the change affects formulas, attributes, UI behavior, or acceptance criteria.
 
+## Tooltip Style (Unified)
+
+All hover tips must use the custom tooltip pattern, not native `title`:
+
+- Wrap: `class="tooltip-wrap has-tip"` (has-tip adds dotted underline and help cursor)
+- Content: `<span class="tooltip-text">Tip content here</span>` inside the wrap
+- Do NOT use `:title` or `title=` for user-facing tooltips; it shows native OS style
+
 ## Prohibited
 
 - Non-ASCII in code

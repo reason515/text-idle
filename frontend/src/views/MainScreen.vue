@@ -206,7 +206,9 @@
                 class="log-actor"
                 :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
               >{{ entry.actorName }}</span>
-              <span v-if="entry.actorAgility != null" class="log-agi" :title="'Higher agility acts first'">(AGI {{ entry.actorAgility }})</span>
+              <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">(AGI {{ entry.actorAgility }})
+                <span class="tooltip-text">Higher agility acts first</span>
+              </span>
               <span class="log-sep">used</span>
               <span class="log-action" :class="(entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
               <span class="log-sep">on</span>
