@@ -528,6 +528,253 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 17: Equipment Drop on Victory
+
+**User Story**
+
+> As a player,
+> I want equipment to occasionally drop after a victorious battle,
+> So that I can progressively improve my heroes' gear and experience the excitement of loot.
+
+**Design Reference (from design doc)**
+
+- **Drop rate**: Low overall (configurable); each victory rolls independently; most victories produce no equipment drop.
+- **Drop condition**: Only on **victory**; defeat grants no equipment.
+- **Item tier** (determined by monster level, not MF): Normal bases from Lv 1–20 monsters; Exceptional bases from Lv 21–40; Elite bases from Lv 41–60.
+- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–4 affixes), Unique (fixed affixes + special effect).
+- **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold.
+- **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
+- **Blue vs. Yellow range rule**: Blue affix range = base × 0.7 (floor) to base × 1.3 (ceil); Yellow affix range = base range (narrower, relies on count).
+- **Monster tier modifier**: Elite monsters have higher drop probability and higher chance of blue/yellow quality than Normal; Boss has the highest drop probability and quality chance; **Boss always drops at least 1 item with quality ≥ Magic (blue)**.
+- **Item naming**: White = base name only; Blue = prefix + base + suffix (1 affix: prefix+base or base+suffix); Yellow = primary prefix + base + primary suffix + ", the [Epithet]" (epithet from pool); Unique = fixed name.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Squad wins a combat encounter | Victory is triggered | The game rolls for equipment drop; the vast majority of victories produce no drop; an item appears only when the roll succeeds |
+| AC2 | Squad loses a combat encounter | Defeat is triggered | No equipment drops from that encounter |
+| AC3 | An equipment item drops | Drop is resolved | The item is listed in the combat log victory summary (same line/section as EXP and Gold rewards), showing the item's name colored by quality |
+| AC4 | A Normal (white) item drops | Item is generated | Item name is displayed in white/default color; it has no affixes; only base attributes (e.g., Armor value) are shown |
+| AC5 | A Magic (blue) item drops | Item is generated | Item name is displayed in blue; it shows 1–2 affixes with each affix displaying the rolled value and roll range (e.g., `+7 Armor [+5~18]`) |
+| AC6 | A Rare (yellow) item drops | Item is generated | Item name is displayed in yellow; it shows 3–4 affixes each with rolled value and range (narrower than blue for the same affix family) |
+| AC7 | A Unique item drops | Item is generated | Item name is displayed in unique/gold color; affixes are fixed (no roll range shown, as values are predetermined) |
+| AC8 | Squad is fighting Lv 1–20 monsters (e.g., Elwynn Forest) | Equipment drops | Item base is Normal tier (e.g., Cap, Leather Armor, Short Bow); Exceptional and Elite base names do not appear |
+| AC9 | A blue item and a yellow item with the same "+Armor" affix are compared | Player views both items | Blue item roll range is wider (e.g., `[+5~18]`); yellow item roll range is narrower (e.g., `[+6~10]`); an exceptional blue roll can exceed a mediocre yellow roll |
+| AC10 | Squad defeats an Elite monster encounter (e.g., Kobold Geomancer, Defias Smuggler) | Victory is triggered | Equipment drop probability is higher than for a Normal-only encounter; when drops occur, blue/yellow quality appears more often than in Normal encounters |
+| AC11 | Squad defeats a Boss encounter (e.g., Hogger, Edwin VanCleef) | Victory is triggered | Equipment drop probability is highest; **at least 1 dropped item has quality ≥ Magic (blue)**; if Boss would drop 0 items by roll, the system grants 1 blue item as a guaranteed reward |
+| AC12 | Squad defeats a Boss and receives multiple drops | Drops are resolved | Among the dropped items, at least one is Magic (blue), Rare (yellow), or Unique; the rest may be any quality |
+
+---
+
+## Example 18: Equipment Item Inspection
+
+**User Story**
+
+> As a player,
+> I want to inspect any equipment item and see its full details including base stats, quality, affixes, roll ranges, and requirements,
+> So that I can decide whether it is worth keeping and how it fits my hero's build.
+
+**Design Reference (from design doc)**
+
+- **Item detail shows**: base name, quality (color), slot type (e.g., Helm, Body Armor, Ring), level requirement, attribute requirements (Str/Agi/Int/Spi), affix list with current rolled value and roll range.
+- **Requirements highlighted red** if the inspecting hero does not meet them.
+- **Affix range transparency**: Roll range visible so player can evaluate whether the roll is near-max, mid, or low.
+- **Comparison**: When inspecting a new item while a hero has the same slot equipped, the detail view can show the current item alongside the new one.
+- **Prefix / Suffix label**: Affixes are labeled as Prefix or Suffix; each item has at most 1 Prefix and 1 Suffix per Blue item, or up to 2 Prefix + 2 Suffix for Rare items.
+- **Item naming**: Displayed name follows the naming rules (see Example 23); item detail shows the full display name at the top.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | An equipment item has dropped (visible in combat log) | Player clicks or interacts with the item entry | An item detail modal opens showing: base name, quality color, slot (e.g., "Helm"), level requirement, attribute requirements, and the affix list |
+| AC2 | Player views a Magic (blue) item with a "+Armor" prefix | Player inspects the item | The affix line shows something like `Sturdy — +7 Armor [+5~18]`; player can judge it is a mid roll (7 out of 18) |
+| AC3 | Player views a Rare (yellow) item with 4 affixes | Player inspects the item | All 4 affixes are listed, each showing current rolled value and base range; Prefix and Suffix are labeled separately |
+| AC4 | Player views a Unique item | Player inspects the item | Fixed affix values are shown with their names; no roll range brackets are shown (values never change for Unique items) |
+| AC5 | Item has level requirement 12 and the hero is level 8 | Player inspects the item | Level requirement is displayed in red, indicating it cannot be equipped yet |
+| AC6 | Item requires Str 14 and the hero has Str 10 | Player inspects the item | The Str 14 requirement is shown in red; other met requirements are in normal color |
+| AC7 | Hero already has a Helm equipped and player inspects a new Helm | Player opens item detail | A comparison section shows the currently equipped Helm's key stats (Armor, affixes) alongside the new item's, so the player can tell at a glance if it is an upgrade |
+| AC8 | Item has no attribute requirement (e.g., Cap requires Str 0) | Player inspects the item | No attribute requirement line is shown (or it shows "No requirements"); level requirement still shown if applicable |
+
+---
+
+## Example 19: Equipment Slots and Equipping Heroes
+
+**User Story**
+
+> As a player,
+> I want to equip items to my heroes' equipment slots,
+> So that my heroes gain the item's base stats and affix bonuses which are reflected in their secondary attributes during combat.
+
+**Design Reference (from design doc)**
+
+- **11 slots per hero**: MainHand, OffHand (Shield or Orb), TwoHand (occupies both MainHand + OffHand), Helm, Armor, Gloves, Boots, Belt, Amulet, Ring × 2.
+- **Two-hand rule**: Equipping a Two-Hand weapon occupies both MainHand and OffHand; cannot simultaneously equip Shield or Orb.
+- **Orb vs. Scepter/Wand**: Orb is a passive OffHand (no weapon damage, only attribute bonuses); Scepter/Wand is a MainHand weapon (deals spell damage). They are distinct item types.
+- **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower, HP, etc.) update immediately.
+- **Cannot equip if requirements not met**: Level or attribute requirements block equipping.
+- **Ring stacking**: Two rings can have the same affix family; both bonuses apply.
+- **Equipment UI location**: Accessible via the hero detail modal (opened by clicking a hero card on the main screen).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player has an unequipped item and opens the hero detail modal | Player clicks "Equip" for the matching slot | The item is equipped to that slot; the hero's relevant secondary attributes (Armor, Resistance, PhysAtk, HP, etc.) update immediately in the detail panel |
+| AC2 | Player equips a Two-Hand weapon (e.g., Claymore) to a hero | Equip action completes | Both MainHand and OffHand slots are occupied; attempting to equip a Shield or Orb to OffHand while a Two-Hand weapon is equipped is blocked |
+| AC3 | Hero has a Two-Hand weapon equipped | Player unequips the Two-Hand weapon | Both MainHand and OffHand slots become empty and available; player can now equip a one-hand weapon to MainHand and a Shield/Orb to OffHand |
+| AC4 | Player equips a one-hand weapon (MainHand) and an Orb (OffHand) | Both items are equipped | MainHand shows the weapon; OffHand shows the Orb; the Orb's attribute bonuses (SpellPower, Resistance, etc.) are added to hero stats; the Orb does not contribute weapon damage |
+| AC5 | Player opens the hero detail modal | Hero has items equipped in some slots | All 11 slots are visible; slots with items show the item name and quality color; empty slots show "Empty" |
+| AC6 | Player equips two rings with the same "+Str" affix family | Both Ring slots have rings equipped | Both rings' Str bonuses apply independently and stack (e.g., two rings each giving +5 Str = +10 Str total) |
+| AC7 | Player attempts to equip an item that requires Level 8, but hero is Level 5 | Player triggers equip | Action is blocked; an error or red highlight indicates the level requirement is not met; item remains unequipped |
+| AC8 | Player attempts to equip an item requiring Str 14, but hero has Str 10 | Player triggers equip | Action is blocked; the unmet Str requirement is highlighted in red in the item detail or slot tooltip |
+| AC9 | Player unequips an item from a hero | Unequip action completes | The slot becomes empty; hero's secondary attributes revert to the values without that item's bonuses |
+| AC10 | Hero has a new item equipped | Hero participates in the next combat encounter | The item's Armor/Resistance/PhysAtk/SpellPower bonuses are applied in the actual damage and defense calculations during combat |
+
+---
+
+## Example 20: Equipment Attribute Requirements and Build Guidance
+
+**User Story**
+
+> As a player,
+> I want equipment to have clear level and attribute requirements that guide my build decisions,
+> So that I understand which items suit my heroes and can plan attribute allocation to unlock stronger gear.
+
+**Design Reference (from design doc)**
+
+- **Level requirement**: Hero level must be ≥ item's required level to equip.
+- **Attribute requirements by armor tier**:
+  - Normal tier armor (Lv 1–20): requires **Str** (physical protection bias — high Armor, low Resistance).
+  - Exceptional tier armor (Lv 21–40): requires **Int** (magic protection bias — high Resistance, low Armor).
+  - Elite tier armor (Lv 41–60): requires **Str + Int** (balanced protection — both Armor and Resistance).
+- **Attribute requirements by weapon type**: Physical weapons (swords, axes, hammers) → Str; Agility weapons (daggers, bows) → Agi; Spell weapons (wands, scepters, orbs) → Int.
+- **No hard class restrictions**: Any hero can equip any item if attribute and level requirements are met — design intent is to guide, not lock.
+- **Transparency**: Item detail clearly shows all requirements; unmet requirements highlighted in red.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A Normal-tier Helm (e.g., Crown, Str req 26, Lv req 20) is inspected by a Warrior with Str 20, Level 15 | Player views item detail | Level requirement (20) is shown in red (hero is Lv 15); Str requirement (26) is shown in red (hero has Str 20); both blocks equipping |
+| AC2 | Player allocates attribute points to Str during level-up such that Warrior now has Str 26 and is Level 20 | Player inspects the same Crown again | Str 26 and Level 20 requirements both display in normal color; player can now equip the item |
+| AC3 | An Exceptional-tier Helm (e.g., Casque, Int req 8, Lv req 28) is inspected by a Warrior with Int 4 | Player views item detail | Int 8 requirement is shown in red; tooltip or item description indicates this is a magic-biased armor needing Int |
+| AC4 | An Elite-tier Helm (e.g., Armet, Str req 6 + Int req 6, Lv req 48) is inspected | Player views item detail | Both Str 6 and Int 6 requirements are shown; unmet ones in red; this item provides balanced Armor and Resistance |
+| AC5 | A dagger (e.g., Dirk, Agi req 0, Lv req 4) is inspected by a Mage (Agi 4, Lv 5) | Player views item detail | All requirements are met; no red highlights; the Mage can equip a dagger if desired (no class lock) |
+| AC6 | A Rogue hero with Agi 11 inspects a Composite Bow (Agi req 14) | Player views item detail | Agi 14 requirement is shown in red; player understands they must allocate more Agi points to equip this bow |
+| AC7 | Player inspects any item | Player reads requirements | There is no "class: Warrior only" or similar class restriction; requirements are purely level + attributes |
+| AC8 | Player views secondary attributes in hero detail modal after equipping a Normal-tier armor | Hero's Armor value in secondary attributes increases | New Armor value = base Armor + item's base Armor + any "+Armor" affix value; formula is visible via tooltip |
+
+---
+
+## Example 21: Equipment Item Tier (Normal / Exceptional / Elite) and Stat Scaling
+
+**User Story**
+
+> As a player,
+> I want higher-level zones to yield stronger equipment bases with higher affix value ceilings,
+> So that progressing through maps feels meaningful and I am motivated to explore harder content.
+
+**Design Reference (from design doc)**
+
+- **Item tier determined by monster level** (not MF):
+  - Normal tier (base names from F1–F6 Normal column): drops from any monster (Lv 1–20 typical).
+  - Exceptional tier: drops when monster level ≥ threshold (e.g., ≥ 21); same base families but stronger names and stats.
+  - Elite tier: drops when monster level ≥ higher threshold (e.g., ≥ 41); highest stat values.
+- **Affix tier scales with item tier**: Normal items only roll Normal-tier affixes; Exceptional can roll Normal + Exceptional affixes; Elite can roll all three tiers.
+- **Affix value ranges by tier** (example: "+Armor" prefix):
+  | Affix Tier | Yellow (base) Range | Notes |
+  |------------|---------------------|-------|
+  | Normal | +2–5 | Low-level drops |
+  | Exceptional | +5–12 | Mid-game drops |
+  | Elite | +12–24 | Late-game drops |
+- **Base item stat scaling**: Higher tier = higher base Armor/PhysAtk/level requirement (e.g., Helm F1: Cap Armor 2–3 → War Hat Resistance 8–13 → Shako Armor 8–13 + Resistance 8–13).
+- **Within same tier, F1→F6**: Level requirement and base stats increase by ~4 levels per family.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Squad is fighting Lv 1–20 monsters (Elwynn Forest, maps 1–5) | Equipment drops | All dropped item base names are Normal tier (e.g., Cap, Leather Armor, Short Bow, Dagger); Exceptional and Elite base names do not appear |
+| AC2 | Squad is fighting Lv 21–40 monsters | Equipment drops | Items may have Exceptional tier bases (e.g., War Hat, Ghost Armor, Edge Bow); Normal bases may still appear; Elite bases do not appear |
+| AC3 | Squad is fighting Lv 41–60 monsters | Equipment drops | Items may have Elite tier bases (e.g., Shako, Dusk Shroud, Spider Bow); both lower tiers may also appear |
+| AC4 | A Normal-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Normal-tier range (e.g., `+2~5` for Yellow; Blue range: `+1~6`); Elite range values (+12~24) are not reachable from this item |
+| AC5 | An Elite-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Elite-tier range (e.g., `+12~24` for Yellow; Blue range: `+8~31`); significantly stronger than Normal-tier equivalents |
+| AC6 | Player compares a Normal-tier Cap and an Elite-tier Shako | Player views both item details | Cap (Lv 1, Armor 2–3, no Resistance) vs. Shako (Lv 41, Armor 8–13, Resistance 8–13); the tier difference is immediately visible in base stats |
+| AC7 | A Rare item drops from a Lv 25 monster | Item is generated | Item base is Exceptional tier; its affixes may be Normal-tier or Exceptional-tier rolls (not Elite-tier); affix roll ranges reflect this ceiling |
+| AC8 | Player is on Elwynn Forest (Lv 1–5 monsters) and on Westfall (Lv 6–10 monsters) | Equipment drops from each map | Items from higher-level maps have higher level requirements within the same Normal tier (e.g., Skull Cap Lv 4 on Westfall vs. Cap Lv 1 on Elwynn); stat differences are visible |
+| AC9 | Player progresses from map 1 to map 3 | Player views dropped items over time | Item base names progress through the Normal tier families (F1→F6 gradually) as monster levels increase; equipment visibly improves with map progression |
+
+---
+
+## Example 22: Inventory (Backpack) System
+
+**User Story**
+
+> As a player,
+> I want a backpack to store dropped equipment and items, and to sell unwanted items for gold,
+> So that I can manage my loot, free up space, and convert junk gear into useful currency.
+
+**Design Reference (from design doc)**
+
+- **Capacity**: Each player account has exactly **100 inventory slots**; each slot holds one item (no stacking).
+- **Full inventory rule**: When all 100 slots are occupied, any newly dropped equipment is **discarded** (does not enter the backpack); EXP and Gold from the same battle are still awarded normally.
+- **Full inventory notification**: When a drop is discarded due to full inventory, the combat log or top bar shows a warning (e.g., `"Inventory full — loot discarded!"`).
+- **Selling**: Player selects an item in the backpack and sells it; item is removed and gold is added to the account immediately; sell price is determined by item quality and tier (Normal < Magic < Rare < Unique; Elite tier > Exceptional > Normal); configurable.
+- **Sell is irreversible**: Sold items cannot be recovered.
+- **UI entry**: Backpack button/icon in the top bar or main screen; opens a Modal grid view; slot counter "N / 100" visible at top.
+- **Item display in grid**: Each slot shows item name (per Example 23 naming rules) colored by quality; clicking a slot opens item detail (same detail view as Example 18) with a Sell button added.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player wins a combat encounter and an equipment item drops | Inventory has at least 1 free slot | The item is added to the backpack; inventory count increases by 1 (e.g., "47 / 100") |
+| AC2 | Player wins a combat encounter and an equipment item drops | Inventory is full (100 / 100) | The item is discarded; a warning is shown in the combat log or top bar (e.g., "Inventory full — loot discarded!"); EXP and Gold are still awarded normally |
+| AC3 | Player is on the main screen | Player clicks the inventory/backpack button | A modal opens showing a grid of up to 100 slots; occupied slots display item names colored by quality (white/blue/yellow/gold); empty slots are visually distinct |
+| AC4 | Player views the inventory modal | Modal is open | A slot counter at the top shows current usage (e.g., "47 / 100"); player can see remaining space at a glance |
+| AC5 | Player clicks an item slot in the inventory | Item detail opens | The same item detail view as Example 18 is shown (base name, quality, slot type, level/attr requirements, affix list with roll ranges), with a "Sell" button added |
+| AC6 | Player clicks "Sell" on an item in inventory | Sell action is confirmed | The item is removed from the backpack; the corresponding gold amount is added to the player's account immediately; inventory count decreases by 1 |
+| AC7 | Player sells a Normal (white) item and a Rare (yellow) item of the same base | Each sell completes | The Rare item yields more gold than the Normal item; sell prices reflect quality tier |
+| AC8 | Player sells a Normal-tier item and an Elite-tier item of the same quality | Each sell completes | The Elite-tier item yields more gold; sell prices reflect item tier (Normal < Exceptional < Elite) |
+| AC9 | Player sells an item | Sell action completes | There is no undo option; the item cannot be recovered once sold; a brief confirmation prompt may be shown before the sale (optional, but no recovery after) |
+| AC10 | Player closes the inventory modal | Modal is dismissed | The main screen resumes normally; combat loop and auto-battle continue unaffected by the inventory interaction |
+| AC11 | Player defeats losses result in no drops | Combat ends in defeat | Inventory count does not change; no items are added or removed due to a defeat |
+
+---
+
+## Example 23: Equipment Item Naming
+
+**User Story**
+
+> As a player,
+> I want equipment items to have clear, consistent names that reflect their quality and affixes,
+> So that I can quickly identify item quality and value at a glance (combat log, inventory, item detail).
+
+**Design Reference (from design doc)**
+
+- **White (Normal)**: Base name only (e.g., Cap, Leather Armor, Short Bow).
+- **Blue (Magic)**: Prefix + base + suffix; 1 affix: prefix+base or base+suffix; 2 affixes: prefix+base+of+suffix.
+- **Yellow (Rare)**: Primary prefix + base + primary suffix + ", the [Epithet]"; primary affixes = highest-tier prefix and suffix; epithet from a pool (Veteran, Champion, Glory, Bane, etc.).
+- **Unique**: Fixed preset name.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A Normal (white) item drops or is displayed | Item name is shown | The displayed name is the base name only (e.g., "Cap", "Leather Armor", "Short Bow"); no prefix or suffix |
+| AC2 | A Magic (blue) item has 1 prefix and 0 suffix | Item name is displayed | Format: `Prefix Base` (e.g., "Sturdy Cap", "Mighty Long Sword") |
+| AC3 | A Magic (blue) item has 0 prefix and 1 suffix | Item name is displayed | Format: `Base of Suffix` (e.g., "Cap of the Bear", "Long Sword of Striking") |
+| AC4 | A Magic (blue) item has 1 prefix and 1 suffix | Item name is displayed | Format: `Prefix Base of Suffix` (e.g., "Sturdy Cap of the Bear"); name appears in combat log, inventory, and item detail |
+| AC5 | A Rare (yellow) item has 3–4 affixes | Item name is displayed | Format: `PrimaryPrefix Base of PrimarySuffix, the [Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., Veteran, Champion, Glory) |
+| AC6 | A Rare (yellow) item is displayed | Player views the name | The name ends with ", the [Epithet]" (e.g., "Mighty Crown of the Titan, the Veteran"); clearly distinguishes from blue items which have no epithet |
+| AC7 | A Rare (yellow) item drops | Item is generated | The epithet is chosen from the configurable pool (Veteran, Champion, Glory, Bane, Favor, Warden, Sage, Storm, Flame, Frost, etc.); each yellow item gets exactly one epithet |
+| AC8 | A Unique item is displayed | Item name is shown | The name is the fixed preset name for that Unique; it does not change based on affixes (affixes are predetermined) |
+| AC9 | Player views an item in combat log, inventory, or hero equipment slot | Item is displayed | The displayed name follows the above rules for the item's quality; color and name format together indicate quality and affix count |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:
