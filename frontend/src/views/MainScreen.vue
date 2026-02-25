@@ -474,7 +474,7 @@
                   :title="'Add 1 to ' + attr.label"
                   @click="assignPoint(attr.key)"
                 >+</button>
-                <span class="attr-val">{{ selectedHero[attr.key] || 0 }}</span>
+                <span class="attr-val">{{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}</span>
               </span>
             </div>
           </div>
@@ -622,7 +622,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, saveSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP } from '../data/heroes.js'
+import { getSquad, saveSquad, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,

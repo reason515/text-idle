@@ -52,8 +52,10 @@ export const CLASS_COEFFICIENTS = {
 
 /**
  * Get effective attributes (hero base + equipment bonuses)
+ * @param {Object} hero - Hero with strength, agility, intellect, stamina, spirit, equipment
+ * @returns {{ strength, agility, intellect, stamina, spirit }}
  */
-function getEffectiveAttrs(hero) {
+export function getEffectiveAttrs(hero) {
   const eq = getEquipmentBonuses(hero?.equipment)
   return {
     strength: (hero?.strength || 0) + eq.strength,

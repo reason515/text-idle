@@ -17,6 +17,7 @@ import {
   computeHeroResistance,
   getResourceDisplay,
   getClassCritRates,
+  getEffectiveAttrs,
 } from './heroes.js'
 
 const storage = {}
@@ -318,6 +319,31 @@ describe('heroes', () => {
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
       expect(items.find((i) => i.key === 'MP')).toBeDefined()
+    })
+  })
+
+  describe('getEffectiveAttrs', () => {
+    it('returns base attributes when hero has no equipment', () => {
+      const hero = { strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 }
+      expect(getEffectiveAttrs(hero)).toEqual({ strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 })
+    })
+
+    it('adds equipment attribute bonuses to base', () => {
+      const hero = { strength: 10, agility: 4, equipment: { Helm: { agiBonus: 5 } } }
+      expect(getEffectiveAttrs(hero).agility).toBe(9)
+      expect(getEffectiveAttrs(hero).strength).toBe(10)
+    })
+
+    it('sums bonuses from multiple equipped items', () => {
+      const hero = {
+        strength: 10,
+        agility: 4,
+        equipment: {
+          Helm: { agiBonus: 3 },
+          Boots: { agiBonus: 2 },
+        },
+      }
+      expect(getEffectiveAttrs(hero).agility).toBe(9)
     })
   })
 
