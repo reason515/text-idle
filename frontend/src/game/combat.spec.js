@@ -287,10 +287,27 @@ describe('combat progression and systems', () => {
     const result = runAutoCombat({ heroes, monsters, rng: () => 0.2 })
     expect(result.outcome).toBe('victory')
     expect(result.rewards.exp).toBeGreaterThan(0)
+    expect(Array.isArray(result.rewards.equipment)).toBe(true)
     expect(result.log.length).toBeGreaterThan(0)
     expect(result.log[0].actorName).toBe('Hero One')
     const acted = result.turnActedByRound[1]
     expect(new Set(acted).size).toBe(acted.length)
+  })
+
+  it('Example17: defeat returns empty equipment array', () => {
+    const weakHero = sampleHero({ id: 'h1', maxHP: 5, currentHP: 5, strength: 1, agility: 1 })
+    const strongMonster = createMonster(
+      {
+        id: 'boss',
+        name: 'Boss',
+        damageType: 'physical',
+        base: { hp: 1000, physAtk: 50, spellPower: 0, agility: 20, armor: 0, resistance: 0 },
+      },
+      { tier: 'boss', level: 10 }
+    )
+    const result = runAutoCombat({ heroes: [weakHero], monsters: [strongMonster], rng: () => 0.5, maxRounds: 5 })
+    expect(result.outcome).toBe('defeat')
+    expect(result.rewards.equipment).toEqual([])
   })
 
   it('log entries include actorClass/targetClass and actorTier/targetTier', () => {

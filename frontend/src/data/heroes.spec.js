@@ -82,6 +82,11 @@ describe('heroes', () => {
       expect(computeHeroArmor({ class: 'Warrior', strength: 0 })).toBe(0)
     })
 
+    it('adds equipment armor to hero armor', () => {
+      const hero = { class: 'Warrior', strength: 10, equipment: { Helm: { armor: 5, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
+      expect(computeHeroArmor(hero)).toBe(8 + 5)
+    })
+
     it('returns 0 armor for Priest (no k_Armor)', () => {
       expect(computeHeroArmor({ class: 'Priest', strength: 10 })).toBe(0)
     })
@@ -93,6 +98,11 @@ describe('heroes', () => {
 
     it('returns lower resistance for Warrior (k_Resistance 0.3)', () => {
       expect(computeHeroResistance({ class: 'Warrior', intellect: 2 })).toBe(1)
+    })
+
+    it('adds equipment resistance to hero resistance', () => {
+      const hero = { class: 'Mage', intellect: 11, equipment: { Amulet: { armor: 0, resistance: 3, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
+      expect(computeHeroResistance(hero)).toBe(9 + 3)
     })
   })
 
@@ -107,7 +117,7 @@ describe('heroes', () => {
       expect(values.Dodge).toBe(5.8) // 5 + 4*0.2 = 5.8
       expect(values.Hit).toBe(95.8) // 95 + 4*0.2 = 95.8
       expect(values.MP).toBeUndefined()
-      expect(values.SpellPower).toBeUndefined()
+      expect(values.SpellPower).toBe('-')
       expect(values.SpellCrit).toBeUndefined()
       expect(formulas.length).toBeGreaterThan(0)
     })
@@ -119,8 +129,8 @@ describe('heroes', () => {
       expect(values.SpellPower).toBe(12.2) // 5 + 11*0.65 = 12.15 -> 12.2
       expect(values.Resistance).toBe(8.8) // 11*0.8 = 8.8
       expect(values.SpellCrit).toBe(11.6) // 5 + 11*0.6 = 11.6
-      expect(values.PhysAtk).toBeUndefined()
-      expect(values.Armor).toBeUndefined()
+      expect(values.PhysAtk).toBe('-')
+      expect(values.Armor).toBe('-')
     })
 
     it('returns both PhysAtk and SpellPower for Paladin at Lv1', () => {
@@ -172,7 +182,7 @@ describe('heroes', () => {
       expect(values.PhysCrit).toBe(12.7) // 5 + 11*0.7 = 12.7
       expect(values.Dodge).toBe(10.5) // 5 + 11*0.5 = 10.5
       expect(values.MP).toBeUndefined()
-      expect(values.SpellPower).toBeUndefined()
+      expect(values.SpellPower).toBe('-')
     })
 
     it('returns correct values for Druid (hybrid agility/intellect) at Lv1', () => {
@@ -194,8 +204,8 @@ describe('heroes', () => {
       expect(values.MP).toBe(34) // 5 + 10*2.8 + 1 = 34
       expect(values.SpellPower).toBe(11.5) // 5 + 10*0.65 = 11.5
       expect(values.SpellCrit).toBe(11) // 5 + 10*0.6 = 11
-      expect(values.PhysAtk).toBeUndefined()
-      expect(values.Armor).toBeUndefined()
+      expect(values.PhysAtk).toBe('-')
+      expect(values.Armor).toBe('-')
     })
 
     it('returns correct values for Hunter (physical ranged) at Lv1', () => {
@@ -359,6 +369,7 @@ describe('heroes', () => {
         intellect: 2,
         stamina: 9,
         spirit: 3,
+        equipment: {},
       })
     })
 

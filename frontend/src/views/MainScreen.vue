@@ -9,6 +9,10 @@
         <span class="gold-label">Gold</span>
         <span class="gold-value">{{ gold }}</span>
       </div>
+      <button class="btn backpack-btn" @click="showBackpackModal = true" title="Backpack">
+        <span class="backpack-label">Backpack</span>
+        <span class="backpack-count">{{ inventoryCount }} / 100</span>
+      </button>
       <div class="explore-bar-wrap">
         <div class="explore-track">
           <div class="explore-fill" :style="{ width: progress.currentProgress + '%' }"></div>
@@ -167,6 +171,17 @@
                 Victory! Defeated {{ entry.monsterCount }} monster(s) in {{ entry.rounds }} round(s).
                 <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
                 <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
+                <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
+                  <span
+                    class="log-item-drop tooltip-wrap has-tip"
+                    :style="{ color: getQualityColor(eq.quality) }"
+                    @click="selectedItem = eq; showBackpackModal = false"
+                  >
+                    {{ formatItemDisplayName(eq) }}
+                    <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - Click to inspect</span>
+                  </span>
+                </template>
+                <span v-if="entry.inventoryFull" class="log-inv-full">Inventory full — loot discarded!</span>
               </template>
               <template v-else-if="entry.outcome === 'defeat'">
                 Defeat! Your party was overwhelmed after {{ entry.rounds }} round(s). Exploration -10
@@ -284,6 +299,88 @@
     </Teleport>
 
     <Teleport to="body">
+      <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null">
+        <div class="modal-box inventory-modal">
+          <div class="modal-title">Backpack</div>
+          <div class="inventory-counter">{{ inventoryCount }} / 100</div>
+          <div class="inventory-grid">
+            <div
+              v-for="(item, idx) in inventoryItems"
+              :key="item.id"
+              class="inventory-slot"
+              :style="{ color: getQualityColor(item.quality) }"
+              :class="{ 'slot-match': pendingEquipSlot && item.slot === pendingEquipSlot }"
+              @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
+            >
+              {{ formatItemDisplayName(item) }}
+            </div>
+            <div v-for="i in (100 - inventoryItems.length)" :key="'empty-' + i" class="inventory-slot empty">Empty</div>
+          </div>
+          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null">Close</button>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null">
+        <div class="modal-box item-detail-modal">
+          <div class="modal-title" :style="{ color: getQualityColor(selectedItem.quality) }">
+            {{ formatItemDisplayName(selectedItem) }}
+          </div>
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Slot</span>
+              <span class="detail-value">{{ SLOT_LABELS[selectedItem.slot] || selectedItem.slot }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Level Req</span>
+              <span class="detail-value" :class="{ 'req-unmet': (selectedHero?.level || 1) < (selectedItem.levelReq || 0) }">{{ selectedItem.levelReq || 0 }}</span>
+            </div>
+            <div v-if="(selectedItem.strReq || 0) > 0 || (selectedItem.agiReq || 0) > 0 || (selectedItem.intReq || 0) > 0 || (selectedItem.spiReq || 0) > 0" class="detail-row">
+              <span class="detail-label">Requirements</span>
+              <span class="detail-value">
+                <span v-if="(selectedItem.strReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.strength || 0) < (selectedItem.strReq || 0) }">Str {{ selectedItem.strReq }}</span>
+                <span v-if="(selectedItem.agiReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.agility || 0) < (selectedItem.agiReq || 0) }">Agi {{ selectedItem.agiReq }}</span>
+                <span v-if="(selectedItem.intReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.intellect || 0) < (selectedItem.intReq || 0) }">Int {{ selectedItem.intReq }}</span>
+                <span v-if="(selectedItem.spiReq || 0) > 0" :class="{ 'req-unmet': (selectedHero?.spirit || 0) < (selectedItem.spiReq || 0) }">Spi {{ selectedItem.spiReq }}</span>
+              </span>
+            </div>
+            <div v-if="(selectedItem.armor || 0) > 0" class="detail-row">
+              <span class="detail-label">Armor</span>
+              <span class="detail-value">{{ selectedItem.armor }}</span>
+            </div>
+            <div v-if="(selectedItem.resistance || 0) > 0" class="detail-row">
+              <span class="detail-label">Resistance</span>
+              <span class="detail-value">{{ selectedItem.resistance }}</span>
+            </div>
+            <div v-if="(selectedItem.physAtk || 0) > 0" class="detail-row">
+              <span class="detail-label">Phys Atk</span>
+              <span class="detail-value">{{ selectedItem.physAtk }}</span>
+            </div>
+            <div v-if="(selectedItem.spellPower || 0) > 0" class="detail-row">
+              <span class="detail-label">Spell Power</span>
+              <span class="detail-value">{{ selectedItem.spellPower }}</span>
+            </div>
+            <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
+            <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="detail-row">
+              <span class="detail-label">Prefix</span>
+              <span class="detail-value">{{ p.name }} — +{{ p.value }} {{ p.stat }} [{{ p.min }}~{{ p.max }}]</span>
+            </div>
+            <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="detail-row">
+              <span class="detail-label">Suffix</span>
+              <span class="detail-value">{{ s.name }} — +{{ s.value }} {{ s.stat }} [{{ s.min }}~{{ s.max }}]</span>
+            </div>
+          </div>
+          <div class="item-detail-actions">
+            <button v-if="selectedHero && canEquip(selectedHero, selectedItem)" class="btn" @click="equipItem(selectedItem); selectedItem = null">Equip</button>
+            <button v-if="isItemInInventory(selectedItem)" class="btn btn-sell" @click="doSellItem(selectedItem); selectedItem = null">Sell</button>
+            <button class="btn" @click="selectedItem = null">Close</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null">
         <div class="modal-box detail-modal">
           <div class="modal-title">
@@ -347,6 +444,20 @@
               </div>
             </div>
           </template>
+          <div class="detail-sep-line">Equipment</div>
+          <div class="detail-section equipment-slots">
+            <div v-for="slot in EQUIPMENT_SLOTS" :key="slot" class="equipment-slot-row">
+              <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
+              <span
+                class="detail-value equipment-slot-val tooltip-wrap has-tip"
+                :style="{ color: getEquippedItemColor(slot) }"
+                @click="toggleEquipmentSlot(slot)"
+              >
+                {{ getEquippedItemName(slot) || 'Empty' }}
+                <span class="tooltip-text">Click to equip from backpack or unequip</span>
+              </span>
+            </div>
+          </div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">Debuffs</div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedHero)" :key="d.type" class="detail-row">
@@ -480,6 +591,15 @@ import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/war
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 import { getGold, addGold } from '../game/gold.js'
+import { addToInventory, getInventory, sellItem, removeFromInventory } from '../game/inventory.js'
+import {
+  formatItemDisplayName,
+  getQualityColor,
+  SLOT_LABELS,
+  EQUIPMENT_SLOTS,
+  canEquip,
+  getEquipmentBonuses,
+} from '../game/equipment.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: 'Rage', fillClass: 'rage-fill' },
@@ -540,12 +660,16 @@ const displayHeroes = ref([])
 const currentMonsters = ref([])
 const displayedLog = ref([])
 const lastOutcome = ref('')
-const lastRewards = ref({ exp: 0, gold: 0, loot: [] })
+const lastRewards = ref({ exp: 0, gold: 0, equipment: [] })
 const progress = ref(createInitialProgress())
 const gold = ref(0)
 const showMapModal = ref(false)
+const showBackpackModal = ref(false)
 const selectedHero = ref(null)
 const selectedMonster = ref(null)
+const selectedItem = ref(null)
+const pendingEquipSlot = ref(null)
+const inventoryVersion = ref(0)
 const logListEl = ref(null)
 const isRunning = ref(false)
 const isPaused = ref(false)
@@ -579,6 +703,14 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } 
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
+const inventoryCount = computed(() => {
+  inventoryVersion.value
+  return getInventory().length
+})
+const inventoryItems = computed(() => {
+  inventoryVersion.value
+  return getInventory()
+})
 const currentMapName = computed(() => {
   const map = MAPS.find((m) => m.id === progress.value.currentMapId)
   return map ? map.name : MAPS[0].name
@@ -597,6 +729,73 @@ const heroSecondaryAttrs = computed(() => {
 function isMapUnlocked(mapId) {
   const index = MAPS.findIndex((m) => m.id === mapId)
   return index >= 0 && index < progress.value.unlockedMapCount
+}
+
+function isItemInInventory(item) {
+  if (!item?.id) return false
+  return getInventory().some((i) => i.id === item.id)
+}
+
+function equipItem(item) {
+  if (!selectedHero.value || !item || !canEquip(selectedHero.value, item)) return
+  const hero = squad.value.find((h) => h.id === selectedHero.value.id)
+  if (!hero) return
+  hero.equipment = hero.equipment || {}
+  hero.equipment[item.slot] = item
+  removeFromInventory(item.id)
+  inventoryVersion.value++
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+}
+
+function doSellItem(item) {
+  if (!item?.id) return
+  const result = sellItem(item.id)
+  if (result.success) {
+    gold.value = getGold()
+    inventoryVersion.value++
+  }
+}
+
+function getEquippedItemName(slot) {
+  if (!selectedHero.value) return null
+  const hero = squad.value.find((h) => h.id === selectedHero.value.id)
+  const item = hero?.equipment?.[slot]
+  return item ? formatItemDisplayName(item) : null
+}
+
+function getEquippedItemColor(slot) {
+  const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
+  const item = hero?.equipment?.[slot]
+  return item ? getQualityColor(item.quality) : 'var(--text-muted)'
+}
+
+function toggleEquipmentSlot(slot) {
+  const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
+  if (!hero) return
+  hero.equipment = hero.equipment || {}
+  const item = hero.equipment[slot]
+  if (item) {
+    addToInventory(item)
+    delete hero.equipment[slot]
+    inventoryVersion.value++
+    saveSquad(squad.value)
+    displayHeroes.value = squad.value.map(computeHeroDisplay)
+  } else {
+    pendingEquipSlot.value = slot
+    showBackpackModal.value = true
+  }
+}
+
+function tryEquipFromBackpack(item) {
+  if (!pendingEquipSlot.value || !selectedHero.value) return false
+  if (item.slot !== pendingEquipSlot.value) return false
+  const hero = squad.value.find((h) => h.id === selectedHero.value.id)
+  if (!hero || !canEquip(hero, item)) return false
+  equipItem(item)
+  pendingEquipSlot.value = null
+  showBackpackModal.value = false
+  return true
 }
 
 function getMaxResource(heroClass, intellect, spirit) {
@@ -921,7 +1120,7 @@ async function runCombatLoop() {
     displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
     unitFloatingNumbers.value = {}
     lastOutcome.value = ''
-    lastRewards.value = { exp: 0, gold: 0, loot: [] }
+    lastRewards.value = { exp: 0, gold: 0, equipment: [] }
 
     const isBossEncounter = monsters.some((m) => m.tier === 'boss')
     addLogEntry({
@@ -940,12 +1139,19 @@ async function runCombatLoop() {
     if (result.outcome === 'victory') {
       lastOutcome.value = 'victory'
       lastRewards.value = result.rewards
+      let inventoryFullWarn = false
+      for (const eq of result.rewards.equipment || []) {
+        const added = addToInventory(eq)
+        if (!added) inventoryFullWarn = true
+      }
+      if ((result.rewards.equipment || []).length > 0) inventoryVersion.value++
       addLogEntry({
         type: 'summary',
         outcome: 'victory',
         rounds: result.rounds,
         monsterCount: monsters.length,
         rewards: result.rewards,
+        inventoryFull: inventoryFullWarn,
       })
       await scrollLog()
 
@@ -988,7 +1194,7 @@ async function runCombatLoop() {
         outcome: result.outcome,
         rounds: result.rounds,
         monsterCount: monsters.length,
-        rewards: { exp: 0, gold: 0 },
+        rewards: { exp: 0, gold: 0, equipment: [] },
       })
       await scrollLog()
 
@@ -1081,6 +1287,83 @@ onUnmounted(() => {
   font-weight: 600;
   min-width: 2ch;
 }
+
+.backpack-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.backpack-btn:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+.backpack-label { font-size: 0.8rem; }
+.backpack-count { font-size: 0.7rem; color: var(--text-muted); }
+
+.inventory-modal { max-width: 36rem; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+.inventory-counter {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+  margin-bottom: 0.75rem;
+}
+.inventory-slot {
+  padding: 0.35rem 0.4rem;
+  font-size: 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inventory-slot:hover { border-color: var(--color-gold); }
+.inventory-slot.empty { color: var(--text-muted); cursor: default; }
+.inventory-slot.slot-match { border-color: var(--color-victory); background: rgba(68, 255, 136, 0.08); }
+
+.log-item-drop {
+  cursor: pointer;
+  margin-left: 0.25rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.log-item-drop:hover { opacity: 0.9; }
+.log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: 0.9rem; }
+
+.item-detail-modal .req-unmet { color: var(--error); }
+.item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
+.btn-sell:hover { background: rgba(255, 204, 68, 0.1); }
+
+.equipment-slots .equipment-slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+.equipment-slot-val {
+  cursor: pointer;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.equipment-slot-val:hover { text-decoration: underline; }
 
 .explore-bar-wrap {
   flex: 1;
@@ -1575,6 +1858,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 200;
+}
+.modal-overlay-backpack {
+  z-index: 250;
+}
+.modal-overlay-item-detail {
+  z-index: 300;
 }
 .modal-box {
   background: var(--bg-panel);

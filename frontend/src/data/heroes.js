@@ -3,7 +3,10 @@
  * Each hero has: id, name, class, level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit)
  * Each of the 9 classes (Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman)
  * has at least one hero available.
+ * Heroes may have equipment: { [slot]: EquipmentItem } for 11 slots.
  */
+
+import { getEquipmentBonuses } from '../game/equipment.js'
 
 /**
  * Initial attributes for each class at level 1 (small-number design principle)
@@ -48,28 +51,48 @@ export const CLASS_COEFFICIENTS = {
 }
 
 /**
+ * Get effective attributes (hero base + equipment bonuses)
+ */
+function getEffectiveAttrs(hero) {
+  const eq = getEquipmentBonuses(hero?.equipment)
+  return {
+    strength: (hero?.strength || 0) + eq.strength,
+    agility: (hero?.agility || 0) + eq.agility,
+    intellect: (hero?.intellect || 0) + eq.intellect,
+    stamina: (hero?.stamina || 0) + eq.stamina,
+    spirit: (hero?.spirit || 0) + eq.spirit,
+  }
+}
+
+/**
  * Compute max HP for a hero using design doc formula: HP = 10 + Stam * k_HP + Level * 2
- * @param {Object} hero - Hero object with class, stamina, level
+ * Includes equipment stamina bonus.
+ * @param {Object} hero - Hero object with class, stamina, level, equipment
  * @returns {number} Max HP
  */
 export function computeHeroMaxHP(hero) {
+  const attrs = getEffectiveAttrs(hero)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k_HP = coef.k_HP ?? 0
-  return Math.round(10 + (hero?.stamina || 0) * k_HP + (hero?.level || 1) * 2)
+  return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * 2)
 }
 
-/** Armor for combat: Str * k_Armor. Returns 0 if class has no k_Armor. */
+/** Armor for combat: Str * k_Armor + equipment armor. Returns 0 if class has no k_Armor. */
 export function computeHeroArmor(hero) {
+  const attrs = getEffectiveAttrs(hero)
+  const eq = getEquipmentBonuses(hero?.equipment)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k = coef.k_Armor ?? 0
-  return Math.round((hero?.strength || 0) * k)
+  return Math.round(attrs.strength * k) + eq.armor
 }
 
-/** Resistance for combat: Int * k_Resistance. Returns 0 if class has no k_Resistance. */
+/** Resistance for combat: Int * k_Resistance + equipment resistance. Returns 0 if class has no k_Resistance. */
 export function computeHeroResistance(hero) {
+  const attrs = getEffectiveAttrs(hero)
+  const eq = getEquipmentBonuses(hero?.equipment)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k = coef.k_Resistance ?? 0
-  return Math.round((hero?.intellect || 0) * k)
+  return Math.round(attrs.intellect * k) + eq.resistance
 }
 
 /**
@@ -130,7 +153,7 @@ const NA = '-'
  */
 export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = null) {
   const baseAttrs = getInitialAttributes(heroClass)
-  const attrs = heroAttrs
+  const rawAttrs = heroAttrs
     ? {
         strength: heroAttrs.strength ?? baseAttrs.strength,
         agility: heroAttrs.agility ?? baseAttrs.agility,
@@ -139,6 +162,8 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
         spirit: heroAttrs.spirit ?? baseAttrs.spirit,
       }
     : baseAttrs
+  const attrs = heroAttrs?.equipment ? getEffectiveAttrs({ ...rawAttrs, equipment: heroAttrs.equipment }) : rawAttrs
+  const eq = heroAttrs?.equipment ? getEquipmentBonuses(heroAttrs.equipment) : { armor: 0, resistance: 0, physAtk: 0, spellPower: 0 }
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}
   const formulaMap = {}
@@ -166,42 +191,46 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
 
-  // PhysAtk (all classes, N/A when null)
+  // PhysAtk (base + equipment)
   if (coef.physAtkAttr && coef.k_PhysAtk != null) {
     const mainAttr = attrs[coef.physAtkAttr] || 0
-    const physAtk = 5 + mainAttr * coef.k_PhysAtk
-    values.PhysAtk = Math.round(physAtk * 10) / 10
+    const basePhysAtk = 5 + mainAttr * coef.k_PhysAtk
+    values.PhysAtk = Math.round((basePhysAtk + eq.physAtk) * 10) / 10
     const attrName = coef.physAtkAttr === 'strength' ? 'Str' : 'Agi'
-    formulaMap.PhysAtk = fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
+    formulaMap.PhysAtk = eq.physAtk ? `5 + ${attrName} * ${coef.k_PhysAtk} + equipment = ${values.PhysAtk}` : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
   } else {
-    formulaMap.PhysAtk = NA
+    values.PhysAtk = eq.physAtk || NA
+    formulaMap.PhysAtk = eq.physAtk ? `Equipment: ${eq.physAtk}` : NA
   }
 
-  // SpellPower (all classes, N/A when null)
+  // SpellPower (base + equipment)
   if (coef.k_SpellPower != null) {
-    const spellPower = 5 + attrs.intellect * coef.k_SpellPower
-    values.SpellPower = Math.round(spellPower * 10) / 10
-    formulaMap.SpellPower = fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
+    const baseSpellPower = 5 + attrs.intellect * coef.k_SpellPower
+    values.SpellPower = Math.round((baseSpellPower + eq.spellPower) * 10) / 10
+    formulaMap.SpellPower = eq.spellPower ? `5 + Int * ${coef.k_SpellPower} + equipment = ${values.SpellPower}` : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
   } else {
-    formulaMap.SpellPower = NA
+    values.SpellPower = eq.spellPower || NA
+    formulaMap.SpellPower = eq.spellPower ? `Equipment: ${eq.spellPower}` : NA
   }
 
-  // Armor (all classes, no equipment in formula)
+  // Armor (base + equipment)
   if (coef.k_Armor != null) {
-    const armor = attrs.strength * coef.k_Armor
-    values.Armor = Math.round(armor * 10) / 10
-    formulaMap.Armor = fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
+    const baseArmor = attrs.strength * coef.k_Armor
+    values.Armor = Math.round((baseArmor + eq.armor) * 10) / 10
+    formulaMap.Armor = eq.armor ? `Str * ${coef.k_Armor} + equipment = ${values.Armor}` : fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
   } else {
-    formulaMap.Armor = NA
+    values.Armor = eq.armor || NA
+    formulaMap.Armor = eq.armor ? `Equipment: ${eq.armor}` : NA
   }
 
-  // Resistance (all classes, absorbs magic damage)
+  // Resistance (base + equipment)
   if (coef.k_Resistance != null) {
-    const resistance = attrs.intellect * coef.k_Resistance
-    values.Resistance = Math.round(resistance * 10) / 10
-    formulaMap.Resistance = fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
+    const baseResistance = attrs.intellect * coef.k_Resistance
+    values.Resistance = Math.round((baseResistance + eq.resistance) * 10) / 10
+    formulaMap.Resistance = eq.resistance ? `Int * ${coef.k_Resistance} + equipment = ${values.Resistance}` : fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
   } else {
-    formulaMap.Resistance = NA
+    values.Resistance = eq.resistance || NA
+    formulaMap.Resistance = eq.resistance ? `Equipment: ${eq.resistance}` : NA
   }
 
   // PhysCrit
@@ -381,6 +410,7 @@ export function createCharacter(hero, opts = {}) {
     level: 1,
     xp: 0,
     unassignedPoints: 0,
+    equipment: hero.equipment || {},
     ...initialAttrs,
   }
   if (opts.skill) {

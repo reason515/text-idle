@@ -9,6 +9,7 @@ import {
   executeWarriorSkill,
 } from './warriorSkills.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
+import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -289,10 +290,13 @@ function getMaxResource(heroClass, intellect, spirit) {
 function heroCombatStats(hero) {
   const maxHP = computeHeroMaxHP(hero)
   const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
+  const eq = getEquipmentBonuses(hero?.equipment)
   const crit = getClassCritRates(hero.class, {
-    agility: hero.agility,
-    intellect: hero.intellect,
+    agility: hero.agility + (eq?.agility || 0),
+    intellect: hero.intellect + (eq?.intellect || 0),
   })
+  const basePhysAtk = Math.round(hero.strength * 1.4 + hero.agility * 0.6)
+  const baseSpellPower = Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)
   return {
     id: hero.id,
     name: hero.name,
@@ -301,8 +305,8 @@ function heroCombatStats(hero) {
     agility: hero.agility,
     armor: computeHeroArmor(hero),
     resistance: computeHeroResistance(hero),
-    physAtk: Math.max(1, Math.round(hero.strength * 1.4 + hero.agility * 0.6)),
-    spellPower: Math.max(0, Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)),
+    physAtk: Math.max(1, basePhysAtk + (eq?.physAtk || 0)),
+    spellPower: Math.max(0, baseSpellPower + (eq?.spellPower || 0)),
     physCrit: crit.physCrit,
     spellCrit: crit.spellCrit,
     maxHP,
@@ -403,12 +407,13 @@ function actorDamage(actor, rng, round) {
   return { action: 'skill', skillId, skillName, damageType: 'physical', rawDamage: Math.round(actor.physAtk * coeff) }
 }
 
-function rewardForVictory(monsters) {
+function rewardForVictory(monsters, rng) {
   const totalTierValue = monsters.reduce((sum, m) => sum + (m.tier === 'boss' ? 5 : m.tier === 'elite' ? 2 : 1), 0)
+  const equipment = generateEquipmentDrop(monsters, rng)
   return {
     exp: 12 * totalTierValue,
     gold: 7 * totalTierValue,
-    loot: totalTierValue >= 5 ? ['boss-trophy'] : ['monster-hide'],
+    equipment,
   }
 }
 
@@ -609,7 +614,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     log,
     initialOrder,
     turnActedByRound,
-    rewards: outcome === 'victory' ? rewardForVictory(monsterUnits) : { exp: 0, gold: 0, loot: [] },
+    rewards: outcome === 'victory' ? rewardForVictory(monsterUnits, rng) : { exp: 0, gold: 0, equipment: [] },
     heroesAfter: heroUnits,
     monstersAfter: monsterUnits,
   }
