@@ -8,6 +8,7 @@ import {
   SQUAD_STORAGE_KEY,
   getSquad,
   saveSquad,
+  getSquadMaxLevel,
   addHeroToSquad,
   getInitialAttributes,
   createCharacter,
@@ -53,6 +54,29 @@ describe('heroes', () => {
       const squad = [{ id: 'jaina', name: 'Jaina Proudmoore' }]
       saveSquad(squad)
       expect(getSquad()).toEqual(squad)
+    })
+  })
+
+  describe('getSquadMaxLevel', () => {
+    it('returns 1 for empty squad', () => {
+      expect(getSquadMaxLevel([])).toBe(1)
+      expect(getSquadMaxLevel(null)).toBe(1)
+      expect(getSquadMaxLevel(undefined)).toBe(1)
+    })
+
+    it('returns hero level for single-hero squad', () => {
+      expect(getSquadMaxLevel([{ level: 5 }])).toBe(5)
+      expect(getSquadMaxLevel([{ level: 1 }])).toBe(1)
+    })
+
+    it('returns max level when squad has mixed levels (AC11: squad level = max)', () => {
+      const squad = [{ level: 3 }, { level: 10 }, { level: 5 }]
+      expect(getSquadMaxLevel(squad)).toBe(10)
+    })
+
+    it('treats missing level as 1', () => {
+      expect(getSquadMaxLevel([{ level: 5 }, {}])).toBe(5)
+      expect(getSquadMaxLevel([{}])).toBe(1)
     })
   })
 

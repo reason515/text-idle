@@ -404,6 +404,18 @@ export function saveSquad(squad) {
 }
 
 /**
+ * Get the maximum level among squad members.
+ * Used as the baseline for level-dependent mechanics (e.g. encounter monster level).
+ * Empty squad returns 1.
+ * @param {Array<{level?: number}>} squad - Array of hero/character objects
+ * @returns {number} Max level in squad, or 1 if empty
+ */
+export function getSquadMaxLevel(squad) {
+  if (!squad || squad.length === 0) return 1
+  return Math.max(1, ...squad.map((h) => h.level ?? 1))
+}
+
+/**
  * Create a character from a hero template with initial attributes.
  * @param {Object} hero - Hero template object (id, name, class)
  * @param {Object} opts - { skill?: string } optional skill id for Warriors

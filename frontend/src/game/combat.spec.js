@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { getSquadMaxLevel } from '../data/heroes.js'
 import {
   MAPS,
   MAP_MONSTER_POOLS,
@@ -212,6 +213,25 @@ describe('combat progression and systems', () => {
     expect(normalIds).toContain('forest-spider')
     expect(normalIds).toContain('timber-wolf')
     expect(eliteIds).toContain('defias-cutpurse')
+  })
+
+  it('AC11: squad with mixed levels (3, 10, 5) uses max level 10 for encounter', () => {
+    const squad = [{ level: 3 }, { level: 10 }, { level: 5 }]
+    const squadLevel = getSquadMaxLevel(squad)
+    expect(squadLevel).toBe(10)
+    const pool = MAP_MONSTER_POOLS['elwynn-forest']
+    const { min, max } = pool.levelRange
+    const rng = () => 0.5
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: squad.length,
+      level: squadLevel,
+      rng,
+    })
+    for (const m of monsters) {
+      expect(m.level).toBeGreaterThanOrEqual(squadLevel + min)
+      expect(m.level).toBeLessThanOrEqual(squadLevel + max)
+    }
   })
 
   it('Example9: monster has crit rates based on tier', () => {

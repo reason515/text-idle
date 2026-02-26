@@ -281,6 +281,7 @@ Then [expected result/verifiable behavior].
 - **Damage types**: Physical (reduced by Armor), Magic (reduced by Resistance). Monsters can be pure physical, pure magic, or mixed (PhysRatio/MagicRatio).
 - **Defense formula**: 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. Flat subtraction, no cap.
 - **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner, Defias Trapper, Forest Spider, Timber Wolf (normal); Kobold Geomancer, Defias Smuggler, Defias Cutpurse (elite); Hogger (Boss).
+- **Squad level for encounters**: All level-dependent mechanics (e.g. encounter monster level) use the **maximum level among squad members** as the baseline. Empty squad defaults to level 1.
 
 **Acceptance Criteria**
 
@@ -296,6 +297,7 @@ Then [expected result/verifiable behavior].
 | AC8 | Squad enters combat on a specific map (e.g., Elwynn Forest) | Encounter is generated | Monsters are drawn from that map's pool (e.g., Kobold Miner, Young Wolf, Defias Trapper, Forest Spider, Timber Wolf for Normal; Kobold Geomancer, Defias Smuggler, Defias Cutpurse for Elite; Hogger for Boss) |
 | AC9 | Two monsters have the same Agility | Turn order is determined | Order between them is random (see Example 6 AC2); monsters participate in the same Agility-based turn order as heroes |
 | AC10 | Squad level is 5 and map has level range [-1, +2] | Encounter is generated | Each monster has a level in [4, 7]; same monster type at different levels has different stats (higher level = stronger) |
+| AC11 | Squad has heroes at levels 3, 10, 5 (mixed levels) | Encounter is generated | Monster level uses **squad max level** (10) as baseline; monsters are scaled to level 10 ± map range, not to individual hero levels |
 
 ---
 
