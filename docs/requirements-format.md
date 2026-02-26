@@ -781,6 +781,46 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 24: Shop (Gambling) System
+
+**User Story**
+
+> As a player,
+> I want to spend gold to buy unidentified equipment from a shop and have it auto-identified upon purchase,
+> So that I can supplement my loot with targeted slot purchases and experience the excitement of gambling for quality rolls.
+
+**Design Reference (from design doc)**
+
+- **Concept**: Shop mimics D2 Gambling — player spends gold to buy "unidentified" equipment by slot; purchase triggers immediate auto-identify using the same quality/affix logic as monster drops.
+- **Flow**: Select slot → Pay gold → Generate unidentified item (slot, base, level fixed; quality and affixes not yet rolled) → Auto-identify → Item enters backpack.
+- **Level cap**: Shop item level does **not exceed the highest level among squad members**; empty squad defaults to level 1.
+- **Quality and affixes**: Fully reuses drop logic — MF (if configured), quality distribution (Normal/Magic/Rare/Unique), affix pools; rings and amulets only roll Magic or higher.
+- **Item tier**: Tier (Normal/Exceptional/Elite) and base selection follow the same rules as monster drops, based on item level.
+- **Pricing**: Per-slot base price; level affects price (higher level = higher cost); price shown before purchase.
+- **UI entry**: Shop button in the top bar, **next to the Backpack button** (Backpack left, Shop right); click opens a modal.
+- **Shop modal**: Lists purchasable slots; shows price and current gold; click Buy deducts gold, runs identify, adds item to backpack.
+- **Backpack full**: If backpack is full when a purchased item is identified, the item is discarded and the same "Inventory full — loot discarded!" rule applies.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player is on the main screen | Player views the top bar | A Shop button is visible next to the Backpack button (Backpack on the left, Shop on the right) |
+| AC2 | Player clicks the Shop button | Shop modal opens | A modal displays purchasable equipment slots (e.g., Main Hand, Off Hand, Helm, Armor, Gloves, Boots, Belt, Amulet, Ring); each slot shows its price; current gold balance is visible |
+| AC3 | Player has 500 gold and a Helm slot costs 80 gold | Player selects Helm and clicks Buy | 80 gold is deducted; an unidentified Helm is generated; it is immediately auto-identified; the identified item (Normal/Magic/Rare/Unique) is added to the backpack |
+| AC4 | Player has 30 gold and a Helm slot costs 80 gold | Player selects Helm and clicks Buy | Purchase is blocked or disabled; player sees insufficient gold feedback; no gold is deducted; no item is generated |
+| AC5 | Squad has heroes at levels 5, 12, 8 (max level 12) | Player buys any slot from the shop | The purchased item has level ≤ 12; item tier and base selection follow the same rules as drops from Lv 12 monsters |
+| AC6 | Squad is empty (no heroes) | Player buys from the shop | The purchased item has level 1; item tier and base are restricted to Lv 1–appropriate options |
+| AC7 | Player buys a Helm and the backpack has 1 free slot | Purchase completes | The identified Helm is added to the backpack; inventory count increases by 1; the item appears in the backpack with its full name and quality color |
+| AC8 | Player buys a Helm and the backpack is full (100 / 100) | Purchase completes (gold deducted, identify runs) | The item is discarded; a warning is shown (e.g., "Inventory full — loot discarded!"); gold is not refunded |
+| AC9 | Player buys a Ring from the shop | Item is identified | The Ring has quality Magic (blue) or higher; rings never roll as Normal (white), same as drop rules |
+| AC10 | Player buys a Helm | Item is identified | Quality (Normal/Magic/Rare/Unique) and affixes follow the same roll logic as monster drops; MF may affect the roll if configured |
+| AC11 | Player views the shop modal before buying | Price is displayed | The price for the selected slot (or each slot) is visible; player can see cost before committing |
+| AC12 | Player buys an item from the shop | Purchase and identify complete | The shop modal remains open (or closes with success feedback); player can buy another item or close the modal |
+| AC13 | Player closes the shop modal | Modal is dismissed | Main screen resumes; combat loop and auto-battle continue unaffected |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:
