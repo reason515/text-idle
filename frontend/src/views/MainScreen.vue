@@ -246,14 +246,16 @@
               >{{ entry.finalDamage }}</span>
               <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
               <span class="log-dtype">({{ entry.damageType }})</span>
-              <div class="log-calc">
-                {{ damageFormulaEquation(entry) }}
-              </div>
-              <div v-if="entry.targetHPBefore != null" class="log-target-hp">
-                <span
-                  :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
-                >{{ entry.targetName }}</span>
-                HP: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+              <div v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null" class="log-detail-box">
+                <div v-if="damageFormulaEquation(entry)" class="log-calc">
+                  {{ damageFormulaEquation(entry) }}
+                </div>
+                <div v-if="entry.targetHPBefore != null" class="log-target-hp">
+                  <span
+                    :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+                  >{{ entry.targetName }}</span>
+                  HP: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+                </div>
               </div>
               <div v-if="entry.heal > 0" class="log-heal">
                 <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
@@ -2539,7 +2541,7 @@ onUnmounted(() => {
 }
 .log-action { color: var(--text-label); }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
-.log-actor { font-weight: bold; }
+.log-actor { font-weight: normal; }
 .log-agi {
   color: #99ccaa;
   font-size: 0.75rem;
@@ -2563,18 +2565,29 @@ onUnmounted(() => {
   padding: 0.02rem 0.2rem;
   border-radius: 2px;
 }
+.log-detail-box {
+  width: 100%;
+  margin-top: 0.2rem;
+  margin-left: 2.5rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid rgba(102, 170, 136, 0.5);
+  border-radius: 3px;
+  background: rgba(34, 68, 51, 0.25);
+}
 .log-calc {
   width: 100%;
   font-size: 0.72rem;
   color: #88aa88;
-  padding-left: 2.5rem;
+  padding-left: 0;
 }
 .log-target-hp {
   width: 100%;
   font-size: 0.72rem;
   color: #88aa88;
-  padding-left: 2.5rem;
+  padding-left: 0;
+  margin-top: 0.15rem;
 }
+.log-detail-box .log-target-hp:first-child { margin-top: 0; }
 
 /* Keep old class names for compatibility */
 .log-physical,
