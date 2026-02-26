@@ -1711,15 +1711,17 @@ onUnmounted(() => {
   overflow: visible;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.5rem;
   justify-content: center;
 }
 .inventory-slot .slot-name {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .inventory-slot .slot-lvl {
+  display: block;
   font-size: 0.7rem;
   color: var(--text-muted);
 }
