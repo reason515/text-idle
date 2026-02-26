@@ -569,8 +569,8 @@ function confirmSelection() {
   padding: 0.1rem 0.4rem;
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--color-gold);
-  background: rgba(255, 204, 68, 0.07);
+  color: var(--color-skill);
+  background: rgba(255, 238, 102, 0.07);
 }
 
 .skill-option-meta {

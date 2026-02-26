@@ -167,7 +167,8 @@
             </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
               <template v-if="entry.outcome === 'victory'">
-                Victory! Defeated {{ entry.monsterCount }} monster(s) in {{ entry.rounds }} round(s).
+                <span class="log-victory-label">Victory!</span>
+                <span class="log-summary-body">Defeated <span class="log-monster-count">{{ entry.monsterCount }}</span> monster(s) in <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
                 <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
                 <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
                 <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
@@ -183,7 +184,9 @@
                 <span v-if="entry.inventoryFull" class="log-inv-full">Inventory full — loot discarded!</span>
               </template>
               <template v-else-if="entry.outcome === 'defeat'">
-                Defeat! Your party was overwhelmed after {{ entry.rounds }} round(s). Exploration -10
+                <span class="log-defeat-label">Defeat!</span>
+                <span class="log-summary-body">Your party was overwhelmed after <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
+                <span class="val-penalty">Exploration -10</span>
               </template>
               <template v-else>
                 Draw after {{ entry.rounds }} round(s).
@@ -1593,7 +1596,7 @@ onUnmounted(() => {
 .map-btn {
   background: var(--bg-dark);
   border: 1px solid var(--border);
-  color: var(--color-gold);
+  color: var(--accent);
   font-family: inherit;
   font-size: 0.9rem;
   padding: 0.25rem 0.5rem;
@@ -1604,11 +1607,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .map-btn:hover {
-  border-color: var(--color-gold);
-  background: rgba(255, 204, 68, 0.05);
+  border-color: var(--accent);
+  background: rgba(0, 255, 170, 0.05);
 }
 .map-name {
-  color: var(--color-gold);
+  color: var(--accent);
 }
 .map-arrow {
   font-size: 0.65rem;
@@ -1696,7 +1699,7 @@ onUnmounted(() => {
   font-size: 0.7rem;
   color: var(--text-muted);
 }
-.inventory-slot:hover { border-color: var(--color-gold); }
+.inventory-slot:hover { border-color: var(--accent); }
 .inventory-slot.empty { color: var(--text-muted); cursor: default; }
 .inventory-slot.slot-match { border-color: var(--color-victory); background: rgba(68, 255, 136, 0.08); }
 .inventory-slot.tooltip-wrap .tooltip-text {
@@ -1938,8 +1941,8 @@ onUnmounted(() => {
   color: var(--accent);
 }
 .pause-btn.paused {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .backpack-btn {
@@ -1948,8 +1951,8 @@ onUnmounted(() => {
   color: var(--text);
 }
 .backpack-btn:hover {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .col-header {
@@ -2145,7 +2148,7 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 .log-map-entry-label {
-  color: var(--color-gold);
+  color: var(--accent);
   font-weight: bold;
   display: block;
   margin-bottom: 0.2rem;
@@ -2157,7 +2160,7 @@ onUnmounted(() => {
 
 .log-encounter {
   font-size: 0.84rem;
-  color: var(--color-gold);
+  color: var(--accent);
   padding: 0.3rem 0;
   font-style: italic;
 }
@@ -2171,6 +2174,24 @@ onUnmounted(() => {
 }
 .log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
+.log-summary .val-penalty { color: var(--error); font-weight: normal; margin-left: 0.5rem; }
+.log-summary .log-victory-label {
+  font-size: 1.05em;
+  font-weight: bold;
+  color: var(--color-victory);
+  text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+  margin-right: 0.35rem;
+}
+.log-summary .log-summary-body { font-weight: normal; color: var(--text); }
+.log-summary .log-monster-count { color: var(--color-exp); font-weight: bold; }
+.log-summary .log-rounds-num { color: var(--text-value); font-weight: bold; }
+.log-summary .log-defeat-label {
+  font-size: 1.05em;
+  font-weight: bold;
+  color: var(--color-defeat);
+  text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
+  margin-right: 0.35rem;
+}
 .victory-text { color: var(--color-victory); }
 
 .log-levelup {
@@ -2178,19 +2199,19 @@ onUnmounted(() => {
   font-weight: bold;
   padding: 0.4rem 0.5rem;
   margin: 0.25rem 0;
-  background: rgba(255, 204, 68, 0.08);
-  border: 1px solid var(--color-gold);
+  background: rgba(136, 255, 170, 0.08);
+  border: 1px solid var(--color-exp);
   border-radius: 4px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
-  color: var(--color-gold);
-  text-shadow: 0 0 6px rgba(255, 204, 68, 0.4);
+  color: var(--color-exp);
+  text-shadow: 0 0 6px rgba(136, 255, 170, 0.4);
 }
 .log-levelup-icon {
   font-size: 1rem;
-  color: var(--color-gold);
+  color: var(--color-exp);
 }
 .log-levelup-text { color: var(--text); }
 .log-levelup-bonus {
@@ -2564,7 +2585,7 @@ onUnmounted(() => {
   padding: 0.08rem 0.3rem;
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--color-gold);
+  color: var(--color-skill);
   width: fit-content;
   white-space: nowrap;
 }

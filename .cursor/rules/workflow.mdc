@@ -24,6 +24,11 @@ On every change, check whether these need updates:
 
 Update them when the change affects formulas, attributes, UI behavior, or acceptance criteria.
 
+## Color Usage (Gold)
+
+- `var(--color-gold)` / gold color: **ONLY** for gold-related content (currency, rewards, sell, costs)
+- Other highlights (accent, level-up, skill, victory): use `var(--accent)`, `var(--color-exp)`, `var(--color-skill)`, `var(--color-victory)` etc.
+
 ## Tooltip Style (Unified)
 
 All hover tips must use the custom tooltip pattern, not native `title`:
