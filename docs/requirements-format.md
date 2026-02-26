@@ -796,7 +796,7 @@ Then [expected result/verifiable behavior].
 - **Level cap**: Shop item level does **not exceed the highest level among squad members**; empty squad defaults to level 1.
 - **Quality and affixes**: Fully reuses drop logic — MF (if configured), quality distribution (Normal/Magic/Rare/Unique), affix pools; rings and amulets only roll Magic or higher.
 - **Item tier**: Tier (Normal/Exceptional/Elite) and base selection follow the same rules as monster drops, based on item level.
-- **Pricing**: Per-slot base price; level affects price via formula `base * (1 + level * 0.08)`; higher level = higher cost; price shown before purchase (e.g., Helm ~540 at Lv1, ~900 at Lv10).
+- **Pricing**: Per-slot base price; level affects price via formula `base * (1 + level * 0.08)`; higher level = higher cost; price shown before purchase (e.g., Helm ~270 at Lv1, ~450 at Lv10).
 - **UI entry**: Shop button in the top bar, **next to the Backpack button** (Backpack left, Shop right); click opens a modal.
 - **Shop modal**: Lists purchasable slots grouped as Weapons (1H Phys, 2H Phys, 1H Magic, Shield, Orb), Armor (Helm, Body Armor, Gloves, Boots, Belt), Accessories (Amulet, Ring); shows price and current gold; click Buy deducts gold, runs identify, adds item to backpack.
 - **Backpack full**: If backpack is full when a purchased item is identified, the item is discarded and the same "Inventory full — loot discarded!" rule applies.
@@ -807,8 +807,8 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | Player is on the main screen | Player views the top bar | A Shop button is visible next to the Backpack button (Backpack on the left, Shop on the right) |
 | AC2 | Player clicks the Shop button | Shop modal opens | A modal displays purchasable equipment slots grouped as Weapons (e.g., 1H Weapon Phys, 2H Weapon Phys, 2H Weapon Bow, 2H Weapon Magic, 1H Weapon Magic, Shield, Orb), Armor (Helm, Body Armor, Gloves, Boots, Belt), Accessories (Amulet, Ring); each slot shows its price; current gold balance is visible |
-| AC3 | Player has 600 gold and a Helm slot costs ~540 gold at level 1 | Player selects Helm and clicks Buy | The slot price is deducted; an unidentified Helm is generated; it is immediately auto-identified; the identified item (Normal/Magic/Rare/Unique) is added to the backpack |
-| AC4 | Player has 30 gold and a Helm slot costs ~540 gold at level 1 | Player selects Helm and clicks Buy | Purchase is blocked or disabled; player sees insufficient gold feedback; no gold is deducted; no item is generated |
+| AC3 | Player has 300 gold and a Helm slot costs ~270 gold at level 1 | Player selects Helm and clicks Buy | The slot price is deducted; an unidentified Helm is generated; it is immediately auto-identified; the identified item (Normal/Magic/Rare/Unique) is added to the backpack |
+| AC4 | Player has 30 gold and a Helm slot costs ~270 gold at level 1 | Player selects Helm and clicks Buy | Purchase is blocked or disabled; player sees insufficient gold feedback; no gold is deducted; no item is generated |
 | AC5 | Squad has heroes at levels 5, 12, 8 (max level 12) | Player buys any slot from the shop | The purchased item has level ≤ 12; item tier and base selection follow the same rules as drops from Lv 12 monsters |
 | AC6 | Squad is empty (no heroes) | Player buys from the shop | The purchased item has level 1; item tier and base are restricted to Lv 1–appropriate options |
 | AC7 | Player buys a Helm and the backpack has 1 free slot | Purchase completes | The identified Helm is added to the backpack; inventory count increases by 1; the item appears in the backpack with its full name and quality color |

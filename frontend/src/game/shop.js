@@ -11,20 +11,20 @@ import { generateShopItem, SHOP_SLOTS } from './equipment.js'
 
 /** Base price by slot id. Higher = more expensive; tuned for "save up to buy" feel. */
 const SLOT_BASE_PRICE = {
-  'MainHand-1H-Phys': 800,
-  'MainHand-2H': 1200,
-  'MainHand-2H-Bow': 1200,
-  'MainHand-2H-Magic': 1200,
-  'MainHand-Magic': 900,
-  'OffHand-Shield': 700,
-  'OffHand-Orb': 750,
-  Helm: 500,
-  Armor: 650,
-  Gloves: 350,
-  Boots: 350,
-  Belt: 320,
-  Amulet: 550,
-  Ring: 450,
+  'MainHand-1H-Phys': 400,
+  'MainHand-2H': 600,
+  'MainHand-2H-Bow': 600,
+  'MainHand-2H-Magic': 600,
+  'MainHand-Magic': 450,
+  'OffHand-Shield': 350,
+  'OffHand-Orb': 375,
+  Helm: 250,
+  Armor: 325,
+  Gloves: 175,
+  Boots: 175,
+  Belt: 160,
+  Amulet: 275,
+  Ring: 225,
 }
 
 /** Level factor: price scales with level. Formula: base * (1 + level * 0.08) */
@@ -38,7 +38,7 @@ const LEVEL_FACTOR = 0.08
  */
 export function getShopPrice(slotId, level) {
   const lvl = Math.max(1, Math.floor(level))
-  const base = SLOT_BASE_PRICE[slotId] ?? 400
+  const base = SLOT_BASE_PRICE[slotId] ?? 200
   const mult = 1 + lvl * LEVEL_FACTOR
   return Math.max(1, Math.floor(base * mult))
 }
