@@ -305,12 +305,13 @@
         <div class="modal-box inventory-modal">
           <div class="modal-title">Backpack</div>
           <div class="inventory-counter">{{ inventoryCount }} / 100</div>
-          <div class="inventory-grid" @scroll="hoveredBackpackItem = null">
+          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">No items in backpack</div>
+          <div v-else class="inventory-grid" @scroll="hoveredBackpackItem = null">
             <div
               v-for="(item, idx) in inventoryItems"
               :key="item.id"
               class="inventory-slot tooltip-wrap has-tip"
-              :style="{ color: getQualityColor(item.quality) }"
+              :style="{ color: getQualityColor(item.quality), minWidth: getInventorySlotMinWidth(item) }"
               :class="{ 'slot-match': pendingEquipSlot && (pendingEquipSlot === 'MainHand' ? (item.slot === 'MainHand' || item.slot === 'TwoHand') : item.slot === pendingEquipSlot) }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
               @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
@@ -319,7 +320,6 @@
               <span class="slot-name">{{ formatItemDisplayName(item) }}</span>
               <span class="slot-lvl">Lv.{{ item.levelReq || 0 }}</span>
             </div>
-            <div v-for="i in (100 - inventoryItems.length)" :key="'empty-' + i" class="inventory-slot empty"></div>
           </div>
           <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">Close</button>
         </div>
@@ -1050,6 +1050,12 @@ function getEquippedItemColor(slot) {
   return item ? getQualityColor(item.quality) : 'var(--text-muted)'
 }
 
+function getInventorySlotMinWidth(item) {
+  const nameLen = formatItemDisplayName(item).length
+  const minCh = Math.max(8, nameLen + 6)
+  return minCh + 'ch'
+}
+
 function getItemTooltipLines(item) {
   if (!item) return []
   const lines = []
@@ -1659,9 +1665,19 @@ onUnmounted(() => {
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
+.inventory-empty-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 2rem;
+  margin-bottom: 0.75rem;
+}
 .inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1708,7 +1724,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 .inventory-slot:hover { border-color: var(--accent); }
-.inventory-slot.empty { color: var(--text-muted); cursor: default; }
 .inventory-slot.slot-match { border-color: var(--color-victory); background: rgba(68, 255, 136, 0.08); }
 .inventory-slot.tooltip-wrap .tooltip-text {
   white-space: pre-line;

@@ -736,7 +736,7 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | Player wins a combat encounter and an equipment item drops | Inventory has at least 1 free slot | The item is added to the backpack; inventory count increases by 1 (e.g., "47 / 100") |
 | AC2 | Player wins a combat encounter and an equipment item drops | Inventory is full (100 / 100) | The item is discarded; a warning is shown in the combat log or top bar (e.g., "Inventory full — loot discarded!"); EXP and Gold are still awarded normally |
-| AC3 | Player is on the main screen | Player clicks the inventory/backpack button | A modal opens showing a grid of up to 100 slots; occupied slots display item names colored by quality (white/blue/yellow/gold); empty slots are visually distinct |
+| AC3 | Player is on the main screen | Player clicks the inventory/backpack button | A modal opens: if empty, shows "No items in backpack"; otherwise shows only occupied slots (one per item) with item names colored by quality (white/blue/yellow/gold); slot width varies by item name length |
 | AC4 | Player views the inventory modal | Modal is open | A slot counter at the top shows current usage (e.g., "47 / 100"); player can see remaining space at a glance |
 | AC5 | Player clicks an item slot in the inventory | Item detail opens | The same item detail view as Example 18 is shown (base name, quality, slot type, level/attr requirements, affix list with roll ranges), with a "Sell" button added |
 | AC6 | Player clicks "Sell" on an item in inventory | Sell action is confirmed | The item is removed from the backpack; the corresponding gold amount is added to the player's account immediately; inventory count decreases by 1 |

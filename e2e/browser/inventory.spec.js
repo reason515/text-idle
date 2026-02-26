@@ -67,6 +67,7 @@ test.describe('Inventory (Example 22)', () => {
     await backpackBtn.click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await expect(page.locator('.inventory-counter')).toContainText('0 / 100')
+    await expect(page.locator('.inventory-empty-hint')).toContainText('No items in backpack')
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
   })
@@ -88,7 +89,7 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.backpack-btn').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await expect(page.locator('.inventory-counter')).toContainText('1 / 100')
-    await expect(page.locator('.inventory-slot:not(.empty)').first()).toContainText('Cap')
+    await expect(page.locator('.inventory-slot').first()).toContainText('Cap')
   })
 
   test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
