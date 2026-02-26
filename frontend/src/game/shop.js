@@ -13,6 +13,8 @@ import { generateShopItem, SHOP_SLOTS } from './equipment.js'
 const SLOT_BASE_PRICE = {
   'MainHand-1H-Phys': 800,
   'MainHand-2H': 1200,
+  'MainHand-2H-Bow': 1200,
+  'MainHand-2H-Magic': 1200,
   'MainHand-Magic': 900,
   'OffHand-Shield': 700,
   'OffHand-Orb': 750,

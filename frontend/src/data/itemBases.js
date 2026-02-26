@@ -176,24 +176,18 @@ const BASE_ITEMS = {
       { name: 'Dirk', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 5], spellPower: 0 },
       { name: 'Short Sword', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 5], spellPower: 0 },
       { name: 'Scimitar', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 6], spellPower: 0 },
-      { name: 'Short Bow', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 4], spellPower: 0 },
-      { name: "Hunter's Bow", levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 5], spellPower: 0 },
     ],
     exceptional: [
       { name: 'Poignard', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [9, 14], spellPower: 0 },
       { name: 'Rondel', levelReq: 24, str: 0, agi: 8, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [11, 17], spellPower: 0 },
       { name: 'Hand Sword', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [11, 18], spellPower: 0 },
       { name: 'Cutlass', levelReq: 24, str: 10, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [14, 22], spellPower: 0 },
-      { name: 'Edge Bow', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [8, 12], spellPower: 0 },
-      { name: 'Razor Bow', levelReq: 24, str: 0, agi: 8, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [10, 15], spellPower: 0 },
     ],
     elite: [
       { name: 'Bone Knife', levelReq: 41, str: 0, agi: 12, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [24, 38], spellPower: 0 },
       { name: 'Mithril Point', levelReq: 44, str: 0, agi: 26, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [30, 47], spellPower: 0 },
       { name: 'Ataghan', levelReq: 41, str: 14, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [30, 47], spellPower: 0 },
       { name: 'Phase Blade', levelReq: 44, str: 30, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [38, 60], spellPower: 0 },
-      { name: 'Spider Bow', levelReq: 41, str: 0, agi: 14, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [20, 30], spellPower: 0 },
-      { name: 'Blade Bow', levelReq: 44, str: 0, agi: 26, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [25, 38], spellPower: 0 },
     ],
   },
   Shield: {
@@ -284,6 +278,32 @@ const BASE_ITEMS = {
       { name: 'Vortex Blade', levelReq: 60, str: 178, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [141, 222], spellPower: 0 },
     ],
   },
+  MainHand2HBow: {
+    normal: [
+      { name: 'Short Bow', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 5], spellPower: 0 },
+      { name: "Hunter's Bow", levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 6], spellPower: 0 },
+      { name: 'Long Bow', levelReq: 8, str: 0, agi: 8, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [4, 8], spellPower: 0 },
+      { name: 'Composite Bow', levelReq: 12, str: 0, agi: 14, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [6, 10], spellPower: 0 },
+      { name: 'Long Battle Bow', levelReq: 16, str: 0, agi: 20, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [7, 12], spellPower: 0 },
+      { name: 'Long War Bow', levelReq: 20, str: 0, agi: 26, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [9, 14], spellPower: 0 },
+    ],
+    exceptional: [
+      { name: 'Edge Bow', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [11, 18], spellPower: 0 },
+      { name: 'Razor Bow', levelReq: 24, str: 0, agi: 10, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [14, 22], spellPower: 0 },
+      { name: 'Cedar Bow', levelReq: 28, str: 0, agi: 22, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [17, 27], spellPower: 0 },
+      { name: 'Double Bow', levelReq: 32, str: 0, agi: 36, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [21, 33], spellPower: 0 },
+      { name: 'Long Spine Bow', levelReq: 36, str: 0, agi: 52, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [26, 41], spellPower: 0 },
+      { name: 'Redentine Bow', levelReq: 40, str: 0, agi: 70, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [32, 51], spellPower: 0 },
+    ],
+    elite: [
+      { name: 'Spider Bow', levelReq: 41, str: 0, agi: 14, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [30, 47], spellPower: 0 },
+      { name: 'Blade Bow', levelReq: 44, str: 0, agi: 30, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [38, 60], spellPower: 0 },
+      { name: 'Shadow Bow', levelReq: 48, str: 0, agi: 50, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [48, 75], spellPower: 0 },
+      { name: 'Great Bow', levelReq: 52, str: 0, agi: 72, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [60, 94], spellPower: 0 },
+      { name: 'Hydra Bow', levelReq: 56, str: 0, agi: 98, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [75, 118], spellPower: 0 },
+      { name: 'Crusader Bow', levelReq: 60, str: 0, agi: 126, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [94, 148], spellPower: 0 },
+    ],
+  },
   MainHandWand: {
     normal: [
       { name: 'Scepter', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 5] },
@@ -310,6 +330,32 @@ const BASE_ITEMS = {
       { name: 'Demon Wand', levelReq: 60, str: 0, agi: 0, int: 126, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [94, 148] },
     ],
   },
+  MainHand2HStaff: {
+    normal: [
+      { name: 'Short Staff', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [5, 8] },
+      { name: 'Jo Staff', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [5, 9] },
+      { name: 'Gnarled Staff', levelReq: 8, str: 0, agi: 0, int: 12, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [6, 12] },
+      { name: 'Battle Staff', levelReq: 12, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [9, 15] },
+      { name: 'Shadow Staff', levelReq: 16, str: 0, agi: 0, int: 28, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [11, 18] },
+      { name: 'Sacred Staff', levelReq: 20, str: 0, agi: 0, int: 38, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [14, 21] },
+    ],
+    exceptional: [
+      { name: 'Cedar Staff', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [17, 27] },
+      { name: 'Gothic Staff', levelReq: 24, str: 0, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [21, 33] },
+      { name: 'Rune Staff', levelReq: 28, str: 0, agi: 0, int: 30, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [26, 41] },
+      { name: 'War Staff', levelReq: 32, str: 0, agi: 0, int: 50, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [32, 50] },
+      { name: 'Spirit Staff', levelReq: 36, str: 0, agi: 0, int: 72, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [40, 62] },
+      { name: 'Eternal Staff', levelReq: 40, str: 0, agi: 0, int: 98, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [49, 77] },
+    ],
+    elite: [
+      { name: 'Elder Staff', levelReq: 41, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [45, 71] },
+      { name: 'Shillelagh', levelReq: 44, str: 0, agi: 0, int: 44, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [57, 90] },
+      { name: 'Archon Staff', levelReq: 48, str: 0, agi: 0, int: 72, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [72, 113] },
+      { name: 'Ancient Staff', levelReq: 52, str: 0, agi: 0, int: 104, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [90, 141] },
+      { name: 'Vortex Staff', levelReq: 56, str: 0, agi: 0, int: 140, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [113, 177] },
+      { name: 'Divine Staff', levelReq: 60, str: 0, agi: 0, int: 178, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [141, 222] },
+    ],
+  },
 }
 
 /** Slots that use Shield or OffHand base tables */
@@ -327,7 +373,9 @@ export const SLOT_TO_BASE_KEY = {
   Ring2: 'Ring',
   Shield: 'Shield',
   MainHand2H: 'MainHand2H',
+  MainHand2HBow: 'MainHand2HBow',
   MainHandWand: 'MainHandWand',
+  MainHand2HStaff: 'MainHand2HStaff',
 }
 
 export function getBaseItemsForSlot(slotOrBaseKey) {

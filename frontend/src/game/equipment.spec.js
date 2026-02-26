@@ -103,6 +103,24 @@ describe('equipment', () => {
       }
     })
 
+    it('generateShopItem MainHand-2H-Magic returns 2H staff with TwoHand slot and spellPower', () => {
+      const item = generateShopItem('MainHand-2H-Magic', 10, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.slot).toBe('TwoHand')
+      expect(item.spellPower).toBeGreaterThan(0)
+      expect(item.physAtk).toBe(0)
+      expect(['Short Staff', 'Jo Staff', 'Gnarled Staff', 'Battle Staff', 'Shadow Staff', 'Sacred Staff']).toContain(item.baseName)
+    })
+
+    it('generateShopItem MainHand-2H-Bow returns 2H bow with TwoHand slot and physAtk', () => {
+      const item = generateShopItem('MainHand-2H-Bow', 10, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.slot).toBe('TwoHand')
+      expect(item.physAtk).toBeGreaterThan(0)
+      expect(item.spellPower).toBe(0)
+      expect(['Short Bow', "Hunter's Bow", 'Long Bow', 'Composite Bow', 'Long Battle Bow', 'Long War Bow']).toContain(item.baseName)
+    })
+
     it('returns items with correct structure', () => {
       const monsters = [{ tier: 'boss', level: 5 }]
       const result = generateEquipmentDrop(monsters, () => 0.01)

@@ -806,7 +806,7 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | Player is on the main screen | Player views the top bar | A Shop button is visible next to the Backpack button (Backpack on the left, Shop on the right) |
-| AC2 | Player clicks the Shop button | Shop modal opens | A modal displays purchasable equipment slots grouped as Weapons (e.g., 1H Weapon Phys, 2H Weapon Phys, 1H Weapon Magic, Shield, Orb), Armor (Helm, Body Armor, Gloves, Boots, Belt), Accessories (Amulet, Ring); each slot shows its price; current gold balance is visible |
+| AC2 | Player clicks the Shop button | Shop modal opens | A modal displays purchasable equipment slots grouped as Weapons (e.g., 1H Weapon Phys, 2H Weapon Phys, 2H Weapon Bow, 2H Weapon Magic, 1H Weapon Magic, Shield, Orb), Armor (Helm, Body Armor, Gloves, Boots, Belt), Accessories (Amulet, Ring); each slot shows its price; current gold balance is visible |
 | AC3 | Player has 600 gold and a Helm slot costs ~540 gold at level 1 | Player selects Helm and clicks Buy | The slot price is deducted; an unidentified Helm is generated; it is immediately auto-identified; the identified item (Normal/Magic/Rare/Unique) is added to the backpack |
 | AC4 | Player has 30 gold and a Helm slot costs ~540 gold at level 1 | Player selects Helm and clicks Buy | Purchase is blocked or disabled; player sees insufficient gold feedback; no gold is deducted; no item is generated |
 | AC5 | Squad has heroes at levels 5, 12, 8 (max level 12) | Player buys any slot from the shop | The purchased item has level ≤ 12; item tier and base selection follow the same rules as drops from Lv 12 monsters |

@@ -103,14 +103,21 @@ function getAffixRange(baseMin, baseMax, quality) {
 function getDroppableSlots(itemTier) {
   const slots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt', 'Amulet', 'Ring1', 'Ring2']
   slots.push('MainHand')
+  slots.push('TwoHand')
   slots.push('OffHand')
   return slots
 }
 
-/** Resolve slot to base key: OffHand can be Shield or Orb */
+/** Resolve slot to base key: OffHand can be Shield or Orb; TwoHand can be Phys or Magic */
 function resolveSlotForDrop(slot, rng) {
   if (slot === 'OffHand') {
     return rng() < 0.5 ? 'Shield' : 'OffHand'
+  }
+  if (slot === 'TwoHand') {
+    const r = rng()
+    if (r < 1 / 3) return 'MainHand2H'
+    if (r < 2 / 3) return 'MainHand2HStaff'
+    return 'MainHand2HBow'
   }
   return slot === 'MainHand' ? 'MainHand' : slot
 }
@@ -322,6 +329,8 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
 export const SHOP_SLOTS = [
   { id: 'MainHand-1H-Phys', label: '1H Weapon (Phys)', slot: 'MainHand', baseKey: 'MainHand' },
   { id: 'MainHand-2H', label: '2H Weapon (Phys)', slot: 'TwoHand', baseKey: 'MainHand2H' },
+  { id: 'MainHand-2H-Bow', label: '2H Weapon (Bow)', slot: 'TwoHand', baseKey: 'MainHand2HBow' },
+  { id: 'MainHand-2H-Magic', label: '2H Weapon (Magic)', slot: 'TwoHand', baseKey: 'MainHand2HStaff' },
   { id: 'MainHand-Magic', label: '1H Weapon (Magic)', slot: 'MainHand', baseKey: 'MainHandWand' },
   { id: 'OffHand-Shield', label: 'Shield', slot: 'OffHand', baseKey: 'Shield' },
   { id: 'OffHand-Orb', label: 'Orb', slot: 'OffHand', baseKey: 'OffHand' },
