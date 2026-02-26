@@ -535,13 +535,17 @@
                   <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
                   <span class="detail-value equipment-slot-val" :class="{ 'equip-blocked': slot === 'OffHand' && isOffHandBlockedForSelected() }" @click="toggleEquipmentSlot(slot)">
                     <span
-                      class="tooltip-wrap"
+                      class="tooltip-wrap equip-name-wrap"
                       :class="{ 'has-tip': !(slot === 'OffHand' && isOffHandBlockedForSelected()) }"
                       :style="{ color: getEquippedItemColor(slot) }"
                     >
-                      {{ getEquippedItemName(slot) || 'Empty' }}
-                      <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text">Blocked by two-hand weapon</span>
-                      <span v-else class="tooltip-text">Click to view details or equip from backpack</span>
+                      <span class="equip-name-text">{{ getEquippedItemName(slot) || 'Empty' }}</span>
+                      <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text tooltip-below">Blocked by two-hand weapon</span>
+                      <span v-else class="tooltip-text tooltip-below">
+                        <span v-if="getEquippedItemName(slot)" :style="{ color: getEquippedItemColor(slot) }">{{ getEquippedItemName(slot) }}</span>
+                        <template v-if="getEquippedItemName(slot)"> - </template>
+                        {{ getEquippedItemName(slot) ? 'Click to view details or equip from backpack' : 'Click to equip from backpack' }}
+                      </span>
                     </span>
                   </span>
                 </div>
@@ -1818,9 +1822,12 @@ onUnmounted(() => {
   }
 }
 
+.equipment-slots {
+  min-width: 0;
+}
 .equipment-slots .equipment-slot-row {
   display: grid;
-  grid-template-columns: 6rem 1fr;
+  grid-template-columns: 6rem minmax(0, 1fr);
   gap: 0 0.75rem;
   align-items: center;
   padding: 0.2rem 0;
@@ -1828,9 +1835,6 @@ onUnmounted(() => {
 .equipment-slot-val {
   cursor: pointer;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   text-align: left;
 }
 .equipment-slot-val:hover { text-decoration: underline; }
@@ -2572,6 +2576,23 @@ onUnmounted(() => {
 .detail-section-secondary .secondary-label { color: #66ccaa; }
 .detail-section-secondary .secondary-label.secondary-label-rage { color: var(--color-rage) !important; }
 .detail-section-equipment .detail-label { color: #7a9cb8; }
+/* Override tooltip-wrap.has-tip for equipment names: allow truncation + tooltip (must come after .tooltip-wrap.has-tip) */
+.equipment-slot-val .tooltip-wrap.equip-name-wrap {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0;
+}
+.equipment-slot-val .equip-name-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Show tooltip below to avoid clipping by detail-tab-content overflow-y:auto */
+.equipment-slot-val .tooltip-text.tooltip-below {
+  bottom: auto;
+  top: calc(100% + 4px);
+}
 .resource-rage { color: var(--color-rage) !important; }
 
 /* Attribute allocation */
