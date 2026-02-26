@@ -1769,7 +1769,7 @@ onUnmounted(() => {
 
 .item-detail-modal .detail-value-req { color: var(--text-value); }
 .item-detail-modal .detail-value.val-gold { color: var(--color-gold); }
-.affix-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.25rem; }
+.affix-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.25rem; font-size: 0.92rem; }
 .affix-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(2.5ch, max-content) minmax(0, 1fr) auto;
@@ -1791,7 +1791,7 @@ onUnmounted(() => {
 .affix-name { color: var(--text-label); font-weight: 500; }
 .affix-num { color: var(--text-value); text-align: right; }
 .affix-stat-label { color: var(--text); }
-.affix-range { color: #999; font-size: 0.9rem; }
+.affix-range { color: #999; }
 .item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
 .item-detail-sell-confirm { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .sell-confirm-text { font-size: 0.9rem; color: var(--text-muted); margin-right: 0.5rem; }
