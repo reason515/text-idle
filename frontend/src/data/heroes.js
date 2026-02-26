@@ -199,40 +199,44 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const basePhysAtk = 5 + mainAttr * coef.k_PhysAtk
     values.PhysAtk = Math.round((basePhysAtk + eq.physAtk) * 10) / 10
     const attrName = coef.physAtkAttr === 'strength' ? 'Str' : 'Agi'
-    formulaMap.PhysAtk = eq.physAtk ? `5 + ${attrName} * ${coef.k_PhysAtk} + equipment = ${values.PhysAtk}` : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
+    const baseFormula = formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, null)
+    formulaMap.PhysAtk = eq.physAtk ? fmtFormula(baseFormula + ` + EQP(+${eq.physAtk}) = ${values.PhysAtk}`) : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
   } else {
     values.PhysAtk = eq.physAtk || NA
-    formulaMap.PhysAtk = eq.physAtk ? `Equipment: ${eq.physAtk}` : NA
+    formulaMap.PhysAtk = eq.physAtk ? `EQP: +${eq.physAtk}` : NA
   }
 
   // SpellPower (base + equipment)
   if (coef.k_SpellPower != null) {
     const baseSpellPower = 5 + attrs.intellect * coef.k_SpellPower
     values.SpellPower = Math.round((baseSpellPower + eq.spellPower) * 10) / 10
-    formulaMap.SpellPower = eq.spellPower ? `5 + Int * ${coef.k_SpellPower} + equipment = ${values.SpellPower}` : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
+    const baseFormula = formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, null)
+    formulaMap.SpellPower = eq.spellPower ? fmtFormula(baseFormula + ` + EQP(+${eq.spellPower}) = ${values.SpellPower}`) : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
   } else {
     values.SpellPower = eq.spellPower || NA
-    formulaMap.SpellPower = eq.spellPower ? `Equipment: ${eq.spellPower}` : NA
+    formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA
   }
 
   // Armor (base + equipment)
   if (coef.k_Armor != null) {
     const baseArmor = attrs.strength * coef.k_Armor
     values.Armor = Math.round((baseArmor + eq.armor) * 10) / 10
-    formulaMap.Armor = eq.armor ? `Str * ${coef.k_Armor} + equipment = ${values.Armor}` : fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
+    const baseFormula = formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, null)
+    formulaMap.Armor = eq.armor ? fmtFormula(baseFormula + ` + EQP(+${eq.armor}) = ${values.Armor}`) : fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
   } else {
     values.Armor = eq.armor || NA
-    formulaMap.Armor = eq.armor ? `Equipment: ${eq.armor}` : NA
+    formulaMap.Armor = eq.armor ? `EQP: +${eq.armor}` : NA
   }
 
   // Resistance (base + equipment)
   if (coef.k_Resistance != null) {
     const baseResistance = attrs.intellect * coef.k_Resistance
     values.Resistance = Math.round((baseResistance + eq.resistance) * 10) / 10
-    formulaMap.Resistance = eq.resistance ? `Int * ${coef.k_Resistance} + equipment = ${values.Resistance}` : fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
+    const baseFormula = formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, null)
+    formulaMap.Resistance = eq.resistance ? fmtFormula(baseFormula + ` + EQP(+${eq.resistance}) = ${values.Resistance}`) : fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
   } else {
     values.Resistance = eq.resistance || NA
-    formulaMap.Resistance = eq.resistance ? `Equipment: ${eq.resistance}` : NA
+    formulaMap.Resistance = eq.resistance ? `EQP: +${eq.resistance}` : NA
   }
 
   // PhysCrit

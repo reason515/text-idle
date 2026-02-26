@@ -156,6 +156,21 @@ describe('heroes', () => {
       expect(armorFormula.formula).not.toContain('equipment')
     })
 
+    it('formulas with equipment show attribute values and EQP with bonus', () => {
+      const hero = { class: 'Warrior', strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3, level: 1, equipment: { Helm: { armor: 5, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
+      const { formulas } = computeSecondaryAttributes('Warrior', 1, hero)
+      const armorFormula = formulas.find((f) => f.key === 'Armor')
+      expect(armorFormula.formula).toContain('Str(10)')
+      expect(armorFormula.formula).toMatch(/EQP\(\+5\)/)
+    })
+
+    it('equipment-only formulas use EQP with value', () => {
+      const hero = { class: 'Priest', strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9, level: 1, equipment: { MainHand: { armor: 0, resistance: 0, physAtk: 4, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
+      const { formulas } = computeSecondaryAttributes('Priest', 1, hero)
+      const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
+      expect(physAtkFormula.formula).toMatch(/EQP: \+4/)
+    })
+
     it('formulas include actual attribute values for calculation transparency', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const hpFormula = formulas.find((f) => f.key === 'HP')

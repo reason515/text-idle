@@ -1231,7 +1231,7 @@ function getPrimaryAttrEquipTip(attrKey) {
   const eq = getEquipmentBonuses(hero.equipment)
   const bonus = eq[attrKey] || 0
   if (bonus <= 0) return ''
-  return '<span class="tip-equip-label">Equipment:</span> +' + bonus
+  return '<span class="tip-equip-label">EQP:</span> +' + bonus
 }
 
 function showFormulaTooltip(e, html) {
@@ -1255,6 +1255,7 @@ function formatSecondaryFormulaTip(formula) {
     .replace(/\bStam(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/stam/i, 'STA') + '</span>')
     .replace(/\bSpi(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/spi/i, 'SPI') + '</span>')
     .replace(/\bLevel(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m + '</span>')
+    .replace(/\bEQP(:\s*\+\d+(?:\.\d+)?|\(\+\d+(?:\.\d+)?\))?\b/g, (m) => '<span class="tip-equip-label">' + m + '</span>')
 }
 
 function getMonsterSkillDisplay(skillId) {
@@ -2556,7 +2557,8 @@ onUnmounted(() => {
   display: inline-block;
   width: fit-content;
 }
-.tooltip-text :deep(.tip-equip-label) { color: var(--text-muted); }
+.tooltip-text :deep(.tip-equip-label),
+.formula-tip :deep(.tip-equip-label) { color: #7a9cb8; font-weight: 600; }
 .tooltip-text {
   display: none;
   position: absolute;
