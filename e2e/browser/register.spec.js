@@ -60,6 +60,9 @@ test.describe('Register E2E', () => {
     await page.evaluate(() => {
       localStorage.setItem('teamName', 'Old Team')
       localStorage.setItem('playerGold', '999')
+      localStorage.setItem('playerInventory', JSON.stringify([
+        { id: 'old-item-1', name: 'Old Sword', slot: 'MainHand', quality: 'magic', itemTier: 'normal' }
+      ]))
       localStorage.setItem('squad', JSON.stringify([
         { id: 'varian', name: 'Varian Wrynn', class: 'Warrior', hp: 180, atk: 14, def: 12 },
         { id: 'uther', name: 'Uther', class: 'Paladin', hp: 160, atk: 10, def: 12 },
@@ -82,9 +85,11 @@ test.describe('Register E2E', () => {
     const teamName = await page.evaluate(() => localStorage.getItem('teamName'))
     const squad = await page.evaluate(() => localStorage.getItem('squad'))
     const gold = await page.evaluate(() => localStorage.getItem('playerGold'))
+    const inventory = await page.evaluate(() => localStorage.getItem('playerInventory'))
     expect(teamName).toBeNull()
     expect(squad).toBeNull()
     expect(gold).toBeNull()
+    expect(inventory).toBeNull()
     
     // Verify we're on intro page, not main screen with squad
     await expect(page.getByText('No characters in squad')).not.toBeVisible()
