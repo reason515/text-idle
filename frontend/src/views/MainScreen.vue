@@ -172,42 +172,48 @@
               <template v-if="entry.outcome === 'victory'">
                 <span class="log-victory-label">Victory!</span>
                 <span class="log-summary-body">Defeated <span class="log-monster-count">{{ entry.monsterCount }}</span> monster(s) in <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
-                <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
-                <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
-                <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
-                  <span
-                    class="log-item-drop tooltip-wrap has-tip"
-                    :style="{ color: getQualityColor(eq.quality) }"
-                    @click="selectedItem = eq"
-                  >
-                    {{ formatItemDisplayName(eq) }}
-                    <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - Click to inspect</span>
-                  </span>
-                </template>
-                <span v-if="entry.inventoryFull" class="log-inv-full">Inventory full — loot discarded!</span>
+                <div class="log-rewards-box">
+                  <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
+                  <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
+                  <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
+                    <span
+                      class="log-item-drop tooltip-wrap has-tip"
+                      :style="{ color: getQualityColor(eq.quality) }"
+                      @click="selectedItem = eq"
+                    >
+                      {{ formatItemDisplayName(eq) }}
+                      <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - Click to inspect</span>
+                    </span>
+                  </template>
+                  <span v-if="entry.inventoryFull" class="log-inv-full">Inventory full — loot discarded!</span>
+                </div>
               </template>
               <template v-else-if="entry.outcome === 'defeat'">
                 <span class="log-defeat-label">Defeat!</span>
                 <span class="log-summary-body">Your party was overwhelmed after <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
-                <span class="val-penalty">Exploration -10</span>
+                <div class="log-rewards-box log-rewards-box-defeat">
+                  <span class="val-penalty">Exploration -10</span>
+                </div>
               </template>
               <template v-else>
                 Draw after {{ entry.rounds }} round(s).
               </template>
             </div>
             <div v-else-if="entry.type === 'dot'" class="log-entry log-dot">
-              <span class="log-round">[R{{ entry.round }}]</span>
-              <span
-                class="log-target"
-                :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
-              >{{ entry.targetName }}</span>
-              <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
-              <span class="log-sep">ticks for</span>
-              <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
-              <span class="log-sep">HP:</span>
-              <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
-              <span class="log-sep">-></span>
-              <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+              <div class="log-detail-box">
+                <span class="log-round">[R{{ entry.round }}]</span>
+                <span
+                  class="log-target"
+                  :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+                >{{ entry.targetName }}</span>
+                <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
+                <span class="log-sep">ticks for</span>
+                <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
+                <span class="log-sep">HP:</span>
+                <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
+                <span class="log-sep">-></span>
+                <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+              </div>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
@@ -246,7 +252,10 @@
               >{{ entry.finalDamage }}</span>
               <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
               <span class="log-dtype">({{ entry.damageType }})</span>
-              <div v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null" class="log-detail-box">
+              <div
+                v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null || entry.heal > 0 || entry.debuffApplied || entry.debuffRefreshed"
+                class="log-detail-box"
+              >
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
                 </div>
@@ -256,25 +265,25 @@
                   >{{ entry.targetName }}</span>
                   HP: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
                 </div>
-              </div>
-              <div v-if="entry.heal > 0" class="log-heal">
-                <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
-                healed <span class="log-heal-val">+{{ entry.heal }}</span> HP
-                <template v-if="entry.actorHPAfter != null">
-                  ({{ entry.actorHPAfter }}/{{ entry.actorMaxHP }})
-                </template>
-              </div>
-              <div v-if="entry.debuffApplied" class="log-debuff">
-                <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
-                <template v-if="entry.debuffArmorReduction != null"> Armor -{{ entry.debuffArmorReduction }}</template>
-                <template v-if="entry.debuffResistanceReduction != null"> Resistance -{{ entry.debuffResistanceReduction }}</template>
-                <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} damage/round</template>
-                for {{ entry.debuffDuration }} rounds
-              </div>
-              <div v-if="entry.debuffRefreshed" class="log-debuff">
-                <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: 'Debuff' }).name }}</span> refreshed ({{ entry.debuffDuration }} rounds)
+                <div v-if="entry.heal > 0" class="log-heal">
+                  <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
+                  healed <span class="log-heal-val">+{{ entry.heal }}</span> HP
+                  <template v-if="entry.actorHPAfter != null">
+                    ({{ entry.actorHPAfter }}/{{ entry.actorMaxHP }})
+                  </template>
+                </div>
+                <div v-if="entry.debuffApplied" class="log-debuff">
+                  <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
+                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
+                  <template v-if="entry.debuffArmorReduction != null"> Armor -{{ entry.debuffArmorReduction }}</template>
+                  <template v-if="entry.debuffResistanceReduction != null"> Resistance -{{ entry.debuffResistanceReduction }}</template>
+                  <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} damage/round</template>
+                  for {{ entry.debuffDuration }} rounds
+                </div>
+                <div v-if="entry.debuffRefreshed" class="log-debuff">
+                  <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
+                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: 'Debuff' }).name }}</span> refreshed ({{ entry.debuffDuration }} rounds)
+                </div>
               </div>
             </div>
           </template>
@@ -2457,6 +2466,25 @@ onUnmounted(() => {
   border-top: 1px solid #1a2a1a;
   margin-top: 0.15rem;
 }
+.log-rewards-box {
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(255, 204, 68, 0.55);
+  border-radius: 4px;
+  background: rgba(68, 51, 34, 0.35);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+.log-rewards-box-defeat {
+  border-color: rgba(255, 68, 68, 0.5);
+  background: rgba(68, 34, 34, 0.3);
+}
+.log-summary .log-rewards-box .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0; }
+.log-summary .log-rewards-box .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0; }
+.log-summary .log-rewards-box .val-penalty { color: var(--error); font-weight: normal; margin-left: 0; }
+.log-summary .log-rewards-box .log-inv-full { margin-left: 0; }
 .log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
 .log-summary .val-penalty { color: var(--error); font-weight: normal; margin-left: 0.5rem; }
@@ -2574,6 +2602,16 @@ onUnmounted(() => {
   border-radius: 3px;
   background: rgba(34, 68, 51, 0.25);
 }
+.log-detail-box > * + * { margin-top: 0.15rem; }
+.log-entry.log-dot .log-detail-box { margin-left: 0; }
+.log-detail-box .log-calc,
+.log-detail-box .log-target-hp,
+.log-detail-box .log-heal,
+.log-detail-box .log-debuff {
+  width: 100%;
+  font-size: 0.72rem;
+  padding-left: 0;
+}
 .log-calc {
   width: 100%;
   font-size: 0.72rem;
@@ -2585,9 +2623,9 @@ onUnmounted(() => {
   font-size: 0.72rem;
   color: #88aa88;
   padding-left: 0;
-  margin-top: 0.15rem;
 }
-.log-detail-box .log-target-hp:first-child { margin-top: 0; }
+.log-detail-box .log-heal { color: var(--text-muted); }
+.log-detail-box .log-debuff { color: var(--text-muted); }
 
 /* Keep old class names for compatibility */
 .log-physical,
