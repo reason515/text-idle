@@ -269,9 +269,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    const basicHp = page.locator('.detail-section').first().locator('.val-hp')
+    const basicHp = page.locator('.detail-section-basic').locator('.detail-row').filter({ hasText: 'HP' })
     await expect(basicHp).toContainText('48')
-    // Secondary attributes section is after Skills section for Warriors
     const secondarySection = page.locator('.detail-sep-line').filter({ hasText: 'Secondary Attributes' })
     await expect(secondarySection).toBeVisible()
     const secondaryRows = secondarySection.locator('~ .detail-section .detail-row')

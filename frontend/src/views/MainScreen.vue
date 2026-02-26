@@ -236,12 +236,12 @@
                 <span class="tooltip-text">Higher agility acts first</span>
               </span>
               <span class="log-sep">used</span>
-              <span class="log-action" :class="(entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
+              <span class="log-action" :class="entry.action === 'basic' ? 'log-basic' : (entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
               <span class="log-sep">on</span>
               <span
                 class="log-target"
                 :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
-              >{{ entry.targetName }}</span>
+              >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? ' (+' + (entry.cleaveTargets - 1) + ' more)' : '' }}</span>
               <span class="log-sep">for</span>
               <span
                 class="log-dmg"
@@ -656,18 +656,18 @@
           </div>
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
-            <template v-if="selectedHero.class === 'Warrior' && selectedHero.skill">
-              <div class="detail-section">
+            <template v-if="selectedHero.class === 'Warrior' && heroSkillIds(selectedHero).length > 0">
+              <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section">
                 <div class="detail-row">
-                  <span class="detail-label">{{ getHeroSkillDisplay(selectedHero.skill).name }}</span>
-                  <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(selectedHero.skill).spec }}</span>
+                  <span class="detail-label">{{ getHeroSkillDisplay(skillId).name }}</span>
+                  <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(skillId).spec }}</span>
                 </div>
                 <div class="detail-row skill-desc-row">
-                  <span class="skill-desc-text">{{ getHeroSkillDisplay(selectedHero.skill).effectDesc }}</span>
+                  <span class="skill-desc-text">{{ getHeroSkillDisplay(skillId).effectDesc }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">Rage Cost</span>
-                  <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(selectedHero.skill).rageCost }}</span>
+                  <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(skillId).rageCost ?? 0 }}</span>
                 </div>
               </div>
             </template>
@@ -875,6 +875,17 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <SkillChoiceModal
+        v-if="currentSkillChoice"
+        :hero="currentSkillChoice.hero"
+        :level="currentSkillChoice.level"
+        @skip="onSkillChoiceSkip"
+        @enhance="onSkillChoiceEnhance"
+        @learn="onSkillChoiceLearn"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -896,7 +907,9 @@ import {
 } from '../game/combat.js'
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
-import { getWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { getAnyWarriorSkillById, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
+import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 import { getGold, addGold } from '../game/gold.js'
@@ -974,6 +987,7 @@ function damageFormulaEquation(entry) {
 
 const router = useRouter()
 const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim() || 'Squad')
+const currentSkillChoice = computed(() => pendingSkillChoices.value[0] ?? null)
 const squad = ref([])
 const displayHeroes = ref([])
 const currentMonsters = ref([])
@@ -1006,6 +1020,7 @@ const unitFloatingNumbers = ref({})
 let floatNumId = 0
 const toastMessages = ref([])
 let toastId = 0
+const pendingSkillChoices = ref([])
 const shopMessage = ref(null)
 const shopConfirmingSlot = ref(null)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
@@ -1311,6 +1326,28 @@ function selectMap(mapId) {
   saveProgress()
   showMapModal.value = false
 }
+function onSkillChoiceSkip() {
+  pendingSkillChoices.value.shift()
+}
+
+function onSkillChoiceEnhance(skillId) {
+  const choice = pendingSkillChoices.value[0]
+  if (!choice) return
+  applyEnhanceSkill(choice.hero, skillId)
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  pendingSkillChoices.value.shift()
+}
+
+function onSkillChoiceLearn(skillId) {
+  const choice = pendingSkillChoices.value[0]
+  if (!choice) return
+  applyLearnNewSkill(choice.hero, skillId, choice.level)
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  pendingSkillChoices.value.shift()
+}
+
 function assignPoint(attr) {
   const sh = squad.value.find((h) => h.id === selectedHero.value?.id)
   if (!sh) return
@@ -1320,8 +1357,12 @@ function assignPoint(attr) {
   selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }
 
+function heroSkillIds(hero) {
+  return getHeroSkillIds(hero)
+}
+
 function getHeroSkillDisplay(skillId) {
-  return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
+  return getAnyWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
 }
 
 function getPrimaryAttrEquipTip(attrKey) {
@@ -1659,6 +1700,7 @@ async function runCombatLoop() {
         const r = results[i]
         if (r?.leveledUp && r.levelsGained > 0) {
           const hero = squad.value[i]
+          const oldLevel = (hero.level ?? 1) - r.levelsGained
           addLogEntry({
             type: 'levelUp',
             heroName: hero.name,
@@ -1666,6 +1708,11 @@ async function runCombatLoop() {
             newLevel: hero.level,
             pointsGained: r.levelsGained * 5,
           })
+          for (let l = oldLevel + 1; l <= hero.level; l += 1) {
+            if (l % 5 === 0 && hasSkillChoiceAtLevel(hero, l)) {
+              pendingSkillChoices.value.push({ heroIndex: i, hero: squad.value[i], level: l })
+            }
+          }
         }
       }
       if (results.some((r) => r?.leveledUp)) await scrollLog()
@@ -2568,6 +2615,7 @@ onUnmounted(() => {
   color: #88bb99;
 }
 .log-action { color: var(--text-label); }
+.log-basic { color: #ffffff !important; }
 .log-skill { color: var(--color-skill) !important; font-style: italic; }
 .log-actor { font-weight: normal; }
 .log-agi {

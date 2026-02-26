@@ -36,12 +36,23 @@ export const WARRIOR_INITIAL_SKILLS = [
   },
 ]
 
+import { getLevelSkillById } from './warriorLevelSkills.js'
+
 /**
  * @param {string} skillId
  * @returns {Object|null}
  */
 export function getWarriorSkillById(skillId) {
   return WARRIOR_INITIAL_SKILLS.find((s) => s.id === skillId) ?? null
+}
+
+/**
+ * Get any Warrior skill (initial or level-unlock) by id. For combat and display.
+ * @param {string} skillId
+ * @returns {Object|null}
+ */
+export function getAnyWarriorSkillById(skillId) {
+  return getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
 }
 
 /**
@@ -210,5 +221,52 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     debuffRefreshed: debuffResult ? debuffResult.refreshed : false,
     debuffArmorReduction: skill.id === 'sunder-armor' ? skill.debuffArmorReduction : undefined,
     debuffDuration: skill.id === 'sunder-armor' ? skill.debuffDuration : undefined,
+  }
+}
+
+/**
+ * Execute Cleave: hit up to N targets (skill.targets). Mutates warrior and targets.
+ * @param {Object} warrior - Warrior combat unit
+ * @param {Object[]} targets - Array of target combat units
+ * @param {Object} skill - Skill with coefficient, targets
+ * @param {Object} opts - { isCrit: boolean }
+ * @returns {Object} Result with hits array, totalDamage, etc.
+ */
+export function executeCleave(warrior, targets, skill, opts = {}) {
+  const { isCrit = false } = opts
+  const CRIT_MULTIPLIER = 1.5
+  const maxTargets = Math.min(skill.targets ?? 2, targets.length) || 1
+  const toHit = targets.slice(0, maxTargets)
+
+  warrior.currentMP = Math.max(0, (warrior.currentMP || 0) - skill.rageCost)
+
+  const coeff = skill.coefficient ?? 0.7
+  let totalDamage = 0
+  const hits = []
+
+  for (const target of toHit) {
+    const targetHPBefore = target.currentHP ?? 0
+    const effectiveArmor = getEffectiveArmor(target)
+    const baseRaw = Math.round(warrior.physAtk * coeff)
+    const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
+    const finalDamage = Math.max(1, rawAfterCrit - effectiveArmor)
+    target.currentHP = Math.max(0, targetHPBefore - finalDamage)
+    totalDamage += finalDamage
+    hits.push({ target, targetId: target.id, targetName: target.name, finalDamage, effectiveArmor, targetHPBefore })
+  }
+
+  const rageGained = rageFromDamageDealt(totalDamage)
+  warrior.currentMP = Math.min(100, (warrior.currentMP || 0) + rageGained)
+
+  return {
+    skillId: skill.id,
+    skillName: skill.name,
+    skillSpec: skill.spec,
+    skillCoefficient: coeff,
+    rageConsumed: skill.rageCost,
+    rageGained,
+    hits,
+    totalDamage,
+    targetCount: hits.length,
   }
 }

@@ -86,7 +86,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await card.click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-sep-line').first()).toContainText('Primary Attributes')
+    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Primary Attributes' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Agility' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Intellect' })).toBeVisible()

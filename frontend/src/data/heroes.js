@@ -432,7 +432,7 @@ export function createCharacter(hero, opts = {}) {
     ...initialAttrs,
   }
   if (opts.skill) {
-    character.skill = opts.skill
+    character.skills = [opts.skill]
   }
   return character
 }

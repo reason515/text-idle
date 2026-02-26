@@ -821,6 +821,46 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 25: Skill Selection at Level 5 Multiples (Enhance or Learn New)
+
+**User Story**
+
+> As a player,
+> I want a skill selection window to appear when a hero reaches a level that is a multiple of 5,
+> So that I can either enhance an existing skill or learn a new one, shaping my hero's build over time.
+
+**Design Reference (from design doc)**
+
+- **Trigger level**: When a hero's level becomes **5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, or 60** (i.e., any multiple of 5).
+- **Choice window**: A skill selection modal appears; the player may choose to enhance or learn a new skill, or skip; if skipped, the game continues (same behavior as attribute point allocation after level-up).
+- **Two options**:
+  1. **Enhance existing skill**: Improve a skill the hero already has (e.g., higher damage coefficient, longer duration, shorter cooldown).
+  2. **Learn new skill**: Pick one of 3 fixed new skills offered for that level.
+- **New skill pool rules**:
+  - Each level offers exactly **3 fixed new skills**, one from each spec (e.g., Warrior: Arms, Fury, Protection).
+  - The 3 options are **fixed per level and class** (not random); same level and class always shows the same 3 skills.
+  - **Exclude already learned**: Skills the hero already has do not appear in the new-skill list.
+  - **Pool exhausted**: If fewer than 3 unlearned skills remain at that level, show only the remaining ones; if all skills at that level are already learned, only the "Enhance existing skill" option is available.
+- **Max skills**: At level 60, the hero has triggered 12 times (5, 10, ..., 60); theoretical max = 1 (initial) + 12 = 13 skills, or fewer if the player chose to enhance existing skills multiple times.
+- **Example (Warrior Lv 5)**: Enhance existing (Heroic Strike / Bloodthirst / Sunder Armor), or learn one of: Cleave (Arms), Whirlwind (Fury), Taunt (Protection).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A hero (e.g., Warrior) gains enough XP to level up from 4 to 5 | Level-up is triggered | A skill selection modal appears; the player may choose to enhance, learn a new skill, or skip; the game continues regardless |
+| AC2 | Player is on the skill selection modal at Lv 5 | Player views the options | Two main choices are presented: "Enhance existing skill" and "Learn new skill"; if "Learn new skill" is chosen, 3 fixed skills for that level (one per spec) are shown |
+| AC3 | Player chooses "Enhance existing skill" | Player confirms | One of the hero's existing skills is enhanced (e.g., Heroic Strike coefficient +0.1); the modal closes; the game resumes |
+| AC4 | Player chooses "Learn new skill" and selects one of the 3 options (e.g., Cleave) | Player confirms | The selected skill is added to the hero's skill list; the modal closes; the hero can use the new skill in subsequent battles |
+| AC5 | A Warrior hero levels from 9 to 10 | Level-up is triggered | The skill selection modal appears; the Lv 10 options (e.g., Rend, Raging Strike, Shield Slam) are shown for "Learn new skill" |
+| AC6 | A hero has already learned all 3 skills available at a given level (e.g., Lv 5 Cleave, Whirlwind, Taunt) | The hero levels to that level | Only "Enhance existing skill" is available; no new-skill options are shown |
+| AC7 | A hero has learned 2 of the 3 skills at a level | The hero levels to that level and chooses "Learn new skill" | Only the 1 remaining unlearned skill is shown; player can select it to learn |
+| AC8 | Player closes the skill selection modal without making a choice (or skips) | Modal is dismissed | No skill is enhanced or learned; the game continues; the player can proceed with combat and other actions (same as skipping attribute allocation) |
+| AC9 | A hero reaches level 60 and triggers the final skill selection | Player makes a choice | The Lv 60 options (e.g., Bladestorm, Titan's Grip, Invincible for Warrior) are offered; after choice, the hero has at most 13 skills total |
+| AC10 | Multiple heroes are in the squad and one levels to a multiple of 5 | Level-up is triggered | The skill selection modal appears for that specific hero; the modal clearly indicates which hero is making the choice |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

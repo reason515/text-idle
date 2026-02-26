@@ -1,13 +1,15 @@
 import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance } from '../data/heroes.js'
 import {
-  getWarriorSkillById,
+  getAnyWarriorSkillById,
   rageFromDamageTaken,
   rageFromDamageDealt,
   getEffectiveArmor,
   getEffectiveResistance,
   tickDebuffs,
   executeWarriorSkill,
+  executeCleave,
 } from './warriorSkills.js'
+import { getHeroSkillIds } from './skillChoice.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
 
@@ -316,7 +318,7 @@ function heroCombatStats(hero) {
     currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? maxMP),
     equipmentRecoveryBonus: hero.equipmentRecoveryBonus ?? 0,
     spirit: hero.spirit,
-    skill: hero.skill ?? null,
+    skills: getHeroSkillIds(hero),
     debuffs: [],
   }
 }
@@ -438,60 +440,110 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
       turnActedByRound[round].push(actor.id)
 
-      // Warrior skill path
-      if (actor.side === 'hero' && actor.class === 'Warrior' && actor.skill) {
-        const skill = getWarriorSkillById(actor.skill)
-        const canUse = skill && (actor.currentMP || 0) >= skill.rageCost
-        if (canUse) {
+      // Warrior skill path: use first affordable skill from skills array
+      if (actor.side === 'hero' && actor.class === 'Warrior' && Array.isArray(actor.skills) && actor.skills.length > 0) {
+        let usedSkill = false
+        for (const skillId of actor.skills) {
+          const skill = getAnyWarriorSkillById(skillId)
+          if (!skill || (skill.rageCost ?? 0) > (actor.currentMP || 0)) continue
+          const cooldown = skill.cooldown ?? 0
+          const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
+          if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
+
           const isCrit = rng() < (actor.physCrit || 0)
-          const actorHPBefore = actor.currentHP
-          const targetHPBefore = target.currentHP
-          const sr = executeWarriorSkill(actor, target, skill, { isCrit })
-          const entry = {
-            round,
-            actorId: actor.id,
-            actorName: actor.name,
-            actorAgility: actor.agility ?? 0,
-            actorClass: actor.class,
-            actorTier: null,
-            action: 'skill',
-            skillId: sr.skillId,
-            skillName: sr.skillName,
-            skillSpec: sr.skillSpec,
-            skillCoefficient: sr.skillCoefficient,
-            targetId: target.id,
-            targetName: target.name,
-            targetClass: target.class || null,
-            targetTier: target.tier || null,
-            damageType: 'physical',
-            rawDamage: sr.rawDamage,
-            isCrit: sr.isCrit,
-            finalDamage: sr.finalDamage,
-            absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
-            targetDefense: sr.effectiveArmor,
-            targetHPBefore,
-            targetHPAfter: target.currentHP,
-            targetMaxHP: target.maxHP,
-            rageConsumed: sr.rageConsumed,
-            rageAfter: actor.currentMP,
+          if (skill.targets && skill.targets >= 2) {
+            const aliveMonsters = alive(monsterUnits)
+            if (aliveMonsters.length > 0) {
+              const sr = executeCleave(actor, aliveMonsters, skill, { isCrit })
+              if (!actor.skillCooldowns) actor.skillCooldowns = {}
+              actor.skillCooldowns[skillId] = round
+              const firstHit = sr.hits[0]
+              const entry = {
+                round,
+                actorId: actor.id,
+                actorName: actor.name,
+                actorAgility: actor.agility ?? 0,
+                actorClass: actor.class,
+                actorTier: null,
+                action: 'skill',
+                skillId: sr.skillId,
+                skillName: sr.skillName,
+                skillSpec: sr.skillSpec,
+                skillCoefficient: sr.skillCoefficient,
+                targetId: firstHit?.targetId ?? target.id,
+                targetName: firstHit?.targetName ?? target.name,
+                targetClass: target.class || null,
+                targetTier: target.tier || null,
+                damageType: 'physical',
+                rawDamage: firstHit ? Math.round(actor.physAtk * sr.skillCoefficient) : 0,
+                isCrit,
+                finalDamage: sr.totalDamage,
+                absorbed: 0,
+                targetDefense: firstHit?.effectiveArmor ?? 0,
+                targetHPBefore: firstHit?.targetHPBefore ?? target.currentHP,
+                targetHPAfter: firstHit ? (aliveMonsters[0]?.currentHP ?? 0) : target.currentHP,
+                targetMaxHP: target.maxHP,
+                rageConsumed: sr.rageConsumed,
+                rageAfter: actor.currentMP,
+                cleaveTargets: sr.targetCount,
+              }
+              log.push(entry)
+              usedSkill = true
+              break
+            }
+          } else {
+            const actorHPBefore = actor.currentHP
+            const targetHPBefore = target.currentHP
+            const sr = executeWarriorSkill(actor, target, skill, { isCrit })
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            const entry = {
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: target.id,
+              targetName: target.name,
+              targetClass: target.class || null,
+              targetTier: target.tier || null,
+              damageType: 'physical',
+              rawDamage: sr.rawDamage,
+              isCrit: sr.isCrit,
+              finalDamage: sr.finalDamage,
+              absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
+              targetDefense: sr.effectiveArmor,
+              targetHPBefore,
+              targetHPAfter: target.currentHP,
+              targetMaxHP: target.maxHP,
+              rageConsumed: sr.rageConsumed,
+              rageAfter: actor.currentMP,
+            }
+            if (sr.heal > 0) {
+              entry.heal = sr.heal
+              entry.actorHPBefore = actorHPBefore
+              entry.actorHPAfter = actor.currentHP
+              entry.actorMaxHP = actor.maxHP
+            }
+            if (sr.debuffApplied || sr.debuffRefreshed) {
+              entry.debuffApplied = sr.debuffApplied
+              entry.debuffRefreshed = sr.debuffRefreshed
+              entry.debuffType = 'sunder'
+              entry.debuffArmorReduction = sr.debuffArmorReduction
+              entry.debuffDuration = sr.debuffDuration
+            }
+            log.push(entry)
+            usedSkill = true
+            break
           }
-          if (sr.heal > 0) {
-            entry.heal = sr.heal
-            entry.actorHPBefore = actorHPBefore
-            entry.actorHPAfter = actor.currentHP
-            entry.actorMaxHP = actor.maxHP
-          }
-          if (sr.debuffApplied || sr.debuffRefreshed) {
-            entry.debuffApplied = sr.debuffApplied
-            entry.debuffRefreshed = sr.debuffRefreshed
-            entry.debuffType = 'sunder'
-            entry.debuffArmorReduction = sr.debuffArmorReduction
-            entry.debuffDuration = sr.debuffDuration
-          }
-          // Warrior gains Rage from taking damage (handled when hit); grant from dealt already done in executeWarriorSkill
-          log.push(entry)
-          continue
         }
+        if (usedSkill) continue
       }
 
       // Basic attack / monster skill path

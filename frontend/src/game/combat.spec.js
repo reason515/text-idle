@@ -446,6 +446,31 @@ describe('combat progression and systems', () => {
     expect(monsterSkillEntry.skillName).toBe('Stone Shard')
   })
 
+  it('Warrior with Cleave skill hits multiple targets when rage sufficient', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      agility: 10,
+      strength: 20,
+      skills: ['cleave'],
+    })
+    const monsters = [
+      createMonster(
+        { id: 'm1', name: 'Mob A', damageType: 'physical', base: { hp: 50, physAtk: 5, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      ),
+      createMonster(
+        { id: 'm2', name: 'Mob B', damageType: 'physical', base: { hp: 50, physAtk: 5, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = () => 0.5
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 15 })
+    const cleaveEntry = result.log.find((e) => e.skillId === 'cleave')
+    expect(cleaveEntry).toBeDefined()
+    expect(cleaveEntry.cleaveTargets).toBeGreaterThanOrEqual(1)
+  })
+
   it('createMonster copies skill from template', () => {
     const monster = createMonster(
       {
