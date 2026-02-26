@@ -2040,6 +2040,10 @@ onUnmounted(() => {
 }
 .hero-class {
   font-size: 0.75rem;
+  display: inline-block;
+  padding: 0.08rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
 }
 .card-level {
   font-size: 0.75rem;
