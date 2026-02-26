@@ -57,7 +57,7 @@
               <div class="bar-track">
                 <div class="bar-fill" :class="resourceFillClass(hero.class)" :style="{ width: mpPct(hero) + '%' }"></div>
               </div>
-              <span class="bar-num">{{ hero.currentMP }}/{{ hero.maxMP }}</span>
+              <span class="bar-num" :class="{ 'resource-rage': hero.class === 'Warrior' }">{{ hero.currentMP }}/{{ hero.maxMP }}</span>
             </div>
             <div v-if="(hero.level || 1) < 60" class="bar-row xp-row">
               <span class="bar-label">XP</span>
@@ -439,17 +439,18 @@
               class="detail-tab"
               :class="{ active: heroDetailTab === 'attrs' }"
               @click="heroDetailTab = 'attrs'"
-            >Attributes</button>
+            >ATTRIBUTES</button>
             <button
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'skills' }"
               @click="heroDetailTab = 'skills'"
-            >Skills</button>
+            >SKILLS</button>
           </div>
           <div class="detail-tab-content">
           <div v-show="heroDetailTab === 'attrs'" class="detail-tab-pane">
-          <div class="detail-section">
+          <div class="detail-sep-line detail-sep-basic">Basic Info</div>
+          <div class="detail-section detail-section-basic">
             <div class="detail-row">
               <span class="detail-label">Level</span>
               <span class="detail-value">{{ selectedHero.level || 1 }}{{ (selectedHero.level || 1) >= 60 ? ' (max)' : '' }}</span>
@@ -460,27 +461,33 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">HP</span>
-              <span class="detail-value val-hp" :style="{ color: hpBarColor(hpPct(selectedHero)) }">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
+              <span class="detail-value detail-hp-val" :style="{ color: hpBarColor(hpPct(selectedHero)) }">{{ selectedHero.currentHP ?? selectedHero.maxHP }} / {{ selectedHero.maxHP }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">{{ resourceLabel(selectedHero.class) }}</span>
-              <span class="detail-value">{{ selectedHero.currentMP ?? selectedHero.maxMP }} / {{ selectedHero.maxMP }}</span>
+              <span class="detail-value" :class="{ 'resource-rage': selectedHero.class === 'Warrior' }">{{ selectedHero.currentMP ?? selectedHero.maxMP }} / {{ selectedHero.maxMP }}</span>
             </div>
           </div>
           <div class="detail-attr-equip-row">
             <div class="detail-attr-col">
-              <div class="detail-sep-line">Primary Attributes</div>
-              <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section attr-alloc">
-                <div class="detail-row">
+              <div class="detail-sep-line detail-sep-primary">Primary Attributes</div>
+              <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section detail-section-primary attr-alloc">
+                <div class="detail-row attr-row">
                   <span class="detail-label">Unassigned</span>
-                  <span class="detail-value">{{ selectedHero.unassignedPoints }}</span>
+                  <span class="detail-value">
+                    <span class="attr-val unassigned-val">{{ selectedHero.unassignedPoints }}</span>
+                  </span>
                 </div>
                 <div class="attr-buttons-hint">Click + to assign a point</div>
               </div>
-              <div class="detail-section">
+              <div class="detail-section detail-section-primary">
                 <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
                   <span class="detail-label">{{ attr.label }}</span>
                   <span class="detail-value">
+                    <span class="attr-val tooltip-wrap" :class="{ 'has-tip': getPrimaryAttrEquipTip(attr.key) }">
+                      {{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}
+                      <span v-if="getPrimaryAttrEquipTip(attr.key)" class="tooltip-text" v-html="getPrimaryAttrEquipTip(attr.key)"></span>
+                    </span>
                     <button
                       v-if="(selectedHero.unassignedPoints || 0) > 0"
                       type="button"
@@ -488,35 +495,41 @@
                       :title="'Add 1 to ' + attr.label"
                       @click="assignPoint(attr.key)"
                     >+</button>
-                    <span class="attr-val">{{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}</span>
                   </span>
                 </div>
               </div>
-              <div class="detail-sep-line">Secondary Attributes</div>
-              <div class="detail-section">
+              <div class="detail-sep-line detail-sep-secondary">Secondary Attributes</div>
+              <div class="detail-section detail-section-secondary">
                 <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
-                  <span class="detail-label">{{ attr.label }}</span>
-                  <span class="detail-value tooltip-wrap" :class="{ 'has-tip': attr.formula && attr.formula !== '-' }">
-                    {{ attr.value }}
-                    <span v-if="attr.formula && attr.formula !== '-'" class="tooltip-text">{{ attr.formula }}</span>
+                  <span class="detail-label secondary-label" :class="{ 'secondary-label-rage': attr.key === 'Resource' && selectedHero.class === 'Warrior' }">{{ attr.label }}</span>
+                  <span class="detail-value">
+                    <span
+                      class="tooltip-wrap"
+                      :class="{ 'has-tip': attr.formula && attr.formula !== '-' }"
+                      @mouseenter="(e) => attr.formula && attr.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(attr.formula))"
+                      @mouseleave="hideFormulaTooltip"
+                    >
+                      {{ attr.value }}
+                    </span>
                   </span>
                 </div>
               </div>
             </div>
             <div class="detail-equip-col">
-              <div class="detail-sep-line">Equipment</div>
-              <div class="detail-section equipment-slots">
+              <div class="detail-sep-line detail-sep-equipment">Equipment</div>
+              <div class="detail-section detail-section-equipment equipment-slots">
                 <div v-for="slot in EQUIPMENT_SLOTS" :key="slot" class="equipment-slot-row">
                   <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
-                  <span
-                    class="detail-value equipment-slot-val tooltip-wrap"
-                    :class="{ 'has-tip': !(slot === 'OffHand' && isOffHandBlockedForSelected()), 'equip-blocked': slot === 'OffHand' && isOffHandBlockedForSelected() }"
-                    :style="{ color: getEquippedItemColor(slot) }"
-                    @click="toggleEquipmentSlot(slot)"
-                  >
-                    {{ getEquippedItemName(slot) || 'Empty' }}
-                    <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text">Blocked by two-hand weapon</span>
-                    <span v-else class="tooltip-text">Click to view details or equip from backpack</span>
+                  <span class="detail-value equipment-slot-val" :class="{ 'equip-blocked': slot === 'OffHand' && isOffHandBlockedForSelected() }" @click="toggleEquipmentSlot(slot)">
+                    <span
+                      class="tooltip-wrap"
+                      :class="{ 'has-tip': !(slot === 'OffHand' && isOffHandBlockedForSelected()) }"
+                      :style="{ color: getEquippedItemColor(slot) }"
+                    >
+                      {{ getEquippedItemName(slot) || 'Empty' }}
+                      <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text">Blocked by two-hand weapon</span>
+                      <span v-else class="tooltip-text">Click to view details or equip from backpack</span>
+                    </span>
                   </span>
                 </div>
               </div>
@@ -526,8 +539,10 @@
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedHero)" :key="d.type" class="detail-row">
               <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
-              <span class="detail-value tooltip-wrap has-tip">{{ getDebuffTip(d) }}
-                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+              <span class="detail-value">
+                <span class="tooltip-wrap has-tip">{{ getDebuffTip(d) }}
+                  <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+                </span>
               </span>
             </div>
           </div>
@@ -707,6 +722,20 @@
     </Teleport>
 
     <Teleport to="body">
+      <div
+        v-if="formulaTooltip && selectedHero"
+        class="formula-tooltip-floating"
+        :style="{
+          top: formulaTooltip.top + 'px',
+          left: formulaTooltip.left + 'px',
+          transform: 'translate(-100%, -100%)',
+        }"
+      >
+        <div class="tooltip-text formula-tip" v-html="formulaTooltip.html"></div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div class="toast-container">
         <div
           v-for="t in toastMessages"
@@ -838,6 +867,7 @@ const equippedUnequipConfirming = ref(false)
 const pendingEquipSlot = ref(null)
 const hoveredBackpackItem = ref(null)
 const backpackTooltipRect = ref(null)
+const formulaTooltip = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
 const isRunning = ref(false)
@@ -1157,6 +1187,39 @@ function getHeroSkillDisplay(skillId) {
   return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
 }
 
+function getPrimaryAttrEquipTip(attrKey) {
+  if (!selectedHero.value) return ''
+  const hero = squad.value.find((h) => h.id === selectedHero.value.id)
+  if (!hero?.equipment) return ''
+  const eq = getEquipmentBonuses(hero.equipment)
+  const bonus = eq[attrKey] || 0
+  if (bonus <= 0) return ''
+  return '<span class="tip-equip-label">Equipment:</span> +' + bonus
+}
+
+function showFormulaTooltip(e, html) {
+  const el = e.currentTarget
+  const rect = el.getBoundingClientRect()
+  formulaTooltip.value = {
+    html,
+    top: rect.top - 4,
+    left: rect.left + rect.width,
+  }
+}
+function hideFormulaTooltip() {
+  formulaTooltip.value = null
+}
+function formatSecondaryFormulaTip(formula) {
+  if (!formula || typeof formula !== 'string') return ''
+  return formula
+    .replace(/\bStr(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/str/i, 'STR') + '</span>')
+    .replace(/\bAgi(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/agi/i, 'AGI') + '</span>')
+    .replace(/\bInt(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/int/i, 'INT') + '</span>')
+    .replace(/\bStam(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/stam/i, 'STA') + '</span>')
+    .replace(/\bSpi(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/spi/i, 'SPI') + '</span>')
+    .replace(/\bLevel(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m + '</span>')
+}
+
 function getMonsterSkillDisplay(skillId) {
   return getMonsterSkillById(skillId) ?? { name: '', effectDesc: '', cooldown: 0 }
 }
@@ -1470,6 +1533,7 @@ async function runCombatLoop() {
 
 watch(selectedHero, (val) => {
   if (val) heroDetailTab.value = 'attrs'
+  else hideFormulaTooltip()
 })
 
 onMounted(() => {
@@ -2265,11 +2329,16 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 .modal-hero-name {
-  color: #eeffee;
+  color: var(--text);
+  font-weight: bold;
 }
 .modal-class-tag {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: normal;
+  display: inline-block;
+  padding: 0.08rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
 }
 .modal-tier-tag {
   font-size: 0.8rem;
@@ -2357,12 +2426,16 @@ onUnmounted(() => {
 .detail-sep-line {
   color: var(--text-muted);
   font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border-top: 1px solid var(--border);
   padding-top: 0.3rem;
   margin-top: 0.1rem;
   margin-bottom: 0.3rem;
 }
 .val-hp { color: var(--color-hp); }
+.detail-hp-val { /* color from inline hpBarColor by injury level */ }
 
 /* Tooltip */
 .tooltip-wrap {
@@ -2371,7 +2444,10 @@ onUnmounted(() => {
 .tooltip-wrap.has-tip {
   cursor: help;
   border-bottom: 1px dotted var(--text-muted);
+  display: inline-block;
+  width: fit-content;
 }
+.tooltip-text :deep(.tip-equip-label) { color: var(--text-muted); }
 .tooltip-text {
   display: none;
   position: absolute;
@@ -2389,15 +2465,41 @@ onUnmounted(() => {
 .tooltip-wrap:hover .tooltip-text {
   display: block;
 }
+.formula-tip :deep(.tip-attr-var) { color: #88ccdd; font-weight: 600; }
+.formula-tooltip-floating {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}
+.formula-tooltip-floating .tooltip-text {
+  display: block;
+  position: static;
+  transform: none;
+  white-space: nowrap;
+}
+
+.detail-section-basic .detail-value { color: var(--text-value); }
+.detail-section-primary .detail-value { color: #88ccaa; }
+.detail-section-secondary .detail-value { color: var(--text-value); }
+.detail-section-secondary .secondary-label { color: #66ccaa; }
+.detail-section-secondary .secondary-label.secondary-label-rage { color: var(--color-rage) !important; }
+.detail-section-equipment .detail-label { color: #7a9cb8; }
+.resource-rage { color: var(--color-rage) !important; }
 
 /* Attribute allocation */
-.attr-alloc { background: rgba(0, 255, 136, 0.04); padding: 0.35rem; border-radius: 4px; }
+.attr-alloc { background: rgba(0, 255, 136, 0.06); padding: 0.35rem; border-radius: 4px; border: 1px solid rgba(0, 255, 136, 0.25); }
+.attr-alloc .unassigned-val { color: var(--text-value); min-width: 1.5rem; margin-left: -1ch; }
 .attr-buttons-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
-.attr-row .detail-value { display: flex; align-items: center; justify-content: flex-start; gap: 0.35rem; }
+.attr-row .detail-value { display: flex; align-items: baseline; justify-content: flex-start; gap: 0.25rem; }
 .attr-btn {
-  font-size: 0.8rem;
-  padding: 0.1rem 0.35rem;
-  min-width: 1.6rem;
+  width: auto;
+  font-size: 0.75rem;
+  padding: 0.12rem 0.14rem;
+  min-width: 0.6rem;
+  max-width: 1rem;
+  line-height: 1;
+  margin-left: 0;
+  flex-shrink: 0;
   background: var(--bg-dark);
   border: 1px solid var(--accent);
   color: var(--accent);
