@@ -5,6 +5,7 @@ import {
   getQualityColor,
   canEquip,
   getEquipReasons,
+  getEquipReasonsStructured,
   getEquipmentBonuses,
   QUALITY_NORMAL,
   QUALITY_MAGIC,
@@ -212,6 +213,26 @@ describe('equipment', () => {
       const hero = { level: 20, strength: 10, agility: 10, intellect: 4, spirit: 5 }
       const item = { levelReq: 10, strReq: 14, agiReq: 0, intReq: 0, spiReq: 0 }
       expect(getEquipReasons(hero, item)).toContain('Str 14 required (current: 10)')
+    })
+  })
+
+  describe('getEquipReasonsStructured', () => {
+    it('returns empty when hero can equip', () => {
+      const hero = { level: 20, strength: 26, agility: 10, intellect: 4, spirit: 5 }
+      const item = { levelReq: 20, strReq: 26, agiReq: 0, intReq: 0, spiReq: 0 }
+      expect(getEquipReasonsStructured(hero, item)).toEqual([])
+    })
+
+    it('returns level reason when level too low', () => {
+      const hero = { level: 5, strength: 20, agility: 10, intellect: 4, spirit: 5 }
+      const item = { levelReq: 10, strReq: 0, agiReq: 0, intReq: 0, spiReq: 0 }
+      expect(getEquipReasonsStructured(hero, item)).toContainEqual({ key: 'level', label: 'Level', required: 10, current: 5 })
+    })
+
+    it('returns attribute reason when str too low', () => {
+      const hero = { level: 20, strength: 10, agility: 10, intellect: 4, spirit: 5 }
+      const item = { levelReq: 10, strReq: 14, agiReq: 0, intReq: 0, spiReq: 0 }
+      expect(getEquipReasonsStructured(hero, item)).toContainEqual({ key: 'str', label: 'Str', required: 14, current: 10 })
     })
   })
 

@@ -424,3 +424,20 @@ export function getEquipReasons(hero, item) {
   if ((hero.spirit || 0) < (item.spiReq || 0)) reasons.push(`Spi ${item.spiReq} required (current: ${hero.spirit || 0})`)
   return reasons
 }
+
+/**
+ * Get structured reasons for display (current values can be styled red)
+ * @returns {Array<{key: string, label: string, required: number, current: number}>}
+ */
+export function getEquipReasonsStructured(hero, item) {
+  if (!hero || !item) return []
+  const reasons = []
+  const level = hero.level || 1
+  const lvlReq = item.levelReq || 0
+  if (level < lvlReq) reasons.push({ key: 'level', label: 'Level', required: lvlReq, current: level })
+  if ((hero.strength || 0) < (item.strReq || 0)) reasons.push({ key: 'str', label: 'Str', required: item.strReq, current: hero.strength || 0 })
+  if ((hero.agility || 0) < (item.agiReq || 0)) reasons.push({ key: 'agi', label: 'Agi', required: item.agiReq, current: hero.agility || 0 })
+  if ((hero.intellect || 0) < (item.intReq || 0)) reasons.push({ key: 'int', label: 'Int', required: item.intReq, current: hero.intellect || 0 })
+  if ((hero.spirit || 0) < (item.spiReq || 0)) reasons.push({ key: 'spi', label: 'Spi', required: item.spiReq, current: hero.spirit || 0 })
+  return reasons
+}

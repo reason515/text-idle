@@ -175,7 +175,7 @@
                   <span
                     class="log-item-drop tooltip-wrap has-tip"
                     :style="{ color: getQualityColor(eq.quality) }"
-                    @click="selectedItem = eq; showBackpackModal = false"
+                    @click="selectedItem = eq"
                   >
                     {{ formatItemDisplayName(eq) }}
                     <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - Click to inspect</span>
@@ -385,13 +385,13 @@
             </div>
             <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
             <div class="affix-list">
-              <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-item">
+              <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
                 <span class="affix-num">+{{ p.value }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
-              <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-item">
+              <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
                 <span class="affix-num">+{{ s.value }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
@@ -406,7 +406,7 @@
           <div v-if="sellConfirmingItem?.id === selectedItem?.id" class="item-detail-sell-confirm">
             <span class="sell-confirm-text">Sell for {{ getSellPrice(selectedItem) }} gold?</span>
             <div class="item-detail-actions">
-              <button class="btn btn-sell" @click="confirmSellItem(selectedItem)">Confirm</button>
+              <button class="btn" @click="confirmSellItem(selectedItem)">Confirm</button>
               <button class="btn" @click="sellConfirmingItem = null">Cancel</button>
             </div>
           </div>
@@ -424,11 +424,15 @@
                   class="equip-to-unmet tooltip-wrap has-tip"
                 >
                   {{ h.name }}
-                  <span class="tooltip-text">{{ getEquipReasons(h, selectedItem).join('; ') }}</span>
+                  <span class="tooltip-text">
+                    <template v-for="(r, i) in getEquipReasonsStructured(h, selectedItem)" :key="r.key">
+                      <span v-if="i > 0">; </span>{{ r.label }} {{ r.required }} required (current: <span class="equip-unmet-val">{{ r.current }}</span>)
+                    </template>
+                  </span>
                 </span>
               </span>
             </div>
-            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn btn-sell" @click="sellConfirmingItem = selectedItem">Sell</button>
+            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">Sell</button>
             <button class="btn" @click="selectedItem = null; sellConfirmingItem = null">Close</button>
           </div>
         </div>
@@ -622,13 +626,13 @@
             </div>
             <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
             <div class="affix-list">
-              <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-item">
+              <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
                 <span class="affix-num">+{{ p.value }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
-              <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-item">
+              <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
                 <span class="affix-num">+{{ s.value }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
@@ -804,7 +808,7 @@ import {
   SLOT_LABELS,
   EQUIPMENT_SLOTS,
   canEquip,
-  getEquipReasons,
+  getEquipReasonsStructured,
   getEquipmentBonuses,
 } from '../game/equipment.js'
 
@@ -1634,7 +1638,7 @@ onUnmounted(() => {
   font-size: 0.8rem;
 }
 .gold-value {
-  font-weight: 600;
+  font-weight: normal;
   min-width: 2ch;
 }
 
@@ -1760,18 +1764,28 @@ onUnmounted(() => {
 .log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: 0.9rem; }
 
 .item-detail-modal .detail-value-req { color: var(--text-value); }
+.item-detail-modal .detail-value.val-gold { color: var(--color-gold); }
 .affix-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.25rem; }
-.affix-item {
-  display: flex; align-items: baseline; gap: 0.35rem; flex-wrap: wrap;
-  padding: 0.3rem 0.5rem; padding-left: 1.25rem; background: rgba(0,0,0,0.2); border-radius: 4px;
+.affix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(2.5ch, max-content) minmax(0, 1fr) auto;
+  gap: 0 0.5rem;
+  align-items: baseline;
+  padding: 0.3rem 0.5rem;
+  padding-left: 1.25rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
   position: relative;
 }
-.affix-item::before {
+.affix-row::before {
   content: '\00B7';
-  position: absolute; left: 0.4rem; color: var(--text-label); font-size: 1.2em;
+  position: absolute;
+  left: 0.4rem;
+  color: var(--text-label);
+  font-size: 1.2em;
 }
 .affix-name { color: var(--text-label); font-weight: 500; }
-.affix-num { color: var(--text-value); }
+.affix-num { color: var(--text-value); text-align: right; }
 .affix-stat-label { color: var(--text); }
 .affix-range { color: #999; font-size: 0.9rem; }
 .item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
@@ -1781,6 +1795,7 @@ onUnmounted(() => {
 .equip-to-label { font-size: 0.85rem; color: var(--text-label); flex-shrink: 0; }
 .equip-to-row { display: inline-flex; }
 .equip-to-unmet { font-size: 0.85rem; color: var(--text-muted); cursor: help; }
+.equip-unmet-val { color: var(--error); }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
 .btn-sell:hover { background: rgba(255, 204, 68, 0.1); }
 
