@@ -1738,8 +1738,22 @@ onUnmounted(() => {
   margin-left: 0.25rem;
   text-decoration: underline;
   text-underline-offset: 2px;
+  display: inline-block;
+  padding: 0.08rem 0.35rem;
+  border-radius: 4px;
+  animation: item-drop-highlight 0.7s ease-out;
 }
 .log-item-drop:hover { opacity: 0.9; }
+@keyframes item-drop-highlight {
+  0% {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
 .log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: 0.9rem; }
 
 .item-detail-modal .detail-value-req { color: var(--text-value); }

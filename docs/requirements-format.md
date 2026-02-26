@@ -542,7 +542,7 @@ Then [expected result/verifiable behavior].
 - **Drop condition**: Only on **victory**; defeat grants no equipment.
 - **Item tier** (determined by monster level, not MF): Normal bases from Lv 1–20 monsters; Exceptional bases from Lv 21–40; Elite bases from Lv 41–60.
 - **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–4 affixes), Unique (fixed affixes + special effect).
-- **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold.
+- **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold, with a brief highlight animation when appearing to enhance the sense of surprise.
 - **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
 - **Blue vs. Yellow range rule**: Blue affix range = base × 0.7 (floor) to base × 1.3 (ceil); Yellow affix range = base range (narrower, relies on count).
 - **Monster tier modifier**: Elite monsters have higher drop probability and higher chance of blue/yellow quality than Normal; Boss has the highest drop probability and quality chance; **Boss always drops at least 1 item with quality ≥ Magic (blue)**.
