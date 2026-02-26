@@ -364,30 +364,36 @@
                 <span v-if="(selectedItem.spiReq || 0) > 0">Spi {{ selectedItem.spiReq }}</span>
               </span>
             </div>
-            <div v-if="(selectedItem.armor || 0) > 0" class="detail-row">
+            <div v-if="(selectedItem.armor || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value">{{ selectedItem.armor }}</span>
             </div>
-            <div v-if="(selectedItem.resistance || 0) > 0" class="detail-row">
+            <div v-if="(selectedItem.resistance || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedItem.resistance }}</span>
             </div>
-            <div v-if="(selectedItem.physAtk || 0) > 0" class="detail-row">
+            <div v-if="(selectedItem.physAtk || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
               <span class="detail-value">{{ selectedItem.physAtk }}</span>
             </div>
-            <div v-if="(selectedItem.spellPower || 0) > 0" class="detail-row">
+            <div v-if="(selectedItem.spellPower || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
               <span class="detail-value">{{ selectedItem.spellPower }}</span>
             </div>
             <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
-            <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="detail-row">
-              <span class="detail-label">Prefix</span>
-              <span class="detail-value">{{ p.name }} — +{{ p.value }} {{ p.stat }} [{{ p.min }}~{{ p.max }}]</span>
-            </div>
-            <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="detail-row">
-              <span class="detail-label">Suffix</span>
-              <span class="detail-value">{{ s.name }} — +{{ s.value }} {{ s.stat }} [{{ s.min }}~{{ s.max }}]</span>
+            <div class="affix-list">
+              <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-item">
+                <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
+                <span class="affix-num">+{{ p.value }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
+                <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
+              </div>
+              <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-item">
+                <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
+                <span class="affix-num">+{{ s.value }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
+                <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
+              </div>
             </div>
             <div v-if="isItemInInventory(selectedItem)" class="detail-row">
               <span class="detail-label">Sell Price</span>
@@ -595,41 +601,47 @@
                 <span v-if="(selectedEquippedItem.item.spiReq || 0) > 0">Spi {{ selectedEquippedItem.item.spiReq }}</span>
               </span>
             </div>
-            <div v-if="(selectedEquippedItem.item.armor || 0) > 0" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.armor || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value">{{ selectedEquippedItem.item.armor }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.physAtk || 0) > 0" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.physAtk || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
               <span class="detail-value">{{ selectedEquippedItem.item.physAtk }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.spellPower || 0) > 0" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.spellPower || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
               <span class="detail-value">{{ selectedEquippedItem.item.spellPower }}</span>
             </div>
             <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
-            <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="detail-row">
-              <span class="detail-label">Prefix</span>
-              <span class="detail-value">{{ p.name }} — +{{ p.value }} {{ p.stat }} [{{ p.min }}~{{ p.max }}]</span>
-            </div>
-            <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="detail-row">
-              <span class="detail-label">Suffix</span>
-              <span class="detail-value">{{ s.name }} — +{{ s.value }} {{ s.stat }} [{{ s.min }}~{{ s.max }}]</span>
+            <div class="affix-list">
+              <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-item">
+                <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
+                <span class="affix-num">+{{ p.value }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
+                <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
+              </div>
+              <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-item">
+                <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
+                <span class="affix-num">+{{ s.value }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
+                <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
+              </div>
             </div>
           </div>
           <div v-if="equippedUnequipConfirming" class="item-detail-sell-confirm">
             <span class="sell-confirm-text">Unequip and move to backpack?</span>
             <div class="item-detail-actions">
-              <button class="btn btn-sell" @click="confirmUnequipEquipment">Confirm</button>
+              <button class="btn" @click="confirmUnequipEquipment">Confirm</button>
               <button class="btn" @click="equippedUnequipConfirming = false">Cancel</button>
             </div>
           </div>
           <div v-else class="item-detail-actions">
-            <button class="btn btn-sell" @click="equippedUnequipConfirming = true">Unequip</button>
+            <button class="btn" @click="equippedUnequipConfirming = true">Unequip</button>
             <button class="btn" @click="selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
           </div>
         </div>
@@ -816,6 +828,14 @@ const MONSTER_TIER_COLORS = {
   boss: 'var(--color-boss)',
 }
 
+function formatAffixStat(stat) {
+  if (!stat) return ''
+  return stat.charAt(0).toUpperCase() + stat.slice(1)
+}
+function formatAffixDisplayName(name) {
+  if (!name) return ''
+  return name.startsWith('of ') ? name.slice(3) : name
+}
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
 }
@@ -1723,6 +1743,20 @@ onUnmounted(() => {
 .log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: 0.9rem; }
 
 .item-detail-modal .detail-value-req { color: var(--text-value); }
+.affix-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.25rem; }
+.affix-item {
+  display: flex; align-items: baseline; gap: 0.35rem; flex-wrap: wrap;
+  padding: 0.3rem 0.5rem; padding-left: 1.25rem; background: rgba(0,0,0,0.2); border-radius: 4px;
+  position: relative;
+}
+.affix-item::before {
+  content: '\00B7';
+  position: absolute; left: 0.4rem; color: var(--text-label); font-size: 1.2em;
+}
+.affix-name { color: var(--text-label); font-weight: 500; }
+.affix-num { color: var(--text-value); }
+.affix-stat-label { color: var(--text); }
+.affix-range { color: #999; font-size: 0.9rem; }
 .item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
 .item-detail-sell-confirm { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .sell-confirm-text { font-size: 0.9rem; color: var(--text-muted); margin-right: 0.5rem; }
