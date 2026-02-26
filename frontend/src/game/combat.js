@@ -1,6 +1,7 @@
 import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance } from '../data/heroes.js'
 import {
   getAnyWarriorSkillById,
+  getSkillWithEnhancements,
   rageFromDamageTaken,
   rageFromDamageDealt,
   getEffectiveArmor,
@@ -319,6 +320,7 @@ function heroCombatStats(hero) {
     equipmentRecoveryBonus: hero.equipmentRecoveryBonus ?? 0,
     spirit: hero.spirit,
     skills: getHeroSkillIds(hero),
+    skillEnhancements: hero.skillEnhancements ?? {},
     debuffs: [],
   }
 }
@@ -444,7 +446,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.side === 'hero' && actor.class === 'Warrior' && Array.isArray(actor.skills) && actor.skills.length > 0) {
         let usedSkill = false
         for (const skillId of actor.skills) {
-          const skill = getAnyWarriorSkillById(skillId)
+          const skill = getSkillWithEnhancements(actor, skillId) ?? getAnyWarriorSkillById(skillId)
           if (!skill || (skill.rageCost ?? 0) > (actor.currentMP || 0)) continue
           const cooldown = skill.cooldown ?? 0
           const lastUsed = actor.skillCooldowns?.[skillId] ?? 0

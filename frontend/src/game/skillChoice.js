@@ -26,19 +26,26 @@ export function getHeroSkillIds(hero) {
   return []
 }
 
+const MAX_ENHANCE_COUNT = 3
+
 /**
  * Get options for skill choice at a given level.
  * @param {Object} hero - Hero object
  * @param {number} level - New level (5, 10, 15, ...)
- * @returns {{ canEnhance: boolean, newSkills: Array<{id:string,name:string,spec:string,effectDesc:string,rageCost?:number}> }}
+ * @returns {{ canEnhance: boolean, enhanceableSkillIds: string[], newSkills: Array<{id:string,name:string,spec:string,effectDesc:string,rageCost?:number}> }}
  */
 export function getSkillChoiceOptions(hero, level) {
-  const existingIds = new Set(getHeroSkillIds(hero))
+  const existingIds = getHeroSkillIds(hero)
+  const enhanceableSkillIds = existingIds.filter(
+    (id) => (hero.skillEnhancements?.[id]?.enhanceCount ?? 0) < MAX_ENHANCE_COUNT
+  )
+  const existingSet = new Set(existingIds)
   const levelSkills = getNewSkillsAtLevel(hero.class, level)
-  const unlearned = levelSkills.filter((s) => !existingIds.has(s.id))
+  const unlearned = levelSkills.filter((s) => !existingSet.has(s.id))
 
   return {
-    canEnhance: existingIds.size > 0,
+    canEnhance: enhanceableSkillIds.length > 0,
+    enhanceableSkillIds,
     newSkills: unlearned.map((s) => ({
       id: s.id,
       name: s.name,
@@ -103,11 +110,13 @@ export function applyEnhanceSkill(hero, skillId) {
   const def = getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
   if (!def) return false
 
+  const current = hero.skillEnhancements?.[skillId]?.enhanceCount ?? 0
+  if (current >= MAX_ENHANCE_COUNT) return false
+
   if (!hero.skillEnhancements) hero.skillEnhancements = {}
-  const current = hero.skillEnhancements[skillId] ?? {}
   hero.skillEnhancements[skillId] = {
-    ...current,
-    enhanceCount: (current.enhanceCount ?? 0) + 1,
+    ...(hero.skillEnhancements[skillId] ?? {}),
+    enhanceCount: current + 1,
   }
   return true
 }

@@ -150,6 +150,45 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await expect(page.locator('.detail-section').filter({ hasText: 'Cleave' })).toBeVisible()
   })
 
+  test('AC3: enhance Heroic Strike applies enhancement and affects combat', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `skill-choice-ac3-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        const h = squad[0]
+        h.level = 4
+        h.xp = 582
+        h.strength = 100
+        h.stamina = 80
+        if (!h.skills) h.skills = [h.skill || 'heroic-strike']
+        delete h.skill
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 1,
+        currentMapId: 'elwynn-forest',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    })
+    await page.reload()
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
+
+    await page.locator('.skill-choice-modal .skill-option').filter({ hasText: 'Heroic Strike' }).first().click()
+    await page.locator('.skill-choice-modal button').filter({ hasText: 'Confirm' }).click()
+
+    await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
+    const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
+    expect(squadAfter[0].skillEnhancements?.['heroic-strike']?.enhanceCount).toBe(1)
+  })
+
   test('AC8: skip closes modal and game continues', async ({ page }) => {
     test.setTimeout(120000)
     const email = `skill-choice-ac8-${Date.now()}@example.com`

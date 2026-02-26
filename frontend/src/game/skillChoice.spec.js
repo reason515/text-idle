@@ -44,6 +44,20 @@ describe('skillChoice', () => {
       expect(opts.newSkills.length).toBe(2)
     })
 
+    it('returns enhanceableSkillIds (skills with enhanceCount < 3)', () => {
+      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } }
+      const opts = getSkillChoiceOptions(hero, 5)
+      expect(opts.enhanceableSkillIds).toContain('heroic-strike')
+      expect(opts.canEnhance).toBe(true)
+    })
+
+    it('excludes skills at max enhance (3) from enhanceableSkillIds', () => {
+      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 3 } } }
+      const opts = getSkillChoiceOptions(hero, 5)
+      expect(opts.enhanceableSkillIds).not.toContain('heroic-strike')
+      expect(opts.canEnhance).toBe(false)
+    })
+
     it('canEnhance false when no existing skills', () => {
       const hero = { class: 'Warrior' }
       const opts = getSkillChoiceOptions(hero, 5)
@@ -101,6 +115,12 @@ describe('skillChoice', () => {
     it('returns false when skill not learned', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike'] }
       expect(applyEnhanceSkill(hero, 'cleave')).toBe(false)
+    })
+
+    it('returns false when skill already at max enhance (3)', () => {
+      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 3 } } }
+      expect(applyEnhanceSkill(hero, 'heroic-strike')).toBe(false)
+      expect(hero.skillEnhancements['heroic-strike'].enhanceCount).toBe(3)
     })
   })
 })

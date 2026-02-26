@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   WARRIOR_INITIAL_SKILLS,
   getWarriorSkillById,
+  getSkillWithEnhancements,
   rageFromDamageTaken,
   rageFromDamageDealt,
   getSunderDebuff,
@@ -188,6 +189,15 @@ describe('Example13: Heroic Strike', () => {
     expect((warrior.currentMP || 0) < skill.rageCost).toBe(true)
   })
 
+  it('AC11: Heroic Strike enhanced 2x uses coefficient 1.6', () => {
+    const warrior = makeWarrior({ physAtk: 10, currentMP: 20, skillEnhancements: { 'heroic-strike': { enhanceCount: 2 } } })
+    const target = makeTarget({ armor: 0 })
+    const skill = getSkillWithEnhancements(warrior, 'heroic-strike')
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+    expect(result.skillCoefficient).toBe(1.6)
+    expect(result.rawDamage).toBe(Math.round(10 * 1.6)) // 16
+  })
+
   it('rage gained from dealing damage', () => {
     const warrior = makeWarrior({ physAtk: 15, currentMP: 20 })
     const target = makeTarget({ armor: 5 })
@@ -232,6 +242,19 @@ describe('Example13: Bloodthirst', () => {
     executeWarriorSkill(warrior, target, skill, { isCrit: false })
 
     expect(warrior.currentHP).toBeLessThanOrEqual(warrior.maxHP)
+  })
+
+  it('AC12: Bloodthirst enhanced 1x uses 1.3x coefficient and 20% heal', () => {
+    const warrior = makeWarrior({ physAtk: 20, currentMP: 25, currentHP: 30, maxHP: 50, skillEnhancements: { bloodthirst: { enhanceCount: 1 } } })
+    const target = makeTarget({ armor: 0, currentHP: 40 })
+    const skill = getSkillWithEnhancements(warrior, 'bloodthirst')
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+    expect(result.skillCoefficient).toBe(1.3)
+    expect(skill.healPercent).toBe(0.2)
+    const raw = Math.round(20 * 1.3) // 26
+    expect(result.rawDamage).toBe(raw)
+    const heal = Math.floor(result.finalDamage * 0.2)
+    expect(result.heal).toBe(heal)
   })
 
   it('AC4: insufficient rage - caller should skip skill', () => {
@@ -290,6 +313,18 @@ describe('Example13: Sunder Armor', () => {
     // Effective armor = 10 - 8 = 2; finalDamage = max(1, 15-2) = 13
     expect(result.effectiveDefense).toBe(2)
     expect(result.finalDamage).toBe(13)
+  })
+
+  it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes', () => {
+    const warrior = makeWarrior({ physAtk: 12, currentMP: 40, skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
+    const target = makeTarget({ armor: 10, debuffs: [{ type: 'sunder', stacks: 1, armorReduction: 8, remainingRounds: 1 }] })
+    const skill = getSkillWithEnhancements(warrior, 'sunder-armor')
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+    expect(result.debuffRefreshed).toBe(true)
+    const sunder = getSunderDebuff(target)
+    expect(sunder.stacks).toBe(2)
+    expect(sunder.armorReduction).toBe(16)
+    expect(sunder.remainingRounds).toBe(3)
   })
 
   it('AC7: Sunder debuff does NOT affect magic damage', () => {

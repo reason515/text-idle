@@ -55,6 +55,40 @@ export function getAnyWarriorSkillById(skillId) {
   return getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
 }
 
+const MAX_ENHANCE_COUNT = 3
+const PER_STACK_ARMOR_REDUCTION = 8
+
+/**
+ * Get skill with enhancement params applied. Design doc 8.1.6.
+ * Only initial skills (heroic-strike, bloodthirst, sunder-armor) have enhancement formulas.
+ * @param {Object} warrior - Combat unit with skillEnhancements
+ * @param {string} skillId
+ * @returns {Object|null} Skill definition with enhanced params (shallow copy)
+ */
+export function getSkillWithEnhancements(warrior, skillId) {
+  const base = getAnyWarriorSkillById(skillId)
+  if (!base) return null
+
+  const enhanceCount = Math.min(
+    MAX_ENHANCE_COUNT,
+    warrior?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
+  )
+  if (enhanceCount === 0) return base
+
+  const out = { ...base }
+
+  if (skillId === 'heroic-strike') {
+    out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
+  } else if (skillId === 'bloodthirst') {
+    out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
+    out.healPercent = Math.min(0.3, 0.15 + enhanceCount * 0.05)
+  } else if (skillId === 'sunder-armor') {
+    out.sunderMaxStacks = 1 + enhanceCount
+  }
+
+  return out
+}
+
 /**
  * Rage gained from taking damage: floor(damage / 2), minimum 1 when damage > 0.
  * @param {number} damageTaken
@@ -128,22 +162,32 @@ export function getEffectiveResistance(unit) {
 
 /**
  * Apply or refresh the Sunder Armor debuff on a target.
+ * When maxStacks > 1, adds 1 stack (capped at maxStacks) and refreshes duration.
  * Mutates target.debuffs.
  * @param {Object} target
  * @param {number} duration - rounds remaining
- * @param {number} armorReduction
- * @returns {{ refreshed: boolean }}
+ * @param {number} perStackArmorReduction - armor reduction per stack (default 8)
+ * @param {number} maxStacks - max stacks when enhanced (default 1, no stacking)
+ * @returns {{ refreshed: boolean, stacked: boolean }}
  */
-export function applySunderDebuff(target, duration = 3, armorReduction = 8) {
+export function applySunderDebuff(target, duration = 3, perStackArmorReduction = 8, maxStacks = 1) {
   if (!Array.isArray(target.debuffs)) target.debuffs = []
   const existing = target.debuffs.find((d) => d.type === 'sunder')
   if (existing) {
     existing.remainingRounds = duration
-    existing.armorReduction = armorReduction
-    return { refreshed: true }
+    const currentStacks = existing.stacks ?? (Math.round((existing.armorReduction || 0) / perStackArmorReduction) || 1)
+    const newStacks = Math.min(currentStacks + 1, maxStacks)
+    existing.stacks = newStacks
+    existing.armorReduction = perStackArmorReduction * newStacks
+    return { refreshed: true, stacked: newStacks > currentStacks }
   }
-  target.debuffs.push({ type: 'sunder', armorReduction, remainingRounds: duration })
-  return { refreshed: false }
+  target.debuffs.push({
+    type: 'sunder',
+    stacks: 1,
+    armorReduction: perStackArmorReduction * 1,
+    remainingRounds: duration,
+  })
+  return { refreshed: false, stacked: false }
 }
 
 /**
@@ -198,8 +242,12 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   }
 
   if (skill.id === 'sunder-armor') {
-    debuffResult = applySunderDebuff(target, skill.debuffDuration, skill.debuffArmorReduction)
+    const maxStacks = skill.sunderMaxStacks ?? 1
+    debuffResult = applySunderDebuff(target, skill.debuffDuration, PER_STACK_ARMOR_REDUCTION, maxStacks)
   }
+
+  const actualDebuffArmorReduction =
+    skill.id === 'sunder-armor' ? (getSunderDebuff(target)?.armorReduction ?? 0) : undefined
 
   const rageGained = rageFromDamageDealt(finalDamage)
   warrior.currentMP = Math.min(100, (warrior.currentMP || 0) + rageGained)
@@ -219,7 +267,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     heal,
     debuffApplied: debuffResult ? !debuffResult.refreshed : false,
     debuffRefreshed: debuffResult ? debuffResult.refreshed : false,
-    debuffArmorReduction: skill.id === 'sunder-armor' ? skill.debuffArmorReduction : undefined,
+    debuffArmorReduction: actualDebuffArmorReduction,
     debuffDuration: skill.id === 'sunder-armor' ? skill.debuffDuration : undefined,
   }
 }

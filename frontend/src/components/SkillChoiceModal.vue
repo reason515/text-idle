@@ -11,7 +11,7 @@
         <h3 class="section-label">Enhance existing skill</h3>
         <div class="skill-options">
           <button
-            v-for="sid in existingSkillIds"
+            v-for="sid in options.enhanceableSkillIds"
             :key="normalizeSkillId(sid)"
             class="skill-option"
             :class="{ selected: pendingAction?.type === 'enhance' && pendingAction?.skillId === normalizeSkillId(sid) }"
@@ -71,7 +71,7 @@
 import { ref, computed, watch } from 'vue'
 import { CLASS_COLORS } from '../data/heroes.js'
 import { getAnyWarriorSkillById } from '../game/warriorSkills.js'
-import { getSkillChoiceOptions, getHeroSkillIds } from '../game/skillChoice.js'
+import { getSkillChoiceOptions } from '../game/skillChoice.js'
 
 const props = defineProps({
   hero: { type: Object, default: null },
@@ -89,11 +89,6 @@ function classColor(heroClass) {
 const options = computed(() => {
   if (!props.hero) return { canEnhance: false, newSkills: [] }
   return getSkillChoiceOptions(props.hero, props.level)
-})
-
-const existingSkillIds = computed(() => {
-  if (!props.hero) return []
-  return getHeroSkillIds(props.hero)
 })
 
 /** Normalize skill id from string or { id } object (backward compat). */

@@ -443,9 +443,9 @@ Then [expected result/verifiable behavior].
 
 - **Rage**: Warriors start combat at 0 Rage; Rage gains from taking damage (+1 per 2 damage, minimum 1 when damage > 0) and dealing damage (+1 per 4 damage); max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
 - **Damage formula**: `rawDamage = PhysAtk * SkillCoeff * [1.5 if crit]`; `finalDamage = max(1, rawDamage - targetArmor)`.
-- **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage.
-- **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt.
-- **Sunder Armor**: 15 Rage, 0 CD. Base: 0.8x damage, target Armor -8 for 3 rounds. If target already has Sunder debuff: refresh duration and deal 1.1x damage instead.
+- **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 3, cap 1.8).
+- **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 3; cap 1.5, 30%).
+- **Sunder Armor**: 15 Rage, 0 CD. Base: 0.8x damage, target Armor -8 for 3 rounds. If target already has Sunder debuff: stack 1 layer (max 1+enhanceCount layers) and refresh duration. Enhancement: +1 max stack per enhance (max 3 enhances, 4 layers total); each layer -8 armor.
 
 **Acceptance Criteria**
 
@@ -461,6 +461,9 @@ Then [expected result/verifiable behavior].
 | AC8 | Warrior uses their initial skill in combat | Combat log records the action | Log shows skill name, target, damage dealt (and heal for Bloodthirst, debuff for Sunder Armor); damage calculation sub-line is visible (ATK - Armor = final) |
 | AC9 | Warrior has Rage 0 at combat start | First turn begins | Warrior cannot use any Rage-costing skill; must use basic attack or wait to build Rage |
 | AC10 | Combat log displays a skill action | User views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |
+| AC11 | Warrior has Heroic Strike enhanced 2 times (coefficient 1.6) | Warrior uses Heroic Strike | raw damage = PhysAtk * 1.6; enhancement applies in combat |
+| AC12 | Warrior has Bloodthirst enhanced 1 time (1.3x, 20% heal) | Warrior uses Bloodthirst | raw = PhysAtk * 1.3; heal = finalDamage * 0.20 |
+| AC13 | Warrior has Sunder Armor enhanced 2 times (max 3 stacks) | Warrior uses Sunder Armor on target with 1 stack | Target gains 2nd stack (-16 armor total); duration refreshes to 3 rounds |
 
 ---
 
@@ -843,6 +846,7 @@ Then [expected result/verifiable behavior].
   - **Pool exhausted**: If fewer than 3 unlearned skills remain at that level, show only the remaining ones; if all skills at that level are already learned, only the "Enhance existing skill" option is available.
 - **Max skills**: At level 60, the hero has triggered 12 times (5, 10, ..., 60); theoretical max = 1 (initial) + 12 = 13 skills, or fewer if the player chose to enhance existing skills multiple times.
 - **Example (Warrior Lv 5)**: Enhance existing (Heroic Strike / Bloodthirst / Sunder Armor), or learn one of: Cleave (Arms), Whirlwind (Fury), Taunt (Protection).
+- **Enhancement rules**: Each skill can be enhanced at most 3 times. Heroic Strike: +0.2 coefficient per enhance (max 1.8). Bloodthirst: +0.1 coefficient and +5% heal per enhance (max 1.5, 30%). Sunder Armor: +1 max stack per enhance (max 4 layers), each layer -8 armor, refresh duration on apply.
 
 **Acceptance Criteria**
 
@@ -850,7 +854,7 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | A hero (e.g., Warrior) gains enough XP to level up from 4 to 5 | Level-up is triggered | A skill selection modal appears; the player may choose to enhance, learn a new skill, or skip; the game continues regardless |
 | AC2 | Player is on the skill selection modal at Lv 5 | Player views the options | Two main choices are presented: "Enhance existing skill" and "Learn new skill"; if "Learn new skill" is chosen, 3 fixed skills for that level (one per spec) are shown |
-| AC3 | Player chooses "Enhance existing skill" | Player confirms | One of the hero's existing skills is enhanced (e.g., Heroic Strike coefficient +0.1); the modal closes; the game resumes |
+| AC3 | Player chooses "Enhance existing skill" | Player confirms | One of the hero's existing skills is enhanced (e.g., Heroic Strike coefficient +0.2 per enhance, max 3 enhances); the modal closes; the game resumes |
 | AC4 | Player chooses "Learn new skill" and selects one of the 3 options (e.g., Cleave) | Player confirms | The selected skill is added to the hero's skill list; the modal closes; the hero can use the new skill in subsequent battles |
 | AC5 | A Warrior hero levels from 9 to 10 | Level-up is triggered | The skill selection modal appears; the Lv 10 options (e.g., Rend, Raging Strike, Shield Slam) are shown for "Learn new skill" |
 | AC6 | A hero has already learned all 3 skills available at a given level (e.g., Lv 5 Cleave, Whirlwind, Taunt) | The hero levels to that level | Only "Enhance existing skill" is available; no new-skill options are shown |
