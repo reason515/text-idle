@@ -84,6 +84,25 @@ describe('equipment', () => {
       }
     })
 
+    it('Magic (blue) affixes never roll +0, minimum value is 1', () => {
+      const monsters = [{ tier: 'boss', level: 5 }]
+      const allAffixes = []
+      for (let i = 0; i < 500; i++) {
+        const rng = () => Math.random()
+        const result = generateEquipmentDrop(monsters, rng)
+        for (const item of result) {
+          if (item.quality === QUALITY_MAGIC || item.quality === QUALITY_RARE) {
+            for (const a of [...(item.prefixes || []), ...(item.suffixes || [])]) {
+              allAffixes.push(a.value)
+            }
+          }
+        }
+      }
+      for (const v of allAffixes) {
+        expect(v).toBeGreaterThanOrEqual(1)
+      }
+    })
+
     it('rings and amulets never drop as Normal (white) quality', () => {
       // Force drop + Ring slot + would-be Normal quality; result must be Magic
       // RNG sequence: drop(0.01), slot Ring1(0.65), base(0), quality Normal(0.95), affix count(0.3), prefix(0), suffix(0)

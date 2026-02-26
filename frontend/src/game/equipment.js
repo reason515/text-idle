@@ -80,7 +80,7 @@ function randomInRange(min, max, rng) {
 
 function rollInRange(baseMin, baseMax, quality, rng) {
   if (quality === QUALITY_MAGIC) {
-    const low = Math.floor(baseMin * 0.7)
+    const low = Math.max(1, Math.floor(baseMin * 0.7))
     const high = Math.ceil(baseMax * 1.3)
     return randomInRange(low, high, rng)
   }
@@ -92,7 +92,7 @@ function rollInRange(baseMin, baseMax, quality, rng) {
 
 function getAffixRange(baseMin, baseMax, quality) {
   if (quality === QUALITY_MAGIC) {
-    const low = Math.floor(baseMin * 0.7)
+    const low = Math.max(1, Math.floor(baseMin * 0.7))
     const high = Math.ceil(baseMax * 1.3)
     return { min: low, max: high }
   }
@@ -306,7 +306,7 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
         if (prefixes.length) {
           const p = pickRandom(prefixes, rng)
           const range = getAffixRange(p.baseMin, p.baseMax, QUALITY_MAGIC)
-          const val = rollInRange(Math.floor(p.baseMin * 0.7), Math.ceil(p.baseMax * 1.3), QUALITY_MAGIC, rng)
+          const val = rollInRange(p.baseMin, p.baseMax, QUALITY_MAGIC, rng)
           guaranteed.prefixes = [{ id: p.id, name: p.name, stat: p.stat, value: val, min: range.min, max: range.max }]
           applyAffixToItem(guaranteed, guaranteed.prefixes[0])
         }
