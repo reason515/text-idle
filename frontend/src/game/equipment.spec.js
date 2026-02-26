@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateEquipmentDrop,
+  generateShopItem,
   formatItemDisplayName,
   getQualityColor,
   canEquip,
@@ -10,6 +11,7 @@ import {
   QUALITY_NORMAL,
   QUALITY_MAGIC,
   QUALITY_RARE,
+  SHOP_SLOTS,
 } from './equipment.js'
 
 function fixedRng(values) {
@@ -69,6 +71,35 @@ describe('equipment', () => {
       }
       for (const item of drops) {
         expect(item.levelReq).toBeLessThanOrEqual(5)
+      }
+    })
+
+    it('generateShopItem returns item for slot with level cap', () => {
+      const item = generateShopItem('Helm', 5, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.slot).toBe('Helm')
+      expect(item.levelReq).toBeLessThanOrEqual(5)
+      expect(item.baseName).toBeDefined()
+      expect(item.quality).toBeDefined()
+    })
+
+    it('generateShopItem with empty squad (level 1) returns Lv1 item', () => {
+      const item = generateShopItem('Helm', 0, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.levelReq).toBeLessThanOrEqual(1)
+    })
+
+    it('generateShopItem Ring resolves to Ring1 or Ring2', () => {
+      let callCount = 0
+      const rng = () => (callCount++ === 0 ? 0 : Math.random())
+      const item = generateShopItem('Ring', 5, rng)
+      expect(['Ring1', 'Ring2']).toContain(item.slot)
+    })
+
+    it('generateShopItem Ring always Magic or higher', () => {
+      for (let i = 0; i < 20; i++) {
+        const item = generateShopItem('Ring', 5, () => Math.random())
+        expect(['magic', 'rare', 'unique']).toContain(item.quality)
       }
     })
 

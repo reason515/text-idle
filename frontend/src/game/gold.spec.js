@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { getGold, addGold, setGold, GOLD_STORAGE_KEY } from './gold.js'
+import { getGold, addGold, deductGold, setGold, GOLD_STORAGE_KEY } from './gold.js'
 
 const storage = {}
 describe('gold', () => {
@@ -57,6 +57,34 @@ describe('gold', () => {
     it('floors fractional amount', () => {
       const total = addGold(7.9)
       expect(total).toBe(7)
+    })
+  })
+
+  describe('deductGold', () => {
+    it('deducts gold and returns new total', () => {
+      addGold(100)
+      const total = deductGold(30)
+      expect(total).toBe(70)
+      expect(getGold()).toBe(70)
+    })
+
+    it('returns current balance unchanged when insufficient', () => {
+      addGold(50)
+      const total = deductGold(80)
+      expect(total).toBe(50)
+      expect(getGold()).toBe(50)
+    })
+
+    it('ignores negative amount', () => {
+      addGold(100)
+      deductGold(-20)
+      expect(getGold()).toBe(100)
+    })
+
+    it('floors fractional amount', () => {
+      addGold(100)
+      deductGold(10.7)
+      expect(getGold()).toBe(90)
     })
   })
 

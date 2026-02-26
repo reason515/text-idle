@@ -144,6 +144,9 @@
             <button class="btn btn-sm backpack-btn" title="Backpack" @click="showBackpackModal = true">
               Pack {{ inventoryCount }}/100
             </button>
+            <button class="btn btn-sm shop-btn" title="Shop" @click="showShopModal = true">
+              Shop
+            </button>
             <!-- Reserved for future: speed, settings, etc. -->
           </div>
         </div>
@@ -276,6 +279,83 @@
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showShopModal" class="modal-overlay" @click.self="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">
+        <div class="modal-box shop-modal">
+          <div class="shop-modal-header">
+            <div class="modal-title">Shop</div>
+            <div class="shop-gold-row">
+              <span class="shop-gold-label">Gold:</span>
+              <span class="shop-gold-value">{{ gold }}</span>
+            </div>
+          </div>
+          <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === 'Insufficient gold' }">
+            {{ shopMessage }}
+          </div>
+          <div class="shop-sections">
+            <div class="shop-section">
+              <div class="shop-section-title">Weapons</div>
+              <div class="shop-slot-list">
+                <div v-for="slot in SHOP_SLOTS.filter(s => s.id.startsWith('MainHand') || s.id.startsWith('OffHand'))" :key="slot.id" class="shop-slot-row">
+                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <button
+                    class="btn btn-sm shop-buy-btn"
+                    :disabled="gold < getShopPriceForSlot(slot.id)"
+                    @click="shopConfirmingSlot = slot.id"
+                  >
+                    Buy
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="shop-section">
+              <div class="shop-section-title">Armor</div>
+              <div class="shop-slot-list">
+                <div v-for="slot in SHOP_SLOTS.filter(s => ['Helm','Armor','Gloves','Boots','Belt'].includes(s.id))" :key="slot.id" class="shop-slot-row">
+                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <button
+                    class="btn btn-sm shop-buy-btn"
+                    :disabled="gold < getShopPriceForSlot(slot.id)"
+                    @click="shopConfirmingSlot = slot.id"
+                  >
+                    Buy
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="shop-section">
+              <div class="shop-section-title">Accessories</div>
+              <div class="shop-slot-list">
+                <div v-for="slot in SHOP_SLOTS.filter(s => ['Amulet','Ring'].includes(s.id))" :key="slot.id" class="shop-slot-row">
+                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <button
+                    class="btn btn-sm shop-buy-btn"
+                    :disabled="gold < getShopPriceForSlot(slot.id)"
+                    @click="shopConfirmingSlot = slot.id"
+                  >
+                    Buy
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="shopConfirmingSlot" class="shop-confirm-row">
+            <span class="shop-confirm-text">
+              Buy {{ getShopConfirmLabel(shopConfirmingSlot) }} for <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} gold</span>?
+            </span>
+            <div class="shop-confirm-actions">
+              <button class="btn btn-sm" @click="confirmShopBuy(shopConfirmingSlot)">Confirm</button>
+              <button class="btn btn-sm" @click="shopConfirmingSlot = null">Cancel</button>
+            </div>
+          </div>
+          <button class="btn shop-close-btn" @click="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">Close</button>
+        </div>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div v-if="showMapModal" class="modal-overlay" @click.self="showMapModal = false">
@@ -776,6 +856,10 @@
             <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
             <span class="toast-sold">)</span>
           </template>
+          <template v-else-if="t.type === 'shop'">
+            <span class="toast-shop">Purchased: </span>
+            <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
+          </template>
           <template v-else>{{ t.text }}</template>
         </div>
       </div>
@@ -806,6 +890,7 @@ import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
+import { buyFromShop, getShopPrice, SHOP_SLOTS } from '../game/shop.js'
 import {
   formatItemDisplayName,
   getQualityColor,
@@ -888,6 +973,7 @@ const progress = ref(createInitialProgress())
 const gold = ref(0)
 const showMapModal = ref(false)
 const showBackpackModal = ref(false)
+const showShopModal = ref(false)
 const selectedHero = ref(null)
 const heroDetailTab = ref('attrs')
 const selectedMonster = ref(null)
@@ -909,6 +995,8 @@ const unitFloatingNumbers = ref({})
 let floatNumId = 0
 const toastMessages = ref([])
 let toastId = 0
+const shopMessage = ref(null)
+const shopConfirmingSlot = ref(null)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 function showToast(payload) {
@@ -944,6 +1032,7 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } 
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
+const squadMaxLevel = computed(() => getSquadMaxLevel(squad.value) || 1)
 const inventoryCount = computed(() => {
   inventoryVersion.value
   return getInventory().length
@@ -1260,6 +1349,41 @@ function formatSecondaryFormulaTip(formula) {
 
 function getMonsterSkillDisplay(skillId) {
   return getMonsterSkillById(skillId) ?? { name: '', effectDesc: '', cooldown: 0 }
+}
+
+function getShopPriceForSlot(slotId) {
+  return getShopPrice(slotId, squadMaxLevel.value)
+}
+
+function getShopConfirmLabel(slotId) {
+  const entry = SHOP_SLOTS.find((s) => s.id === slotId)
+  return entry ? entry.label : slotId
+}
+
+function confirmShopBuy(slotId) {
+  handleShopBuy(slotId)
+  shopConfirmingSlot.value = null
+}
+
+function handleShopBuy(slotId) {
+  shopMessage.value = null
+  const result = buyFromShop(slotId, squadMaxLevel.value)
+  if (!result.success) {
+    shopMessage.value = 'Insufficient gold'
+    return
+  }
+  gold.value = getGold()
+  inventoryVersion.value++
+  if (result.inventoryFull) {
+    shopMessage.value = 'Inventory full — loot discarded!'
+    showToast('Inventory full — loot discarded!')
+  } else {
+    showToast({
+      type: 'shop',
+      itemName: formatItemDisplayName(result.item),
+      quality: result.item.quality,
+    })
+  }
 }
 
 function goRecruit() {
@@ -1982,15 +2106,133 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-.backpack-btn {
+.backpack-btn,
+.shop-btn {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--text);
 }
-.backpack-btn:hover {
+.backpack-btn:hover,
+.shop-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+.shop-modal {
+  min-width: 20rem;
+  max-width: 26rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.shop-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.shop-modal-header .modal-title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.shop-gold-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+.shop-gold-label { color: var(--text-muted); }
+.shop-gold-value {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+.shop-message {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--error);
+}
+.shop-message-error { color: var(--error); }
+.shop-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.shop-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.shop-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.shop-slot-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.shop-slot-label {
+  color: #7a9cb8;
+  font-size: 0.9rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shop-slot-price {
+  color: var(--color-gold);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.shop-buy-btn {
+  flex-shrink: 0;
+  width: 3rem;
+  min-width: 3rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+}
+.shop-buy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.shop-confirm-row {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+}
+.shop-confirm-text {
+  font-size: 0.9rem;
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.shop-confirm-price {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+.shop-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.shop-close-btn {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+.toast-shop { color: var(--color-gold); }
 
 .col-header {
   font-size: 0.85rem;

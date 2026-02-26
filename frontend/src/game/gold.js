@@ -34,6 +34,20 @@ export function addGold(amount) {
 }
 
 /**
+ * Deduct gold from player account.
+ * @param {number} amount - Amount to deduct (must be >= 0)
+ * @returns {number} New total gold balance; if insufficient, returns current balance unchanged
+ */
+export function deductGold(amount) {
+  const safe = Math.max(0, Math.floor(amount))
+  const current = getGold()
+  if (safe > current) return current
+  const next = current - safe
+  localStorage.setItem(GOLD_STORAGE_KEY, String(next))
+  return next
+}
+
+/**
  * Set gold to a specific value (for reset/init).
  * @param {number} amount - New balance (clamped to >= 0)
  */

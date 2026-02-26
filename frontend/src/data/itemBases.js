@@ -258,6 +258,58 @@ const BASE_ITEMS = {
     exceptional: [{ name: 'Ring', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: 0 }],
     elite: [{ name: 'Ring', levelReq: 41, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: 0 }],
   },
+  MainHand2H: {
+    normal: [
+      { name: 'Two-Handed Sword', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 8], spellPower: 0 },
+      { name: 'Claymore', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 9], spellPower: 0 },
+      { name: 'Giant Sword', levelReq: 8, str: 12, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [6, 12], spellPower: 0 },
+      { name: 'Bastard Sword', levelReq: 12, str: 20, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [9, 15], spellPower: 0 },
+      { name: 'Flamberge', levelReq: 16, str: 28, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [11, 18], spellPower: 0 },
+      { name: 'Great Sword', levelReq: 20, str: 38, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [14, 21], spellPower: 0 },
+    ],
+    exceptional: [
+      { name: 'Espadon', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [17, 27], spellPower: 0 },
+      { name: 'Gothic Sword', levelReq: 24, str: 14, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [21, 33], spellPower: 0 },
+      { name: 'Tusk Sword', levelReq: 28, str: 30, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [26, 41], spellPower: 0 },
+      { name: 'Zweihander', levelReq: 32, str: 50, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [32, 50], spellPower: 0 },
+      { name: 'Executioner Sword', levelReq: 36, str: 72, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [40, 62], spellPower: 0 },
+      { name: 'Dacian Falx', levelReq: 40, str: 98, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [49, 77], spellPower: 0 },
+    ],
+    elite: [
+      { name: 'Legend Sword', levelReq: 41, str: 20, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [45, 71], spellPower: 0 },
+      { name: 'Highland Blade', levelReq: 44, str: 44, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [57, 90], spellPower: 0 },
+      { name: 'Colossus Blade', levelReq: 48, str: 72, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [72, 113], spellPower: 0 },
+      { name: 'Champion Sword', levelReq: 52, str: 104, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [90, 141], spellPower: 0 },
+      { name: 'Colossus Sword', levelReq: 56, str: 140, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [113, 177], spellPower: 0 },
+      { name: 'Vortex Blade', levelReq: 60, str: 178, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [141, 222], spellPower: 0 },
+    ],
+  },
+  MainHandWand: {
+    normal: [
+      { name: 'Scepter', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 5] },
+      { name: 'Grand Scepter', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 6] },
+      { name: 'War Scepter', levelReq: 8, str: 0, agi: 0, int: 8, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [4, 8] },
+      { name: 'Wand', levelReq: 12, str: 0, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [6, 10] },
+      { name: 'Yew Wand', levelReq: 16, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [7, 12] },
+      { name: 'Grim Wand', levelReq: 20, str: 0, agi: 0, int: 26, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [9, 14] },
+    ],
+    exceptional: [
+      { name: 'Rune Scepter', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [11, 18] },
+      { name: 'Holy Water Sprinkler', levelReq: 24, str: 0, agi: 0, int: 10, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [14, 22] },
+      { name: 'Divine Scepter', levelReq: 28, str: 0, agi: 0, int: 22, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [17, 27] },
+      { name: 'Burnt Wand', levelReq: 32, str: 0, agi: 0, int: 36, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [21, 33] },
+      { name: 'Petrified Wand', levelReq: 36, str: 0, agi: 0, int: 52, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [26, 41] },
+      { name: 'Lich Wand', levelReq: 40, str: 0, agi: 0, int: 70, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [32, 51] },
+    ],
+    elite: [
+      { name: 'Mighty Scepter', levelReq: 41, str: 0, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [30, 47] },
+      { name: 'Seraph Rod', levelReq: 44, str: 0, agi: 0, int: 30, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [38, 60] },
+      { name: 'Caduceus', levelReq: 48, str: 0, agi: 0, int: 50, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [48, 75] },
+      { name: 'Polished Wand', levelReq: 52, str: 0, agi: 0, int: 72, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [60, 94] },
+      { name: 'Tomb Wand', levelReq: 56, str: 0, agi: 0, int: 98, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [75, 118] },
+      { name: 'Demon Wand', levelReq: 60, str: 0, agi: 0, int: 126, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [94, 148] },
+    ],
+  },
 }
 
 /** Slots that use Shield or OffHand base tables */
@@ -274,6 +326,8 @@ export const SLOT_TO_BASE_KEY = {
   Ring1: 'Ring',
   Ring2: 'Ring',
   Shield: 'Shield',
+  MainHand2H: 'MainHand2H',
+  MainHandWand: 'MainHandWand',
 }
 
 export function getBaseItemsForSlot(slotOrBaseKey) {

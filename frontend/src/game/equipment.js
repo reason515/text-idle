@@ -115,12 +115,12 @@ function resolveSlotForDrop(slot, rng) {
   return slot === 'MainHand' ? 'MainHand' : slot
 }
 
-/** Generate a single equipment item */
-function generateOneItem(monsterLevel, monsterTier, rng) {
+/** Generate a single equipment item. slotOverride: when provided (shop), use this slot. baseKeyOverride: when provided, use this base table. */
+function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, baseKeyOverride = null) {
   const itemTier = getItemTierByMonsterLevel(monsterLevel)
   const slots = getDroppableSlots(itemTier)
-  const slot = pickRandom(slots, rng)
-  const baseKey = resolveSlotForDrop(slot, rng)
+  const slot = slotOverride != null ? slotOverride : pickRandom(slots, rng)
+  const baseKey = baseKeyOverride != null ? baseKeyOverride : resolveSlotForDrop(slot, rng)
 
   const bases = getBaseItemsForSlot(baseKey === 'Shield' ? 'Shield' : baseKey)
   if (!bases || !bases[itemTier]) return null
@@ -316,6 +316,49 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
   }
 
   return drops
+}
+
+/** Shop purchasable slots with subdivisions. Format: { id, label, slot, baseKey } */
+export const SHOP_SLOTS = [
+  { id: 'MainHand-1H-Phys', label: '1H Weapon (Phys)', slot: 'MainHand', baseKey: 'MainHand' },
+  { id: 'MainHand-2H', label: '2H Weapon (Phys)', slot: 'TwoHand', baseKey: 'MainHand2H' },
+  { id: 'MainHand-Magic', label: '1H Weapon (Magic)', slot: 'MainHand', baseKey: 'MainHandWand' },
+  { id: 'OffHand-Shield', label: 'Shield', slot: 'OffHand', baseKey: 'Shield' },
+  { id: 'OffHand-Orb', label: 'Orb', slot: 'OffHand', baseKey: 'OffHand' },
+  { id: 'Helm', label: 'Helm', slot: 'Helm', baseKey: 'Helm' },
+  { id: 'Armor', label: 'Body Armor', slot: 'Armor', baseKey: 'Armor' },
+  { id: 'Gloves', label: 'Gloves', slot: 'Gloves', baseKey: 'Gloves' },
+  { id: 'Boots', label: 'Boots', slot: 'Boots', baseKey: 'Boots' },
+  { id: 'Belt', label: 'Belt', slot: 'Belt', baseKey: 'Belt' },
+  { id: 'Amulet', label: 'Amulet', slot: 'Amulet', baseKey: 'Amulet' },
+  { id: 'Ring', label: 'Ring', slot: null, baseKey: null },
+]
+
+/**
+ * Generate a shop item for a given slot. Reuses drop logic; quality uses normal-tier distribution.
+ * @param {string} slotId - Shop slot id (e.g. MainHand-1H-Phys, OffHand-Shield, Ring)
+ * @param {number} level - Item level cap (squad max level; 1 if empty)
+ * @param {Function} rng - Random 0..1
+ * @returns {Object|null} Generated item or null
+ */
+export function generateShopItem(slotId, level, rng = Math.random) {
+  const lvl = Math.max(1, Math.floor(level))
+  const entry = SHOP_SLOTS.find((s) => s.id === slotId)
+  if (!entry) return null
+
+  let slotOverride = entry.slot
+  let baseKeyOverride = entry.baseKey
+
+  if (slotId === 'Ring') {
+    slotOverride = rng() < 0.5 ? 'Ring1' : 'Ring2'
+    baseKeyOverride = 'Ring'
+  }
+
+  const droppableSlots = getDroppableSlots(getItemTierByMonsterLevel(lvl))
+  if (slotOverride && slotOverride !== 'TwoHand' && !droppableSlots.includes(slotOverride)) {
+    return null
+  }
+  return generateOneItem(lvl, 'normal', rng, slotOverride, baseKeyOverride)
 }
 
 /**
