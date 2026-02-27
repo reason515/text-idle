@@ -79,11 +79,14 @@ export function getSkillWithEnhancements(warrior, skillId) {
 
   if (skillId === 'heroic-strike') {
     out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
+    out.effectDesc = `${out.coefficient}x physical damage to single target`
   } else if (skillId === 'bloodthirst') {
     out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
     out.healPercent = Math.min(0.3, 0.15 + enhanceCount * 0.05)
+    out.effectDesc = `${out.coefficient}x physical damage; heal ${Math.round(out.healPercent * 100)}% of damage dealt`
   } else if (skillId === 'sunder-armor') {
     out.sunderMaxStacks = 1 + enhanceCount
+    out.effectDesc = `0.8x damage, target Armor -8 for 3 rounds; if already debuffed: refresh and 1.1x damage (max ${out.sunderMaxStacks} stacks)`
   }
 
   return out

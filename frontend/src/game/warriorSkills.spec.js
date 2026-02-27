@@ -198,6 +198,12 @@ describe('Example13: Heroic Strike', () => {
     expect(result.rawDamage).toBe(Math.round(10 * 1.6)) // 16
   })
 
+  it('effectDesc reflects enhanced coefficient for Heroic Strike', () => {
+    const warrior = makeWarrior({ skillEnhancements: { 'heroic-strike': { enhanceCount: 2 } } })
+    const skill = getSkillWithEnhancements(warrior, 'heroic-strike')
+    expect(skill.effectDesc).toContain('1.6x')
+  })
+
   it('rage gained from dealing damage', () => {
     const warrior = makeWarrior({ physAtk: 15, currentMP: 20 })
     const target = makeTarget({ armor: 5 })
@@ -257,6 +263,13 @@ describe('Example13: Bloodthirst', () => {
     expect(result.heal).toBe(heal)
   })
 
+  it('effectDesc reflects enhanced coefficient and heal for Bloodthirst', () => {
+    const warrior = makeWarrior({ skillEnhancements: { bloodthirst: { enhanceCount: 1 } } })
+    const skill = getSkillWithEnhancements(warrior, 'bloodthirst')
+    expect(skill.effectDesc).toContain('1.3x')
+    expect(skill.effectDesc).toContain('20%')
+  })
+
   it('AC4: insufficient rage - caller should skip skill', () => {
     const warrior = makeWarrior({ physAtk: 20, currentMP: 15 })
     expect((warrior.currentMP || 0) < skill.rageCost).toBe(true)
@@ -313,6 +326,12 @@ describe('Example13: Sunder Armor', () => {
     // Effective armor = 10 - 8 = 2; finalDamage = max(1, 15-2) = 13
     expect(result.effectiveDefense).toBe(2)
     expect(result.finalDamage).toBe(13)
+  })
+
+  it('effectDesc reflects enhanced max stacks for Sunder Armor', () => {
+    const warrior = makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
+    const skill = getSkillWithEnhancements(warrior, 'sunder-armor')
+    expect(skill.effectDesc).toContain('max 3 stacks')
   })
 
   it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes', () => {

@@ -187,6 +187,12 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
     const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
     expect(squadAfter[0].skillEnhancements?.['heroic-strike']?.enhanceCount).toBe(1)
+
+    // Hero detail Skills tab shows enhancement count and enhanced effectDesc
+    await page.locator('.hero-card').first().click()
+    await page.getByRole('button', { name: 'Skills' }).click()
+    await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
+    await expect(page.locator('.skill-desc-text').filter({ hasText: '1.4x' })).toBeVisible()
   })
 
   test('AC8: skip closes modal and game continues', async ({ page }) => {
