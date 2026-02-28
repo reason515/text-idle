@@ -103,20 +103,22 @@ describe('equipment', () => {
       }
     })
 
-    it('generateShopItem MainHand-2H-Magic returns 2H staff with TwoHand slot and spellPower', () => {
+    it('generateShopItem MainHand-2H-Magic returns 2H staff with TwoHand slot and spellPower range', () => {
       const item = generateShopItem('MainHand-2H-Magic', 10, () => 0.5)
       expect(item).toBeDefined()
       expect(item.slot).toBe('TwoHand')
-      expect(item.spellPower).toBeGreaterThan(0)
+      expect(item.spellPowerMin).toBeGreaterThan(0)
+      expect(item.spellPowerMax).toBeGreaterThanOrEqual(item.spellPowerMin)
       expect(item.physAtk).toBe(0)
       expect(['Short Staff', 'Jo Staff', 'Gnarled Staff', 'Battle Staff', 'Shadow Staff', 'Sacred Staff']).toContain(item.baseName)
     })
 
-    it('generateShopItem MainHand-2H-Bow returns 2H bow with TwoHand slot and physAtk', () => {
+    it('generateShopItem MainHand-2H-Bow returns 2H bow with TwoHand slot and physAtk range', () => {
       const item = generateShopItem('MainHand-2H-Bow', 10, () => 0.5)
       expect(item).toBeDefined()
       expect(item.slot).toBe('TwoHand')
-      expect(item.physAtk).toBeGreaterThan(0)
+      expect(item.physAtkMin).toBeGreaterThan(0)
+      expect(item.physAtkMax).toBeGreaterThanOrEqual(item.physAtkMin)
       expect(item.spellPower).toBe(0)
       expect(['Short Bow', "Hunter's Bow", 'Long Bow', 'Composite Bow', 'Long Battle Bow', 'Long War Bow']).toContain(item.baseName)
     })
@@ -307,6 +309,24 @@ describe('equipment', () => {
         Ring2: { armor: 0, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 5, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 },
       })
       expect(b.strength).toBe(5)
+    })
+
+    it('returns physAtkMin/Max when MainHand has weapon with damage range', () => {
+      const b = getEquipmentBonuses({
+        MainHand: { physAtkMin: 3, physAtkMax: 5, spellPower: 0, armor: 0, resistance: 0 },
+      })
+      expect(b.physAtkMin).toBe(3)
+      expect(b.physAtkMax).toBe(5)
+      expect(b.physAtk).toBe(0)
+    })
+
+    it('returns spellPowerMin/Max when MainHand has wand with damage range', () => {
+      const b = getEquipmentBonuses({
+        MainHand: { physAtk: 0, spellPowerMin: 6, spellPowerMax: 10, armor: 0, resistance: 0 },
+      })
+      expect(b.spellPowerMin).toBe(6)
+      expect(b.spellPowerMax).toBe(10)
+      expect(b.spellPower).toBe(0)
     })
   })
 })

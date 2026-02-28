@@ -38,6 +38,17 @@ export const WARRIOR_INITIAL_SKILLS = [
 
 import { getLevelSkillById } from './warriorLevelSkills.js'
 
+function randomInRange(min, max, rng) {
+  return min + Math.floor(rng() * (max - min + 1))
+}
+
+function getEffectivePhysAtk(warrior, rng) {
+  if (warrior.physAtkWeaponMin != null && warrior.physAtkWeaponMax != null && rng) {
+    return warrior.physAtk + randomInRange(warrior.physAtkWeaponMin, warrior.physAtkWeaponMax, rng)
+  }
+  return warrior.physAtk
+}
+
 /**
  * @param {string} skillId
  * @returns {Object|null}
@@ -256,7 +267,7 @@ export function tickDebuffs(unit) {
  * @returns {Object} Execution result with damage, heal, debuff info
  */
 export function executeWarriorSkill(warrior, target, skill, opts = {}) {
-  const { isCrit = false } = opts
+  const { isCrit = false, rng } = opts
   const CRIT_MULTIPLIER = 1.5
 
   warrior.currentMP = Math.max(0, (warrior.currentMP || 0) - skill.rageCost)
@@ -271,8 +282,9 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     coeff = skill.coefficient
   }
 
+  const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
   const effectiveArmor = getEffectiveArmor(target)
-  const baseRaw = Math.round(warrior.physAtk * coeff)
+  const baseRaw = Math.round(effectivePhysAtk * coeff)
   const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
   const finalDamage = Math.max(1, rawAfterCrit - effectiveArmor)
 
@@ -324,7 +336,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
  * @returns {Object} Result with hits array, totalDamage, etc.
  */
 export function executeCleave(warrior, targets, skill, opts = {}) {
-  const { isCrit = false } = opts
+  const { isCrit = false, rng } = opts
   const CRIT_MULTIPLIER = 1.5
   const maxTargets = Math.min(skill.targets ?? 2, targets.length) || 1
   const toHit = targets.slice(0, maxTargets)
@@ -336,14 +348,15 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
   const hits = []
 
   for (const target of toHit) {
+    const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
     const targetHPBefore = target.currentHP ?? 0
     const effectiveArmor = getEffectiveArmor(target)
-    const baseRaw = Math.round(warrior.physAtk * coeff)
+    const baseRaw = Math.round(effectivePhysAtk * coeff)
     const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
     const finalDamage = Math.max(1, rawAfterCrit - effectiveArmor)
     target.currentHP = Math.max(0, targetHPBefore - finalDamage)
     totalDamage += finalDamage
-    hits.push({ target, targetId: target.id, targetName: target.name, finalDamage, effectiveArmor, targetHPBefore })
+    hits.push({ target, targetId: target.id, targetName: target.name, baseRaw, finalDamage, effectiveArmor, targetHPBefore })
   }
 
   const rageGained = rageFromDamageDealt(totalDamage)

@@ -283,6 +283,26 @@ export function applyDamage(rawDamage, damageType, target) {
   }
 }
 
+function randomInRange(min, max, rng) {
+  return min + Math.floor(rng() * (max - min + 1))
+}
+
+function getEffectivePhysAtk(actor, rng) {
+  if (actor.physAtkWeaponMin != null && actor.physAtkWeaponMax != null && rng) {
+    const roll = randomInRange(actor.physAtkWeaponMin, actor.physAtkWeaponMax, rng)
+    return actor.physAtk + roll
+  }
+  return actor.physAtk
+}
+
+function getEffectiveSpellPower(actor, rng) {
+  if (actor.spellPowerWeaponMin != null && actor.spellPowerWeaponMax != null && rng) {
+    const roll = randomInRange(actor.spellPowerWeaponMin, actor.spellPowerWeaponMax, rng)
+    return actor.spellPower + roll
+  }
+  return actor.spellPower
+}
+
 function getMaxResource(heroClass, intellect, spirit) {
   if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
     return 100
@@ -300,6 +320,8 @@ function heroCombatStats(hero) {
   })
   const basePhysAtk = Math.round(hero.strength * 1.4 + hero.agility * 0.6)
   const baseSpellPower = Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)
+  const physAtkBase = basePhysAtk + (eq?.physAtk || 0)
+  const spellPowerBase = baseSpellPower + (eq?.spellPower || 0)
   return {
     id: hero.id,
     name: hero.name,
@@ -308,8 +330,12 @@ function heroCombatStats(hero) {
     agility: hero.agility,
     armor: computeHeroArmor(hero),
     resistance: computeHeroResistance(hero),
-    physAtk: Math.max(1, basePhysAtk + (eq?.physAtk || 0)),
-    spellPower: Math.max(0, baseSpellPower + (eq?.spellPower || 0)),
+    physAtk: Math.max(1, physAtkBase),
+    physAtkWeaponMin: eq?.physAtkMin ?? undefined,
+    physAtkWeaponMax: eq?.physAtkMax ?? undefined,
+    spellPower: Math.max(0, spellPowerBase),
+    spellPowerWeaponMin: eq?.spellPowerMin ?? undefined,
+    spellPowerWeaponMax: eq?.spellPowerMax ?? undefined,
     physCrit: crit.physCrit,
     spellCrit: crit.spellCrit,
     maxHP,
@@ -367,10 +393,12 @@ function pickTarget(actor, heroes, monsters) {
 
 function actorDamage(actor, rng, round) {
   if (actor.side === 'hero') {
-    if (actor.spellPower > actor.physAtk && rng() < 0.5) {
-      return { action: 'skill', damageType: 'magic', rawDamage: actor.spellPower }
+    const effPhys = getEffectivePhysAtk(actor, rng)
+    const effSpell = getEffectiveSpellPower(actor, rng)
+    if (effSpell > effPhys && rng() < 0.5) {
+      return { action: 'skill', damageType: 'magic', rawDamage: effSpell }
     }
-    return { action: 'basic', damageType: 'physical', rawDamage: actor.physAtk }
+    return { action: 'basic', damageType: 'physical', rawDamage: effPhys }
   }
 
   const skillDef = getMonsterSkillById(actor.skill)
@@ -379,24 +407,26 @@ function actorDamage(actor, rng, round) {
   const onCooldown = cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown
 
   const canUseSkill = actor.skillChance > 0 && actor.skill && !onCooldown && rng() < actor.skillChance
+  const effPhys = actor.side === 'hero' ? getEffectivePhysAtk(actor, rng) : actor.physAtk
+  const effSpell = actor.side === 'hero' ? getEffectiveSpellPower(actor, rng) : actor.spellPower
   if (!canUseSkill) {
-    if (actor.damageType === 'magic') return { action: 'basic', damageType: 'magic', rawDamage: actor.spellPower }
+    if (actor.damageType === 'magic') return { action: 'basic', damageType: 'magic', rawDamage: effSpell }
     if (actor.damageType === 'mixed') {
       const chooseMagic = rng() < 0.5
       return {
         action: 'basic',
         damageType: chooseMagic ? 'magic' : 'physical',
-        rawDamage: chooseMagic ? actor.spellPower : actor.physAtk,
+        rawDamage: chooseMagic ? effSpell : effPhys,
       }
     }
-    return { action: 'basic', damageType: 'physical', rawDamage: actor.physAtk }
+    return { action: 'basic', damageType: 'physical', rawDamage: effPhys }
   }
 
   const skillId = skillDef?.id ?? actor.skill
   const skillName = skillDef?.name ?? 'Skill'
   const coeff = skillDef?.coefficient ?? 1.25
   if (actor.damageType === 'magic') {
-    return { action: 'skill', skillId, skillName, damageType: 'magic', rawDamage: Math.round(actor.spellPower * coeff) }
+    return { action: 'skill', skillId, skillName, damageType: 'magic', rawDamage: Math.round(effSpell * coeff) }
   }
   if (actor.damageType === 'mixed') {
     const chooseMagic = rng() < 0.5
@@ -405,10 +435,10 @@ function actorDamage(actor, rng, round) {
       skillId,
       skillName,
       damageType: chooseMagic ? 'magic' : 'physical',
-      rawDamage: Math.round((chooseMagic ? actor.spellPower : actor.physAtk) * coeff),
+      rawDamage: Math.round((chooseMagic ? effSpell : effPhys) * coeff),
     }
   }
-  return { action: 'skill', skillId, skillName, damageType: 'physical', rawDamage: Math.round(actor.physAtk * coeff) }
+  return { action: 'skill', skillId, skillName, damageType: 'physical', rawDamage: Math.round(effPhys * coeff) }
 }
 
 function rewardForVictory(monsters, rng) {
@@ -456,7 +486,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (skill.targets && skill.targets >= 2) {
             const aliveMonsters = alive(monsterUnits)
             if (aliveMonsters.length > 0) {
-              const sr = executeCleave(actor, aliveMonsters, skill, { isCrit })
+              const sr = executeCleave(actor, aliveMonsters, skill, { isCrit, rng })
               if (!actor.skillCooldowns) actor.skillCooldowns = {}
               actor.skillCooldowns[skillId] = round
               const firstHit = sr.hits[0]
@@ -477,7 +507,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 targetClass: target.class || null,
                 targetTier: target.tier || null,
                 damageType: 'physical',
-                rawDamage: firstHit ? Math.round(actor.physAtk * sr.skillCoefficient) : 0,
+                rawDamage: firstHit?.baseRaw ?? 0,
                 isCrit,
                 finalDamage: sr.totalDamage,
                 absorbed: 0,
@@ -496,7 +526,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           } else {
             const actorHPBefore = actor.currentHP
             const targetHPBefore = target.currentHP
-            const sr = executeWarriorSkill(actor, target, skill, { isCrit })
+            const sr = executeWarriorSkill(actor, target, skill, { isCrit, rng })
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
             const entry = {

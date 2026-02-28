@@ -322,7 +322,7 @@ Then [expected result/verifiable behavior].
 - **Battle separator**: Visual separator line between consecutive battles.
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
-- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, Resistance, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. Warrior/Rogue/Hunter resource max is fixed 100.
+- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, Resistance, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. When hero has a weapon with damage range, PhysAtk/SpellPower is displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
 - **Monster detail panel**: Similar alignment; includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 - **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 
@@ -442,7 +442,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Rage**: Warriors start combat at 0 Rage; Rage gains from taking damage (+1 per 2 damage, minimum 1 when damage > 0) and dealing damage (+1 per 4 damage); max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
-- **Damage formula**: `rawDamage = PhysAtk * SkillCoeff * [1.5 if crit]`; `finalDamage = max(1, rawDamage - targetArmor)`.
+- **Damage formula**: `rawDamage = PhysAtk * SkillCoeff * [1.5 if crit]`; `finalDamage = max(1, rawDamage - targetArmor)`. When hero has a weapon with damage range (physAtkMin–physAtkMax), PhysAtk is rolled per hit within that range; AC tests with fixed PhysAtk assume no weapon or use effective PhysAtk for deterministic verification.
 - **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 3, cap 1.8).
 - **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 3; cap 1.5, 30%).
 - **Sunder Armor**: 15 Rage, 0 CD. Base: 0.8x damage, target Armor -8 for 3 rounds. If target already has Sunder debuff: stack 1 layer (max 1+enhanceCount layers) and refresh duration. Enhancement: +1 max stack per enhance (max 3 enhances, 4 layers total); each layer -8 armor.
@@ -464,6 +464,7 @@ Then [expected result/verifiable behavior].
 | AC11 | Warrior has Heroic Strike enhanced 2 times (coefficient 1.6) | Warrior uses Heroic Strike | raw damage = PhysAtk * 1.6; enhancement applies in combat |
 | AC12 | Warrior has Bloodthirst enhanced 1 time (1.3x, 20% heal) | Warrior uses Bloodthirst | raw = PhysAtk * 1.3; heal = finalDamage * 0.20 |
 | AC13 | Warrior has Sunder Armor enhanced 2 times (max 3 stacks) | Warrior uses Sunder Armor on target with 1 stack | Target gains 2nd stack (-16 armor total); duration refreshes to 3 rounds |
+| AC14 | Warrior has a weapon with PhysAtk range 3–5 (e.g., Short Sword) equipped | Warrior uses Heroic Strike multiple times in combat | Each hit rolls PhysAtk in [3, 5]; raw damage varies per hit; combat log shows the actual rolled damage each time |
 
 ---
 
@@ -552,6 +553,7 @@ Then [expected result/verifiable behavior].
 - **Blue vs. Yellow range rule**: Blue affix range = max(1, floor(base × 0.7)) to ceil(base × 1.3); Yellow affix range = base range (narrower, relies on count). Affix values are never +0.
 - **Monster tier modifier**: Elite monsters have higher drop probability and higher chance of blue/yellow quality than Normal; Boss has the highest drop probability and quality chance; **Boss always drops at least 1 item with quality ≥ Magic (blue)**.
 - **Ring and Amulet quality floor**: Rings and amulets have no base stats; white quality has no value. They **only drop at Magic (blue) or higher**; if rolled as Normal, quality is upgraded to Magic.
+- **Weapon damage range at drop**: Physical/spell weapons have 下限范围 and 上限范围 (see design doc 4.3). At drop, physAtkMin and physAtkMax are rolled independently within their ranges; the weapon instance displays the rolled range (e.g., PhysAtk: 3–5).
 - **Item naming**: White = base name only; Blue = prefix + base + suffix (1 affix: prefix+base or base+suffix); Yellow = primary prefix + base + primary suffix + ", the [Epithet]" (epithet from pool); Unique = fixed name.
 
 **Acceptance Criteria**
@@ -571,6 +573,7 @@ Then [expected result/verifiable behavior].
 | AC11 | Squad defeats a Boss encounter (e.g., Hogger, Edwin VanCleef) | Victory is triggered | Equipment drop probability is highest; **at least 1 dropped item has quality ≥ Magic (blue)**; if Boss would drop 0 items by roll, the system grants 1 blue item as a guaranteed reward |
 | AC12 | Squad defeats a Boss and receives multiple drops | Drops are resolved | Among the dropped items, at least one is Magic (blue), Rare (yellow), or Unique; the rest may be any quality |
 | AC13 | A Ring or Amulet drops | Drop is resolved | The item has quality Magic (blue) or higher; rings and amulets never drop as Normal (white) because they have no base stats |
+| AC14 | A weapon (e.g., Short Sword, Dagger) drops | Drop is resolved | The weapon's PhysAtk/SpellPower is a rolled range (e.g., PhysAtk: 3–5); min and max were each rolled from the base's 下限范围 and 上限范围; item detail shows this range |
 
 ---
 
@@ -584,7 +587,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Item detail shows**: base name, quality (color), slot type (e.g., Helm, Body Armor, Ring), level requirement, attribute requirements (Str/Agi/Int/Spi), affix list with current rolled value and roll range.
+- **Item detail shows**: base name, quality (color), slot type (e.g., Helm, Body Armor, Ring), level requirement, attribute requirements (Str/Agi/Int/Spi), affix list with current rolled value and roll range. **Weapons** show PhysAtk or SpellPower as a rolled range (e.g., PhysAtk: 3–5) from drop-time rolls.
 - **Requirements highlighted red** if the inspecting hero does not meet them.
 - **Affix range transparency**: Roll range visible so player can evaluate whether the roll is near-max, mid, or low.
 - **Comparison**: When inspecting a new item while a hero has the same slot equipped, the detail view can show the current item alongside the new one.
@@ -603,6 +606,7 @@ Then [expected result/verifiable behavior].
 | AC6 | Item requires Str 14 and the hero has Str 10 | Player inspects the item | The Str 14 requirement is shown in red; other met requirements are in normal color |
 | AC7 | Hero already has a Helm equipped and player inspects a new Helm | Player opens item detail | A comparison section shows the currently equipped Helm's key stats (Armor, affixes) alongside the new item's, so the player can tell at a glance if it is an upgrade |
 | AC8 | Item has no attribute requirement (e.g., Cap requires Str 0) | Player inspects the item | No attribute requirement line is shown (or it shows "No requirements"); level requirement still shown if applicable |
+| AC9 | Player inspects a weapon (e.g., Short Sword, Dagger, Wand) | Player views the item detail | The weapon displays its damage range (e.g., PhysAtk: 3–5 or SpellPower: 6–10); this is the rolled range from drop time; each physical/spell hit will roll within this range |
 
 ---
 
@@ -619,7 +623,7 @@ Then [expected result/verifiable behavior].
 - **10 display slots per hero**: Main Hand, Off Hand, Helm, Armor, Gloves, Boots, Belt, Amulet, Ring × 2. TwoHand is not a slot; two-hand weapons equip to Main Hand and block Off Hand.
 - **Two-hand rule**: Equipping a Two-Hand weapon occupies Main Hand; Off Hand shows "—" (blocked) and cannot equip Shield or Orb.
 - **Orb vs. Scepter/Wand**: Orb is a passive OffHand (no weapon damage, only attribute bonuses); Scepter/Wand is a MainHand weapon (deals spell damage). They are distinct item types.
-- **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower, HP, etc.) update immediately.
+- **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower, HP, etc.) update immediately. When the hero has a weapon with damage range, PhysAtk/SpellPower is displayed as a range (e.g., PhysAtk: 12–16).
 - **Cannot equip if requirements not met**: Level or attribute requirements block equipping.
 - **Ring stacking**: Two rings can have the same affix family; both bonuses apply.
 - **Equipment UI location**: Accessible via the hero detail modal (opened by clicking a hero card on the main screen).
@@ -639,6 +643,7 @@ Then [expected result/verifiable behavior].
 | AC9 | Player unequips an item from a hero | Player clicks the equipped slot (item detail appears), clicks Unequip, then confirms | The slot becomes empty; hero's secondary attributes revert to the values without that item's bonuses |
 | AC9a | Hero has an item equipped in a slot | Player clicks the equipped slot | Equipment detail modal appears with full item stats; Unequip and Close buttons are visible; player must click Unequip then Confirm to unequip |
 | AC10 | Hero has a new item equipped | Hero participates in the next combat encounter | The item's Armor/Resistance/PhysAtk/SpellPower bonuses are applied in the actual damage and defense calculations during combat |
+| AC11 | Hero equips a weapon with PhysAtk range (e.g., Short Sword 3–5) | Player views the hero detail panel | PhysAtk is displayed as a range (e.g., 12–16 = base + weapon 3–5 + other); each combat hit rolls within the weapon's range |
 
 ---
 
@@ -697,7 +702,7 @@ Then [expected result/verifiable behavior].
   | Normal | +2–5 | Low-level drops |
   | Exceptional | +5–12 | Mid-game drops |
   | Elite | +12–24 | Late-game drops |
-- **Base item stat scaling**: Higher tier = higher base Armor/PhysAtk/level requirement (e.g., Helm F1: Cap Armor 2–3 → War Hat Resistance 8–13 → Shako Armor 8–13 + Resistance 8–13).
+- **Base item stat scaling**: Higher tier = higher base Armor/PhysAtk/level requirement (e.g., Helm F1: Cap Armor 2–3 → War Hat Resistance 8–13 → Shako Armor 8–13 + Resistance 8–13). **Weapons** use 下限范围 and 上限范围 columns (see design doc 4.3); tier determines which base families and damage ranges apply.
 - **Within same tier, F1→F6**: Level requirement and base stats increase by ~4 levels per family.
 
 **Acceptance Criteria**
@@ -714,6 +719,7 @@ Then [expected result/verifiable behavior].
 | AC8 | Player is on Elwynn Forest (Lv 1–5 monsters) and on Westfall (Lv 6–10 monsters) | Equipment drops from each map | Items from higher-level maps have higher level requirements within the same Normal tier (e.g., Skull Cap Lv 4 on Westfall vs. Cap Lv 1 on Elwynn); stat differences are visible |
 | AC9 | Player progresses from map 1 to map 3 | Player views dropped items over time | Item base names progress through the Normal tier families (F1→F6 gradually) as monster levels increase; equipment visibly improves with map progression |
 | AC10 | Squad defeats Lv 5 monsters | Equipment drops | All dropped items have levelReq <= 5 (no Great Helm Lv 16, Crown Lv 20, etc.); base selection is restricted to families whose levelReq <= monster level |
+| AC11 | A Normal-tier weapon (e.g., Short Sword) and an Elite-tier weapon (e.g., Cryptic Sword) drop | Player inspects both | Normal weapon shows lower 下限范围/上限范围 (e.g., PhysAtk: 3–5); Elite weapon shows higher range (e.g., PhysAtk: 94–148); weapon damage scales with tier |
 
 ---
 

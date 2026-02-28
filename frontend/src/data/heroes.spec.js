@@ -195,6 +195,17 @@ describe('heroes', () => {
       expect(physAtkFormula.formula).toMatch(/EQP: \+4/)
     })
 
+    it('Warrior with weapon damage range shows PhysAtk as min-max', () => {
+      const hero = { class: 'Warrior', strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3, level: 1, equipment: { MainHand: { physAtkMin: 3, physAtkMax: 5, spellPower: 0, armor: 0, resistance: 0 } } }
+      const { values, formulas } = computeSecondaryAttributes('Warrior', 1, hero)
+      expect(values.PhysAtk).toMatch(/^\d+\.?\d*-\d+\.?\d*$/)
+      const [minVal, maxVal] = values.PhysAtk.split('-').map(Number)
+      expect(minVal).toBe(14.5)
+      expect(maxVal).toBe(16.5)
+      const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
+      expect(physAtkFormula.formula).toMatch(/Weapon\(3-5\)/)
+    })
+
     it('formulas include actual attribute values for calculation transparency', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const hpFormula = formulas.find((f) => f.key === 'HP')

@@ -358,6 +358,44 @@ describe('combat progression and systems', () => {
     }
   })
 
+  it('AC14: weapon damage range - rawDamage varies per attack when hero has weapon with physAtkMin/Max', () => {
+    const heroWithWeaponRange = sampleHero({
+      id: 'h1',
+      agility: 9,
+      strength: 10,
+      equipment: { MainHand: { physAtkMin: 3, physAtkMax: 5, armor: 0, resistance: 0 } },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rawDamages = []
+    for (let i = 0; i < 50; i += 1) {
+      const rng = () => (i / 50) * 0.98 + 0.01
+      const result = runAutoCombat({ heroes: [heroWithWeaponRange], monsters: [...monsters], rng, maxRounds: 10 })
+      const heroEntries = result.log.filter((e) => e.actorName === 'Hero One' && e.rawDamage != null)
+      heroEntries.forEach((e) => rawDamages.push(e.rawDamage))
+    }
+    const unique = [...new Set(rawDamages)]
+    expect(unique.length).toBeGreaterThan(1)
+    const basePhysAtk = Math.round(10 * 1.4 + 9 * 0.6)
+    const minEffective = basePhysAtk + 3
+    const maxEffective = basePhysAtk + 5
+    const minExpected = minEffective
+    const maxExpected = Math.round(maxEffective * 1.2)
+    for (const d of rawDamages) {
+      expect(d).toBeGreaterThanOrEqual(minExpected)
+      expect(d).toBeLessThanOrEqual(maxExpected)
+    }
+  })
+
   it('log entries include actorAgility so player sees higher agility acts first', () => {
     const heroes = [sampleHero({ id: 'h1', agility: 12, strength: 12 })]
     const monsters = [

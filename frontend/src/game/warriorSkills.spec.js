@@ -229,6 +229,29 @@ describe('Example13: Heroic Strike', () => {
     const expectedRage = Math.min(100, rageBeforeResult + Math.floor(13 / 4))
     expect(warrior.currentMP).toBe(expectedRage)
   })
+
+  it('AC14: weapon damage range - rawDamage varies per hit when physAtkWeaponMin/Max present', () => {
+    const warrior = makeWarrior({
+      physAtk: 10,
+      physAtkWeaponMin: 3,
+      physAtkWeaponMax: 5,
+      currentMP: 20,
+    })
+    const target = makeTarget({ armor: 0 })
+
+    const rngMin = () => 0
+    const rngMax = () => 0.999
+    const resultMin = executeWarriorSkill(warrior, target, skill, { isCrit: false, rng: rngMin })
+    const target2 = makeTarget({ armor: 0 })
+    const resultMax = executeWarriorSkill(
+      makeWarrior({ physAtk: 10, physAtkWeaponMin: 3, physAtkWeaponMax: 5, currentMP: 20 }),
+      target2,
+      skill,
+      { isCrit: false, rng: rngMax }
+    )
+    expect(resultMin.rawDamage).toBe(16)
+    expect(resultMax.rawDamage).toBe(18)
+  })
 })
 
 // ---------------------------------------------------------------------------

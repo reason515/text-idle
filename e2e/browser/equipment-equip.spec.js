@@ -52,6 +52,26 @@ const SAMPLE_HELM = {
   suffixes: [],
 }
 
+const SAMPLE_WEAPON_RANGE = {
+  id: 'test-weapon-range',
+  slot: 'MainHand',
+  baseName: 'Short Sword',
+  itemTier: 'normal',
+  quality: 'normal',
+  levelReq: 1,
+  strReq: 0,
+  agiReq: 0,
+  intReq: 0,
+  spiReq: 0,
+  armor: 0,
+  resistance: 0,
+  physAtkMin: 3,
+  physAtkMax: 5,
+  spellPower: 0,
+  prefixes: [],
+  suffixes: [],
+}
+
 test.describe('Equipment Equip (Example 19, 20)', () => {
   test('hero detail shows Equipment section with 10 slots (MainHand, OffHand, no TwoHand)', async ({ page }) => {
     const email = `eq-slots-e2e-${Date.now()}@example.com`
@@ -124,5 +144,31 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page.locator('.equipment-slot-val').filter({ hasText: 'Cap' })).toHaveCount(0)
     await expect(page.locator('.equipment-slot-row').filter({ hasText: 'Helm' })).toContainText('Empty')
+  })
+
+  test('AC10/AC11: equip weapon with damage range shows PhysAtk as min-max in hero detail', async ({ page }) => {
+    const email = `eq-weapon-range-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate((item) => {
+      localStorage.setItem('playerInventory', JSON.stringify([item]))
+    }, SAMPLE_WEAPON_RANGE)
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await page.locator('.equipment-slot-row').filter({ hasText: 'Main Hand' }).locator('.equipment-slot-val').click()
+    await expect(page.locator('.inventory-modal')).toBeVisible()
+    await page.locator('.inventory-slot').filter({ hasText: 'Short Sword' }).click()
+    await expect(page.locator('.inventory-modal')).not.toBeVisible()
+
+    const physAtkRow = page.locator('.detail-row').filter({ hasText: 'PhysAtk' }).first()
+    await expect(physAtkRow).toBeVisible()
+    const physAtkVal = await physAtkRow.locator('.detail-value').textContent()
+    expect(physAtkVal).toMatch(/^\d+\.?\d*-\d+\.?\d*$/)
   })
 })

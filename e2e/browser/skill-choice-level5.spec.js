@@ -42,13 +42,13 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Level 4 -> 5: XP required = floor(50*4^1.8)=593. Set xp=582 so 582+12>=593
+    // Level 4 -> 5: XP required = floor(50*4^1.8)=606. Set xp=594 so 594+12>=606
     await page.evaluate(() => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         const h = squad[0]
         h.level = 4
-        h.xp = 582
+        h.xp = 594
         h.strength = 100
         h.stamina = 80
         h.agility = 30
@@ -87,7 +87,7 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
       if (squad.length > 0) {
         const h = squad[0]
         h.level = 4
-        h.xp = 582
+        h.xp = 594
         h.strength = 100
         h.stamina = 80
         if (!h.skills) h.skills = [h.skill || 'heroic-strike']
@@ -123,7 +123,7 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
       if (squad.length > 0) {
         const h = squad[0]
         h.level = 4
-        h.xp = 582
+        h.xp = 594
         h.strength = 100
         h.stamina = 80
         if (!h.skills) h.skills = [h.skill || 'heroic-strike']
@@ -163,7 +163,7 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
       if (squad.length > 0) {
         const h = squad[0]
         h.level = 4
-        h.xp = 582
+        h.xp = 594
         h.strength = 100
         h.stamina = 80
         if (!h.skills) h.skills = [h.skill || 'heroic-strike']
@@ -213,7 +213,7 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
       if (squad.length > 0) {
         const h = squad[0]
         h.level = 4
-        h.xp = 582
+        h.xp = 594
         h.strength = 100
         h.stamina = 80
         if (!h.skills) h.skills = [h.skill || 'heroic-strike']

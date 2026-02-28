@@ -193,25 +193,39 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
 
-  // PhysAtk (base + equipment)
+  // PhysAtk (base + equipment; weapon range shown as min-max)
   if (coef.physAtkAttr && coef.k_PhysAtk != null) {
     const mainAttr = attrs[coef.physAtkAttr] || 0
     const basePhysAtk = 5 + mainAttr * coef.k_PhysAtk
-    values.PhysAtk = Math.round((basePhysAtk + eq.physAtk) * 10) / 10
     const attrName = coef.physAtkAttr === 'strength' ? 'Str' : 'Agi'
     const baseFormula = formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, null)
-    formulaMap.PhysAtk = eq.physAtk ? fmtFormula(baseFormula + ` + EQP(+${eq.physAtk}) = ${values.PhysAtk}`) : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
+    if (eq.physAtkMin != null && eq.physAtkMax != null) {
+      const minVal = Math.round((basePhysAtk + eq.physAtkMin) * 10) / 10
+      const maxVal = Math.round((basePhysAtk + eq.physAtkMax) * 10) / 10
+      values.PhysAtk = `${minVal}-${maxVal}`
+      formulaMap.PhysAtk = fmtFormula(baseFormula + ` + Weapon(${eq.physAtkMin}-${eq.physAtkMax}) = ${values.PhysAtk}`)
+    } else {
+      values.PhysAtk = Math.round((basePhysAtk + eq.physAtk) * 10) / 10
+      formulaMap.PhysAtk = eq.physAtk ? fmtFormula(baseFormula + ` + EQP(+${eq.physAtk}) = ${values.PhysAtk}`) : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
+    }
   } else {
     values.PhysAtk = eq.physAtk || NA
     formulaMap.PhysAtk = eq.physAtk ? `EQP: +${eq.physAtk}` : NA
   }
 
-  // SpellPower (base + equipment)
+  // SpellPower (base + equipment; weapon range shown as min-max)
   if (coef.k_SpellPower != null) {
     const baseSpellPower = 5 + attrs.intellect * coef.k_SpellPower
-    values.SpellPower = Math.round((baseSpellPower + eq.spellPower) * 10) / 10
     const baseFormula = formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, null)
-    formulaMap.SpellPower = eq.spellPower ? fmtFormula(baseFormula + ` + EQP(+${eq.spellPower}) = ${values.SpellPower}`) : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
+    if (eq.spellPowerMin != null && eq.spellPowerMax != null) {
+      const minVal = Math.round((baseSpellPower + eq.spellPowerMin) * 10) / 10
+      const maxVal = Math.round((baseSpellPower + eq.spellPowerMax) * 10) / 10
+      values.SpellPower = `${minVal}-${maxVal}`
+      formulaMap.SpellPower = fmtFormula(baseFormula + ` + Weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${values.SpellPower}`)
+    } else {
+      values.SpellPower = Math.round((baseSpellPower + eq.spellPower) * 10) / 10
+      formulaMap.SpellPower = eq.spellPower ? fmtFormula(baseFormula + ` + EQP(+${eq.spellPower}) = ${values.SpellPower}`) : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
+    }
   } else {
     values.SpellPower = eq.spellPower || NA
     formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA

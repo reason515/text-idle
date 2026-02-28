@@ -78,6 +78,28 @@ function randomInRange(min, max, rng) {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
+/** Derive min/max roll ranges from base [a,b] per design doc 2.2.3.1 */
+function weaponDamageRanges(arr) {
+  if (!Array.isArray(arr) || arr.length < 2) return null
+  const [a, b] = arr
+  const mid = (a + b) / 2
+  const minLow = a
+  const minHigh = Math.floor(mid)
+  const maxLow = Math.ceil(mid)
+  const maxHigh = b
+  return { minLow, minHigh, maxLow, maxHigh }
+}
+
+/** Roll weapon physAtk/spellPower min and max at drop; ensure min <= max */
+function rollWeaponDamageRange(arr, rng) {
+  const r = weaponDamageRanges(arr)
+  if (!r) return null
+  let min = randomInRange(r.minLow, r.minHigh, rng)
+  let max = randomInRange(r.maxLow, r.maxHigh, rng)
+  if (min > max) [min, max] = [max, min]
+  return { min, max }
+}
+
 function rollInRange(baseMin, baseMax, quality, rng) {
   if (quality === QUALITY_MAGIC) {
     const low = Math.max(1, Math.floor(baseMin * 0.7))
@@ -194,8 +216,23 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
 
   item.armor = rollBaseStat(baseDef.armor)
   item.resistance = rollBaseStat(baseDef.resistance)
-  item.physAtk = rollBaseStat(baseDef.physAtk)
-  item.spellPower = rollBaseStat(baseDef.spellPower)
+
+  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
+  const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? rollWeaponDamageRange(baseDef.physAtk, rng) : null
+  if (physAtkRange) {
+    item.physAtkMin = physAtkRange.min
+    item.physAtkMax = physAtkRange.max
+  } else {
+    item.physAtk = rollBaseStat(baseDef.physAtk)
+  }
+
+  const spellPowerRange = isWeaponBase && Array.isArray(baseDef.spellPower) ? rollWeaponDamageRange(baseDef.spellPower, rng) : null
+  if (spellPowerRange) {
+    item.spellPowerMin = spellPowerRange.min
+    item.spellPowerMax = spellPowerRange.max
+  } else {
+    item.spellPower = rollBaseStat(baseDef.spellPower)
+  }
 
   const allowedAffixes = AFFIX_POOL.filter((a) => {
     if (itemTier === 'normal') return a.tier === 'normal'
@@ -423,25 +460,58 @@ export function getQualityColor(quality) {
 
 export { EQUIPMENT_SLOTS, SLOT_LABELS }
 
+const MAINHAND_SLOT = 'MainHand'
+
 /**
- * Sum equipment bonuses from equipped items
+ * Sum equipment bonuses from equipped items.
+ * Weapons with physAtkMin/Max contribute range; other items contribute fixed physAtk.
  * @param {Object} equipment - { [slot]: item }
- * @returns {{ armor, resistance, physAtk, spellPower, strength, agility, intellect, stamina, spirit }}
+ * @returns {{ armor, resistance, physAtk, spellPower, physAtkMin, physAtkMax, spellPowerMin, spellPowerMax, strength, agility, intellect, stamina, spirit }}
  */
 export function getEquipmentBonuses(equipment) {
-  const out = { armor: 0, resistance: 0, physAtk: 0, spellPower: 0, strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 }
+  const out = {
+    armor: 0,
+    resistance: 0,
+    physAtk: 0,
+    spellPower: 0,
+    physAtkMin: null,
+    physAtkMax: null,
+    spellPowerMin: null,
+    spellPowerMax: null,
+    strength: 0,
+    agility: 0,
+    intellect: 0,
+    stamina: 0,
+    spirit: 0,
+  }
   if (!equipment || typeof equipment !== 'object') return out
-  for (const item of Object.values(equipment)) {
+  for (const [slot, item] of Object.entries(equipment)) {
     if (!item) continue
     out.armor += item.armor || 0
     out.resistance += item.resistance || 0
-    out.physAtk += item.physAtk || 0
-    out.spellPower += item.spellPower || 0
     out.strength += item.strBonus || 0
     out.agility += item.agiBonus || 0
     out.intellect += item.intBonus || 0
     out.stamina += item.staBonus || 0
     out.spirit += item.spiBonus || 0
+
+    if (slot === MAINHAND_SLOT) {
+      if (item.physAtkMin != null && item.physAtkMax != null) {
+        out.physAtkMin = item.physAtkMin
+        out.physAtkMax = item.physAtkMax
+      } else {
+        out.physAtk += item.physAtk || 0
+      }
+      if (item.spellPowerMin != null && item.spellPowerMax != null) {
+        out.spellPowerMin = item.spellPowerMin
+        out.spellPowerMax = item.spellPowerMax
+      } else {
+        out.spellPower += item.spellPower || 0
+      }
+    } else {
+      out.physAtk += item.physAtk || 0
+      out.spellPower += item.spellPower || 0
+    }
   }
   return out
 }
