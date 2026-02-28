@@ -657,7 +657,7 @@
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
             <template v-if="selectedHero.class === 'Warrior' && heroSkillIds(selectedHero).length > 0">
-              <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section">
+              <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
                   <span class="detail-label">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
                   <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(skillId, selectedHero).spec }}</span>
@@ -2989,6 +2989,14 @@ onUnmounted(() => {
 .xp-row .bar-num { color: var(--color-exp); }
 
 /* Skill display in hero detail */
+.skill-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.skill-card:last-child { margin-bottom: 0; }
 .skill-enhance-badge {
   display: inline-block;
   font-size: 0.7rem;
