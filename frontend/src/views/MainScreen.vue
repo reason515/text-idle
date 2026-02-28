@@ -466,13 +466,13 @@
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedItem.resistance }}</span>
             </div>
-            <div v-if="(selectedItem.physAtk || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="((selectedItem.physAtk || 0) > 0 || (selectedItem.physAtkMin != null && selectedItem.physAtkMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
-              <span class="detail-value">{{ selectedItem.physAtk }}</span>
+              <span class="detail-value">{{ selectedItem.physAtkMin != null && selectedItem.physAtkMax != null ? (selectedItem.physAtkMin + '-' + selectedItem.physAtkMax) : selectedItem.physAtk }}</span>
             </div>
-            <div v-if="(selectedItem.spellPower || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
-              <span class="detail-value">{{ selectedItem.spellPower }}</span>
+              <span class="detail-value">{{ selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null ? (selectedItem.spellPowerMin + '-' + selectedItem.spellPowerMax) : selectedItem.spellPower }}</span>
             </div>
             <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
             <div class="affix-list">
@@ -718,13 +718,13 @@
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.physAtk || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="((selectedEquippedItem.item.physAtk || 0) > 0 || (selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.physAtk }}</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null ? (selectedEquippedItem.item.physAtkMin + '-' + selectedEquippedItem.item.physAtkMax) : selectedEquippedItem.item.physAtk }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.spellPower || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.spellPower }}</span>
+              <span class="detail-value">{{ selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null ? (selectedEquippedItem.item.spellPowerMin + '-' + selectedEquippedItem.item.spellPowerMax) : selectedEquippedItem.item.spellPower }}</span>
             </div>
             <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
             <div class="affix-list">
@@ -1081,6 +1081,7 @@ const currentMapName = computed(() => {
 const heroIds = computed(() => new Set(displayHeroes.value.map((h) => h.id)))
 
 const heroSecondaryAttrs = computed(() => {
+  inventoryVersion.value // trigger recompute when equip/unequip
   if (!selectedHero.value) return []
   return computeSecondaryAttributes(
     selectedHero.value.class,

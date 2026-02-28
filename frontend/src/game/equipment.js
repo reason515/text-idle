@@ -461,10 +461,15 @@ export function getQualityColor(quality) {
 export { EQUIPMENT_SLOTS, SLOT_LABELS }
 
 const MAINHAND_SLOT = 'MainHand'
+const TWOHAND_SLOT = 'TwoHand'
+
+/** Slots that hold weapons with damage range (physAtkMin/Max, spellPowerMin/Max) */
+const WEAPON_SLOTS = [MAINHAND_SLOT, TWOHAND_SLOT]
 
 /**
  * Sum equipment bonuses from equipped items.
  * Weapons with physAtkMin/Max contribute range; other items contribute fixed physAtk.
+ * TwoHand weapons (stored in equipment.TwoHand) are treated as main-hand for damage.
  * @param {Object} equipment - { [slot]: item }
  * @returns {{ armor, resistance, physAtk, spellPower, physAtkMin, physAtkMax, spellPowerMin, spellPowerMax, strength, agility, intellect, stamina, spirit }}
  */
@@ -495,7 +500,7 @@ export function getEquipmentBonuses(equipment) {
     out.stamina += item.staBonus || 0
     out.spirit += item.spiBonus || 0
 
-    if (slot === MAINHAND_SLOT) {
+    if (WEAPON_SLOTS.includes(slot)) {
       if (item.physAtkMin != null && item.physAtkMax != null) {
         out.physAtkMin = item.physAtkMin
         out.physAtkMax = item.physAtkMax

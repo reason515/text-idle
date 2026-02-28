@@ -328,5 +328,14 @@ describe('equipment', () => {
       expect(b.spellPowerMax).toBe(10)
       expect(b.spellPower).toBe(0)
     })
+
+    it('returns physAtkMin/Max when TwoHand has weapon with damage range', () => {
+      const b = getEquipmentBonuses({
+        TwoHand: { physAtkMin: 8, physAtkMax: 12, spellPower: 0, armor: 0, resistance: 0 },
+      })
+      expect(b.physAtkMin).toBe(8)
+      expect(b.physAtkMax).toBe(12)
+      expect(b.physAtk).toBe(0)
+    })
   })
 })
