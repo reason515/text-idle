@@ -93,6 +93,46 @@ export function getSkillWithEnhancements(warrior, skillId) {
 }
 
 /**
+ * Get effectDesc for skill choice modal when showing "Enhance existing skill".
+ * Shows current -> after values (e.g. "1.2x -> 1.4x physical damage to single target").
+ * Only initial skills (heroic-strike, bloodthirst, sunder-armor) have enhancement preview.
+ * @param {Object} hero - Hero with skillEnhancements
+ * @param {string} skillId
+ * @returns {string}
+ */
+export function getEnhancementPreviewEffectDesc(hero, skillId) {
+  const base = getAnyWarriorSkillById(skillId)
+  if (!base) return ''
+
+  const current = Math.min(
+    MAX_ENHANCE_COUNT,
+    hero?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
+  )
+  const next = Math.min(MAX_ENHANCE_COUNT, current + 1)
+  if (next <= current) return base.effectDesc ?? ''
+
+  if (skillId === 'heroic-strike') {
+    const currCoeff = Math.min(1.8, 1.2 + current * 0.2)
+    const nextCoeff = Math.min(1.8, 1.2 + next * 0.2)
+    return `${currCoeff}x -> ${nextCoeff}x physical damage to single target`
+  }
+  if (skillId === 'bloodthirst') {
+    const currCoeff = Math.min(1.5, 1.2 + current * 0.1)
+    const nextCoeff = Math.min(1.5, 1.2 + next * 0.1)
+    const currHeal = Math.min(30, Math.round((0.15 + current * 0.05) * 100))
+    const nextHeal = Math.min(30, Math.round((0.15 + next * 0.05) * 100))
+    return `${currCoeff}x -> ${nextCoeff}x physical damage; heal ${currHeal}% -> ${nextHeal}% of damage dealt`
+  }
+  if (skillId === 'sunder-armor') {
+    const currStacks = 1 + current
+    const nextStacks = 1 + next
+    return `0.8x damage, target Armor -8 for 3 rounds; if already debuffed: refresh and 1.1x damage (max ${currStacks} -> ${nextStacks} stacks)`
+  }
+
+  return base.effectDesc ?? ''
+}
+
+/**
  * Rage gained from taking damage: floor(damage / 2), minimum 1 when damage > 0.
  * @param {number} damageTaken
  * @returns {number}

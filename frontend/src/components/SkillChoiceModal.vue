@@ -25,7 +25,7 @@
               <span class="skill-cost-label">Cost:</span>
               <span class="skill-cost-value">{{ getSkillDisplay(normalizeSkillId(sid)).rageCost }} Rage</span>
             </div>
-            <p class="skill-option-desc">{{ getSkillDisplay(normalizeSkillId(sid)).effectDesc }}</p>
+            <p class="skill-option-desc">{{ getEnhanceEffectDesc(normalizeSkillId(sid)) }}</p>
           </button>
         </div>
       </div>
@@ -70,7 +70,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { CLASS_COLORS } from '../data/heroes.js'
-import { getAnyWarriorSkillById } from '../game/warriorSkills.js'
+import { getAnyWarriorSkillById, getEnhancementPreviewEffectDesc } from '../game/warriorSkills.js'
 import { getSkillChoiceOptions } from '../game/skillChoice.js'
 
 const props = defineProps({
@@ -101,6 +101,15 @@ function normalizeSkillId(skillIdOrObj) {
 function getSkillDisplay(skillId) {
   const id = normalizeSkillId(skillId)
   return getAnyWarriorSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', rageCost: null }
+}
+
+function getEnhanceEffectDesc(skillId) {
+  const id = normalizeSkillId(skillId)
+  if (props.hero) {
+    const preview = getEnhancementPreviewEffectDesc(props.hero, id)
+    if (preview) return preview
+  }
+  return getSkillDisplay(id).effectDesc
 }
 
 function confirmChoice() {

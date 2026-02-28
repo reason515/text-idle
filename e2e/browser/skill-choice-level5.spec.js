@@ -181,7 +181,12 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
     await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
 
-    await page.locator('.skill-choice-modal .skill-option').filter({ hasText: 'Heroic Strike' }).first().click()
+    // Enhance option shows upgrade preview: 1.2x -> 1.4x
+    const heroicStrikeOption = page.locator('.skill-choice-modal .skill-option').filter({ hasText: 'Heroic Strike' }).first()
+    await expect(heroicStrikeOption.locator('.skill-option-desc')).toContainText('1.2x')
+    await expect(heroicStrikeOption.locator('.skill-option-desc')).toContainText('1.4x')
+
+    await heroicStrikeOption.click()
     await page.locator('.skill-choice-modal button').filter({ hasText: 'Confirm' }).click()
 
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()

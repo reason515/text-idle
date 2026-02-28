@@ -3,6 +3,7 @@ import {
   WARRIOR_INITIAL_SKILLS,
   getWarriorSkillById,
   getSkillWithEnhancements,
+  getEnhancementPreviewEffectDesc,
   rageFromDamageTaken,
   rageFromDamageDealt,
   getSunderDebuff,
@@ -202,6 +203,20 @@ describe('Example13: Heroic Strike', () => {
     const warrior = makeWarrior({ skillEnhancements: { 'heroic-strike': { enhanceCount: 2 } } })
     const skill = getSkillWithEnhancements(warrior, 'heroic-strike')
     expect(skill.effectDesc).toContain('1.6x')
+  })
+
+  it('getEnhancementPreviewEffectDesc shows 1.2x -> 1.4x when enhancing from 0', () => {
+    const hero = makeWarrior({ skillEnhancements: {} })
+    const desc = getEnhancementPreviewEffectDesc(hero, 'heroic-strike')
+    expect(desc).toContain('1.2x')
+    expect(desc).toContain('1.4x')
+    expect(desc).toMatch(/1\.2x\s*->\s*1\.4x/)
+  })
+
+  it('getEnhancementPreviewEffectDesc shows 1.4x -> 1.6x when enhancing from 1', () => {
+    const hero = makeWarrior({ skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } })
+    const desc = getEnhancementPreviewEffectDesc(hero, 'heroic-strike')
+    expect(desc).toMatch(/1\.4x\s*->\s*1\.6x/)
   })
 
   it('rage gained from dealing damage', () => {
