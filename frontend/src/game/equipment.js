@@ -38,6 +38,11 @@ const QUALITY_BOSS_NORMAL = 0.50
 const QUALITY_BOSS_MAGIC = 0.35
 const QUALITY_BOSS_RARE = 0.15
 
+/** Shop: higher blue/yellow than normal drop to reward paid purchases */
+const QUALITY_SHOP_NORMAL = 0.50
+const QUALITY_SHOP_MAGIC = 0.35
+const QUALITY_SHOP_RARE = 0.15
+
 /** Affix pools: { id, name, type: 'prefix'|'suffix', tier: 'normal'|'exceptional'|'elite', baseMin, baseMax } */
 const AFFIX_POOL = [
   { id: 'sturdy', name: 'Sturdy', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'armor' },
@@ -167,6 +172,11 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     const q = rng()
     if (q < QUALITY_BOSS_RARE) quality = QUALITY_RARE
     else if (q < QUALITY_BOSS_RARE + QUALITY_BOSS_MAGIC) quality = QUALITY_MAGIC
+    else quality = QUALITY_NORMAL
+  } else if (monsterTier === 'shop') {
+    const q = rng()
+    if (q < QUALITY_SHOP_RARE) quality = QUALITY_RARE
+    else if (q < QUALITY_SHOP_RARE + QUALITY_SHOP_MAGIC) quality = QUALITY_MAGIC
     else quality = QUALITY_NORMAL
   } else if (monsterTier === 'elite') {
     const q = rng()
@@ -404,7 +414,7 @@ export function generateShopItem(slotId, level, rng = Math.random) {
   if (slotOverride && slotOverride !== 'TwoHand' && !droppableSlots.includes(slotOverride)) {
     return null
   }
-  return generateOneItem(lvl, 'normal', rng, slotOverride, baseKeyOverride)
+  return generateOneItem(lvl, 'shop', rng, slotOverride, baseKeyOverride)
 }
 
 /**
