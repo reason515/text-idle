@@ -451,6 +451,44 @@ export function createCharacter(hero, opts = {}) {
   return character
 }
 
+/**
+ * Create an expansion character (level 5+) with allocated attributes.
+ * Design doc 02-levels-monsters.md 1.2.1: expansion heroes join at level 5, 10, 15, or 20.
+ * @param {Object} hero - Hero template object
+ * @param {Object} opts - { level, allocatedAttrs, skillId?, levelChoice? }
+ *   allocatedAttrs: { strength, agility, intellect, stamina, spirit } (base + allocated)
+ *   levelChoice: { type: 'enhance'|'learn', skillId }
+ * @returns {Object} Character object
+ */
+export function createExpansionCharacter(hero, opts = {}) {
+  const initialAttrs = getInitialAttributes(hero.class)
+  const attrs = opts.allocatedAttrs ?? initialAttrs
+  const level = opts.level ?? 5
+  const character = {
+    ...hero,
+    level,
+    xp: 0,
+    unassignedPoints: 0,
+    equipment: hero.equipment || {},
+    strength: attrs.strength ?? initialAttrs.strength,
+    agility: attrs.agility ?? initialAttrs.agility,
+    intellect: attrs.intellect ?? initialAttrs.intellect,
+    stamina: attrs.stamina ?? initialAttrs.stamina,
+    spirit: attrs.spirit ?? initialAttrs.spirit,
+  }
+  if (opts.skillId) {
+    character.skills = [opts.skillId]
+  }
+  if (opts.levelChoice) {
+    if (opts.levelChoice.type === 'enhance') {
+      character.skillEnhancements = { [opts.levelChoice.skillId]: { enhanceCount: 1 } }
+    } else if (opts.levelChoice.type === 'learn' && opts.levelChoice.skillId) {
+      character.skills = character.skills ? [...character.skills, opts.levelChoice.skillId] : [opts.levelChoice.skillId]
+    }
+  }
+  return character
+}
+
 export function addHeroToSquad(hero) {
   const squad = getSquad()
   if (squad.length >= MAX_SQUAD_SIZE) return false
@@ -470,6 +508,21 @@ export function addHeroToSquadWithSkill(hero, skillId = null) {
   const squad = getSquad()
   if (squad.length >= MAX_SQUAD_SIZE) return false
   const character = createCharacter(hero, skillId ? { skill: skillId } : {})
+  squad.push(character)
+  saveSquad(squad)
+  return true
+}
+
+/**
+ * Add an expansion hero to the squad (level 5+, with allocated attrs and skill choice).
+ * @param {Object} hero - Hero template object
+ * @param {Object} opts - { level, allocatedAttrs, skillId?, levelChoice? }
+ * @returns {boolean} true if added successfully
+ */
+export function addExpansionHeroToSquad(hero, opts = {}) {
+  const squad = getSquad()
+  if (squad.length >= MAX_SQUAD_SIZE) return false
+  const character = createExpansionCharacter(hero, opts)
   squad.push(character)
   saveSquad(squad)
   return true

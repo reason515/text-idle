@@ -1,8 +1,16 @@
 <template>
   <div class="panel character-select-panel">
-    <template v-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
+    <template v-if="showAttrAllocStep">
+      <h2>Allocate Attribute Points</h2>
+      <p class="subtitle">Assign {{ expansionAttrPoints }} points to <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>. All points must be allocated.</p>
+    </template>
+    <template v-else-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
       <h2>Choose Initial Skill</h2>
       <p class="subtitle">Each spec grants a unique combat style. You must choose one before <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> joins your squad.</p>
+    </template>
+    <template v-else-if="showLevelChoiceStep">
+      <h2>Level {{ expansionLevel }} Skill Choice</h2>
+      <p class="subtitle">Enhance an existing skill or learn a new one for <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>.</p>
     </template>
     <template v-else>
       <h2>Choose Your Hero</h2>
@@ -25,7 +33,7 @@
         >
           <span class="hero-name">{{ hero.name }}</span>
           <div class="hero-meta">
-            <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ hero.class }} (Lv1)</span>
+            <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ hero.class }} (Lv{{ isExpansion ? expansionLevel : 1 }})</span>
             <span v-if="getClassInfo(hero.class)" class="hero-role">{{ getClassInfo(hero.class).role }}</span>
           </div>
           <p v-if="getClassInfo(hero.class)" class="hero-class-desc">{{ getClassInfo(hero.class).desc }}</p>
@@ -41,6 +49,31 @@
             <span v-for="r in getResourceDisplay(hero.class)" :key="r.key" class="resource-item">{{ r.label }} {{ r.value }}</span>
           </div>
         </button>
+      </div>
+    </template>
+
+    <!-- Expansion: attribute allocation step -->
+    <template v-else-if="showAttrAllocStep">
+      <div class="attr-alloc-step" data-testid="attr-alloc-step">
+        <p class="attr-alloc-remaining">Points remaining: {{ pendingAttrPoints }}</p>
+        <div class="attr-alloc-grid">
+          <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="attr-alloc-row">
+            <span class="attr-label">{{ attr.label }}</span>
+            <span class="attr-value">{{ getAllocatedAttr(attr.key) }}</span>
+            <button
+              type="button"
+              class="btn btn-sm attr-btn"
+              :disabled="pendingAttrPoints <= 0"
+              :title="'Add 1 to ' + attr.label"
+              @click="addAttrPoint(attr.key)"
+            >+</button>
+          </div>
+        </div>
+        <p v-if="showAttrError" class="skill-error">Allocate all {{ expansionAttrPoints }} points before continuing.</p>
+        <div class="confirmation-actions">
+          <button class="btn btn-secondary" @click="backFromAttrAlloc">Back</button>
+          <button class="btn" :disabled="pendingAttrPoints > 0" @click="confirmAttrAlloc">Next</button>
+        </div>
       </div>
     </template>
 
@@ -74,6 +107,17 @@
       </div>
     </template>
 
+    <!-- Expansion: level choice step (SkillChoiceModal) -->
+    <template v-else-if="showLevelChoiceStep">
+      <SkillChoiceModal
+        :hero="expansionHeroForSkillChoice"
+        :level="expansionLevel"
+        @skip="skipLevelChoice"
+        @enhance="(sid) => confirmLevelChoice({ type: 'enhance', skillId: sid })"
+        @learn="(sid) => confirmLevelChoice({ type: 'learn', skillId: sid })"
+      />
+    </template>
+
     <!-- Confirmation step -->
     <template v-else-if="selectedHero">
       <div class="confirmation-step">
@@ -81,7 +125,7 @@
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
           <div class="hero-meta">
-            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} (Level 1)</span>
+            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} (Level {{ displayLevel }})</span>
             <span v-if="getClassInfo(selectedHero.class)" class="hero-role">{{ getClassInfo(selectedHero.class).role }}</span>
           </div>
           <div v-if="getClassInfo(selectedHero.class)" class="info-section class-section">
@@ -107,32 +151,32 @@
               <div class="hero-attributes">
                 <div class="attribute-row">
                   <span class="attr-label">Strength</span>
-                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).strength }}</span>
+                  <span class="attr-value">{{ displayAttrs.strength }}</span>
                 </div>
                 <div class="attribute-row">
                   <span class="attr-label">Agility</span>
-                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).agility }}</span>
+                  <span class="attr-value">{{ displayAttrs.agility }}</span>
                 </div>
                 <div class="attribute-row">
                   <span class="attr-label">Intellect</span>
-                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).intellect }}</span>
+                  <span class="attr-value">{{ displayAttrs.intellect }}</span>
                 </div>
                 <div class="attribute-row">
                   <span class="attr-label">Stamina</span>
-                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).stamina }}</span>
+                  <span class="attr-value">{{ displayAttrs.stamina }}</span>
                 </div>
                 <div class="attribute-row">
                   <span class="attr-label">Spirit</span>
-                  <span class="attr-value">{{ getInitialAttributes(selectedHero.class).spirit }}</span>
+                  <span class="attr-value">{{ displayAttrs.spirit }}</span>
                 </div>
               </div>
             </div>
             <div class="hero-secondary-section">
-              <span class="attributes-title">Secondary Attributes (Lv1)</span>
+              <span class="attributes-title">Secondary Attributes (Lv{{ displayLevel }})</span>
               <p class="formula-hint">Hover over attribute for formula</p>
               <div class="secondary-attributes-grid">
                 <div
-                  v-for="item in getSecondaryFormulas(selectedHero.class)"
+                  v-for="item in getSecondaryFormulasForDisplay"
                   :key="item.key"
                   class="secondary-item secondary-item-tooltip"
                   :class="{ 'has-formula': item.formula !== '-' }"
@@ -148,7 +192,7 @@
         <div class="confirmation-actions">
           <button
             class="btn btn-secondary"
-            @click="needsInitialSkill(selectedHero) ? (selectedSkillId = null) : (selectedHero = null)"
+            @click="backFromConfirm"
           >Back</button>
           <button class="btn" @click="confirmSelection">Confirm</button>
         </div>
@@ -160,10 +204,20 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquadWithSkill, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
-import { createInitialProgress, getRecruitLimit } from '../game/combat.js'
+import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
+import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints } from '../game/combat.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
+import { hasSkillChoiceAtLevel } from '../game/skillChoice.js'
+import SkillChoiceModal from '../components/SkillChoiceModal.vue'
+
+const PRIMARY_ATTRS = [
+  { key: 'strength', label: 'Strength' },
+  { key: 'agility', label: 'Agility' },
+  { key: 'intellect', label: 'Intellect' },
+  { key: 'stamina', label: 'Stamina' },
+  { key: 'spirit', label: 'Spirit' },
+]
 
 function needsInitialSkill(hero) {
   return hero?.class === 'Warrior' || hero?.class === 'Mage'
@@ -217,25 +271,142 @@ const COMBAT_PROGRESS_KEY = 'combatProgress'
 
 const squadIds = computed(() => new Set(getSquad().map((c) => c.id)))
 const squadSize = computed(() => getSquad().length)
-const recruitLimit = computed(() => {
+const progress = computed(() => {
   try {
     const raw = localStorage.getItem(COMBAT_PROGRESS_KEY)
-    const progress = raw ? JSON.parse(raw) : createInitialProgress()
-    return getRecruitLimit(progress)
+    return raw ? JSON.parse(raw) : createInitialProgress()
   } catch {
-    return 1
+    return createInitialProgress()
   }
 })
+const recruitLimit = computed(() => getRecruitLimit(progress.value))
+const isExpansion = computed(() => squadSize.value > 0 && recruitLimit.value > 1)
+const expansionLevel = computed(() => getExpansionHeroLevel(progress.value))
+const expansionAttrPoints = computed(() => getExpansionHeroAttributePoints(expansionLevel.value))
 
 const availableHeroes = computed(() =>
   HEROES.filter((h) => !squadIds.value.has(h.id))
 )
+
+const pendingAllocatedAttrs = ref(null)
+const levelChoiceDone = ref(false)
+const pendingLevelChoice = ref(null)
+const showAttrError = ref(false)
+
+const pendingAttrPoints = computed(() => {
+  if (!isExpansion.value || !selectedHero.value || expansionAttrPoints.value <= 0) return 0
+  const base = getInitialAttributes(selectedHero.value.class)
+  const allocated = pendingAllocatedAttrs.value ?? { strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 }
+  const totalAllocated = Object.keys(allocated).reduce((sum, k) => sum + (allocated[k] ?? 0), 0)
+  return expansionAttrPoints.value - totalAllocated
+})
+
+const showAttrAllocStep = computed(() =>
+  selectedHero.value && isExpansion.value && expansionAttrPoints.value > 0 && pendingAttrPoints.value > 0
+)
+
+const showLevelChoiceStep = computed(() =>
+  selectedHero.value &&
+  isExpansion.value &&
+  needsInitialSkill(selectedHero.value) &&
+  selectedSkillId.value &&
+  hasSkillChoiceAtLevel({ class: selectedHero.value.class, skills: [selectedSkillId.value] }, expansionLevel.value) &&
+  !levelChoiceDone.value
+)
+
+const displayLevel = computed(() => (isExpansion.value ? expansionLevel.value : 1))
+
+const displayAttrs = computed(() => {
+  if (!selectedHero.value) return {}
+  const base = getInitialAttributes(selectedHero.value.class)
+  if (!isExpansion.value) return base
+  const allocated = pendingAllocatedAttrs.value ?? {}
+  return {
+    strength: (base.strength ?? 0) + (allocated.strength ?? 0),
+    agility: (base.agility ?? 0) + (allocated.agility ?? 0),
+    intellect: (base.intellect ?? 0) + (allocated.intellect ?? 0),
+    stamina: (base.stamina ?? 0) + (allocated.stamina ?? 0),
+    spirit: (base.spirit ?? 0) + (allocated.spirit ?? 0),
+  }
+})
+
+const getSecondaryFormulasForDisplay = computed(() => {
+  if (!selectedHero.value) return []
+  const heroForCompute = { ...selectedHero.value, ...displayAttrs.value, level: displayLevel.value }
+  const { formulas } = computeSecondaryAttributes(selectedHero.value.class, displayLevel.value, heroForCompute)
+  return formulas
+})
+
+const expansionHeroForSkillChoice = computed(() => {
+  if (!selectedHero.value || !selectedSkillId.value) return null
+  return {
+    ...selectedHero.value,
+    skills: [selectedSkillId.value],
+  }
+})
+
+function getAllocatedAttr(key) {
+  const base = selectedHero.value ? getInitialAttributes(selectedHero.value.class) : {}
+  const allocated = pendingAllocatedAttrs.value ?? {}
+  return (base[key] ?? 0) + (allocated[key] ?? 0)
+}
+
+function addAttrPoint(key) {
+  if (pendingAttrPoints.value <= 0) return
+  if (!pendingAllocatedAttrs.value) {
+    pendingAllocatedAttrs.value = { strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 }
+  }
+  pendingAllocatedAttrs.value = { ...pendingAllocatedAttrs.value, [key]: (pendingAllocatedAttrs.value[key] ?? 0) + 1 }
+  showAttrError.value = false
+}
+
+function backFromAttrAlloc() {
+  selectedHero.value = null
+  pendingAllocatedAttrs.value = null
+}
+
+function confirmAttrAlloc() {
+  if (pendingAttrPoints.value > 0) {
+    showAttrError.value = true
+    return
+  }
+  showAttrError.value = false
+}
+
+function skipLevelChoice() {
+  levelChoiceDone.value = true
+  pendingLevelChoice.value = null
+}
+
+function confirmLevelChoice(choice) {
+  pendingLevelChoice.value = choice
+  levelChoiceDone.value = true
+}
+
+function backFromConfirm() {
+  if (isExpansion.value && needsInitialSkill(selectedHero.value) && selectedSkillId.value && hasSkillChoiceAtLevel({ class: selectedHero.value.class, skills: [selectedSkillId.value] }, expansionLevel.value)) {
+    levelChoiceDone.value = false
+    pendingLevelChoice.value = null
+  } else if (needsInitialSkill(selectedHero.value)) {
+    selectedSkillId.value = null
+  } else if (isExpansion.value && expansionAttrPoints.value > 0) {
+    pendingAllocatedAttrs.value = null
+  } else {
+    selectedHero.value = null
+    pendingAllocatedAttrs.value = null
+    levelChoiceDone.value = false
+    pendingLevelChoice.value = null
+  }
+}
 
 function selectHero(hero) {
   selectedHero.value = hero
   pendingSkillId.value = null
   selectedSkillId.value = null
   showSkillError.value = false
+  pendingAllocatedAttrs.value = isExpansion.value && expansionAttrPoints.value > 0 ? { strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 } : null
+  levelChoiceDone.value = false
+  pendingLevelChoice.value = null
 }
 
 function confirmSkillSelection() {
@@ -250,18 +421,47 @@ function confirmSkillSelection() {
 function confirmSelection() {
   if (!selectedHero.value) return
   if (squadSize.value >= recruitLimit.value) {
-    selectedHero.value = null
-    selectedSkillId.value = null
+    resetRecruitState()
     router.push('/main')
     return
   }
-  const skillId = needsInitialSkill(selectedHero.value) ? selectedSkillId.value : null
-  const ok = addHeroToSquadWithSkill(selectedHero.value, skillId)
-  if (ok) {
-    selectedHero.value = null
-    selectedSkillId.value = null
-    router.push('/main')
+  if (isExpansion.value) {
+    const base = getInitialAttributes(selectedHero.value.class)
+    const allocated = pendingAllocatedAttrs.value ?? {}
+    const allocatedAttrs = {
+      strength: (base.strength ?? 0) + (allocated.strength ?? 0),
+      agility: (base.agility ?? 0) + (allocated.agility ?? 0),
+      intellect: (base.intellect ?? 0) + (allocated.intellect ?? 0),
+      stamina: (base.stamina ?? 0) + (allocated.stamina ?? 0),
+      spirit: (base.spirit ?? 0) + (allocated.spirit ?? 0),
+    }
+    const opts = {
+      level: expansionLevel.value,
+      allocatedAttrs,
+      skillId: needsInitialSkill(selectedHero.value) ? selectedSkillId.value : null,
+      levelChoice: pendingLevelChoice.value ?? undefined,
+    }
+    const ok = addExpansionHeroToSquad(selectedHero.value, opts)
+    if (ok) {
+      resetRecruitState()
+      router.push('/main')
+    }
+  } else {
+    const skillId = needsInitialSkill(selectedHero.value) ? selectedSkillId.value : null
+    const ok = addHeroToSquadWithSkill(selectedHero.value, skillId)
+    if (ok) {
+      resetRecruitState()
+      router.push('/main')
+    }
   }
+}
+
+function resetRecruitState() {
+  selectedHero.value = null
+  selectedSkillId.value = null
+  pendingAllocatedAttrs.value = null
+  levelChoiceDone.value = false
+  pendingLevelChoice.value = null
 }
 </script>
 
@@ -624,6 +824,38 @@ function confirmSelection() {
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
+}
+
+.attr-alloc-step {
+  margin-top: 0.5rem;
+}
+
+.attr-alloc-remaining {
+  font-size: 0.9rem;
+  color: var(--text-value);
+  margin-bottom: 0.75rem;
+}
+
+.attr-alloc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.attr-alloc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.attr-alloc-row .attr-btn {
+  min-width: 2rem;
+}
+
+.attr-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
 }
 
 .chosen-skill {

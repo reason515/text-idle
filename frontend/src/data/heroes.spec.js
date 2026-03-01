@@ -10,8 +10,10 @@ import {
   saveSquad,
   getSquadMaxLevel,
   addHeroToSquad,
+  addExpansionHeroToSquad,
   getInitialAttributes,
   createCharacter,
+  createExpansionCharacter,
   computeSecondaryAttributes,
   computeHeroMaxHP,
   computeHeroArmor,
@@ -469,6 +471,51 @@ describe('heroes', () => {
     })
   })
 
+  describe('createExpansionCharacter', () => {
+    it('Example27: creates Lv5 Warrior with allocated attrs and initial skill', () => {
+      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const base = getInitialAttributes('Warrior')
+      const allocatedAttrs = {
+        strength: base.strength + 15,
+        agility: base.agility + 2,
+        intellect: base.intellect + 0,
+        stamina: base.stamina + 3,
+        spirit: base.spirit + 0,
+      }
+      const character = createExpansionCharacter(hero, {
+        level: 5,
+        allocatedAttrs,
+        skillId: 'heroic-strike',
+      })
+      expect(character.level).toBe(5)
+      expect(character.strength).toBe(25)
+      expect(character.stamina).toBe(12)
+      expect(character.skills).toEqual(['heroic-strike'])
+    })
+
+    it('Example27: creates expansion hero with enhance level choice', () => {
+      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const character = createExpansionCharacter(hero, {
+        level: 5,
+        allocatedAttrs: getInitialAttributes('Warrior'),
+        skillId: 'heroic-strike',
+        levelChoice: { type: 'enhance', skillId: 'heroic-strike' },
+      })
+      expect(character.skillEnhancements).toEqual({ 'heroic-strike': { enhanceCount: 1 } })
+    })
+
+    it('Example27: creates expansion hero with learn level choice', () => {
+      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const character = createExpansionCharacter(hero, {
+        level: 5,
+        allocatedAttrs: getInitialAttributes('Warrior'),
+        skillId: 'heroic-strike',
+        levelChoice: { type: 'learn', skillId: 'cleave' },
+      })
+      expect(character.skills).toEqual(['heroic-strike', 'cleave'])
+    })
+  })
+
   describe('addHeroToSquad', () => {
     it('adds character with initial attributes when squad has room', () => {
       const hero = HEROES[0]
@@ -501,6 +548,32 @@ describe('heroes', () => {
       expect(stored.id).toBe(hero.id)
       expect(stored.name).toBe(hero.name)
       expect(stored.class).toBe(hero.class)
+    })
+  })
+
+  describe('addExpansionHeroToSquad', () => {
+    it('Example27: adds Lv5 expansion hero with allocated attrs', () => {
+      const hero = HEROES[0]
+      const base = getInitialAttributes(hero.class)
+      const ok = addExpansionHeroToSquad(hero, {
+        level: 5,
+        allocatedAttrs: { ...base, strength: base.strength + 20 },
+        skillId: 'heroic-strike',
+      })
+      expect(ok).toBe(true)
+      const squad = getSquad()
+      expect(squad).toHaveLength(1)
+      expect(squad[0].level).toBe(5)
+      expect(squad[0].strength).toBe(30)
+      expect(squad[0].skills).toEqual(['heroic-strike'])
+    })
+
+    it('returns false when squad is full', () => {
+      const fullSquad = Array(MAX_SQUAD_SIZE).fill(null).map((_, i) => createCharacter(HEROES[i]))
+      saveSquad(fullSquad)
+      const ok = addExpansionHeroToSquad(HEROES[0], { level: 5, allocatedAttrs: getInitialAttributes('Warrior') })
+      expect(ok).toBe(false)
+      expect(getSquad()).toHaveLength(MAX_SQUAD_SIZE)
     })
   })
 

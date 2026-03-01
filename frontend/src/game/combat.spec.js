@@ -6,6 +6,8 @@ import {
   CRIT_MULTIPLIER,
   createInitialProgress,
   getRecruitLimit,
+  getExpansionHeroLevel,
+  getExpansionHeroAttributePoints,
   addExplorationProgress,
   deductExplorationProgress,
   unlockNextMapAfterBoss,
@@ -114,6 +116,22 @@ describe('combat progression and systems', () => {
     expect(getRecruitLimit(next)).toBe(2)
     expect(next.currentProgress).toBe(0)
     expect(next.bossAvailable).toBe(false)
+  })
+
+  it('Example27: getExpansionHeroLevel returns 5 for map 2, 10 for map 3, etc.', () => {
+    expect(getExpansionHeroLevel({ unlockedMapCount: 1 })).toBe(1)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 2 })).toBe(5)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 3 })).toBe(10)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 4 })).toBe(15)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 5 })).toBe(20)
+  })
+
+  it('Example27: getExpansionHeroAttributePoints returns 20 for Lv5, 45 for Lv10', () => {
+    expect(getExpansionHeroAttributePoints(1)).toBe(0)
+    expect(getExpansionHeroAttributePoints(5)).toBe(20)
+    expect(getExpansionHeroAttributePoints(10)).toBe(45)
+    expect(getExpansionHeroAttributePoints(15)).toBe(70)
+    expect(getExpansionHeroAttributePoints(20)).toBe(95)
   })
 
   it('Example7: encounter size prefers squad size', () => {

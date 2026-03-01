@@ -137,7 +137,7 @@ Then [expected result/verifiable behavior].
 | AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes; each of the 9 classes has at least one hero to choose |
 | AC2 | Player is on the character selection screen | Player selects a hero (e.g., Jaina, Rexxar, Uther) | Hero's class and frame are rendered in the corresponding WoW class color; a confirmation step is shown; after player confirms, the selected character joins the squad and the adventure begins |
 | AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values |
-| AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero |
+| AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero; expansion heroes (after map boss defeat) join at level 5+ with full onboarding flow (Example 27) |
 | AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
 
 ---
@@ -172,7 +172,7 @@ Then [expected result/verifiable behavior].
 | AC1 | Player has completed character recruitment (Example 4) and adventure has begun | Player views the map selection screen | Only Elwynn Forest is available; other maps are locked or hidden |
 | AC2 | Player is on Elwynn Forest and the auto-combat loop is running | Squad automatically encounters random monsters (Normal and Elite mixed) and wins | Exploration progress increases automatically; progress bar or equivalent is visible; Normal kills contribute less than Elite kills; no manual selection of encounter type is required |
 | AC3 | Player is on a map and exploration progress has reached 100% | Progress reaches 100% | The zone boss (e.g., Hogger for Elwynn Forest) is automatically challenged in the next encounter |
-| AC4 | Player has defeated the zone boss on the current map | Boss is defeated | The next map is unlocked; player can select the new map to explore via the map modal; squad expansion becomes available (Example 4 AC4: player may recruit 1 more hero) |
+| AC4 | Player has defeated the zone boss on the current map | Boss is defeated | The next map is unlocked; player can select the new map to explore via the map modal; squad expansion becomes available (Example 4 AC4: player may recruit 1 more hero; expansion hero onboarding per Example 27) |
 | AC5 | Player has unlocked all 5 maps and defeated all 5 zone bosses | Player views the map selection screen | All 5 maps (Elwynn Forest through Stranglethorn Vale) are available; squad has reached max size (5 heroes) |
 | AC6 | Player is in combat with an Elite or Boss monster | Monster acts | Monster may use skills (not just basic attacks); combat log or UI indicates damage type (Physical or Magic) when applicable |
 | AC7 | Squad loses a combat encounter on any map | Defeat occurs | Exploration progress is deducted by a fixed amount (default 10 points); progress does not drop below 0; the auto-combat loop resumes after a short pause |
@@ -889,6 +889,43 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC8 | Player closes the skill selection modal without making a choice (or skips) | Modal is dismissed | No skill is enhanced or learned; the game continues; the player can proceed with combat and other actions (same as skipping attribute allocation) |
 | AC9 | A hero reaches level 60 and triggers the final skill selection | Player makes a choice | The Lv 60 options (e.g., Bladestorm, Titan's Grip, Invincible for Warrior) are offered; after choice, the hero has at most 13 skills total |
 | AC10 | Multiple heroes are in the squad and one levels to a multiple of 5 | Level-up is triggered | The skill selection modal appears for that specific hero; the modal clearly indicates which hero is making the choice |
+
+---
+
+## Example 27: Squad Expansion Hero Recruitment (First Map Boss Defeat)
+
+**User Story**
+
+> As a player,
+> I want to recruit a new hero at level 5 when I defeat the first map boss,
+> So that I can expand my squad with a ready-to-fight hero and customize their build through attribute allocation, initial skill, and level 5 skill selection in one onboarding flow.
+
+**Design Reference (from design doc)**
+
+- **Trigger**: Player defeats the zone boss on the first map (e.g., Hogger in Elwynn Forest).
+- **Result**: Second map (Westfall) is unlocked; squad expansion becomes available; player may recruit 1 additional hero.
+- **Expansion hero level**: The new hero joins at **level 5** (not level 1).
+- **Recruitment flow order**: (1) Select hero from roster (same as Example 4); (2) Allocate 20 attribute points (equivalent to levels 1–5: 4 level-ups × 5 points); (3) Select initial skill (3 options, pick 1, per Example 12); (4) Complete level 5 skill selection (enhance existing or learn new, per Example 26).
+- **Attribute points**: 20 points to assign to Strength, Agility, Intellect, Stamina, or Spirit before the hero joins the squad.
+- **Initial skill**: Same rules as Example 12 (e.g., Warrior: Heroic Strike, Bloodthirst, Sunder Armor — pick 1).
+- **Level 5 skill**: Same rules as Example 26 — enhance the chosen initial skill or learn one of the 3 fixed Lv 5 skills (e.g., Warrior: Cleave, Whirlwind, Taunt).
+- **Subsequent expansions**: After defeating map 2, 3, 4 bosses, new heroes join at level 10, 15, 20 respectively, with corresponding attribute points and skill selection steps (see design doc 02-levels-monsters.md 1.2.1).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player has defeated the zone boss on the first map (Elwynn Forest) | Boss is defeated | The second map (Westfall) is unlocked; a recruitment prompt or squad expansion UI appears; player can select a new hero to join the squad |
+| AC2 | Player triggers squad expansion after first map boss defeat | Player enters the recruitment flow | The new hero is created at **level 5** with base attributes from their class; 20 unassigned attribute points are available |
+| AC3 | Player is on the attribute allocation step for the expansion hero | Player allocates the 20 attribute points | Player assigns points to Strength, Agility, Intellect, Stamina, or Spirit; all 20 must be assigned before proceeding; assignment is saved when confirmed |
+| AC4 | Player has completed attribute allocation | Player proceeds | The initial skill selection step is shown (3 options, one per spec, per Example 12); player must select 1 skill |
+| AC5 | Player has selected the initial skill | Player proceeds | The level 5 skill selection step is shown (enhance existing or learn new, per Example 26); player must make a choice or skip |
+| AC6 | Player has completed all recruitment steps (hero select, attributes, initial skill, level 5 skill) | Player confirms | The new hero joins the squad at level 5 with the assigned attributes, initial skill, and level 5 skill choice; the recruitment flow ends |
+| AC7 | Player views the squad after recruiting an expansion hero | Squad panel is displayed | The new hero shows level 5, the allocated attributes, and the chosen skills (initial + level 5 choice) |
+| AC8 | Player has not completed attribute allocation | Player attempts to skip or proceed | The flow does not complete; player must allocate all 20 points before the initial skill step |
+| AC9 | Player has not selected an initial skill | Player attempts to proceed | The flow does not complete; player must select 1 of the 3 initial skills before the level 5 skill step |
+| AC10 | Expansion hero (e.g., Warrior) joins with Bloodthirst and chooses "Enhance existing" at level 5 | Recruitment completes | The Warrior has Bloodthirst enhanced once (e.g., +0.1 coefficient, +5% heal); no new skill is learned |
+| AC11 | Expansion hero (e.g., Warrior) joins with Heroic Strike and chooses "Learn new skill" — Cleave | Recruitment completes | The Warrior has Heroic Strike and Cleave; both are available in combat |
 
 ---
 

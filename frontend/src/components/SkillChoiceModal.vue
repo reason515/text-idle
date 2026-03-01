@@ -1,6 +1,6 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('skip')">
-    <div class="modal-box skill-choice-modal">
+    <div class="modal-box skill-choice-modal" data-testid="skill-choice-modal">
       <div class="modal-title">
         <span :style="{ color: classColor(hero?.class) }">{{ hero?.name }}</span>
         <span> reached Level {{ level }} — Skill Choice</span>

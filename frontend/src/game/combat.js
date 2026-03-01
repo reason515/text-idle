@@ -157,6 +157,29 @@ export function getRecruitLimit(progress) {
   return clamp(progress.unlockedMapCount, 1, 5)
 }
 
+/**
+ * Expansion hero level when recruiting after defeating map N boss.
+ * Design doc 02-levels-monsters.md 1.2.1: Map 1 boss -> Lv5, Map 2 -> Lv10, etc.
+ * @param {Object} progress - combatProgress
+ * @returns {number} Level 5, 10, 15, or 20; 1 if not expansion (unlockedMapCount 1)
+ */
+export function getExpansionHeroLevel(progress) {
+  const n = progress?.unlockedMapCount ?? 1
+  if (n <= 1) return 1
+  return Math.min(20, 5 * (n - 1))
+}
+
+/**
+ * Attribute points to allocate for expansion hero at given level.
+ * 5 points per level-up: Lv5 = 20, Lv10 = 45, Lv15 = 70, Lv20 = 95.
+ * @param {number} level - Expansion hero level (5, 10, 15, or 20)
+ * @returns {number}
+ */
+export function getExpansionHeroAttributePoints(level) {
+  if (level <= 1) return 0
+  return 5 * (level - 1)
+}
+
 export function addExplorationProgress(progress, killTier) {
   const gainTable = {
     normal: 3,

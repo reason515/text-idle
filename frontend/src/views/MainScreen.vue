@@ -80,7 +80,7 @@
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">No heroes. Recruit to begin.</div>
         </div>
-        <button v-if="canRecruit" class="btn recruit-btn" @click="goRecruit">+ Recruit</button>
+        <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ Recruit</button>
       </div>
 
       <div class="monsters-col">
