@@ -8,6 +8,8 @@ export const DEBUFF_DISPLAY = {
   dazed: { name: 'Dazed', short: 'DZ', isDebuff: true },
   splinter: { name: 'Splinter', short: 'SP', isDebuff: true },
   bleed: { name: 'Bleed', short: 'BL', isDebuff: true },
+  frostbolt: { name: 'Frostbolt', short: 'FB', isDebuff: true },
+  burn: { name: 'Burn', short: 'BN', isDebuff: true },
 }
 
 /**
@@ -27,6 +29,12 @@ export function getDebuffTip(debuff) {
   }
   if (debuff.type === 'bleed') {
     return `${debuff.damagePerRound ?? 0} damage/round for ${rounds} round(s)`
+  }
+  if (debuff.type === 'frostbolt') {
+    return `Resistance -${debuff.resistanceReduction ?? 6} for ${rounds} round(s)`
+  }
+  if (debuff.type === 'burn') {
+    return `${debuff.damagePerRound ?? 0} magic damage/round for ${rounds} round(s)`
   }
   return `${rounds} round(s)`
 }

@@ -186,14 +186,14 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
     await expect(page.locator('.skill-error')).not.toBeVisible()
   })
 
-  test('Non-Warrior heroes skip skill selection and go directly to confirmation', async ({ page }) => {
+  test('Non-Warrior/Mage heroes (e.g. Rexxar Hunter) skip skill selection and go directly to confirmation', async ({ page }) => {
     const email = `ws-nonwarrior-${Date.now()}@example.com`
     await registerAndGoToCharacterSelect(page, email)
 
-    // Jaina (Mage) should NOT show skill selection step
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    // Rexxar (Hunter) should NOT show skill selection step
+    await page.getByRole('button', { name: /Rexxar/ }).click()
     await expect(page.locator('.skill-selection-step')).not.toBeVisible()
-    await expect(page.getByText(/Add.*Jaina/)).toBeVisible()
+    await expect(page.getByText(/Add.*Rexxar/)).toBeVisible()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
   })

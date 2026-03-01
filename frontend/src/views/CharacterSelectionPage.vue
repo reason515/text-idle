@@ -1,6 +1,6 @@
 <template>
   <div class="panel character-select-panel">
-    <template v-if="selectedHero && selectedHero.class === 'Warrior' && !selectedSkillId">
+    <template v-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
       <h2>Choose Initial Skill</h2>
       <p class="subtitle">Each spec grants a unique combat style. You must choose one before <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> joins your squad.</p>
     </template>
@@ -44,12 +44,12 @@
       </div>
     </template>
 
-    <!-- Warrior skill selection step -->
-    <template v-else-if="selectedHero && selectedHero.class === 'Warrior' && !selectedSkillId">
+    <!-- Warrior / Mage skill selection step -->
+    <template v-else-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
       <div class="skill-selection-step">
         <div class="skill-options">
           <button
-            v-for="skill in warriorSkills"
+            v-for="skill in initialSkillsForClass(selectedHero.class)"
             :key="skill.id"
             class="skill-option"
             :class="{ selected: pendingSkillId === skill.id }"
@@ -61,14 +61,14 @@
             </div>
             <div class="skill-option-meta">
               <span class="skill-cost-label">Cost:</span>
-              <span class="skill-cost-value">{{ skill.rageCost }} Rage</span>
+              <span class="skill-cost-value">{{ skillCostLabel(skill) }}</span>
             </div>
             <p class="skill-option-desc">{{ skill.effectDesc }}</p>
           </button>
         </div>
         <p v-if="showSkillError" class="skill-error">Please select a skill before continuing.</p>
         <div class="confirmation-actions">
-          <button class="btn btn-secondary" @click="selectedHero = null; pendingSkillId = null; showSkillError = false">Back</button>
+          <button class="btn btn-secondary" @click="selectedHero = null; pendingSkillId = null; selectedSkillId = null; showSkillError = false">Back</button>
           <button class="btn" @click="confirmSkillSelection">Next</button>
         </div>
       </div>
@@ -92,14 +92,14 @@
             <span class="section-label">About</span>
             <p class="section-text">{{ selectedHero.bio }}</p>
           </div>
-          <!-- Show chosen skill for Warriors -->
-          <div v-if="selectedHero.class === 'Warrior' && selectedSkillId" class="info-section skill-section">
+          <!-- Show chosen skill for Warriors / Mages -->
+          <div v-if="needsInitialSkill(selectedHero) && selectedSkillId" class="info-section skill-section">
             <span class="section-label">Initial Skill</span>
             <div class="chosen-skill">
-              <span class="chosen-skill-name">{{ getSkillDisplay(selectedSkillId).name }}</span>
-              <span class="chosen-skill-spec spec-badge">{{ getSkillDisplay(selectedSkillId).spec }}</span>
+              <span class="chosen-skill-name">{{ getSkillDisplay(selectedSkillId, selectedHero.class).name }}</span>
+              <span class="chosen-skill-spec spec-badge">{{ getSkillDisplay(selectedSkillId, selectedHero.class).spec }}</span>
             </div>
-            <p class="chosen-skill-desc">{{ getSkillDisplay(selectedSkillId).effectDesc }}</p>
+            <p class="chosen-skill-desc">{{ getSkillDisplay(selectedSkillId, selectedHero.class).effectDesc }}</p>
           </div>
           <div class="hero-stats-grid">
             <div class="hero-attributes-section">
@@ -148,7 +148,7 @@
         <div class="confirmation-actions">
           <button
             class="btn btn-secondary"
-            @click="selectedHero.class === 'Warrior' ? (selectedSkillId = null) : (selectedHero = null)"
+            @click="needsInitialSkill(selectedHero) ? (selectedSkillId = null) : (selectedHero = null)"
           >Back</button>
           <button class="btn" @click="confirmSelection">Confirm</button>
         </div>
@@ -163,6 +163,23 @@ import { useRouter } from 'vue-router'
 import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquadWithSkill, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit } from '../game/combat.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
+import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
+
+function needsInitialSkill(hero) {
+  return hero?.class === 'Warrior' || hero?.class === 'Mage'
+}
+
+function initialSkillsForClass(heroClass) {
+  if (heroClass === 'Warrior') return WARRIOR_INITIAL_SKILLS
+  if (heroClass === 'Mage') return MAGE_INITIAL_SKILLS
+  return []
+}
+
+function skillCostLabel(skill) {
+  if (skill.manaCost != null) return `${skill.manaCost} Mana`
+  if (skill.rageCost != null) return `${skill.rageCost} Rage`
+  return '-'
+}
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -185,11 +202,11 @@ function getSecondaryFormulas(heroClass) {
   return formulas
 }
 
-function getSkillDisplay(skillId) {
-  return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
+function getSkillDisplay(skillId, heroClass) {
+  if (heroClass === 'Warrior') return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
+  if (heroClass === 'Mage') return getMageSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
+  return { name: skillId, spec: '', effectDesc: '' }
 }
-
-const warriorSkills = WARRIOR_INITIAL_SKILLS
 
 const router = useRouter()
 const selectedHero = ref(null)
@@ -238,7 +255,7 @@ function confirmSelection() {
     router.push('/main')
     return
   }
-  const skillId = selectedHero.value.class === 'Warrior' ? selectedSkillId.value : null
+  const skillId = needsInitialSkill(selectedHero.value) ? selectedSkillId.value : null
   const ok = addHeroToSquadWithSkill(selectedHero.value, skillId)
   if (ok) {
     selectedHero.value = null

@@ -484,6 +484,32 @@ describe('combat progression and systems', () => {
     expect(monsterSkillEntry.skillName).toBe('Stone Shard')
   })
 
+  it('Mage with Arcane Blast uses skill when mana sufficient', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      intellect: 11,
+      spirit: 5,
+      skill: 'arcane-blast',
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob A',
+          damageType: 'magic',
+          base: { hp: 50, physAtk: 0, spellPower: 5, agility: 3, armor: 0, resistance: 2 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5, maxRounds: 15 })
+    const skillEntry = result.log.find((e) => e.skillId === 'arcane-blast')
+    expect(skillEntry).toBeDefined()
+    expect(skillEntry.damageType).toBe('magic')
+    expect(skillEntry.finalDamage).toBeGreaterThanOrEqual(1)
+  })
+
   it('Warrior with Cleave skill hits multiple targets when rage sufficient', () => {
     const warrior = sampleHero({
       id: 'w1',
@@ -679,7 +705,7 @@ describe('combat progression and systems', () => {
     expect(hResult.heroesAfter[0].maxMP).toBe(100)
 
     const mResult = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5 })
-    expect(mResult.heroesAfter[0].maxMP).toBe(10 + 11 * 3 + 5 * 2)
+    expect(mResult.heroesAfter[0].maxMP).toBe(Math.round(5 + 11 * 2.8 + 1 * 1))
   })
 
   it('Example8: after victory rest phase blocks next combat until fully recovered', () => {

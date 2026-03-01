@@ -768,7 +768,7 @@
           </div>
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
-            <template v-if="selectedHero.class === 'Warrior' && heroSkillIds(selectedHero).length > 0">
+            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0">
               <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
                   <span class="detail-label">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
@@ -785,8 +785,8 @@
                   <span class="skill-desc-text">{{ getHeroSkillDisplay(skillId, selectedHero).effectDesc }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Rage Cost</span>
-                  <span class="detail-value skill-rage-cost">{{ getHeroSkillDisplay(skillId, selectedHero).rageCost ?? 0 }}</span>
+                  <span class="detail-label">{{ selectedHero.class === 'Warrior' ? 'Rage Cost' : 'Mana Cost' }}</span>
+                  <span class="detail-value" :class="selectedHero.class === 'Warrior' ? 'skill-rage-cost' : 'skill-mana-cost'">{{ getHeroSkillDisplay(skillId, selectedHero).rageCost ?? getHeroSkillDisplay(skillId, selectedHero).manaCost ?? 0 }}</span>
                 </div>
               </div>
             </template>
@@ -1027,6 +1027,7 @@ import {
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
 import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
@@ -1572,10 +1573,20 @@ function heroSkillIds(hero) {
 }
 
 function getHeroSkillDisplay(skillId, hero = null) {
-  const base = getAnyWarriorSkillById(skillId)
-  if (!base) return { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
-  const enhanced = hero ? getSkillWithEnhancements(hero, skillId) : null
-  return enhanced ?? base
+  const heroClass = hero?.class
+  if (heroClass === 'Warrior') {
+    const base = getAnyWarriorSkillById(skillId)
+    if (!base) return { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
+    const enhanced = hero ? getSkillWithEnhancements(hero, skillId) : null
+    return enhanced ?? base
+  }
+  if (heroClass === 'Mage') {
+    const base = getAnyMageSkillById(skillId)
+    if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
+    const enhanced = hero ? getMageSkillWithEnhancements(hero, skillId) : null
+    return enhanced ?? base
+  }
+  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
 }
 
 function getPrimaryAttrEquipTip(attrKey) {

@@ -75,6 +75,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -150,6 +153,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await expect(page.getByText(/Add.*Jaina/)).toBeVisible()
 
     await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
@@ -173,10 +179,10 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.reload()
 
     const heroes = ['Varian Wrynn', 'Jaina Proudmoore', 'Rexxar', 'Uther', 'Anduin Wrynn']
-    const warriorHeroes = new Set(['Varian Wrynn'])
+    const heroesNeedingSkill = new Set(['Varian Wrynn', 'Jaina Proudmoore'])
     for (const hero of heroes) {
       await page.getByRole('button', { name: new RegExp(`^${hero}\\b`) }).click()
-      if (warriorHeroes.has(hero)) {
+      if (heroesNeedingSkill.has(hero)) {
         await page.locator('.skill-option').first().click()
         await page.getByRole('button', { name: 'Next' }).click()
       }

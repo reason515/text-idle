@@ -63,6 +63,16 @@ describe('skillChoice', () => {
       const opts = getSkillChoiceOptions(hero, 5)
       expect(opts.canEnhance).toBe(false)
     })
+
+    it('returns canEnhance and newSkills for Mage at Lv 5', () => {
+      const hero = { class: 'Mage', skill: 'arcane-blast' }
+      const opts = getSkillChoiceOptions(hero, 5)
+      expect(opts.canEnhance).toBe(true)
+      expect(opts.newSkills.length).toBe(3)
+      expect(opts.newSkills.map((s) => s.id)).toContain('arcane-missiles')
+      expect(opts.newSkills.map((s) => s.id)).toContain('frost-nova')
+      expect(opts.newSkills.map((s) => s.id)).toContain('flamestrike')
+    })
   })
 
   describe('hasSkillChoiceAtLevel', () => {
@@ -76,9 +86,14 @@ describe('skillChoice', () => {
       expect(hasSkillChoiceAtLevel(hero, 6)).toBe(false)
     })
 
-    it('returns false for non-Warrior', () => {
-      const hero = { class: 'Mage' }
+    it('returns false for class without skill choice (e.g. Priest)', () => {
+      const hero = { class: 'Priest' }
       expect(hasSkillChoiceAtLevel(hero, 5)).toBe(false)
+    })
+
+    it('returns true for Mage at Lv 5 with initial skill', () => {
+      const hero = { class: 'Mage', skill: 'arcane-blast' }
+      expect(hasSkillChoiceAtLevel(hero, 5)).toBe(true)
     })
   })
 

@@ -468,7 +468,26 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 14: Buff/Debuff Display on Unit Panels
+## Example 14: Mage Initial Skill Selection (Design Reference)
+
+**Design Reference (from design doc)**
+
+When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
+
+- **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
+- **Damage formula**: `rawDamage = SpellPower * SkillCoeff * [1.5 if crit]`; `finalDamage = max(1, rawDamage - targetResistance)`.
+- **Initial skills (3选1)**:
+  | Spec | Skill | English | Cost | Effect |
+  |------|-------|---------|------|--------|
+  | Arcane | Arcane Blast | Arcane Blast | 15 MP | 1.2x magic damage to single target |
+  | Fire | Fireball | Fireball | 20 MP | 1.2x magic damage; apply Burn: SpellPower*0.05/turn for 3 rounds |
+  | Frost | Frostbolt | Frostbolt | 15 MP | 1.0x magic damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage |
+
+- **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
+
+---
+
+## Example 15: Buff/Debuff Display on Unit Panels
 
 **User Story**
 
@@ -487,7 +506,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 15: Floating Damage/Heal Numbers on Unit Panels
+## Example 16: Floating Damage/Heal Numbers on Unit Panels
 
 **User Story**
 
@@ -507,7 +526,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 16: Gold System (Player Account)
+## Example 17: Gold System (Player Account)
 
 **User Story**
 
@@ -534,7 +553,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 17: Equipment Drop on Victory
+## Example 18: Equipment Drop on Victory
 
 **User Story**
 
@@ -577,7 +596,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 18: Equipment Item Inspection
+## Example 19: Equipment Item Inspection
 
 **User Story**
 
@@ -610,7 +629,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 19: Equipment Slots and Equipping Heroes
+## Example 20: Equipment Slots and Equipping Heroes
 
 **User Story**
 
@@ -649,7 +668,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 20: Equipment Attribute Requirements and Build Guidance
+## Example 21: Equipment Attribute Requirements and Build Guidance
 
 **User Story**
 
@@ -683,7 +702,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 21: Equipment Item Tier (Normal / Exceptional / Elite) and Stat Scaling
+## Example 22: Equipment Item Tier (Normal / Exceptional / Elite) and Stat Scaling
 
 **User Story**
 
@@ -725,7 +744,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 22: Inventory (Backpack) System
+## Example 23: Inventory (Backpack) System
 
 **User Story**
 
@@ -761,7 +780,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 23: Equipment Item Naming
+## Example 24: Equipment Item Naming
 
 **User Story**
 
@@ -792,7 +811,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 24: Shop (Gambling) System
+## Example 25: Shop (Gambling) System
 
 **User Story**
 
@@ -832,7 +851,7 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 25: Skill Selection at Level 5 Multiples (Enhance or Learn New)
+## Example 26: Skill Selection at Level 5 Multiples (Enhance or Learn New)
 
 **User Story**
 

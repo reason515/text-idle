@@ -35,6 +35,16 @@ describe('debuffDisplay', () => {
         '3 damage/round for 2 round(s)'
       )
     })
+    it('returns Frostbolt tip with resistance reduction', () => {
+      expect(getDebuffTip({ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 3 })).toBe(
+        'Resistance -6 for 3 round(s)'
+      )
+    })
+    it('returns Burn tip with damage per round', () => {
+      expect(getDebuffTip({ type: 'burn', damagePerRound: 2, remainingRounds: 2 })).toBe(
+        '2 magic damage/round for 2 round(s)'
+      )
+    })
   })
 
   describe('unitDebuffs', () => {

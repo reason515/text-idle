@@ -10,6 +10,11 @@ import {
   executeWarriorSkill,
   executeCleave,
 } from './warriorSkills.js'
+import {
+  getAnyMageSkillById,
+  getMageSkillWithEnhancements,
+  executeMageSkill,
+} from './mageSkills.js'
 import { getHeroSkillIds } from './skillChoice.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
@@ -303,16 +308,19 @@ function getEffectiveSpellPower(actor, rng) {
   return actor.spellPower
 }
 
-function getMaxResource(heroClass, intellect, spirit) {
+function getMaxResource(heroClass, intellect, spirit, level = 1) {
   if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
     return 100
   }
-  return 10 + (intellect || 0) * 3 + (spirit || 0) * 2
+  if (heroClass === 'Mage' || heroClass === 'Priest' || heroClass === 'Warlock') {
+    return Math.round(5 + (intellect || 0) * 2.8 + (level || 1) * 1)
+  }
+  return Math.round(5 + (intellect || 0) * 2.2 + (level || 1) * 1)
 }
 
 function heroCombatStats(hero) {
   const maxHP = computeHeroMaxHP(hero)
-  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
+  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit, hero.level)
   const eq = getEquipmentBonuses(hero?.equipment)
   const crit = getClassCritRates(hero.class, {
     agility: hero.agility + (eq?.agility || 0),
@@ -578,6 +586,66 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (usedSkill) continue
       }
 
+      // Mage skill path: use first affordable skill from skills array
+      if (actor.side === 'hero' && actor.class === 'Mage' && Array.isArray(actor.skills) && actor.skills.length > 0) {
+        let usedSkill = false
+        for (const skillId of actor.skills) {
+          const skill = getMageSkillWithEnhancements(actor, skillId) ?? getAnyMageSkillById(skillId)
+          const manaCost = skill?.manaCost ?? skill?.rageCost ?? 999
+          if (!skill || manaCost > (actor.currentMP || 0)) continue
+          const cooldown = skill.cooldown ?? 0
+          const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
+          if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
+
+          const isCrit = rng() < (actor.spellCrit || 0)
+          const targetHPBefore = target.currentHP
+          const sr = executeMageSkill(actor, target, skill, { isCrit, rng })
+          if (!actor.skillCooldowns) actor.skillCooldowns = {}
+          actor.skillCooldowns[skillId] = round
+          const entry = {
+            round,
+            actorId: actor.id,
+            actorName: actor.name,
+            actorAgility: actor.agility ?? 0,
+            actorClass: actor.class,
+            actorTier: null,
+            action: 'skill',
+            skillId: sr.skillId,
+            skillName: sr.skillName,
+            skillSpec: sr.skillSpec,
+            skillCoefficient: sr.skillCoefficient,
+            targetId: target.id,
+            targetName: target.name,
+            targetClass: target.class || null,
+            targetTier: target.tier || null,
+            damageType: 'magic',
+            rawDamage: sr.rawDamage,
+            isCrit: sr.isCrit,
+            finalDamage: sr.finalDamage,
+            absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
+            targetDefense: sr.effectiveResistance,
+            targetHPBefore,
+            targetHPAfter: target.currentHP,
+            targetMaxHP: target.maxHP,
+            manaConsumed: sr.manaConsumed,
+            manaAfter: actor.currentMP,
+          }
+          if (sr.debuffApplied || sr.debuffRefreshed) {
+            entry.debuffApplied = sr.debuffApplied
+            entry.debuffRefreshed = sr.debuffRefreshed
+            entry.debuffType = skill.id === 'frostbolt' ? 'frostbolt' : 'burn'
+            if (sr.debuffResistanceReduction != null) entry.debuffResistanceReduction = sr.debuffResistanceReduction
+            if (sr.debuffDuration != null) entry.debuffDuration = sr.debuffDuration
+            if (sr.debuffDamagePerRound != null) entry.debuffDamagePerRound = sr.debuffDamagePerRound
+            if (sr.debuffDamageType != null) entry.debuffDamageType = sr.debuffDamageType
+          }
+          log.push(entry)
+          usedSkill = true
+          break
+        }
+        if (usedSkill) continue
+      }
+
       // Basic attack / monster skill path
       const action = actorDamage(actor, rng, round)
       const critRate = action.damageType === 'magic'
@@ -654,11 +722,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       log.push(logEntry)
     }
 
-    // Process DOT (bleed, etc) at end of round
+    // Process DOT (bleed, burn, etc) at end of round
     for (const unit of [...heroUnits, ...monsterUnits]) {
       if (unit.currentHP <= 0) continue
-      const bleedDebuffs = (unit.debuffs || []).filter((d) => d.type === 'bleed' && d.damagePerRound > 0)
-      for (const d of bleedDebuffs) {
+      const dotDebuffs = (unit.debuffs || []).filter(
+        (d) => (d.type === 'bleed' || d.type === 'burn') && d.damagePerRound > 0
+      )
+      for (const d of dotDebuffs) {
         const dotDamage = d.damagePerRound
         const hpBefore = unit.currentHP
         unit.currentHP = Math.max(0, hpBefore - dotDamage)
@@ -669,13 +739,24 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           targetName: unit.name,
           targetClass: unit.class || null,
           targetTier: unit.tier || null,
-          debuffType: 'bleed',
+          debuffType: d.type,
           damage: dotDamage,
           targetHPBefore: hpBefore,
           targetHPAfter: unit.currentHP,
           targetMaxHP: unit.maxHP,
+          debuffDamagePerRound: dotDamage,
+          debuffDamageType: d.damageType || 'magic',
         })
       }
+    }
+
+    // Mage mana recovery per round (Base + Spirit * k)
+    const MANA_REGEN_BASE = 4
+    const MANA_REGEN_SPIRIT_SCALE = 1
+    for (const hero of heroUnits) {
+      if (hero.currentHP <= 0 || hero.class !== 'Mage') continue
+      const regen = MANA_REGEN_BASE + (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
+      hero.currentMP = Math.min(hero.maxMP, (hero.currentMP || 0) + Math.max(1, Math.floor(regen)))
     }
 
     // Tick debuffs at end of each round

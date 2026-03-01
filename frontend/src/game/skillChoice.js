@@ -10,6 +10,11 @@ import {
   getNewSkillsAtLevel,
   getLevelSkillById,
 } from './warriorLevelSkills.js'
+import { getMageSkillById } from './mageSkills.js'
+import {
+  getMageNewSkillsAtLevel,
+  getLevelSkillById as getMageLevelSkillById,
+} from './mageLevelSkills.js'
 
 /**
  * Get hero's skill ids (supports both legacy 'skill' and 'skills' array).
@@ -32,7 +37,7 @@ const MAX_ENHANCE_COUNT = 3
  * Get options for skill choice at a given level.
  * @param {Object} hero - Hero object
  * @param {number} level - New level (5, 10, 15, ...)
- * @returns {{ canEnhance: boolean, enhanceableSkillIds: string[], newSkills: Array<{id:string,name:string,spec:string,effectDesc:string,rageCost?:number}> }}
+ * @returns {{ canEnhance: boolean, enhanceableSkillIds: string[], newSkills: Array<{id:string,name:string,spec:string,effectDesc:string,rageCost?:number,manaCost?:number}> }}
  */
 export function getSkillChoiceOptions(hero, level) {
   const existingIds = getHeroSkillIds(hero)
@@ -40,7 +45,12 @@ export function getSkillChoiceOptions(hero, level) {
     (id) => (hero.skillEnhancements?.[id]?.enhanceCount ?? 0) < MAX_ENHANCE_COUNT
   )
   const existingSet = new Set(existingIds)
-  const levelSkills = getNewSkillsAtLevel(hero.class, level)
+  const levelSkills =
+    hero.class === 'Warrior'
+      ? getNewSkillsAtLevel(hero.class, level)
+      : hero.class === 'Mage'
+        ? getMageNewSkillsAtLevel(hero.class, level)
+        : []
   const unlearned = levelSkills.filter((s) => !existingSet.has(s.id))
 
   return {
@@ -52,6 +62,7 @@ export function getSkillChoiceOptions(hero, level) {
       spec: s.spec,
       effectDesc: s.effectDesc,
       rageCost: s.rageCost,
+      manaCost: s.manaCost,
       cooldown: s.cooldown,
     })),
   }
@@ -65,7 +76,7 @@ export function getSkillChoiceOptions(hero, level) {
  */
 export function hasSkillChoiceAtLevel(hero, level) {
   if (!isSkillChoiceLevel(level)) return false
-  if (hero.class !== 'Warrior') return false
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage') return false
   const opts = getSkillChoiceOptions(hero, level)
   return opts.canEnhance || opts.newSkills.length > 0
 }
@@ -78,7 +89,12 @@ export function hasSkillChoiceAtLevel(hero, level) {
  * @returns {boolean} true if applied
  */
 export function applyLearnNewSkill(hero, skillId, level) {
-  const levelSkills = getNewSkillsAtLevel(hero.class, level)
+  const levelSkills =
+    hero.class === 'Warrior'
+      ? getNewSkillsAtLevel(hero.class, level)
+      : hero.class === 'Mage'
+        ? getMageNewSkillsAtLevel(hero.class, level)
+        : []
   const def = levelSkills.find((s) => s.id === skillId)
   if (!def) return false
 
@@ -107,7 +123,12 @@ export function applyEnhanceSkill(hero, skillId) {
   const existingIds = getHeroSkillIds(hero)
   if (!existingIds.includes(skillId)) return false
 
-  const def = getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
+  const def =
+    hero.class === 'Warrior'
+      ? (getWarriorSkillById(skillId) ?? getLevelSkillById(skillId))
+      : hero.class === 'Mage'
+        ? (getMageSkillById(skillId) ?? getMageLevelSkillById(skillId))
+        : null
   if (!def) return false
 
   const current = hero.skillEnhancements?.[skillId]?.enhanceCount ?? 0

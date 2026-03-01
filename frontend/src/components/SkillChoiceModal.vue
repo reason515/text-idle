@@ -21,9 +21,9 @@
               <span class="skill-option-name">{{ getSkillDisplay(normalizeSkillId(sid)).name }}</span>
               <span class="skill-option-spec spec-badge">{{ getSkillDisplay(normalizeSkillId(sid)).spec }}</span>
             </div>
-            <div v-if="getSkillDisplay(normalizeSkillId(sid)).rageCost != null" class="skill-option-meta">
+            <div v-if="getSkillCostLabel(getSkillDisplay(normalizeSkillId(sid)))" class="skill-option-meta">
               <span class="skill-cost-label">Cost:</span>
-              <span class="skill-cost-value">{{ getSkillDisplay(normalizeSkillId(sid)).rageCost }} Rage</span>
+              <span class="skill-cost-value">{{ getSkillCostLabel(getSkillDisplay(normalizeSkillId(sid))) }}</span>
             </div>
             <p class="skill-option-desc">{{ getEnhanceEffectDesc(normalizeSkillId(sid)) }}</p>
           </button>
@@ -44,9 +44,9 @@
               <span class="skill-option-name">{{ s.name }}</span>
               <span class="skill-option-spec spec-badge">{{ s.spec }}</span>
             </div>
-            <div v-if="s.rageCost != null" class="skill-option-meta">
+            <div v-if="s.rageCost != null || s.manaCost != null" class="skill-option-meta">
               <span class="skill-cost-label">Cost:</span>
-              <span class="skill-cost-value">{{ s.rageCost }} Rage</span>
+              <span class="skill-cost-value">{{ s.manaCost != null ? s.manaCost + ' Mana' : s.rageCost + ' Rage' }}</span>
             </div>
             <p class="skill-option-desc">{{ s.effectDesc }}</p>
           </button>
@@ -71,6 +71,7 @@
 import { ref, computed, watch } from 'vue'
 import { CLASS_COLORS } from '../data/heroes.js'
 import { getAnyWarriorSkillById, getEnhancementPreviewEffectDesc } from '../game/warriorSkills.js'
+import { getAnyMageSkillById, getMageEnhancementPreviewEffectDesc } from '../game/mageSkills.js'
 import { getSkillChoiceOptions } from '../game/skillChoice.js'
 
 const props = defineProps({
@@ -100,14 +101,29 @@ function normalizeSkillId(skillIdOrObj) {
 
 function getSkillDisplay(skillId) {
   const id = normalizeSkillId(skillId)
+  const heroClass = props.hero?.class
+  if (heroClass === 'Mage') {
+    return getAnyMageSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', manaCost: null }
+  }
   return getAnyWarriorSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', rageCost: null }
+}
+
+function getSkillCostLabel(skill) {
+  if (skill?.manaCost != null) return `${skill.manaCost} Mana`
+  if (skill?.rageCost != null) return `${skill.rageCost} Rage`
+  return null
 }
 
 function getEnhanceEffectDesc(skillId) {
   const id = normalizeSkillId(skillId)
   if (props.hero) {
-    const preview = getEnhancementPreviewEffectDesc(props.hero, id)
-    if (preview) return preview
+    if (props.hero.class === 'Mage') {
+      const preview = getMageEnhancementPreviewEffectDesc(props.hero, id)
+      if (preview) return preview
+    } else {
+      const preview = getEnhancementPreviewEffectDesc(props.hero, id)
+      if (preview) return preview
+    }
   }
   return getSkillDisplay(id).effectDesc
 }
