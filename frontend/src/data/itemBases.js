@@ -2,7 +2,7 @@
  * Base item definitions for equipment system.
  * Item tier by monster level: Normal (1-20), Exceptional (21-40), Elite (41-60).
  * Each slot has families F1-F6; each family has Normal/Exceptional/Elite base names.
- * Design reference: 设计文档.md section 4.3, 4.4
+ * Design reference: docs/design/06-equipment.md section 4.3, 4.4
  */
 
 /** Slot identifiers for equipment display. TwoHand is not a slot: two-hand weapons equip to MainHand and block OffHand. */
