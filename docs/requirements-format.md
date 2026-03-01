@@ -644,6 +644,8 @@ Then [expected result/verifiable behavior].
 | AC9a | Hero has an item equipped in a slot | Player clicks the equipped slot | Equipment detail modal appears with full item stats; Unequip and Close buttons are visible; player must click Unequip then Confirm to unequip |
 | AC10 | Hero has a new item equipped | Hero participates in the next combat encounter | The item's Armor/Resistance/PhysAtk/SpellPower bonuses are applied in the actual damage and defense calculations during combat |
 | AC11 | Hero equips a weapon with PhysAtk range (e.g., Short Sword 3–5) | Player views the hero detail panel | PhysAtk is displayed as a range (e.g., 12–16 = base + weapon 3–5 + other); each combat hit rolls within the weapon's range |
+| AC12 | Player has Helm and Boots in backpack | Player clicks empty Helm slot in hero detail | Backpack modal opens with title "Backpack - Equip Helm"; only Helm items are shown (Boots hidden); if no matching items, shows "No items for this slot" |
+| AC13 | Hero has Helm equipped; player has another Helm in backpack | Player opens backpack, clicks the new Helm, clicks hero to equip | A compare view appears: left column labeled "Current (Equipped)" shows the equipped Helm; right column labeled "New" shows the backpack Helm; both show level req, requirements, armor/resist/phys/spell, affixes; Confirm replaces; Cancel keeps current |
 
 ---
 

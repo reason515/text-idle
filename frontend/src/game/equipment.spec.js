@@ -8,6 +8,7 @@ import {
   getEquipReasons,
   getEquipReasonsStructured,
   getEquipmentBonuses,
+  itemMatchesSlot,
   QUALITY_NORMAL,
   QUALITY_MAGIC,
   QUALITY_RARE,
@@ -224,6 +225,35 @@ describe('equipment', () => {
       expect(getQualityColor(QUALITY_NORMAL)).toBeDefined()
       expect(getQualityColor(QUALITY_MAGIC)).toBe('#4488ff')
       expect(getQualityColor(QUALITY_RARE)).toBe('#ffcc00')
+    })
+  })
+
+  describe('itemMatchesSlot', () => {
+    it('returns false when item or slot is null/undefined', () => {
+      expect(itemMatchesSlot(null, 'Helm')).toBe(false)
+      expect(itemMatchesSlot({ slot: 'Helm' }, null)).toBe(false)
+      expect(itemMatchesSlot({}, 'Helm')).toBe(false)
+    })
+
+    it('MainHand slot accepts MainHand and TwoHand items', () => {
+      expect(itemMatchesSlot({ slot: 'MainHand' }, 'MainHand')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'TwoHand' }, 'MainHand')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Helm' }, 'MainHand')).toBe(false)
+    })
+
+    it('Ring1 and Ring2 accept Ring, Ring1, Ring2 items', () => {
+      expect(itemMatchesSlot({ slot: 'Ring' }, 'Ring1')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Ring' }, 'Ring2')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Ring1' }, 'Ring1')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Ring2' }, 'Ring2')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Helm' }, 'Ring1')).toBe(false)
+    })
+
+    it('exact slot match for other slots', () => {
+      expect(itemMatchesSlot({ slot: 'Helm' }, 'Helm')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Armor' }, 'Armor')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'OffHand' }, 'OffHand')).toBe(true)
+      expect(itemMatchesSlot({ slot: 'Helm' }, 'Armor')).toBe(false)
     })
   })
 

@@ -92,6 +92,25 @@ const SAMPLE_RING1 = {
   suffixes: [],
 }
 
+const SAMPLE_BOOTS = {
+  id: 'test-boots',
+  slot: 'Boots',
+  baseName: 'Boots',
+  itemTier: 'normal',
+  quality: 'normal',
+  levelReq: 1,
+  strReq: 0,
+  agiReq: 0,
+  intReq: 0,
+  spiReq: 0,
+  armor: 3,
+  resistance: 0,
+  physAtk: 0,
+  spellPower: 0,
+  prefixes: [],
+  suffixes: [],
+}
+
 const SAMPLE_RING2 = {
   id: 'test-ring-2',
   slot: 'Ring',
@@ -173,6 +192,30 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     const armorAfter = await armorRow.locator('.detail-value').textContent()
     expect(parseFloat(armorAfter)).toBeGreaterThan(parseFloat(armorBefore || '0'))
+  })
+
+  test('clicking empty Helm slot shows only Helm items in backpack', async ({ page }) => {
+    const email = `eq-filter-slot-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(({ helm, boots }) => {
+      localStorage.setItem('playerInventory', JSON.stringify([helm, boots]))
+    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS })
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await page.locator('.equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
+    const inventoryModal = page.locator('.inventory-modal')
+    await expect(inventoryModal).toBeVisible()
+    await expect(inventoryModal.locator('.modal-title')).toContainText('Helm')
+    const slots = inventoryModal.locator('.inventory-slot')
+    await expect(slots).toHaveCount(1)
+    await expect(slots.first()).toContainText('Cap')
   })
 
   test('unequip restores slot to Empty', async ({ page }) => {
@@ -327,7 +370,9 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).last().click()
     await expect(page.locator('.item-detail-modal')).toBeVisible()
     await page.getByRole('button', { name: /^Varian/ }).click()
-    await expect(page.locator('.equip-replace-section')).toBeVisible()
+    await expect(page.locator('.item-compare-section')).toBeVisible()
+    await expect(page.locator('.item-compare-label').filter({ hasText: 'Current' })).toBeVisible()
+    await expect(page.locator('.item-compare-label').filter({ hasText: 'New' })).toBeVisible()
     await expect(page.locator('.equip-replace-hint')).toContainText('backpack')
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()

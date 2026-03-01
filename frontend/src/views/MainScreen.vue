@@ -394,16 +394,15 @@
     <Teleport to="body">
       <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">
         <div class="modal-box inventory-modal">
-          <div class="modal-title">Backpack</div>
+          <div class="modal-title">{{ pendingEquipSlot ? `Backpack - Equip ${SLOT_LABELS[pendingEquipSlot] || pendingEquipSlot}` : 'Backpack' }}</div>
           <div class="inventory-counter">{{ inventoryCount }} / 100</div>
-          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">No items in backpack</div>
+          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">{{ pendingEquipSlot ? 'No items for this slot' : 'No items in backpack' }}</div>
           <div v-else class="inventory-grid" @scroll="hoveredBackpackItem = null">
             <div
               v-for="(item, idx) in inventoryItems"
               :key="item.id"
               class="inventory-slot tooltip-wrap has-tip"
               :style="{ color: getQualityColor(item.quality), minWidth: getInventorySlotMinWidth(item) }"
-              :class="{ 'slot-match': pendingEquipSlot && (pendingEquipSlot === 'MainHand' ? (item.slot === 'MainHand' || item.slot === 'TwoHand') : (pendingEquipSlot === 'Ring1' || pendingEquipSlot === 'Ring2') ? (item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2') : item.slot === pendingEquipSlot) }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
               @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
               @mouseleave="hoveredBackpackItem = null"
@@ -437,6 +436,100 @@
     <Teleport to="body">
       <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
         <div class="modal-box item-detail-modal">
+          <template v-if="equipReplacePending?.mode === 'replace_confirm'">
+            <div class="modal-title item-compare-title">Compare — Replace in {{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
+            <div class="item-compare-section">
+              <div class="item-compare-columns">
+                <div class="item-compare-col">
+                  <div class="item-compare-label">Current (Equipped)</div>
+                  <div class="item-compare-item" :style="{ color: getQualityColor(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)?.quality) }">
+                    {{ formatItemDisplayName(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)) }}
+                  </div>
+                  <div class="item-compare-stats" v-if="replaceCompareCurrent">
+                    <div class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Lv.Req</span>
+                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.levelReq || 0 }}</span>
+                    </div>
+                    <div v-if="(replaceCompareCurrent.strReq || 0) > 0 || (replaceCompareCurrent.agiReq || 0) > 0 || (replaceCompareCurrent.intReq || 0) > 0 || (replaceCompareCurrent.spiReq || 0) > 0" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Req</span>
+                      <span class="item-compare-detail-value">
+                        <span v-if="(replaceCompareCurrent.strReq || 0) > 0">Str {{ replaceCompareCurrent.strReq }}</span>
+                        <span v-if="(replaceCompareCurrent.agiReq || 0) > 0">Agi {{ replaceCompareCurrent.agiReq }}</span>
+                        <span v-if="(replaceCompareCurrent.intReq || 0) > 0">Int {{ replaceCompareCurrent.intReq }}</span>
+                        <span v-if="(replaceCompareCurrent.spiReq || 0) > 0">Spi {{ replaceCompareCurrent.spiReq }}</span>
+                      </span>
+                    </div>
+                    <div v-if="(replaceCompareCurrent.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Armor</span>
+                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.armor }}</span>
+                    </div>
+                    <div v-if="(replaceCompareCurrent.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Resist</span>
+                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.resistance }}</span>
+                    </div>
+                    <div v-if="((replaceCompareCurrent.physAtk || 0) > 0 || (replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">PhysAtk</span>
+                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null ? (replaceCompareCurrent.physAtkMin + '-' + replaceCompareCurrent.physAtkMax) : replaceCompareCurrent.physAtk }}</span>
+                    </div>
+                    <div v-if="((replaceCompareCurrent.spellPower || 0) > 0 || (replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Spell</span>
+                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null ? (replaceCompareCurrent.spellPowerMin + '-' + replaceCompareCurrent.spellPowerMax) : replaceCompareCurrent.spellPower }}</span>
+                    </div>
+                    <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
+                    <div v-for="s in (replaceCompareCurrent.suffixes || [])" :key="'cs-' + s.id" class="item-compare-affix">{{ formatAffixDisplayName(s.name) }} +{{ s.value }}</div>
+                  </div>
+                </div>
+                <div class="item-compare-col">
+                  <div class="item-compare-label">New</div>
+                  <div class="item-compare-item" :style="{ color: getQualityColor(equipReplacePending.item?.quality) }">
+                    {{ formatItemDisplayName(equipReplacePending.item) }}
+                  </div>
+                  <div class="item-compare-stats" v-if="equipReplacePending.item">
+                    <div class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Lv.Req</span>
+                      <span class="item-compare-detail-value">{{ equipReplacePending.item.levelReq || 0 }}</span>
+                    </div>
+                    <div v-if="(equipReplacePending.item.strReq || 0) > 0 || (equipReplacePending.item.agiReq || 0) > 0 || (equipReplacePending.item.intReq || 0) > 0 || (equipReplacePending.item.spiReq || 0) > 0" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Req</span>
+                      <span class="item-compare-detail-value">
+                        <span v-if="(equipReplacePending.item.strReq || 0) > 0">Str {{ equipReplacePending.item.strReq }}</span>
+                        <span v-if="(equipReplacePending.item.agiReq || 0) > 0">Agi {{ equipReplacePending.item.agiReq }}</span>
+                        <span v-if="(equipReplacePending.item.intReq || 0) > 0">Int {{ equipReplacePending.item.intReq }}</span>
+                        <span v-if="(equipReplacePending.item.spiReq || 0) > 0">Spi {{ equipReplacePending.item.spiReq }}</span>
+                      </span>
+                    </div>
+                    <div v-if="(equipReplacePending.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Armor</span>
+                      <span class="item-compare-detail-value">{{ equipReplacePending.item.armor }}</span>
+                    </div>
+                    <div v-if="(equipReplacePending.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Resist</span>
+                      <span class="item-compare-detail-value">{{ equipReplacePending.item.resistance }}</span>
+                    </div>
+                    <div v-if="((equipReplacePending.item.physAtk || 0) > 0 || (equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">PhysAtk</span>
+                      <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
+                    </div>
+                    <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                      <span class="item-compare-detail-label">Spell</span>
+                      <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
+                    </div>
+                    <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
+                    <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ns-' + s.id" class="item-compare-affix">{{ formatAffixDisplayName(s.name) }} +{{ s.value }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="item-compare-actions">
+                <span class="equip-replace-hint">Current item will be moved to backpack.</span>
+                <div class="equip-replace-actions">
+                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">Confirm</button>
+                  <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+          <div>
           <div class="modal-title" :style="{ color: getQualityColor(selectedItem.quality) }">
             {{ formatItemDisplayName(selectedItem) }}
           </div>
@@ -519,14 +612,6 @@
               </div>
               <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
             </div>
-            <div v-else-if="equipReplacePending?.mode === 'replace_confirm'" class="equip-replace-section">
-              <span class="equip-to-label">Replace {{ formatItemDisplayName(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)) }} in {{ getSlotLabel(equipReplacePending.targetSlot) }} with {{ formatItemDisplayName(equipReplacePending.item) }}?</span>
-              <span class="equip-replace-hint">Current item will be moved to backpack.</span>
-              <div class="equip-replace-actions">
-                <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">Confirm</button>
-                <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
-              </div>
-            </div>
             <div v-else-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
               <span class="equip-to-label">Equip to:</span>
               <span v-for="h in squad" :key="h.id" class="equip-to-row">
@@ -551,6 +636,8 @@
             <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">Sell</button>
             <button class="btn" @click="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">Close</button>
           </div>
+          </div>
+          </template>
         </div>
       </div>
     </Teleport>
@@ -955,6 +1042,7 @@ import {
   canEquip,
   getEquipReasonsStructured,
   getEquipmentBonuses,
+  itemMatchesSlot,
 } from '../game/equipment.js'
 
 const RESOURCE_MAP = {
@@ -1098,7 +1186,14 @@ const inventoryCount = computed(() => {
 })
 const inventoryItems = computed(() => {
   inventoryVersion.value
-  return getInventory()
+  const items = getInventory()
+  if (!pendingEquipSlot.value) return items
+  return items.filter((item) => itemMatchesSlot(item, pendingEquipSlot.value))
+})
+const replaceCompareCurrent = computed(() => {
+  const p = equipReplacePending.value
+  if (!p || p.mode !== 'replace_confirm' || !p.hero || !p.targetSlot) return null
+  return getItemInSlot(p.hero, p.targetSlot)
 })
 const currentMapName = computed(() => {
   const map = MAPS.find((m) => m.id === progress.value.currentMapId)
@@ -1337,14 +1432,17 @@ function confirmUnequipEquipment() {
 
 function tryEquipFromBackpack(item) {
   if (!pendingEquipSlot.value || !selectedHero.value) return false
-  const slotMatch = pendingEquipSlot.value === 'MainHand'
-    ? (item.slot === 'MainHand' || item.slot === 'TwoHand')
-    : (pendingEquipSlot.value === 'Ring1' || pendingEquipSlot.value === 'Ring2')
-      ? (item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2')
-      : item.slot === pendingEquipSlot.value
-  if (!slotMatch) return false
+  if (!itemMatchesSlot(item, pendingEquipSlot.value)) return false
   const hero = squad.value.find((h) => h.id === selectedHero.value.id)
   if (!hero || !canEquip(hero, item)) return false
+  const existing = getItemInSlot(hero, pendingEquipSlot.value)
+  if (existing) {
+    selectedItem.value = item
+    equipReplacePending.value = { hero, item, mode: 'replace_confirm', targetSlot: pendingEquipSlot.value }
+    pendingEquipSlot.value = null
+    showBackpackModal.value = false
+    return true
+  }
   equipItem(item, hero, pendingEquipSlot.value)
   pendingEquipSlot.value = null
   showBackpackModal.value = false
@@ -2024,7 +2122,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 .inventory-slot:hover { border-color: var(--accent); }
-.inventory-slot.slot-match { border-color: var(--color-victory); background: rgba(68, 255, 136, 0.08); }
 .inventory-slot.tooltip-wrap .tooltip-text {
   white-space: pre-line;
   max-width: 14rem;
@@ -2121,6 +2218,21 @@ onUnmounted(() => {
 .equip-replace-lvl { font-size: 0.8rem; color: var(--text-muted); }
 .equip-replace-hint { font-size: 0.8rem; color: var(--text-muted); }
 .equip-replace-actions { display: flex; gap: 0.35rem; }
+.item-compare-title { font-size: 1rem; }
+.item-compare-section { margin-top: 0.5rem; }
+.item-compare-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.item-compare-col { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+.item-compare-label { font-size: 0.75rem; font-weight: 600; color: var(--text-label); text-transform: uppercase; }
+.item-compare-item { font-weight: 500; }
+.item-compare-stats { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
+.item-compare-detail-row { display: flex; gap: 0.5rem; }
+.item-compare-detail-label { color: var(--text-label); min-width: 3.5rem; }
+.item-compare-detail-value { flex: 1; }
+.item-compare-affix { font-size: 0.8rem; color: var(--text-muted); }
+.item-compare-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+@media (max-width: 480px) {
+  .item-compare-columns { grid-template-columns: 1fr; }
+}
 .equip-to-unmet { font-size: 0.85rem; color: var(--text-muted); cursor: help; }
 .equip-unmet-val { color: var(--error); }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }

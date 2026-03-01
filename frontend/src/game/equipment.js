@@ -468,6 +468,20 @@ export function getQualityColor(quality) {
   }
 }
 
+/**
+ * Check if an item can be equipped in the given equipment slot.
+ * MainHand accepts MainHand and TwoHand; Ring1/Ring2 accept Ring, Ring1, Ring2.
+ * @param {Object} item - Equipment item with slot property
+ * @param {string} slot - Target slot (e.g. MainHand, Helm, Ring1)
+ * @returns {boolean}
+ */
+export function itemMatchesSlot(item, slot) {
+  if (!item?.slot || !slot) return false
+  if (slot === 'MainHand') return item.slot === 'MainHand' || item.slot === 'TwoHand'
+  if (slot === 'Ring1' || slot === 'Ring2') return item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2'
+  return item.slot === slot
+}
+
 export { EQUIPMENT_SLOTS, SLOT_LABELS }
 
 const MAINHAND_SLOT = 'MainHand'
