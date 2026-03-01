@@ -264,10 +264,10 @@ describe('combat progression and systems', () => {
     )
     expect(normal.physCrit).toBe(0.05)
     expect(elite.physCrit).toBe(0.1)
-    expect(boss.physCrit).toBe(0.15)
+    expect(boss.physCrit).toBe(0.1)
     expect(normal.spellCrit).toBe(0.05)
     expect(elite.spellCrit).toBe(0.1)
-    expect(boss.spellCrit).toBe(0.15)
+    expect(boss.spellCrit).toBe(0.1)
   })
 
   it('Example9: armor and resistance absorb damage flat (1 pt = 1 damage)', () => {

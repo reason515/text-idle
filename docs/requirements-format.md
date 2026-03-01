@@ -276,7 +276,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Monster tiers**: Normal (~1.15x base), Elite (~1.5x stats, uses skills), Boss (~4x stats, multi-skill). Normal/Elite gap reduced for smoother progression.
+- **Monster tiers**: Normal (~1.15x base), Elite (~1.5x stats, uses skills), Boss (~2.8x stats, multi-skill). Normal/Elite gap reduced for smoother progression.
 - **Core attributes**: HP, PhysAtk, SpellPower, Agility, Armor, Resistance. Same damage/reduction formulas as heroes.
 - **Damage types**: Physical (reduced by Armor), Magic (reduced by Resistance). Monsters can be pure physical, pure magic, or mixed (PhysRatio/MagicRatio).
 - **Defense formula**: 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. Flat subtraction, no cap.
@@ -315,7 +315,7 @@ Then [expected result/verifiable behavior].
 - **Skill name and damage colors**: When a skill is used, the skill name and the damage dealt are displayed in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing.
 - **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
 - **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `ATK(raw) - Armor(defVal) = final` (or Resist for magic). All values in parentheses for consistency.
-- **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 15%. CritMultiplier = 1.5.
+- **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 10%. CritMultiplier = 1.5.
 - **Encounter message**: Each battle starts with "Your adventure party encountered [monster names]!" (Boss: "the fearsome [name]").
 - **Battle summary**: After combat ends, a summary line: "Victory! Defeated X monster(s) in Y round(s). EXP +N Gold +N" or "Defeat! ...".
 - **Rest phase in log**: Rest shows "Resting..." at start, recovery status every step (2000ms interval), "Rest complete." at end. After defeat, shows "Recovering from defeat..." with the same periodic recovery log until all heroes are fully recovered.
@@ -336,7 +336,7 @@ Then [expected result/verifiable behavior].
 | AC4 | Combat log is displaying actions | A hero deals magic damage (non-crit) | Damage number is blue (#44aaff), normal weight |
 | AC5 | Combat log is displaying actions | A hero or monster scores a critical hit | Damage number is bold; a "CRIT!" marker appears next to the number |
 | AC6 | A hero has Agility 8 and class Warrior (k_PhysCrit=0.3) | Hero's physical crit rate is computed | PhysCrit = (5 + 8 * 0.3) / 100 = 7.4%; crit chance is correctly applied in combat |
-| AC7 | A Normal monster attacks | Crit is checked | Monster has 5% crit chance; Elite has 10%; Boss has 15% |
+| AC7 | A Normal monster attacks | Crit is checked | Monster has 5% crit chance; Elite has 10%; Boss has 10% |
 | AC8 | Combat log shows a damage entry | Player views the log | A sub-line in readable color (#88aa88) shows ATK(raw) - Armor/Resist(defVal) = final |
 | AC9 | A new battle begins | Encounter is generated | The log shows "Your adventure party encountered [monster names]!" before combat actions start |
 | AC10 | A boss encounter begins | Boss fight starts | The log shows "Your adventure party encountered the fearsome [boss name]!" |
