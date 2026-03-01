@@ -32,6 +32,7 @@ export const SLOT_LABELS = {
   Amulet: 'Amulet',
   Ring1: 'Ring',
   Ring2: 'Ring',
+  Ring: 'Ring',
 }
 
 /**
@@ -371,6 +372,7 @@ export const SLOT_TO_BASE_KEY = {
   Amulet: 'Amulet',
   Ring1: 'Ring',
   Ring2: 'Ring',
+  Ring: 'Ring',
   Shield: 'Shield',
   MainHand2H: 'MainHand2H',
   MainHand2HBow: 'MainHand2HBow',

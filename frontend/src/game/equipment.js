@@ -123,7 +123,7 @@ function getAffixRange(baseMin, baseMax, quality) {
 
 /** Get droppable slots for a given item tier (armor slots + weapons) */
 function getDroppableSlots(itemTier) {
-  const slots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt', 'Amulet', 'Ring1', 'Ring2']
+  const slots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt', 'Amulet', 'Ring']
   slots.push('MainHand')
   slots.push('TwoHand')
   slots.push('OffHand')
@@ -181,7 +181,7 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
   }
 
   // Rings and amulets have no base stats; white quality has no value. Drop blue+ only.
-  const noBaseStatSlots = ['Amulet', 'Ring1', 'Ring2']
+  const noBaseStatSlots = ['Amulet', 'Ring']
   if (noBaseStatSlots.includes(resolvedSlot) && quality === QUALITY_NORMAL) {
     quality = QUALITY_MAGIC
   }
@@ -396,7 +396,7 @@ export function generateShopItem(slotId, level, rng = Math.random) {
   let baseKeyOverride = entry.baseKey
 
   if (slotId === 'Ring') {
-    slotOverride = rng() < 0.5 ? 'Ring1' : 'Ring2'
+    slotOverride = 'Ring'
     baseKeyOverride = 'Ring'
   }
 

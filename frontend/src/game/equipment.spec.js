@@ -89,11 +89,11 @@ describe('equipment', () => {
       expect(item.levelReq).toBeLessThanOrEqual(1)
     })
 
-    it('generateShopItem Ring resolves to Ring1 or Ring2', () => {
+    it('generateShopItem Ring resolves to slot Ring', () => {
       let callCount = 0
       const rng = () => (callCount++ === 0 ? 0 : Math.random())
       const item = generateShopItem('Ring', 5, rng)
-      expect(['Ring1', 'Ring2']).toContain(item.slot)
+      expect(item.slot).toBe('Ring')
     })
 
     it('generateShopItem Ring always Magic or higher', () => {
@@ -162,7 +162,7 @@ describe('equipment', () => {
       const rng = fixedRng([0.01, 0.65, 0, 0.95, 0.3, 0, 0])
       const result = generateEquipmentDrop(monsters, rng)
       expect(result.length).toBeGreaterThan(0)
-      const ringOrAmulet = result.find((i) => i.slot === 'Amulet' || i.slot === 'Ring1' || i.slot === 'Ring2')
+      const ringOrAmulet = result.find((i) => i.slot === 'Amulet' || i.slot === 'Ring')
       expect(ringOrAmulet).toBeDefined()
       expect(ringOrAmulet.quality).toBe(QUALITY_MAGIC)
     })

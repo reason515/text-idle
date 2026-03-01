@@ -403,7 +403,7 @@
               :key="item.id"
               class="inventory-slot tooltip-wrap has-tip"
               :style="{ color: getQualityColor(item.quality), minWidth: getInventorySlotMinWidth(item) }"
-              :class="{ 'slot-match': pendingEquipSlot && (pendingEquipSlot === 'MainHand' ? (item.slot === 'MainHand' || item.slot === 'TwoHand') : item.slot === pendingEquipSlot) }"
+              :class="{ 'slot-match': pendingEquipSlot && (pendingEquipSlot === 'MainHand' ? (item.slot === 'MainHand' || item.slot === 'TwoHand') : (pendingEquipSlot === 'Ring1' || pendingEquipSlot === 'Ring2') ? (item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2') : item.slot === pendingEquipSlot) }"
               @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
               @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
               @mouseleave="hoveredBackpackItem = null"
@@ -435,7 +435,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null">
+      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
         <div class="modal-box item-detail-modal">
           <div class="modal-title" :style="{ color: getQualityColor(selectedItem.quality) }">
             {{ formatItemDisplayName(selectedItem) }}
@@ -458,19 +458,19 @@
                 <span v-if="(selectedItem.spiReq || 0) > 0">Spi {{ selectedItem.spiReq }}</span>
               </span>
             </div>
-            <div v-if="(selectedItem.armor || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="(selectedItem.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value">{{ selectedItem.armor }}</span>
             </div>
-            <div v-if="(selectedItem.resistance || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="(selectedItem.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedItem.resistance }}</span>
             </div>
-            <div v-if="((selectedItem.physAtk || 0) > 0 || (selectedItem.physAtkMin != null && selectedItem.physAtkMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="((selectedItem.physAtk || 0) > 0 || (selectedItem.physAtkMin != null && selectedItem.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
               <span class="detail-value">{{ selectedItem.physAtkMin != null && selectedItem.physAtkMax != null ? (selectedItem.physAtkMin + '-' + selectedItem.physAtkMax) : selectedItem.physAtk }}</span>
             </div>
-            <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
+            <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
               <span class="detail-value">{{ selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null ? (selectedItem.spellPowerMin + '-' + selectedItem.spellPowerMax) : selectedItem.spellPower }}</span>
             </div>
@@ -502,13 +502,38 @@
             </div>
           </div>
           <div v-else class="item-detail-actions">
-            <div v-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
+            <div v-if="equipReplacePending?.mode === 'ring_choice'" class="equip-replace-section">
+              <span class="equip-to-label">Replace which ring for {{ equipReplacePending.hero.name }}?</span>
+              <div class="equip-replace-choices">
+                <button
+                  v-for="s in ['Ring1','Ring2']"
+                  :key="s"
+                  class="btn btn-sm equip-replace-option"
+                  :style="{ color: getEquippedItemColorForHero(equipReplacePending.hero, s) }"
+                  @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, s); equipReplacePending = null; selectedItem = null"
+                >
+                  <span class="equip-replace-slot">Ring {{ s === 'Ring1' ? '1' : '2' }}:</span>
+                  <span class="equip-replace-name">{{ getEquippedItemNameForHero(equipReplacePending.hero, s) || 'Empty' }}</span>
+                  <span class="equip-replace-lvl">Lv.{{ getEquippedItemLevelReqForHero(equipReplacePending.hero, s) }}</span>
+                </button>
+              </div>
+              <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
+            </div>
+            <div v-else-if="equipReplacePending?.mode === 'replace_confirm'" class="equip-replace-section">
+              <span class="equip-to-label">Replace {{ formatItemDisplayName(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)) }} in {{ getSlotLabel(equipReplacePending.targetSlot) }} with {{ formatItemDisplayName(equipReplacePending.item) }}?</span>
+              <span class="equip-replace-hint">Current item will be moved to backpack.</span>
+              <div class="equip-replace-actions">
+                <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">Confirm</button>
+                <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
+              </div>
+            </div>
+            <div v-else-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
               <span class="equip-to-label">Equip to:</span>
               <span v-for="h in squad" :key="h.id" class="equip-to-row">
                 <button
                   v-if="canEquip(h, selectedItem)"
                   class="btn btn-sm"
-                  @click="equipItem(selectedItem, h); selectedItem = null"
+                  @click="handleEquipToHero(selectedItem, h)"
                 >{{ h.name }}</button>
                 <span
                   v-else
@@ -524,7 +549,7 @@
               </span>
             </div>
             <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">Sell</button>
-            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null">Close</button>
+            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">Close</button>
           </div>
         </div>
       </div>
@@ -710,19 +735,19 @@
                 <span v-if="(selectedEquippedItem.item.spiReq || 0) > 0">Spi {{ selectedEquippedItem.item.spiReq }}</span>
               </span>
             </div>
-            <div v-if="(selectedEquippedItem.item.armor || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value">{{ selectedEquippedItem.item.armor }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0 && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Resistance</span>
               <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
             </div>
-            <div v-if="((selectedEquippedItem.item.physAtk || 0) > 0 || (selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="((selectedEquippedItem.item.physAtk || 0) > 0 || (selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Phys Atk</span>
               <span class="detail-value">{{ selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null ? (selectedEquippedItem.item.physAtkMin + '-' + selectedEquippedItem.item.physAtkMax) : selectedEquippedItem.item.physAtk }}</span>
             </div>
-            <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
+            <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
               <span class="detail-label">Spell Power</span>
               <span class="detail-value">{{ selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null ? (selectedEquippedItem.item.spellPowerMin + '-' + selectedEquippedItem.item.spellPowerMax) : selectedEquippedItem.item.spellPower }}</span>
             </div>
@@ -1011,6 +1036,7 @@ const heroDetailTab = ref('attrs')
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
 const sellConfirmingItem = ref(null)
+const equipReplacePending = ref(null)
 const selectedEquippedItem = ref(null)
 const equippedUnequipConfirming = ref(false)
 const pendingEquipSlot = ref(null)
@@ -1100,12 +1126,16 @@ function isItemInInventory(item) {
   return getInventory().some((i) => i.id === item.id)
 }
 
-function equipItem(item, targetHero) {
+function equipItem(item, targetHero, targetSlot) {
   const hero = targetHero || selectedHero.value
   if (!hero || !item || !canEquip(hero, item)) return
   const heroInSquad = squad.value.find((h) => h.id === hero.id)
   if (!heroInSquad) return
   heroInSquad.equipment = heroInSquad.equipment || {}
+  let slot = targetSlot ?? item.slot
+  if (slot === 'Ring') {
+    slot = !heroInSquad.equipment.Ring1 ? 'Ring1' : !heroInSquad.equipment.Ring2 ? 'Ring2' : 'Ring1'
+  }
   if (item.slot === 'TwoHand') {
     const mh = heroInSquad.equipment.MainHand
     const oh = heroInSquad.equipment.OffHand
@@ -1117,7 +1147,12 @@ function equipItem(item, targetHero) {
       delete heroInSquad.equipment.TwoHand
     }
   }
-  heroInSquad.equipment[item.slot] = item
+  const existing = heroInSquad.equipment[slot]
+  if (existing) {
+    addToInventory(existing)
+    delete heroInSquad.equipment[slot]
+  }
+  heroInSquad.equipment[slot] = item
   removeFromInventory(item.id)
   inventoryVersion.value++
   saveSquad(squad.value)
@@ -1202,6 +1237,73 @@ function getItemInSlot(hero, slot) {
   return hero?.equipment?.[slot] ?? null
 }
 
+function getEquippedItemNameForHero(hero, slot) {
+  if (slot === 'MainHand') {
+    const item = getMainHandItem(hero)
+    return item ? formatItemDisplayName(item) : null
+  }
+  const item = hero?.equipment?.[slot]
+  return item ? formatItemDisplayName(item) : null
+}
+
+function getEquippedItemColorForHero(hero, slot) {
+  if (slot === 'MainHand') {
+    const item = getMainHandItem(hero)
+    return item ? getQualityColor(item.quality) : 'var(--text-muted)'
+  }
+  const item = hero?.equipment?.[slot]
+  return item ? getQualityColor(item.quality) : 'var(--text-muted)'
+}
+
+function getEquippedItemLevelReqForHero(hero, slot) {
+  const item = getItemInSlot(hero, slot)
+  return item?.levelReq ?? 0
+}
+
+function getSlotLabel(slot) {
+  if (slot === 'Ring1') return 'Ring 1'
+  if (slot === 'Ring2') return 'Ring 2'
+  return SLOT_LABELS[slot] || slot
+}
+
+function getTargetSlotForItem(item, heroInSquad) {
+  const isRing = item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2'
+  if (isRing) {
+    return !heroInSquad.equipment.Ring1 ? 'Ring1' : !heroInSquad.equipment.Ring2 ? 'Ring2' : null
+  }
+  if (item.slot === 'TwoHand') return 'TwoHand'
+  return item.slot
+}
+
+function handleEquipToHero(item, hero) {
+  if (!canEquip(hero, item)) return
+  const heroInSquad = squad.value.find((h) => h.id === hero.id)
+  if (!heroInSquad) return
+  heroInSquad.equipment = heroInSquad.equipment || {}
+
+  const isRing = item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2'
+  if (isRing && heroInSquad.equipment.Ring1 && heroInSquad.equipment.Ring2) {
+    equipReplacePending.value = { hero, item, mode: 'ring_choice' }
+    return
+  }
+
+  const targetSlot = getTargetSlotForItem(item, heroInSquad)
+  if (targetSlot) {
+    const existing = getItemInSlot(heroInSquad, targetSlot)
+    if (existing) {
+      equipReplacePending.value = { hero, item, mode: 'replace_confirm', targetSlot }
+      return
+    }
+  }
+
+  equipItem(item, hero, targetSlot)
+  selectedItem.value = null
+}
+
+function confirmEquipReplace(item, hero, targetSlot) {
+  equipItem(item, hero, targetSlot)
+}
+
 function toggleEquipmentSlot(slot) {
   const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
   if (!hero) return
@@ -1237,11 +1339,13 @@ function tryEquipFromBackpack(item) {
   if (!pendingEquipSlot.value || !selectedHero.value) return false
   const slotMatch = pendingEquipSlot.value === 'MainHand'
     ? (item.slot === 'MainHand' || item.slot === 'TwoHand')
-    : item.slot === pendingEquipSlot.value
+    : (pendingEquipSlot.value === 'Ring1' || pendingEquipSlot.value === 'Ring2')
+      ? (item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2')
+      : item.slot === pendingEquipSlot.value
   if (!slotMatch) return false
   const hero = squad.value.find((h) => h.id === selectedHero.value.id)
   if (!hero || !canEquip(hero, item)) return false
-  equipItem(item)
+  equipItem(item, hero, pendingEquipSlot.value)
   pendingEquipSlot.value = null
   showBackpackModal.value = false
   return true
@@ -2009,6 +2113,14 @@ onUnmounted(() => {
 .equip-to-section { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
 .equip-to-label { font-size: 0.85rem; color: var(--text-label); flex-shrink: 0; }
 .equip-to-row { display: inline-flex; }
+.equip-replace-section { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
+.equip-replace-choices { display: flex; flex-direction: column; gap: 0.35rem; }
+.equip-replace-option { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 0.4rem 0.6rem; }
+.equip-replace-slot { font-size: 0.75rem; color: var(--text-label); }
+.equip-replace-name { font-weight: 500; }
+.equip-replace-lvl { font-size: 0.8rem; color: var(--text-muted); }
+.equip-replace-hint { font-size: 0.8rem; color: var(--text-muted); }
+.equip-replace-actions { display: flex; gap: 0.35rem; }
 .equip-to-unmet { font-size: 0.85rem; color: var(--text-muted); cursor: help; }
 .equip-unmet-val { color: var(--error); }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }

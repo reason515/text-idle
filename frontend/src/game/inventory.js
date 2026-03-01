@@ -82,6 +82,7 @@ const SLOT_SELL_MULT = {
   Boots: 1,
   Belt: 0.9,
   Amulet: 1.1,
+  Ring: 1.1,
   Ring1: 1.1,
   Ring2: 1.1,
 }
