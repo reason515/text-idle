@@ -120,7 +120,7 @@
 
     <!-- Confirmation step -->
     <template v-else-if="selectedHero">
-      <div class="confirmation-step">
+      <div class="confirmation-step" data-testid="confirm-recruit-step">
         <p>Add <strong>{{ selectedHero.name }}</strong> to your squad?</p>
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
@@ -194,7 +194,7 @@
             class="btn btn-secondary"
             @click="backFromConfirm"
           >Back</button>
-          <button class="btn" @click="confirmSelection">Confirm</button>
+          <button class="btn" data-testid="confirm-recruit-btn" @click="confirmSelection">Confirm</button>
         </div>
       </div>
     </template>

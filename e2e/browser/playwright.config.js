@@ -10,6 +10,8 @@ module.exports = defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
     viewport: { width: 1920, height: 1080 },
   },
   projects: [{

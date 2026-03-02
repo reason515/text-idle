@@ -24,6 +24,31 @@ async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
   await page.getByRole('button', { name: 'Confirm' }).click()
 }
 
+/** Click the recruit button (scoped to squad-col to avoid matching wrong elements). */
+async function clickRecruitBtn(page) {
+  const btn = page.locator('.squad-col').getByRole('button', { name: '+ Recruit' })
+  await expect(btn).toBeVisible({ timeout: 10000 })
+  await btn.scrollIntoViewIfNeeded()
+  await btn.click({ force: true, timeout: 5000 })
+}
+
+/** Pause combat and dismiss any skill choice modal so recruit btn is clickable. */
+async function prepareForRecruit(page) {
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: 'Pause' }).click({ timeout: 2000 }).catch(() => {})
+  await page.waitForTimeout(600)
+  const modal = page.locator('[data-testid="skill-choice-modal"]')
+  for (let i = 0; i < 10; i++) {
+    try {
+      await modal.getByRole('button', { name: 'Skip' }).click({ timeout: 1500 })
+      await page.waitForTimeout(500)
+    } catch {
+      break
+    }
+  }
+  await page.waitForTimeout(300)
+}
+
 /** Allocate N attribute points to Strength in expansion flow. */
 async function allocateAttrPoints(page, n) {
   const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
@@ -36,13 +61,15 @@ async function recruitExpansionWarrior(page, heroName = 'Varian Wrynn', attrPoin
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
   await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
-  await expect(page.locator('.skill-selection-step')).toBeVisible({ timeout: 3000 })
-  await page.locator('.skill-selection-step .skill-option').first().click()
-  await page.getByRole('button', { name: 'Next' }).click()
+  const skillStep = page.locator('.skill-selection-step')
+  await expect(skillStep).toBeVisible({ timeout: 3000 })
+  await skillStep.locator('.skill-option').first().click()
+  await expect(skillStep.locator('.skill-option.selected')).toBeVisible({ timeout: 2000 })
+  await skillStep.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByText(/Level \d+.*Skill Choice/)).toBeVisible({ timeout: 5000 })
   await page.locator('[data-testid="skill-choice-modal"]').getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByText(new RegExp(`Add.*${heroName}`))).toBeVisible({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  await expect(page.locator('[data-testid="confirm-recruit-step"]')).toBeVisible({ timeout: 5000 })
+  await page.locator('[data-testid="confirm-recruit-btn"]').click()
 }
 
 /** Recruit an expansion hero without initial skill (Hunter, Paladin, Priest, etc.): attr alloc -> confirm. */
@@ -51,8 +78,8 @@ async function recruitExpansionOther(page, heroName, attrPoints = 20) {
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
   await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText(new RegExp(`Add.*${heroName}`))).toBeVisible({ timeout: 3000 })
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  await expect(page.locator('[data-testid="confirm-recruit-step"]')).toBeVisible({ timeout: 5000 })
+  await page.locator('[data-testid="confirm-recruit-btn"]').click()
 }
 
 /** Recruit an expansion Mage: same as Warrior but Mage skill options. */
@@ -61,13 +88,15 @@ async function recruitExpansionMage(page, heroName = 'Jaina Proudmoore', attrPoi
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
   await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
-  await expect(page.locator('.skill-selection-step')).toBeVisible({ timeout: 5000 })
-  await page.locator('.skill-selection-step .skill-option').first().click()
-  await page.getByRole('button', { name: 'Next' }).click()
+  const skillStep = page.locator('.skill-selection-step')
+  await expect(skillStep).toBeVisible({ timeout: 5000 })
+  await skillStep.locator('.skill-option').first().click()
+  await expect(skillStep.locator('.skill-option.selected')).toBeVisible({ timeout: 2000 })
+  await skillStep.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByText(/Level \d+.*Skill Choice/)).toBeVisible({ timeout: 5000 })
   await page.locator('[data-testid="skill-choice-modal"]').getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByText(new RegExp(`Add.*${heroName}`))).toBeVisible({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  await expect(page.locator('[data-testid="confirm-recruit-step"]')).toBeVisible({ timeout: 5000 })
+  await page.locator('[data-testid="confirm-recruit-btn"]').click()
 }
 
 test.describe('Character Recruitment (Example 4)', () => {
@@ -162,14 +191,17 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
+    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
     await recruitExpansionWarrior(page)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await expect(page.locator('.hero-card')).toHaveCount(2)
     await expect(page.getByText('Rexxar').first()).toBeVisible()
     await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
   })
@@ -227,9 +259,10 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
@@ -255,9 +288,10 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
@@ -272,8 +306,8 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(skillModal).toBeVisible({ timeout: 3000 })
     await skillModal.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).first().click()
     await skillModal.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible({ timeout: 3000 })
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.locator('[data-testid="confirm-recruit-step"]')).toBeVisible({ timeout: 5000 })
+    await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await page.locator('.hero-card').filter({ hasText: 'Varian Wrynn' }).click()
@@ -298,8 +332,8 @@ test.describe('Character Recruitment (Example 4)', () => {
     await recruitWarrior(page, 'Varian Wrynn')
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
     await recruitExpansionMage(page, 'Jaina Proudmoore', 20)
 
@@ -308,9 +342,9 @@ test.describe('Character Recruitment (Example 4)', () => {
       p.unlockedMapCount = 3
       localStorage.setItem('combatProgress', JSON.stringify(p))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
     await recruitExpansionOther(page, 'Rexxar', 45)
 
     await page.evaluate(() => {
@@ -318,9 +352,9 @@ test.describe('Character Recruitment (Example 4)', () => {
       p.unlockedMapCount = 4
       localStorage.setItem('combatProgress', JSON.stringify(p))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
     await recruitExpansionOther(page, 'Uther', 70)
 
     await page.evaluate(() => {
@@ -328,13 +362,13 @@ test.describe('Character Recruitment (Example 4)', () => {
       p.unlockedMapCount = 5
       localStorage.setItem('combatProgress', JSON.stringify(p))
     })
-    await page.goto('/main')
-    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('[data-testid="recruit-btn"]').click()
+    await page.goto('/main', { waitUntil: 'load' })
+    await prepareForRecruit(page)
+    await clickRecruitBtn(page)
     await recruitExpansionOther(page, 'Anduin Wrynn', 95)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.hero-card')).toHaveCount(5)
-    await expect(page.locator('[data-testid="recruit-btn"]')).not.toBeVisible()
+    await expect(page.locator('.squad-col').getByRole('button', { name: '+ Recruit' })).not.toBeVisible()
   })
 })

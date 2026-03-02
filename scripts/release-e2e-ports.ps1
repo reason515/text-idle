@@ -1,8 +1,14 @@
-# Release ports 8080 and 5173 before running E2E tests.
+# Prepare for E2E tests: clear test-results and release ports 8080/5173.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1
 # Always exits 0 so npm run e2e continues even if some processes could not be killed.
 
 $ErrorActionPreference = "SilentlyContinue"
+
+# Clear test-results so each run reflects the latest results
+if (Test-Path test-results) {
+    Remove-Item -Recurse -Force test-results
+    Write-Host "Cleared test-results."
+}
 
 function Stop-ProcessOnPort {
     param([int]$Port)
