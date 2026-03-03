@@ -566,7 +566,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Drop rate**: Low overall (configurable); each victory rolls independently; most victories produce no equipment drop.
 - **Drop condition**: Only on **victory**; defeat grants no equipment.
 - **Item tier** (determined by monster level, not MF): Normal bases from Lv 1–20 monsters; Exceptional bases from Lv 21–40; Elite bases from Lv 41–60.
-- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–4 affixes), Unique (fixed affixes + special effect).
+- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–6 affixes), Unique (fixed affixes + special effect).
 - **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold, with a brief highlight animation when appearing to enhance the sense of surprise.
 - **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
 - **Blue vs. Yellow range rule**: Blue affix range = max(1, floor(base × 0.7)) to ceil(base × 1.3); Yellow affix range = base range (narrower, relies on count). Affix values are never +0.
@@ -584,7 +584,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | An equipment item drops | Drop is resolved | The item is listed in the combat log victory summary (same line/section as EXP and Gold rewards), showing the item's name colored by quality |
 | AC4 | A Normal (white) item drops | Item is generated | Item name is displayed in white/default color; it has no affixes; only base attributes (e.g., Armor value) are shown |
 | AC5 | A Magic (blue) item drops | Item is generated | Item name is displayed in blue; it shows 1–2 affixes with each affix displaying the rolled value and roll range (e.g., `+7 Armor [+5~18]`) |
-| AC6 | A Rare (yellow) item drops | Item is generated | Item name is displayed in yellow; it shows 3–4 affixes each with rolled value and range (narrower than blue for the same affix family) |
+| AC6 | A Rare (yellow) item drops | Item is generated | Item name is displayed in yellow; it shows 3–6 affixes each with rolled value and range (narrower than blue for the same affix family) |
 | AC7 | A Unique item drops | Item is generated | Item name is displayed in unique/gold color; affixes are fixed (no roll range shown, as values are predetermined) |
 | AC8 | Squad is fighting Lv 1–20 monsters (e.g., Elwynn Forest) | Equipment drops | Item base is Normal tier (e.g., Cap, Leather Armor, Short Bow); Exceptional and Elite base names do not appear |
 | AC9 | A blue item and a yellow item with the same "+Armor" affix are compared | Player views both items | Blue item roll range is wider (e.g., `[+5~18]`); yellow item roll range is narrower (e.g., `[+6~10]`); an exceptional blue roll can exceed a mediocre yellow roll |
@@ -803,7 +803,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | A Magic (blue) item has 1 prefix and 0 suffix | Item name is displayed | Format: `Prefix Base` (e.g., "Sturdy Cap", "Mighty Long Sword") |
 | AC3 | A Magic (blue) item has 0 prefix and 1 suffix | Item name is displayed | Format: `Base of Suffix` (e.g., "Cap of the Bear", "Long Sword of Striking") |
 | AC4 | A Magic (blue) item has 1 prefix and 1 suffix | Item name is displayed | Format: `Prefix Base of Suffix` (e.g., "Sturdy Cap of the Bear"); name appears in combat log, inventory, and item detail |
-| AC5 | A Rare (yellow) item has 3–4 affixes | Item name is displayed | Format: `PrimaryPrefix Base of PrimarySuffix, the [Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., Veteran, Champion, Glory) |
+| AC5 | A Rare (yellow) item has 3–6 affixes | Item name is displayed | Format: `PrimaryPrefix Base of PrimarySuffix, the [Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., Veteran, Champion, Glory) |
 | AC6 | A Rare (yellow) item is displayed | Player views the name | The name ends with ", the [Epithet]" (e.g., "Mighty Crown of the Titan, the Veteran"); clearly distinguishes from blue items which have no epithet |
 | AC7 | A Rare (yellow) item drops | Item is generated | The epithet is chosen from the configurable pool (Veteran, Champion, Glory, Bane, Favor, Warden, Sage, Storm, Flame, Frost, etc.); each yellow item gets exactly one epithet |
 | AC8 | A Unique item is displayed | Item name is shown | The name is the fixed preset name for that Unique; it does not change based on affixes (affixes are predetermined) |

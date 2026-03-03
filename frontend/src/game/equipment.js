@@ -2,7 +2,7 @@
  * Equipment drop and item generation.
  * Design reference: Example 17, 21, 23 in requirements-format.md
  * - Item tier by monster level: Normal (1-20), Exceptional (21-40), Elite (41-60)
- * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-4 affix)
+ * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-6 affix)
  * - Boss always drops at least 1 item with quality >= Magic
  * - Blue affix range: 0.7-1.3 x base; Yellow: narrower base range
  */
@@ -270,10 +270,10 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
       item.suffixes.push({ id: s.id, name: s.name, stat: s.stat, value: val, min: range.min, max: range.max })
     }
   } else if (quality === QUALITY_RARE) {
-    const count = rng() < 0.5 ? 3 : 4
+    const count = 3 + Math.floor(rng() * 4)
     const prefixes = allowedAffixes.filter((a) => a.type === 'prefix')
     const suffixes = allowedAffixes.filter((a) => a.type === 'suffix')
-    const numPrefix = Math.min(Math.ceil(count / 2), 2)
+    const numPrefix = Math.min(Math.ceil(count / 2), 3)
     const numSuffix = count - numPrefix
     for (let i = 0; i < numPrefix && prefixes.length; i++) {
       const p = pickRandom(prefixes, rng)

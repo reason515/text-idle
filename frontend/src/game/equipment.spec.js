@@ -137,6 +137,25 @@ describe('equipment', () => {
       }
     })
 
+    it('Rare (yellow) items have 3-6 affixes', () => {
+      const monsters = [{ tier: 'boss', level: 30 }]
+      const rareAffixCounts = []
+      for (let i = 0; i < 300; i++) {
+        const result = generateEquipmentDrop(monsters, () => Math.random())
+        for (const item of result) {
+          if (item.quality === QUALITY_RARE) {
+            const total = (item.prefixes?.length || 0) + (item.suffixes?.length || 0)
+            rareAffixCounts.push(total)
+          }
+        }
+      }
+      expect(rareAffixCounts.length).toBeGreaterThan(0)
+      for (const c of rareAffixCounts) {
+        expect(c).toBeGreaterThanOrEqual(3)
+        expect(c).toBeLessThanOrEqual(6)
+      }
+    })
+
     it('Magic (blue) affixes never roll +0, minimum value is 1', () => {
       const monsters = [{ tier: 'boss', level: 5 }]
       const allAffixes = []
