@@ -79,7 +79,7 @@
 
     <!-- Warrior / Mage skill selection step -->
     <template v-else-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
-      <div class="skill-selection-step">
+      <div class="skill-selection-step" data-testid="skill-selection-step">
         <div class="skill-options">
           <button
             v-for="skill in initialSkillsForClass(selectedHero.class)"

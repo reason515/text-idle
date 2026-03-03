@@ -1674,6 +1674,14 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** When e2eFastCombat is set (by E2E tests), use 200ms instead of normal delays. */
+function combatDelayMs(normalMs) {
+  try {
+    if (localStorage.getItem('e2eFastCombat') === '1') return 200
+  } catch { /* localStorage may be unavailable */ }
+  return normalMs
+}
+
 async function sleepMsRespectingPause(ms) {
   let remaining = ms
   while (remaining > 0 && isRunning.value) {
@@ -1703,7 +1711,7 @@ async function animateCombatLog(result) {
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
-    await sleepMsRespectingPause(2000)
+    await sleepMsRespectingPause(combatDelayMs(2000))
     if (!isRunning.value) return
     currentActorId.value = entry.actorId ?? null
     currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
@@ -1784,7 +1792,7 @@ async function animateCombatLog(result) {
       displayHeroes.value = [...displayHeroes.value]
       currentMonsters.value = [...currentMonsters.value]
       await scrollLog()
-      await sleepMsRespectingPause(2000)
+      await sleepMsRespectingPause(combatDelayMs(2000))
     }
   }
   currentActorId.value = null
@@ -1821,7 +1829,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
       complete: false,
     })
     await scrollLog()
-    await sleepMsRespectingPause(2000)
+    await sleepMsRespectingPause(combatDelayMs(2000))
     if (!isRunning.value) break
   }
 
@@ -1837,7 +1845,7 @@ async function runCombatLoop() {
   let lastMapId = null
   while (isRunning.value) {
     if (squad.value.length === 0) {
-      await sleepMs(1000)
+      await sleepMs(combatDelayMs(1000))
       continue
     }
 
@@ -1848,7 +1856,7 @@ async function runCombatLoop() {
       if (!isFirstBattle) {
         addLogEntry({ type: 'separator' })
         await scrollLog()
-        await sleepMs(300)
+        await sleepMs(combatDelayMs(300))
       }
       const map = MAPS.find((m) => m.id === currentMapId)
       if (map?.description) {
@@ -1858,13 +1866,13 @@ async function runCombatLoop() {
           description: map.description,
         })
         await scrollLog()
-        await sleepMs(1800)
+        await sleepMs(combatDelayMs(1800))
       }
       lastMapId = currentMapId
     } else if (!isFirstBattle) {
       addLogEntry({ type: 'separator' })
       await scrollLog()
-      await sleepMs(300)
+      await sleepMs(combatDelayMs(300))
     }
     isFirstBattle = false
 
@@ -1889,7 +1897,7 @@ async function runCombatLoop() {
       isBoss: isBossEncounter,
     })
     await scrollLog()
-    await sleepMs(1000)
+    await sleepMs(combatDelayMs(1000))
 
     const result = runAutoCombat({ heroes: squad.value, monsters })
 
@@ -1966,12 +1974,12 @@ async function runCombatLoop() {
 
       progress.value = deductExplorationProgress(progress.value, 10)
       saveProgress()
-      await sleepMs(2000)
+      await sleepMs(combatDelayMs(2000))
       await autoRest(result.heroesAfter, { isDefeat: true })
     }
 
     if (!isRunning.value) break
-    await sleepMs(500)
+    await sleepMs(combatDelayMs(500))
   }
 }
 

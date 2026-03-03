@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test')
+require('./globalHooks')
 
 test.describe('Login E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -17,8 +18,10 @@ test.describe('Login E2E', () => {
     await page.getByLabel('队伍名称').fill('Test Team')
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    // Jaina (Mage) skips skill selection
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

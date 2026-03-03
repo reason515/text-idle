@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test')
+require('./globalHooks')
 
 test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
@@ -40,8 +41,10 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '开始冒险' }).click()
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    // Jaina (Mage) skips skill selection and goes directly to confirmation
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -61,8 +64,10 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    // Jaina (Mage) skips skill selection
     await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
+    await expect(page.locator('.skill-selection-step')).toBeVisible()
+    await page.locator('.skill-option').first().click()
+    await page.getByRole('button', { name: 'Next' }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

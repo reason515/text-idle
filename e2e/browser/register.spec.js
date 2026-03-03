@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test')
+require('./globalHooks')
 
 test.describe('Register E2E', () => {
   test.beforeEach(async ({ page }) => {

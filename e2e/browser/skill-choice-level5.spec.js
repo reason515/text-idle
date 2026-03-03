@@ -6,11 +6,12 @@
  */
 
 const { test, expect } = require('@playwright/test')
+require('./globalHooks')
 
 async function setupNewRun(page) {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/register')
-  await page.evaluate(() => localStorage.clear())
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
 }
 
 async function registerToCharacterSelect(page, email) {
@@ -20,9 +21,9 @@ async function registerToCharacterSelect(page, email) {
   await page.getByRole('button', { name: 'Register' }).click()
   await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
-  await page.locator('.intro-panel .btn').first().click()
-  await page.locator('#teamName').fill('Skill Squad')
-  await page.locator('form button[type="submit"]').click()
+  await page.getByRole('button', { name: '下一步' }).click()
+  await page.getByLabel('队伍名称').fill('Skill Squad')
+  await page.getByRole('button', { name: '开始冒险' }).click()
   await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
 }
 
