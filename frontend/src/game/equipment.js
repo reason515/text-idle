@@ -224,8 +224,17 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     return arr || 0
   }
 
-  item.armor = rollBaseStat(baseDef.armor)
-  item.resistance = rollBaseStat(baseDef.resistance)
+  const armorSlots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt']
+  if (armorSlots.includes(resolvedSlot) && baseDef.armorResistTotal) {
+    const [tMin, tMax] = baseDef.armorResistTotal
+    const total = randomInRange(tMin, tMax, rng)
+    const armor = total >= 2 ? randomInRange(1, total - 1, rng) : 1
+    item.armor = armor
+    item.resistance = total - armor
+  } else {
+    item.armor = rollBaseStat(baseDef.armor)
+    item.resistance = rollBaseStat(baseDef.resistance)
+  }
 
   const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
   const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? rollWeaponDamageRange(baseDef.physAtk, rng) : null

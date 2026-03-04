@@ -66,15 +66,15 @@ describe('combat progression and systems', () => {
     const afterNormal = addExplorationProgress(progress, 'normal')
     const afterElite = addExplorationProgress(progress, 'elite')
     expect(afterNormal.currentProgress).toBeLessThan(afterElite.currentProgress)
-    expect(afterNormal.currentProgress).toBe(3)
-    expect(afterElite.currentProgress).toBe(6)
+    expect(afterNormal.currentProgress).toBe(2)
+    expect(afterElite.currentProgress).toBe(4)
     expect(afterNormal.bossAvailable).toBe(false)
   })
 
   it('Example5: reaching 100 progress spawns map boss', () => {
     const progress = createInitialProgress()
     let next = progress
-    for (let i = 0; i < 17; i += 1) {
+    for (let i = 0; i < 25; i += 1) {
       next = addExplorationProgress(next, 'elite')
     }
     expect(next.currentProgress).toBe(100)

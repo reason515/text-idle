@@ -45,8 +45,8 @@ const SAMPLE_HELM = {
   agiReq: 0,
   intReq: 0,
   spiReq: 0,
-  armor: 5,
-  resistance: 0,
+  armor: 3,
+  resistance: 2,
   physAtk: 0,
   spellPower: 0,
   prefixes: [],
@@ -104,8 +104,8 @@ const SAMPLE_BOOTS = {
   agiReq: 0,
   intReq: 0,
   spiReq: 0,
-  armor: 3,
-  resistance: 0,
+  armor: 2,
+  resistance: 1,
   physAtk: 0,
   spellPower: 0,
   prefixes: [],
@@ -353,7 +353,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    const helm2 = { ...SAMPLE_HELM, id: 'test-helm-2', armor: 8 }
+    const helm2 = { ...SAMPLE_HELM, id: 'test-helm-2', armor: 5, resistance: 3 }
     await page.evaluate(({ helm1, helm2 }) => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {

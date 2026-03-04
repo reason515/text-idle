@@ -574,6 +574,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Ring and Amulet quality floor**: Rings and amulets have no base stats; white quality has no value. They **only drop at Magic (blue) or higher**; if rolled as Normal, quality is upgraded to Magic.
 - **Weapon damage range at drop**: Physical/spell weapons have 下限范围 and 上限范围 (see design doc 4.3). At drop, physAtkMin and physAtkMax are rolled independently within their ranges; the weapon instance displays the rolled range (e.g., PhysAtk: 3–5).
 - **Item naming**: White = base name only; Blue = prefix + base + suffix (1 affix: prefix+base or base+suffix); Yellow = primary prefix + base + primary suffix + ", the [Epithet]" (epithet from pool); Unique = fixed name.
+- **Armor pieces (Helm, Armor, Gloves, Boots, Belt)**: At drop, armor+resistance total is rolled from base range; armor and resistance are randomly split (each ≥1). No fixed tier bias.
 
 **Acceptance Criteria**
 
@@ -679,10 +680,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 **Design Reference (from design doc)**
 
 - **Level requirement**: Hero level must be ≥ item's required level to equip.
-- **Attribute requirements by armor tier**:
-  - Normal tier armor (Lv 1–20): requires **Str** (physical protection bias — high Armor, low Resistance).
-  - Exceptional tier armor (Lv 21–40): requires **Int** (magic protection bias — high Resistance, low Armor).
-  - Elite tier armor (Lv 41–60): requires **Str + Int** (balanced protection — both Armor and Resistance).
+- **Attribute requirements by armor tier**: Normal tier (Lv 1–20) → Str; Exceptional (Lv 21–40) → Int; Elite (Lv 41–60) → Str + Int. Requirements are tier-based, independent of the random armor/resistance split.
 - **Attribute requirements by weapon type**: Physical weapons (swords, axes, hammers) → Str; Agility weapons (daggers, bows) → Agi; Spell weapons (wands, scepters, orbs) → Int.
 - **No hard class restrictions**: Any hero can equip any item if attribute and level requirements are met — design intent is to guide, not lock.
 - **Transparency**: Item detail clearly shows all requirements; unmet requirements highlighted in red.
@@ -694,11 +692,11 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC1 | A Normal-tier Helm (e.g., Crown, Str req 26, Lv req 20) is inspected by a Warrior with Str 20, Level 15 | Player views item detail | Level requirement (20) is shown in red (hero is Lv 15); Str requirement (26) is shown in red (hero has Str 20); both blocks equipping |
 | AC2 | Player allocates attribute points to Str during level-up such that Warrior now has Str 26 and is Level 20 | Player inspects the same Crown again | Str 26 and Level 20 requirements both display in normal color; player can now equip the item |
 | AC3 | An Exceptional-tier Helm (e.g., Casque, Int req 8, Lv req 28) is inspected by a Warrior with Int 4 | Player views item detail | Int 8 requirement is shown in red; tooltip or item description indicates this is a magic-biased armor needing Int |
-| AC4 | An Elite-tier Helm (e.g., Armet, Str req 6 + Int req 6, Lv req 48) is inspected | Player views item detail | Both Str 6 and Int 6 requirements are shown; unmet ones in red; this item provides balanced Armor and Resistance |
+| AC4 | An Elite-tier Helm (e.g., Armet, Str req 6 + Int req 6, Lv req 48) is inspected | Player views item detail | Both Str 6 and Int 6 requirements are shown; unmet ones in red; this item provides Armor and Resistance (each ≥1, randomly split at drop) |
 | AC5 | A dagger (e.g., Dirk, Agi req 0, Lv req 4) is inspected by a Mage (Agi 4, Lv 5) | Player views item detail | All requirements are met; no red highlights; the Mage can equip a dagger if desired (no class lock) |
 | AC6 | A Rogue hero with Agi 11 inspects a Composite Bow (Agi req 14) | Player views item detail | Agi 14 requirement is shown in red; player understands they must allocate more Agi points to equip this bow |
 | AC7 | Player inspects any item | Player reads requirements | There is no "class: Warrior only" or similar class restriction; requirements are purely level + attributes |
-| AC8 | Player views secondary attributes in hero detail modal after equipping a Normal-tier armor | Hero's Armor value in secondary attributes increases | New Armor value = base Armor + item's base Armor + any "+Armor" affix value; formula is visible via tooltip |
+| AC8 | Player views secondary attributes in hero detail modal after equipping a Normal-tier armor | Hero's Armor and Resistance in secondary attributes update | New values = base + item's Armor/Resistance (each ≥1, randomly split at drop) + affix bonuses; formula visible via tooltip |
 
 ---
 
@@ -723,7 +721,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   | Normal | +2–5 | Low-level drops |
   | Exceptional | +5–12 | Mid-game drops |
   | Elite | +12–24 | Late-game drops |
-- **Base item stat scaling**: Higher tier = higher base Armor/PhysAtk/level requirement (e.g., Helm F1: Cap Armor 2–3 → War Hat Resistance 8–13 → Shako Armor 8–13 + Resistance 8–13). **Weapons** use 下限范围 and 上限范围 columns (see design doc 4.3); tier determines which base families and damage ranges apply.
+- **Base item stat scaling**: Armor pieces (Helm, Armor, Gloves, Boots, Belt) provide **Armor + Resistance total** (varies by tier). At drop, total is rolled; armor and resistance are randomly split (each ≥1). Higher tier = higher total. **Weapons** use 下限范围 and 上限范围 columns (see design doc 4.3); tier determines which base families and damage ranges apply.
 - **Within same tier, F1→F6**: Level requirement and base stats increase by ~4 levels per family.
 
 **Acceptance Criteria**
@@ -735,7 +733,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | Squad is fighting Lv 41–60 monsters | Equipment drops | Items may have Elite tier bases (e.g., Shako, Dusk Shroud, Spider Bow); both lower tiers may also appear |
 | AC4 | A Normal-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Normal-tier range (e.g., `+2~5` for Yellow; Blue range: `+1~6`); Elite range values (+12~24) are not reachable from this item |
 | AC5 | An Elite-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Elite-tier range (e.g., `+12~24` for Yellow; Blue range: `+8~31`); significantly stronger than Normal-tier equivalents |
-| AC6 | Player compares a Normal-tier Cap and an Elite-tier Shako | Player views both item details | Cap (Lv 1, Armor 2–3, no Resistance) vs. Shako (Lv 41, Armor 8–13, Resistance 8–13); the tier difference is immediately visible in base stats |
+| AC6 | Player compares a Normal-tier Cap and an Elite-tier Shako | Player views both item details | Cap (Lv 1, Armor+Resist total 2–3, each ≥1) vs. Shako (Lv 41, total 16–26, each ≥1); the tier difference is immediately visible in base stats |
 | AC7 | A Rare item drops from a Lv 25 monster | Item is generated | Item base is Exceptional tier; its affixes may be Normal-tier or Exceptional-tier rolls (not Elite-tier); affix roll ranges reflect this ceiling |
 | AC8 | Player is on Elwynn Forest (Lv 1–5 monsters) and on Westfall (Lv 6–10 monsters) | Equipment drops from each map | Items from higher-level maps have higher level requirements within the same Normal tier (e.g., Skull Cap Lv 4 on Westfall vs. Cap Lv 1 on Elwynn); stat differences are visible |
 | AC9 | Player progresses from map 1 to map 3 | Player views dropped items over time | Item base names progress through the Normal tier families (F1→F6 gradually) as monster levels increase; equipment visibly improves with map progression |

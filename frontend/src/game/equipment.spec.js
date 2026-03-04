@@ -175,6 +175,24 @@ describe('equipment', () => {
       }
     })
 
+    it('armor pieces (Helm, Armor, Gloves, Boots, Belt) have armor >= 1 and resistance >= 1', () => {
+      const armorSlots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt']
+      for (let i = 0; i < 100; i++) {
+        const item = generateShopItem('Helm', 5, () => Math.random())
+        if (item && armorSlots.includes(item.slot)) {
+          expect(item.armor).toBeGreaterThanOrEqual(1)
+          expect(item.resistance).toBeGreaterThanOrEqual(1)
+        }
+      }
+      for (let i = 0; i < 50; i++) {
+        const item = generateShopItem('Boots', 10, () => Math.random())
+        if (item) {
+          expect(item.armor).toBeGreaterThanOrEqual(1)
+          expect(item.resistance).toBeGreaterThanOrEqual(1)
+        }
+      }
+    })
+
     it('rings and amulets never drop as Normal (white) quality', () => {
       // Force drop + Ring slot + would-be Normal quality; result must be Magic
       // RNG sequence: drop(0.01), slot Ring1(0.65), base(0), quality Normal(0.95), affix count(0.3), prefix(0), suffix(0)
@@ -345,11 +363,12 @@ describe('equipment', () => {
       expect(b.strength).toBe(0)
     })
 
-    it('sums armor from equipped items', () => {
+    it('sums armor and resistance from equipped items', () => {
       const b = getEquipmentBonuses({
-        Helm: { armor: 5, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 },
+        Helm: { armor: 3, resistance: 2, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 },
       })
-      expect(b.armor).toBe(5)
+      expect(b.armor).toBe(3)
+      expect(b.resistance).toBe(2)
     })
 
     it('sums strBonus from affixes', () => {

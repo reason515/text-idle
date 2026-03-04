@@ -182,8 +182,8 @@ export function getExpansionHeroAttributePoints(level) {
 
 export function addExplorationProgress(progress, killTier) {
   const gainTable = {
-    normal: 3,
-    elite: 6,
+    normal: 2,
+    elite: 4,
   }
   const gain = gainTable[killTier] ?? 0
   const nextProgress = clamp(progress.currentProgress + gain, 0, 100)
