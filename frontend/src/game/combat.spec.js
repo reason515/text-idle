@@ -403,11 +403,9 @@ describe('combat progression and systems', () => {
     }
     const unique = [...new Set(rawDamages)]
     expect(unique.length).toBeGreaterThan(1)
-    const basePhysAtk = Math.round(10 * 1.4 + 9 * 0.6)
-    const minEffective = basePhysAtk + 3
-    const maxEffective = basePhysAtk + 5
-    const minExpected = minEffective
-    const maxExpected = Math.round(maxEffective * 1.2)
+    // baseRoll 4-9, physMultiplier ~4.28 (Str10 Agi9); rawDamage range 17-39 for basic, 20-47 for 1.2x skill
+    const minExpected = 17
+    const maxExpected = 47
     for (const d of rawDamages) {
       expect(d).toBeGreaterThanOrEqual(minExpected)
       expect(d).toBeLessThanOrEqual(maxExpected)
@@ -632,11 +630,21 @@ describe('combat progression and systems', () => {
         { tier: 'normal', level: 1 }
       ),
     ]
-    const noCritResult = runAutoCombat({ heroes, monsters, rng: () => 0.99 })
+    let callCount = 0
+    const noCritRng = () => {
+      callCount += 1
+      return callCount === 1 ? 0.5 : 0.99
+    }
+    const noCritResult = runAutoCombat({ heroes, monsters, rng: noCritRng })
     const noCritEntry = noCritResult.log.find((e) => e.actorName === 'Hero One')
     expect(noCritEntry.isCrit).toBe(false)
 
-    const alwaysCritResult = runAutoCombat({ heroes, monsters, rng: () => 0.01 })
+    callCount = 0
+    const critRng = () => {
+      callCount += 1
+      return callCount === 1 ? 0.5 : 0.01
+    }
+    const alwaysCritResult = runAutoCombat({ heroes, monsters, rng: critRng })
     const critEntry = alwaysCritResult.log.find((e) => e.actorName === 'Hero One')
     expect(critEntry.isCrit).toBe(true)
     expect(critEntry.finalDamage).toBeGreaterThan(noCritEntry.finalDamage)

@@ -13,48 +13,71 @@
 
 | 类型 | 公式 | 说明 |
 |------|------|------|
-| 原始伤害 | `rawDamage = PhysAtk/SpellPower * SkillCoeff * [1.5 if crit]` | SkillCoeff 为技能倍率，暴击时乘 1.5 |
+| 物理原始伤害 | `rawDamage = baseRoll * physMultiplier * SkillCoeff * [1.5 if crit] + physAtkBonus` | 见 2.2.3.1 |
+| 法术原始伤害 | `rawDamage = baseRoll * spellMultiplier * SkillCoeff * [1.5 if crit] + spellPowerBonus` | 见 2.2.3.2 |
 | 护甲抵消 | `finalDamage = max(1, rawDamage - Armor)` | 1 护甲 = 抵消 1 点物理伤害，无上限，装备可叠加 |
 | 抗性抵消 | `finalDamage = max(1, rawDamage - Resistance)` | 1 抗性 = 抵消 1 点魔法伤害 |
 | 暴击伤害 | `CritMultiplier = 1.5` | 暴击时伤害 * 1.5，可由装备/技能修改 |
 
 - **直接抵消**：每点护甲/抗性 = 抵消 1 点伤害，无上限，装备可叠加。
 
-#### 2.2.3.1 武器伤害范围（参考暗黑2）
+#### 2.2.3.1 物理伤害公式（空手 + 武器统一结构）
 
-**设计意图**：武器伤害采用**范围**而非固定值，每次攻击在 [min, max] 内随机，增加战斗随机性与悬念，贴近暗黑2的经典体验。
+**设计意图**：空手与武器使用同一套结构，空手基础伤害为范围 1–4，武器伤害叠加到该范围；主属性采用乘法加成，增加随机性与上下限差异。
 
 | 概念 | 说明 |
 |------|------|
-| 武器底材 | 物理武器（剑、斧、锤、匕首、弓等）的 PhysAtk+ 为**范围**，如 3–5、9–14 |
-| 掉落随机 | **下限**与**上限**各自有随机范围；掉落时分别 roll：`physAtkMin = randomInRange(minLow, minHigh)`，`physAtkMax = randomInRange(maxLow, maxMax)`，且保证 min ≤ max |
-| 每次攻击 | 造成物理伤害时，**武器贡献部分**在 [physAtkMin, physAtkMax] 内随机 roll |
-| 角色基础 | 来自主属性的 PhysAtk 为固定值，不参与随机 |
-| 非武器加成 | 词缀、戒指等提供的 +PhysAtk 为固定值 |
+| 空手基础 | 每次攻击 roll `unarmedRoll = random(1, 4)` |
+| 武器贡献 | 有武器时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
+| 基础骰子 | `baseRoll = unarmedRoll + weaponRoll`；空手 1–4，有武器 3–5 时 4–9 |
+| 主属性乘数 | `physMultiplier = 1 + baseAttr * 0.20`；力量职业 baseAttr = Str×1.4 + Agi×0.6，敏捷职业 baseAttr = Agi×1.4 + Str×0.6 |
+| 非武器加成 | 词缀、戒指等提供的 +PhysAtk 为固定值 `physAtkBonus` |
 | 法术武器 | 魔杖/权杖的 SpellPower+ 同理可为范围，每次法术伤害时随机 |
-
-**底材与掉落**：
-
-- 底材表（见装备系统 4.3）明确列出**下限范围**与**上限范围**两列；掉落时分别 roll 得到该武器实例的 `physAtkMin`、`physAtkMax`
-- 词缀「+PhysAtk」为固定值，叠加到武器范围之外
 
 **公式**（物理伤害）：
 
 ```
-effectivePhysAtk = basePhysAtk + randomInRange(weapon.physAtkMin, weapon.physAtkMax) + otherPhysAtk
-rawDamage = effectivePhysAtk * SkillCoeff * [1.5 if crit]
+baseRoll = random(1, 4) + [有武器 ? random(weaponMin, weaponMax) : 0]
+physMultiplier = 1 + baseAttr * 0.20
+rawDamage = round(baseRoll * physMultiplier) + physAtkBonus
+finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 ```
 
-- `basePhysAtk`：角色基础（5 + 主属性 × k_PhysAtk）
-- `weapon.physAtkMin/Max`：该武器实例掉落时 roll 出的上下限；无武器时此项为 0
-- `otherPhysAtk`：非武器装备（词缀、戒指等）提供的固定 PhysAtk
+- `baseAttr`：按职业主属性计算（力量职业 Str×1.4 + Agi×0.6，敏捷职业 Agi×1.4 + Str×0.6）
+- `weapon.physAtkMin/Max`：该武器实例掉落时 roll 出的上下限；无武器时 baseRoll 仅 1–4
+- `physAtkBonus`：非武器装备（词缀、戒指等）提供的固定 PhysAtk
 
 **UI 与透明化**：
 
 - 武器 tooltip 显示该实例 roll 后的「PhysAtk: 3–5」或「伤害: 3–5」（上下限均为掉落时随机结果）
 - 若有底材参考，可显示「底材范围: 2–4」（表示同类武器的可能 roll 范围）
-- 角色面板 PhysAtk 可显示为「12–16」（基础 + 武器实例范围 + 其他固定）
+- 角色面板 PhysAtk 可显示为「17–39」（baseRoll 范围 × physMultiplier + physAtkBonus）
 - 战斗日志中每次伤害为实际 roll 后的数值，便于复盘
+
+#### 2.2.3.2 法术伤害公式（与物理统一结构）
+
+**设计意图**：法术伤害与物理伤害采用同一套结构，空手基础 1–4，法杖贡献叠加；主属性乘法加成。
+
+| 概念 | 说明 |
+|------|------|
+| 空手基础 | 每次施法 roll `unarmedRoll = random(1, 4)` |
+| 法杖贡献 | 有法杖时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
+| 基础骰子 | `baseRoll = unarmedRoll + weaponRoll` |
+| 主属性乘数 | `spellMultiplier = 1 + baseAttr * 0.20`；baseAttr = Int×1.2 + Spirit×0.8 |
+| 非武器加成 | 词缀、戒指等提供的 +SpellPower 为固定值 `spellPowerBonus` |
+
+**公式**（法术伤害）：
+
+```
+baseRoll = random(1, 4) + [有法杖 ? random(weaponMin, weaponMax) : 0]
+spellMultiplier = 1 + baseAttr * 0.20
+rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
+finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
+```
+
+- `baseAttr`：Int×1.2 + Spirit×0.8
+- `weapon.spellPowerMin/Max`：法杖实例掉落时 roll 出的上下限
+- `spellPowerBonus`：非武器装备提供的固定 SpellPower
 
 #### 2.2.4 怒气与能量规则（草案）
 

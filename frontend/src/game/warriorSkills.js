@@ -37,17 +37,7 @@ export const WARRIOR_INITIAL_SKILLS = [
 ]
 
 import { getLevelSkillById } from './warriorLevelSkills.js'
-
-function randomInRange(min, max, rng) {
-  return min + Math.floor(rng() * (max - min + 1))
-}
-
-function getEffectivePhysAtk(warrior, rng) {
-  if (warrior.physAtkWeaponMin != null && warrior.physAtkWeaponMax != null && rng) {
-    return warrior.physAtk + randomInRange(warrior.physAtkWeaponMin, warrior.physAtkWeaponMax, rng)
-  }
-  return warrior.physAtk
-}
+import { getEffectivePhysAtk } from './damageUtils.js'
 
 /**
  * @param {string} skillId

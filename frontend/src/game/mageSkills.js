@@ -38,17 +38,7 @@ export const MAGE_INITIAL_SKILLS = [
 ]
 
 import { getLevelSkillById } from './mageLevelSkills.js'
-
-function randomInRange(min, max, rng) {
-  return min + Math.floor(rng() * (max - min + 1))
-}
-
-function getEffectiveSpellPower(mage, rng) {
-  if (mage.spellPowerWeaponMin != null && mage.spellPowerWeaponMax != null && rng) {
-    return mage.spellPower + randomInRange(mage.spellPowerWeaponMin, mage.spellPowerWeaponMax, rng)
-  }
-  return mage.spellPower
-}
+import { getEffectiveSpellPower } from './damageUtils.js'
 
 /**
  * @param {string} skillId

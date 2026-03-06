@@ -232,7 +232,7 @@ describe('Example13: Heroic Strike', () => {
 
   it('AC14: weapon damage range - rawDamage varies per hit when physAtkWeaponMin/Max present', () => {
     const warrior = makeWarrior({
-      physAtk: 10,
+      physMultiplier: 4,
       physAtkWeaponMin: 3,
       physAtkWeaponMax: 5,
       currentMP: 20,
@@ -244,13 +244,13 @@ describe('Example13: Heroic Strike', () => {
     const resultMin = executeWarriorSkill(warrior, target, skill, { isCrit: false, rng: rngMin })
     const target2 = makeTarget({ armor: 0 })
     const resultMax = executeWarriorSkill(
-      makeWarrior({ physAtk: 10, physAtkWeaponMin: 3, physAtkWeaponMax: 5, currentMP: 20 }),
+      makeWarrior({ physMultiplier: 4, physAtkWeaponMin: 3, physAtkWeaponMax: 5, currentMP: 20 }),
       target2,
       skill,
       { isCrit: false, rng: rngMax }
     )
-    expect(resultMin.rawDamage).toBe(16)
-    expect(resultMax.rawDamage).toBe(18)
+    expect(resultMin.rawDamage).toBe(19)
+    expect(resultMax.rawDamage).toBe(43)
   })
 })
 
@@ -539,7 +539,7 @@ describe('Example13: Combat integration', () => {
   })
 
   it('Sunder Armor debuff expires after 3 rounds in runAutoCombat', () => {
-    // Put warrior with Sunder Armor skill against a tank-HP monster
+    // Put warrior with Sunder Armor skill against a tank-HP monster that deals enough damage for Rage gain
     const warrior = heroForCombat({ skill: 'sunder-armor', strength: 10 })
     const monster = {
       id: 'tank',
@@ -549,7 +549,7 @@ describe('Example13: Combat integration', () => {
       damageType: 'physical',
       maxHP: 9999,
       currentHP: 9999,
-      physAtk: 1,
+      physAtk: 20,
       spellPower: 0,
       agility: 1,
       armor: 2,

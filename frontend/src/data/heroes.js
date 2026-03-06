@@ -7,6 +7,14 @@
  */
 
 import { getEquipmentBonuses } from '../game/equipment.js'
+import {
+  PHYS_ATK_UNARMED_MIN,
+  PHYS_ATK_UNARMED_MAX,
+  PHYS_MULTIPLIER_K,
+  SPELL_UNARMED_MIN,
+  SPELL_UNARMED_MAX,
+  SPELL_MULTIPLIER_K,
+} from '../game/damageUtils.js'
 
 /**
  * Initial attributes for each class at level 1 (small-number design principle)
@@ -86,6 +94,21 @@ export function computeHeroArmor(hero) {
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k = coef.k_Armor ?? 0
   return Math.round(attrs.strength * k) + eq.armor
+}
+
+/** Spell damage multiplier base attr: Int*1.2 + Spirit*0.8. Design 2.2.3.1. */
+export function getSpellBaseAttr(hero) {
+  const attrs = getEffectiveAttrs(hero)
+  return (attrs.intellect || 0) * 1.2 + (attrs.spirit || 0) * 0.8
+}
+
+/** Physical damage multiplier base attr: Str*1.4+Agi*0.6 for strength, Agi*1.4+Str*0.6 for agility. Design 2.2.3.1. */
+export function getPhysBaseAttr(hero) {
+  const attrs = getEffectiveAttrs(hero)
+  const coef = CLASS_COEFFICIENTS[hero?.class] || {}
+  if (coef.physAtkAttr === 'strength') return (attrs.strength || 0) * 1.4 + (attrs.agility || 0) * 0.6
+  if (coef.physAtkAttr === 'agility') return (attrs.agility || 0) * 1.4 + (attrs.strength || 0) * 0.6
+  return (attrs.strength || 0) * 1.4 + (attrs.agility || 0) * 0.6
 }
 
 /** Resistance for combat: Int * k_Resistance + equipment resistance. Returns 0 if class has no k_Resistance. */
@@ -193,39 +216,50 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
 
-  // PhysAtk (base + equipment; weapon range shown as min-max)
-  if (coef.physAtkAttr && coef.k_PhysAtk != null) {
-    const mainAttr = attrs[coef.physAtkAttr] || 0
-    const basePhysAtk = 5 + mainAttr * coef.k_PhysAtk
-    const attrName = coef.physAtkAttr === 'strength' ? 'Str' : 'Agi'
-    const baseFormula = formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, null)
-    if (eq.physAtkMin != null && eq.physAtkMax != null) {
-      const minVal = Math.round((basePhysAtk + eq.physAtkMin) * 10) / 10
-      const maxVal = Math.round((basePhysAtk + eq.physAtkMax) * 10) / 10
-      values.PhysAtk = `${minVal}-${maxVal}`
-      formulaMap.PhysAtk = fmtFormula(baseFormula + ` + Weapon(${eq.physAtkMin}-${eq.physAtkMax}) = ${values.PhysAtk}`)
-    } else {
-      values.PhysAtk = Math.round((basePhysAtk + eq.physAtk) * 10) / 10
-      formulaMap.PhysAtk = eq.physAtk ? fmtFormula(baseFormula + ` + EQP(+${eq.physAtk}) = ${values.PhysAtk}`) : fmtFormula(formulaWithValues(`5 + ${attrName} * ${coef.k_PhysAtk}`, attrs, level, values.PhysAtk))
-    }
+  // PhysAtk: baseRoll(1-4 [+ weapon]) x (1 + baseAttr x 0.2) + eq.physAtk
+  if (coef.physAtkAttr != null) {
+    const baseAttr = getPhysBaseAttr({ class: heroClass, ...rawAttrs, equipment: heroAttrs?.equipment })
+    const physMultiplier = 1 + baseAttr * PHYS_MULTIPLIER_K
+    const physAtkBonus = eq.physAtk ?? 0
+    const baseRollMin = PHYS_ATK_UNARMED_MIN
+    const baseRollMax = eq.physAtkMin != null && eq.physAtkMax != null
+      ? PHYS_ATK_UNARMED_MAX + eq.physAtkMax
+      : PHYS_ATK_UNARMED_MAX
+    const baseRollMinWeapon = eq.physAtkMin != null ? PHYS_ATK_UNARMED_MIN + eq.physAtkMin : baseRollMin
+    const minVal = Math.round(baseRollMinWeapon * physMultiplier) + physAtkBonus
+    const maxVal = Math.round(baseRollMax * physMultiplier) + physAtkBonus
+    values.PhysAtk = minVal === maxVal ? minVal : `${minVal}-${maxVal}`
+    const baseAttrRounded = Math.round(baseAttr * 10) / 10
+    const formula =
+      eq.physAtkMin != null && eq.physAtkMax != null
+        ? `baseRoll(${baseRollMinWeapon}-${baseRollMax}) x (1 + baseAttr(${baseAttrRounded}) x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
+        : `baseRoll(${baseRollMin}-${baseRollMax}) x (1 + baseAttr(${baseAttrRounded}) x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
+    formulaMap.PhysAtk = fmtFormula(formula)
   } else {
     values.PhysAtk = eq.physAtk || NA
     formulaMap.PhysAtk = eq.physAtk ? `EQP: +${eq.physAtk}` : NA
   }
 
-  // SpellPower (base + equipment; weapon range shown as min-max)
+  // SpellPower: baseRoll(1-4 [+ weapon]) x (1 + baseAttr x 0.2) + eq.spellPower
   if (coef.k_SpellPower != null) {
-    const baseSpellPower = 5 + attrs.intellect * coef.k_SpellPower
-    const baseFormula = formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, null)
-    if (eq.spellPowerMin != null && eq.spellPowerMax != null) {
-      const minVal = Math.round((baseSpellPower + eq.spellPowerMin) * 10) / 10
-      const maxVal = Math.round((baseSpellPower + eq.spellPowerMax) * 10) / 10
-      values.SpellPower = `${minVal}-${maxVal}`
-      formulaMap.SpellPower = fmtFormula(baseFormula + ` + Weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${values.SpellPower}`)
-    } else {
-      values.SpellPower = Math.round((baseSpellPower + eq.spellPower) * 10) / 10
-      formulaMap.SpellPower = eq.spellPower ? fmtFormula(baseFormula + ` + EQP(+${eq.spellPower}) = ${values.SpellPower}`) : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellPower}`, attrs, level, values.SpellPower))
-    }
+    const spellBaseAttr = getSpellBaseAttr({ class: heroClass, ...rawAttrs, equipment: heroAttrs?.equipment })
+    const spellMultiplier = 1 + spellBaseAttr * SPELL_MULTIPLIER_K
+    const spellPowerBonus = eq.spellPower ?? 0
+    const baseRollMin = SPELL_UNARMED_MIN
+    const baseRollMax =
+      eq.spellPowerMin != null && eq.spellPowerMax != null
+        ? SPELL_UNARMED_MAX + eq.spellPowerMax
+        : SPELL_UNARMED_MAX
+    const baseRollMinWeapon = eq.spellPowerMin != null ? SPELL_UNARMED_MIN + eq.spellPowerMin : baseRollMin
+    const minVal = Math.round(baseRollMinWeapon * spellMultiplier) + spellPowerBonus
+    const maxVal = Math.round(baseRollMax * spellMultiplier) + spellPowerBonus
+    values.SpellPower = minVal === maxVal ? minVal : `${minVal}-${maxVal}`
+    const spellBaseAttrRounded = Math.round(spellBaseAttr * 10) / 10
+    const formula =
+      eq.spellPowerMin != null && eq.spellPowerMax != null
+        ? `baseRoll(${baseRollMinWeapon}-${baseRollMax}) x (1 + baseAttr(${spellBaseAttrRounded}) x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
+        : `baseRoll(${baseRollMin}-${baseRollMax}) x (1 + baseAttr(${spellBaseAttrRounded}) x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
+    formulaMap.SpellPower = fmtFormula(formula)
   } else {
     values.SpellPower = eq.spellPower || NA
     formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA

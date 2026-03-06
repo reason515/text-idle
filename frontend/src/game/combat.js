@@ -1,4 +1,5 @@
-import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance } from '../data/heroes.js'
+import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance, getPhysBaseAttr, getSpellBaseAttr } from '../data/heroes.js'
+import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from './damageUtils.js'
 import {
   getAnyWarriorSkillById,
   getSkillWithEnhancements,
@@ -315,22 +316,6 @@ function randomInRange(min, max, rng) {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
-function getEffectivePhysAtk(actor, rng) {
-  if (actor.physAtkWeaponMin != null && actor.physAtkWeaponMax != null && rng) {
-    const roll = randomInRange(actor.physAtkWeaponMin, actor.physAtkWeaponMax, rng)
-    return actor.physAtk + roll
-  }
-  return actor.physAtk
-}
-
-function getEffectiveSpellPower(actor, rng) {
-  if (actor.spellPowerWeaponMin != null && actor.spellPowerWeaponMax != null && rng) {
-    const roll = randomInRange(actor.spellPowerWeaponMin, actor.spellPowerWeaponMax, rng)
-    return actor.spellPower + roll
-  }
-  return actor.spellPower
-}
-
 function getMaxResource(heroClass, intellect, spirit, level = 1) {
   if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
     return 100
@@ -349,10 +334,10 @@ function heroCombatStats(hero) {
     agility: hero.agility + (eq?.agility || 0),
     intellect: hero.intellect + (eq?.intellect || 0),
   })
-  const basePhysAtk = Math.round(hero.strength * 1.4 + hero.agility * 0.6)
-  const baseSpellPower = Math.round(hero.intellect * 1.2 + hero.spirit * 0.8)
-  const physAtkBase = basePhysAtk + (eq?.physAtk || 0)
-  const spellPowerBase = baseSpellPower + (eq?.spellPower || 0)
+  const baseAttr = getPhysBaseAttr(hero)
+  const physMultiplier = 1 + baseAttr * PHYS_MULTIPLIER_K
+  const spellBaseAttr = getSpellBaseAttr(hero)
+  const spellMultiplier = 1 + spellBaseAttr * SPELL_MULTIPLIER_K
   return {
     id: hero.id,
     name: hero.name,
@@ -361,10 +346,12 @@ function heroCombatStats(hero) {
     agility: hero.agility,
     armor: computeHeroArmor(hero),
     resistance: computeHeroResistance(hero),
-    physAtk: Math.max(1, physAtkBase),
+    physMultiplier,
+    physAtkBonus: eq?.physAtk ?? 0,
     physAtkWeaponMin: eq?.physAtkMin ?? undefined,
     physAtkWeaponMax: eq?.physAtkMax ?? undefined,
-    spellPower: Math.max(0, spellPowerBase),
+    spellMultiplier,
+    spellPowerBonus: eq?.spellPower ?? 0,
     spellPowerWeaponMin: eq?.spellPowerMin ?? undefined,
     spellPowerWeaponMax: eq?.spellPowerMax ?? undefined,
     physCrit: crit.physCrit,

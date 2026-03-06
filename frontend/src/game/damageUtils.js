@@ -1,0 +1,51 @@
+/**
+ * Physical/Spell damage formula: baseRoll = unarmed(1-4) + weapon; rawDamage = baseRoll * multiplier.
+ * Design doc 2.2.3.1.
+ */
+
+export const PHYS_ATK_UNARMED_MIN = 1
+export const PHYS_ATK_UNARMED_MAX = 4
+export const SPELL_UNARMED_MIN = 1
+export const SPELL_UNARMED_MAX = 4
+export const PHYS_MULTIPLIER_K = 0.2
+export const SPELL_MULTIPLIER_K = 0.2
+
+function randomInRange(min, max, rng) {
+  return min + Math.floor(rng() * (max - min + 1))
+}
+
+/**
+ * Hero: baseRoll = unarmed(1-4) + weapon; rawDamage = round(baseRoll * physMultiplier) + physAtkBonus.
+ * Monster: flat physAtk.
+ */
+export function getEffectivePhysAtk(actor, rng) {
+  if (actor.side === 'hero' && actor.physMultiplier != null && rng) {
+    const unarmedRoll = randomInRange(PHYS_ATK_UNARMED_MIN, PHYS_ATK_UNARMED_MAX, rng)
+    const weaponRoll =
+      actor.physAtkWeaponMin != null && actor.physAtkWeaponMax != null
+        ? randomInRange(actor.physAtkWeaponMin, actor.physAtkWeaponMax, rng)
+        : 0
+    const baseRoll = unarmedRoll + weaponRoll
+    const physAtkBonus = actor.physAtkBonus ?? 0
+    return Math.round(baseRoll * actor.physMultiplier) + physAtkBonus
+  }
+  return actor.physAtk ?? 0
+}
+
+/**
+ * Hero: baseRoll = unarmed(1-4) + weapon; rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus.
+ * Monster: flat spellPower.
+ */
+export function getEffectiveSpellPower(actor, rng) {
+  if (actor.side === 'hero' && actor.spellMultiplier != null && rng) {
+    const unarmedRoll = randomInRange(SPELL_UNARMED_MIN, SPELL_UNARMED_MAX, rng)
+    const weaponRoll =
+      actor.spellPowerWeaponMin != null && actor.spellPowerWeaponMax != null
+        ? randomInRange(actor.spellPowerWeaponMin, actor.spellPowerWeaponMax, rng)
+        : 0
+    const baseRoll = unarmedRoll + weaponRoll
+    const spellPowerBonus = actor.spellPowerBonus ?? 0
+    return Math.round(baseRoll * actor.spellMultiplier) + spellPowerBonus
+  }
+  return actor.spellPower ?? 0
+}
