@@ -101,6 +101,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ### 2.4 属性显示与透明化
 
 - 角色面板展示：**基础属性** + **装备加成** + **Buff 加成** = **最终属性**。
+- **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：Str×1.4+Agi×0.6 或 Agi×1.4+Str×0.6；法术：Int×1.2+Spi×0.8），便于玩家理解伤害来源。
 - 战斗日志与数据统计中，可展示关键衍生数值（如实际暴击率、命中率），便于玩家验证与优化构筑。
 - **Buff/Debuff 面板提示**：角色或怪物身上存在 buff/debuff 时，在其面板上显示相应徽章；鼠标悬停可查看详细说明（名称、剩余回合、效果描述）。
 

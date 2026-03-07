@@ -217,7 +217,7 @@ describe('heroes', () => {
       expect(minVal).toBe(17)
       expect(maxVal).toBe(39)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toMatch(/baseRoll\(4-9\)/)
+      expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(3-5) = 4-9')
     })
 
     it('Warrior with TwoHand weapon damage range shows PhysAtk as min-max', () => {
@@ -228,7 +228,7 @@ describe('heroes', () => {
       expect(minVal).toBe(39)
       expect(maxVal).toBe(68)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toMatch(/baseRoll\(9-16\)/)
+      expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(8-12) = 9-16')
     })
 
     it('formulas include actual attribute values for calculation transparency', () => {
@@ -237,6 +237,37 @@ describe('heroes', () => {
       expect(hpFormula.formula).toContain('Stam(9)')
       expect(hpFormula.formula).toContain('Level(1)')
       expect(hpFormula.formula).toMatch(/= 48$/)
+    })
+
+    it('PhysAtk formula shows baseRoll = unarmed + weapon when unarmed', () => {
+      const { formulas } = computeSecondaryAttributes('Warrior', 1)
+      const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
+      expect(physAtkFormula.formula).toContain('baseRoll = unarmed(1-4) + weapon(0) = 1-4')
+    })
+
+    it('PhysAtk formula shows baseAttr detail (Str*1.4+Agi*0.6 for strength class)', () => {
+      const { formulas } = computeSecondaryAttributes('Warrior', 1)
+      const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
+      expect(physAtkFormula.formula).toContain('baseAttr = ')
+      expect(physAtkFormula.formula).toContain('Str(10)')
+      expect(physAtkFormula.formula).toContain('Agi(4)')
+      expect(physAtkFormula.formula).toMatch(/Str.*1\.4.*Agi.*0\.6/)
+    })
+
+    it('PhysAtk formula shows baseAttr detail (Agi*1.4+Str*0.6 for agility class)', () => {
+      const { formulas } = computeSecondaryAttributes('Rogue', 1)
+      const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
+      expect(physAtkFormula.formula).toContain('baseAttr = ')
+      expect(physAtkFormula.formula).toMatch(/Agi.*1\.4.*Str.*0\.6/)
+    })
+
+    it('SpellPower formula shows baseAttr detail (Int*1.2+Spi*0.8)', () => {
+      const { formulas } = computeSecondaryAttributes('Mage', 1)
+      const spellFormula = formulas.find((f) => f.key === 'SpellPower')
+      expect(spellFormula.formula).toContain('baseAttr = ')
+      expect(spellFormula.formula).toContain('Int(11)')
+      expect(spellFormula.formula).toContain('Spi(5)')
+      expect(spellFormula.formula).toMatch(/Int.*1\.2.*Spi.*0\.8/)
     })
 
     it('all classes have same secondary attribute order with Resource in 2nd position', () => {

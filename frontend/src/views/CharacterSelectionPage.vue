@@ -180,7 +180,8 @@
                   :key="item.key"
                   class="secondary-item secondary-item-tooltip"
                   :class="{ 'has-formula': item.formula !== '-' }"
-                  :data-tooltip="item.formula !== '-' ? item.formula : null"
+                  @mouseenter="(e) => item.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(item.formula))"
+                  @mouseleave="hideFormulaTooltip"
                 >
                   <span class="secondary-label">{{ item.label }}</span>
                   <span class="secondary-value">{{ item.value }}</span>
@@ -198,6 +199,19 @@
         </div>
       </div>
     </template>
+    <Teleport to="body">
+      <div
+        v-if="formulaTooltip"
+        class="formula-tooltip-floating formula-tooltip-recruit"
+        :style="{
+          top: formulaTooltip.top + 'px',
+          left: formulaTooltip.left + 'px',
+          transform: 'translate(-100%, -100%)',
+        }"
+      >
+        <div class="tooltip-text formula-tip" v-html="formulaTooltip.html"></div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -210,6 +224,7 @@ import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkil
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
 import { hasSkillChoiceAtLevel } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
+import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 
 const PRIMARY_ATTRS = [
   { key: 'strength', label: 'Strength' },
@@ -263,7 +278,17 @@ function getSkillDisplay(skillId, heroClass) {
 }
 
 const router = useRouter()
+const formulaTooltip = ref(null)
 const selectedHero = ref(null)
+
+function showFormulaTooltip(e, html) {
+  const el = e.currentTarget
+  const rect = el.getBoundingClientRect()
+  formulaTooltip.value = { html, top: rect.top - 4, left: rect.left + rect.width }
+}
+function hideFormulaTooltip() {
+  formulaTooltip.value = null
+}
 const pendingSkillId = ref(null)
 const selectedSkillId = ref(null)
 const showSkillError = ref(false)
@@ -612,25 +637,28 @@ function resetRecruitState() {
   border-bottom: 1px dotted var(--border);
 }
 
-.secondary-item-tooltip[data-tooltip]:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%) translateY(-0.35rem);
+.formula-tooltip-floating.formula-tooltip-recruit {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}
+.formula-tooltip-recruit .tooltip-text {
+  display: block;
   padding: 0.4rem 0.6rem;
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
   font-size: 0.72rem;
-  line-height: 1.4;
+  line-height: 1.6;
+  white-space: pre-line;
   color: var(--text);
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-  z-index: 10;
-  pointer-events: none;
 }
+.formula-tip :deep(.tip-attr-var) { color: #88ccdd; font-weight: 600; }
+.formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
+.formula-tip :deep(.tip-op) { color: #8a9ba8; }
+.formula-tip :deep(.tip-equip-label) { color: #7a9cb8; font-weight: 600; }
 
 .secondary-label {
   color: var(--text-label);

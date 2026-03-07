@@ -1048,6 +1048,7 @@ import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanc
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
+import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
 import { buyFromShop, getShopPrice, SHOP_SLOTS } from '../game/shop.js'
@@ -1626,17 +1627,6 @@ function showFormulaTooltip(e, html) {
 }
 function hideFormulaTooltip() {
   formulaTooltip.value = null
-}
-function formatSecondaryFormulaTip(formula) {
-  if (!formula || typeof formula !== 'string') return ''
-  return formula
-    .replace(/\bStr(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/str/i, 'STR') + '</span>')
-    .replace(/\bAgi(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/agi/i, 'AGI') + '</span>')
-    .replace(/\bInt(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/int/i, 'INT') + '</span>')
-    .replace(/\bStam(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/stam/i, 'STA') + '</span>')
-    .replace(/\bSpi(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m.replace(/spi/i, 'SPI') + '</span>')
-    .replace(/\bLevel(\(\d+\))?\b/gi, (m) => '<span class="tip-attr tip-attr-var">' + m + '</span>')
-    .replace(/\bEQP(:\s*\+\d+(?:\.\d+)?|\(\+\d+(?:\.\d+)?\))?\b/g, (m) => '<span class="tip-equip-label">' + m + '</span>')
 }
 
 function getMonsterSkillDisplay(skillId) {
@@ -3188,6 +3178,8 @@ onUnmounted(() => {
   display: block;
 }
 .formula-tip :deep(.tip-attr-var) { color: #88ccdd; font-weight: 600; }
+.formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
+.formula-tip :deep(.tip-op) { color: #8a9ba8; }
 .formula-tooltip-floating {
   position: fixed;
   z-index: 350;
@@ -3197,7 +3189,8 @@ onUnmounted(() => {
   display: block;
   position: static;
   transform: none;
-  white-space: nowrap;
+  white-space: pre-line;
+  line-height: 1.6;
 }
 
 .detail-section-basic .detail-value { color: var(--text-value); }

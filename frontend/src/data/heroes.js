@@ -146,8 +146,21 @@ function formulaWithValues(template, attrs, level, result) {
     .replace(/\bInt\b/g, `Int(${attrs.intellect})`)
     .replace(/\bStr\b/g, `Str(${attrs.strength})`)
     .replace(/\bAgi\b/g, `Agi(${attrs.agility})`)
+    .replace(/\bSpi\b/g, `Spi(${attrs.spirit})`)
     .replace(/\bLevel\b/g, `Level(${level})`)
   return result != null ? `${s} = ${result}` : s
+}
+
+/** Build baseAttr formula string for PhysAtk (Str*1.4+Agi*0.6 or Agi*1.4+Str*0.6 per class). */
+function getPhysBaseAttrFormula(heroClass, attrs) {
+  const coef = CLASS_COEFFICIENTS[heroClass] || {}
+  const template = coef.physAtkAttr === 'agility' ? 'Agi * 1.4 + Str * 0.6' : 'Str * 1.4 + Agi * 0.6'
+  return formulaWithValues(template, attrs, null, null)
+}
+
+/** Build baseAttr formula string for SpellPower (Int*1.2+Spi*0.8). */
+function getSpellBaseAttrFormula(attrs) {
+  return formulaWithValues('Int * 1.2 + Spi * 0.8', attrs, null, null)
 }
 
 /**
@@ -230,11 +243,16 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const maxVal = Math.round(baseRollMax * physMultiplier) + physAtkBonus
     values.PhysAtk = minVal === maxVal ? minVal : `${minVal}-${maxVal}`
     const baseAttrRounded = Math.round(baseAttr * 10) / 10
-    const formula =
+    const baseAttrFormula = getPhysBaseAttrFormula(heroClass, attrs)
+    const baseRollLine =
       eq.physAtkMin != null && eq.physAtkMax != null
-        ? `baseRoll(${baseRollMinWeapon}-${baseRollMax}) x (1 + baseAttr(${baseAttrRounded}) x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
-        : `baseRoll(${baseRollMin}-${baseRollMax}) x (1 + baseAttr(${baseAttrRounded}) x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
-    formulaMap.PhysAtk = fmtFormula(formula)
+        ? `baseRoll = unarmed(1-4) + weapon(${eq.physAtkMin}-${eq.physAtkMax}) = ${baseRollMinWeapon}-${baseRollMax}`
+        : `baseRoll = unarmed(1-4) + weapon(0) = ${baseRollMin}-${baseRollMax}`
+    const mainFormula =
+      eq.physAtkMin != null && eq.physAtkMax != null
+        ? `baseRoll x (1 + baseAttr x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
+        : `baseRoll x (1 + baseAttr x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
+    formulaMap.PhysAtk = fmtFormula(`baseAttr = ${baseAttrFormula} = ${baseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
     values.PhysAtk = eq.physAtk || NA
     formulaMap.PhysAtk = eq.physAtk ? `EQP: +${eq.physAtk}` : NA
@@ -255,11 +273,16 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const maxVal = Math.round(baseRollMax * spellMultiplier) + spellPowerBonus
     values.SpellPower = minVal === maxVal ? minVal : `${minVal}-${maxVal}`
     const spellBaseAttrRounded = Math.round(spellBaseAttr * 10) / 10
-    const formula =
+    const spellBaseAttrFormula = getSpellBaseAttrFormula(attrs)
+    const baseRollLine =
       eq.spellPowerMin != null && eq.spellPowerMax != null
-        ? `baseRoll(${baseRollMinWeapon}-${baseRollMax}) x (1 + baseAttr(${spellBaseAttrRounded}) x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
-        : `baseRoll(${baseRollMin}-${baseRollMax}) x (1 + baseAttr(${spellBaseAttrRounded}) x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
-    formulaMap.SpellPower = fmtFormula(formula)
+        ? `baseRoll = unarmed(1-4) + weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${baseRollMinWeapon}-${baseRollMax}`
+        : `baseRoll = unarmed(1-4) + weapon(0) = ${baseRollMin}-${baseRollMax}`
+    const mainFormula =
+      eq.spellPowerMin != null && eq.spellPowerMax != null
+        ? `baseRoll x (1 + baseAttr x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
+        : `baseRoll x (1 + baseAttr x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
+    formulaMap.SpellPower = fmtFormula(`baseAttr = ${spellBaseAttrFormula} = ${spellBaseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
     values.SpellPower = eq.spellPower || NA
     formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA
