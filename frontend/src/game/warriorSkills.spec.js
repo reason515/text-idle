@@ -336,6 +336,7 @@ describe('Example13: Sunder Armor', () => {
     expect(result.debuffRefreshed).toBe(false)
     expect(result.debuffArmorReduction).toBe(8)
     expect(result.debuffDuration).toBe(3)
+    expect(result.skillCoefficient).toBe(0.8)
 
     const sunder = getSunderDebuff(target)
     expect(sunder).not.toBeNull()
@@ -343,18 +344,26 @@ describe('Example13: Sunder Armor', () => {
     expect(sunder.remainingRounds).toBe(3)
   })
 
-  it('AC6: refresh - target already has Sunder: 1.1x damage, duration resets to 3', () => {
-    const warrior = makeWarrior({ physAtk: 12, currentMP: 40 })
+  it('AC6: stack - target already has Sunder (armor 2): 0.8x damage, +12% from excess 6, duration resets to 3', () => {
+    const warrior = makeWarrior({ physAtk: 12, currentMP: 40, skillEnhancements: { 'sunder-armor': { enhanceCount: 1 } } })
+    const skillWithEnhance = getSkillWithEnhancements(warrior, 'sunder-armor')
     const target = makeTarget({ armor: 10, currentHP: 30, debuffs: [{ type: 'sunder', armorReduction: 8, remainingRounds: 1 }] })
-
-    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+    // Effective armor before hit = 10 - 8 = 2; we add 8 more, excess = 8 - 2 = 6, +12% damage
+    const result = executeWarriorSkill(warrior, target, skillWithEnhance, { isCrit: false })
 
     expect(result.debuffApplied).toBe(false)
     expect(result.debuffRefreshed).toBe(true)
-    expect(result.skillCoefficient).toBe(1.1)
+    expect(result.skillCoefficient).toBe(0.8)
+    const baseRaw = Math.round(12 * 0.8) // 9
+    const rawWithExcess = Math.round(baseRaw * 1.12) // 10
+    const finalDmg = Math.max(1, rawWithExcess - 2) // 8
+    expect(result.rawDamage).toBe(rawWithExcess)
+    expect(result.finalDamage).toBe(finalDmg)
 
     const sunder = getSunderDebuff(target)
     expect(sunder.remainingRounds).toBe(3)
+    expect(sunder.stacks).toBe(2)
+    expect(sunder.armorReduction).toBe(16)
   })
 
   it('AC7: Sunder debuff reduces effective armor for all physical damage via applyDamage', () => {
@@ -370,9 +379,10 @@ describe('Example13: Sunder Armor', () => {
     const warrior = makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
     const skill = getSkillWithEnhancements(warrior, 'sunder-armor')
     expect(skill.effectDesc).toContain('max 3 stacks')
+    expect(skill.effectDesc).toContain('+2% damage per excess point')
   })
 
-  it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes', () => {
+  it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes; excess +12% when armor 2', () => {
     const warrior = makeWarrior({ physAtk: 12, currentMP: 40, skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
     const target = makeTarget({ armor: 10, debuffs: [{ type: 'sunder', stacks: 1, armorReduction: 8, remainingRounds: 1 }] })
     const skill = getSkillWithEnhancements(warrior, 'sunder-armor')
@@ -382,6 +392,32 @@ describe('Example13: Sunder Armor', () => {
     expect(sunder.stacks).toBe(2)
     expect(sunder.armorReduction).toBe(16)
     expect(sunder.remainingRounds).toBe(3)
+    // Effective armor before = 2; excess = 6; +12% damage
+    const baseRaw = Math.round(12 * 0.8) // 9
+    const rawWithExcess = Math.round(baseRaw * 1.12) // 10
+    expect(result.rawDamage).toBe(rawWithExcess)
+    expect(result.finalDamage).toBe(Math.max(1, rawWithExcess - 2)) // 8
+  })
+
+  it('excess damage when first Sunder on low-armor target (armor 5): +6% from excess 3', () => {
+    const warrior = makeWarrior({ physAtk: 20, currentMP: 20 })
+    const target = makeTarget({ armor: 5, currentHP: 50 })
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+    const baseRaw = Math.round(20 * 0.8) // 16
+    const rawWithExcess = Math.round(baseRaw * 1.06) // 17
+    expect(result.rawDamage).toBe(rawWithExcess)
+    expect(result.finalDamage).toBe(Math.max(1, rawWithExcess - 5)) // 12
+  })
+
+  it('refresh at max stacks - no excess damage (no new stack added)', () => {
+    const warrior = makeWarrior({ physAtk: 12, currentMP: 40, skillEnhancements: { 'sunder-armor': { enhanceCount: 1 } } })
+    const skillWithEnhance = getSkillWithEnhancements(warrior, 'sunder-armor')
+    const target = makeTarget({ armor: 10, debuffs: [{ type: 'sunder', stacks: 2, armorReduction: 16, remainingRounds: 1 }] })
+    const result = executeWarriorSkill(warrior, target, skillWithEnhance, { isCrit: false })
+    // At max 2 stacks, we refresh only; no new stack, excess = 0
+    const baseRaw = Math.round(12 * 0.8) // 9
+    expect(result.rawDamage).toBe(baseRaw)
+    expect(result.finalDamage).toBe(Math.max(1, baseRaw - 0)) // 9, effective armor = 0
   })
 
   it('AC7: Sunder debuff does NOT affect magic damage', () => {

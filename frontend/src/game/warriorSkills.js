@@ -28,11 +28,11 @@ export const WARRIOR_INITIAL_SKILLS = [
     name: 'Sunder Armor',
     spec: 'Protection',
     rageCost: 15,
-    baseCoefficient: 0.8,
-    refreshCoefficient: 1.1,
+    coefficient: 0.8,
     debuffArmorReduction: 8,
     debuffDuration: 3,
-    effectDesc: '0.8x damage, target Armor -8 for 3 rounds; if already debuffed: refresh and 1.1x damage',
+    excessDamagePercent: 2,
+    effectDesc: '0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point; stacks',
   },
 ]
 
@@ -87,7 +87,7 @@ export function getSkillWithEnhancements(warrior, skillId) {
     out.effectDesc = `${out.coefficient}x physical damage; heal ${Math.round(out.healPercent * 100)}% of damage dealt`
   } else if (skillId === 'sunder-armor') {
     out.sunderMaxStacks = 1 + enhanceCount
-    out.effectDesc = `0.8x damage, target Armor -8 for 3 rounds; if already debuffed: refresh and 1.1x damage (max ${out.sunderMaxStacks} stacks)`
+    out.effectDesc = `0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point (max ${out.sunderMaxStacks} stacks)`
   }
 
   return out
@@ -127,7 +127,7 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
   if (skillId === 'sunder-armor') {
     const currStacks = 1 + current
     const nextStacks = 1 + next
-    return `0.8x damage, target Armor -8 for 3 rounds; if already debuffed: refresh and 1.1x damage (max ${currStacks} -> ${nextStacks} stacks)`
+    return `0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point (max ${currStacks} -> ${nextStacks} stacks)`
   }
 
   return base.effectDesc ?? ''
@@ -262,21 +262,28 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
 
   warrior.currentMP = Math.max(0, (warrior.currentMP || 0) - skill.rageCost)
 
-  let coeff
+  const coeff = skill.coefficient ?? (skill.baseCoefficient ?? 0.8)
+  const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
+  const armorBefore = getEffectiveArmor(target)
+  let baseRaw = Math.round(effectivePhysAtk * coeff)
+
   let debuffResult = null
+  let sunderExcessDamage = 0
 
   if (skill.id === 'sunder-armor') {
-    const hasSunder = !!getSunderDebuff(target)
-    coeff = hasSunder ? skill.refreshCoefficient : skill.baseCoefficient
-  } else {
-    coeff = skill.coefficient
+    const maxStacks = skill.sunderMaxStacks ?? 1
+    debuffResult = applySunderDebuff(target, skill.debuffDuration, PER_STACK_ARMOR_REDUCTION, maxStacks)
+    const addedArmorReduction = debuffResult.stacked || !debuffResult.refreshed
+    if (addedArmorReduction) {
+      sunderExcessDamage = Math.max(0, PER_STACK_ARMOR_REDUCTION - armorBefore)
+    }
   }
 
-  const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
-  const effectiveArmor = getEffectiveArmor(target)
-  const baseRaw = Math.round(effectivePhysAtk * coeff)
-  const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
-  const finalDamage = Math.max(1, rawAfterCrit - effectiveArmor)
+  const excessPercent = (skill.excessDamagePercent ?? 0) / 100
+  const damageMultiplier = 1 + sunderExcessDamage * excessPercent
+  const rawAfterExcess = Math.round(baseRaw * damageMultiplier)
+  const rawAfterCrit = isCrit ? Math.round(rawAfterExcess * CRIT_MULTIPLIER) : rawAfterExcess
+  const finalDamage = Math.max(1, rawAfterCrit - armorBefore)
 
   target.currentHP = Math.max(0, (target.currentHP || 0) - finalDamage)
 
@@ -284,11 +291,6 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   if (skill.id === 'bloodthirst' && skill.healPercent) {
     heal = Math.floor(finalDamage * skill.healPercent)
     warrior.currentHP = Math.min(warrior.maxHP ?? warrior.currentHP + heal, (warrior.currentHP || 0) + heal)
-  }
-
-  if (skill.id === 'sunder-armor') {
-    const maxStacks = skill.sunderMaxStacks ?? 1
-    debuffResult = applySunderDebuff(target, skill.debuffDuration, PER_STACK_ARMOR_REDUCTION, maxStacks)
   }
 
   const actualDebuffArmorReduction =
@@ -302,10 +304,10 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     skillName: skill.name,
     skillSpec: skill.spec,
     skillCoefficient: coeff,
-    rawDamage: baseRaw,
+    rawDamage: skill.id === 'sunder-armor' ? rawAfterExcess : baseRaw,
     rawAfterCrit,
     finalDamage,
-    effectiveArmor,
+    effectiveArmor: armorBefore,
     isCrit,
     rageConsumed: skill.rageCost,
     rageGained,

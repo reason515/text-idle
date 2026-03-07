@@ -415,7 +415,7 @@ Then [expected result/verifiable behavior].
   |------|-------|---------|------|--------|
   | Arms | 英勇打击 | Heroic Strike | 15 Rage | Single-target physical damage, 1.2x coefficient |
   | Fury | 嗜血 | Bloodthirst | 20 Rage | Single-target physical damage 1.2x, heal 15% of damage dealt |
-  | Protection | 破甲 | Sunder Armor | 15 Rage | Single-target 0.8x damage, target Armor -8 for 3 rounds; if target already has Sunder debuff: refresh duration and deal 1.1x damage |
+  | Protection | 破甲 | Sunder Armor | 15 Rage | Single-target 0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point; stacks |
 
 **Acceptance Criteria**
 
@@ -445,7 +445,7 @@ Then [expected result/verifiable behavior].
 - **Damage formula**: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * physMultiplier) + physAtkBonus`; `physMultiplier = 1 + baseAttr * 0.2`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)`. Unarmed baseRoll 1–4; with weapon, weapon roll adds to range. AC tests with fixed RNG for deterministic verification.
 - **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 3, cap 1.8).
 - **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 3; cap 1.5, 30%).
-- **Sunder Armor**: 15 Rage, 0 CD. Base: 0.8x damage, target Armor -8 for 3 rounds. If target already has Sunder debuff: stack 1 layer (max 1+enhanceCount layers) and refresh duration. Enhancement: +1 max stack per enhance (max 3 enhances, 4 layers total); each layer -8 armor.
+- **Sunder Armor**: 15 Rage, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. If armor below 0 after reduction, +2% damage per excess point. Enhancement: +1 max stack per enhance (max 3 enhances, 4 layers total); each layer -8 armor; stack and refresh on apply.
 
 **Acceptance Criteria**
 
@@ -456,14 +456,14 @@ Then [expected result/verifiable behavior].
 | AC3 | Warrior has Bloodthirst, 25 Rage, target has Armor 3 | Warrior uses Bloodthirst | 20 Rage consumed; raw = baseRoll x physMultiplier x 1.2; final = max(1, raw - 3); Warrior heals final x 15%; combat log shows damage and heal |
 | AC4 | Warrior has Bloodthirst, 15 Rage | Warrior's turn and AI selects Bloodthirst | Skill is not used (insufficient Rage); Warrior performs basic attack or waits |
 | AC5 | Warrior has Sunder Armor, 20 Rage, target has no Sunder debuff, target Armor 10 | Warrior uses Sunder Armor | 15 Rage consumed; 0.8x damage: raw = baseRoll x physMultiplier x 0.8; final = max(1, raw - 10); target gains Sunder debuff: Armor -8 for 3 rounds; combat log shows damage and debuff applied |
-| AC6 | Warrior has Sunder Armor, target already has Sunder debuff (Armor -8, 2 rounds remaining) | Warrior uses Sunder Armor again | 15 Rage consumed; 1.1x damage (refresh bonus): raw = baseRoll x physMultiplier x 1.1; Sunder debuff duration refreshes to 3 rounds; combat log shows damage and debuff refreshed |
+| AC6 | Warrior has Sunder Armor, target already has Sunder debuff (Armor -8, 2 rounds remaining) | Warrior uses Sunder Armor again | 15 Rage consumed; 0.8x damage; if armor before hit < 8, excess = 8 - armor, +2% damage per excess point; Sunder stacks and duration refreshes to 3 rounds; combat log shows damage and debuff refreshed |
 | AC7 | Target has Sunder debuff (Armor -8) | Any physical damage is dealt to the target | Target's effective Armor is reduced by 8 for damage calculation; debuff expires after 3 rounds if not refreshed |
 | AC8 | Warrior uses their initial skill in combat | Combat log records the action | Log shows skill name, target, damage dealt (and heal for Bloodthirst, debuff for Sunder Armor); damage calculation sub-line is visible (ATK - Armor = final) |
 | AC9 | Warrior has Rage 0 at combat start | First turn begins | Warrior cannot use any Rage-costing skill; must use basic attack or wait to build Rage |
 | AC10 | Combat log displays a skill action | User views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |
 | AC11 | Warrior has Heroic Strike enhanced 2 times (coefficient 1.6) | Warrior uses Heroic Strike | raw = baseRoll x physMultiplier x 1.6; enhancement applies in combat |
 | AC12 | Warrior has Bloodthirst enhanced 1 time (1.3x, 20% heal) | Warrior uses Bloodthirst | raw = baseRoll x physMultiplier x 1.3; heal = finalDamage * 0.20 |
-| AC13 | Warrior has Sunder Armor enhanced 2 times (max 3 stacks) | Warrior uses Sunder Armor on target with 1 stack | Target gains 2nd stack (-16 armor total); duration refreshes to 3 rounds |
+| AC13 | Warrior has Sunder Armor enhanced 2 times (max 3 stacks) | Warrior uses Sunder Armor on target with 1 stack (effective armor 2) | 0.8x damage; excess = 6 (8 - 2), +12% damage; target gains 2nd stack (-16 armor total); duration refreshes to 3 rounds |
 | AC14 | Warrior has a weapon with PhysAtk range 3–5 (e.g., Short Sword) equipped | Warrior uses Heroic Strike multiple times in combat | Each hit rolls baseRoll = unarmed(1-4) + weapon(3-5); raw damage varies per hit; combat log shows the actual rolled damage each time |
 
 ---
@@ -871,7 +871,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   - **Pool exhausted**: If fewer than 3 unlearned skills remain at that level, show only the remaining ones; if all skills at that level are already learned, only the "Enhance existing skill" option is available.
 - **Max skills**: At level 60, the hero has triggered 12 times (5, 10, ..., 60); theoretical max = 1 (initial) + 12 = 13 skills, or fewer if the player chose to enhance existing skills multiple times.
 - **Example (Warrior Lv 5)**: Enhance existing (Heroic Strike / Bloodthirst / Sunder Armor), or learn one of: Cleave (Arms), Whirlwind (Fury), Taunt (Protection).
-- **Enhancement rules**: Each skill can be enhanced at most 3 times. Heroic Strike: +0.2 coefficient per enhance (max 1.8). Bloodthirst: +0.1 coefficient and +5% heal per enhance (max 1.5, 30%). Sunder Armor: +1 max stack per enhance (max 4 layers), each layer -8 armor, refresh duration on apply.
+- **Enhancement rules**: Each skill can be enhanced at most 3 times. Heroic Strike: +0.2 coefficient per enhance (max 1.8). Bloodthirst: +0.1 coefficient and +5% heal per enhance (max 1.5, 30%). Sunder Armor: +1 max stack per enhance (max 4 layers), each layer -8 armor, +2% damage per excess point when armor below 0, refresh duration on apply.
 
 **Acceptance Criteria**
 

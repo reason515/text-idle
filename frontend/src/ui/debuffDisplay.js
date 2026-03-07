@@ -19,19 +19,19 @@ export const DEBUFF_DISPLAY = {
 export function getDebuffTip(debuff) {
   const rounds = debuff.remainingRounds ?? 0
   if (debuff.type === 'sunder') {
-    return `Armor -${debuff.armorReduction ?? 8} for ${rounds} round(s)`
+    return `Armor reduced by ${debuff.armorReduction ?? 8} for ${rounds} round(s)`
   }
   if (debuff.type === 'dazed') {
-    return `Armor -${debuff.armorReduction ?? 3} for ${rounds} round(s)`
+    return `Armor reduced by ${debuff.armorReduction ?? 3} for ${rounds} round(s)`
   }
   if (debuff.type === 'splinter') {
-    return `Resistance -${debuff.resistanceReduction ?? 2} for ${rounds} round(s)`
+    return `Resistance reduced by ${debuff.resistanceReduction ?? 2} for ${rounds} round(s)`
   }
   if (debuff.type === 'bleed') {
     return `${debuff.damagePerRound ?? 0} damage/round for ${rounds} round(s)`
   }
   if (debuff.type === 'frostbolt') {
-    return `Resistance -${debuff.resistanceReduction ?? 6} for ${rounds} round(s)`
+    return `Resistance reduced by ${debuff.resistanceReduction ?? 6} for ${rounds} round(s)`
   }
   if (debuff.type === 'burn') {
     return `${debuff.damagePerRound ?? 0} magic damage/round for ${rounds} round(s)`

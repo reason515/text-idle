@@ -275,8 +275,8 @@
                 <div v-if="entry.debuffApplied" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
                   <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
-                  <template v-if="entry.debuffArmorReduction != null"> Armor -{{ entry.debuffArmorReduction }}</template>
-                  <template v-if="entry.debuffResistanceReduction != null"> Resistance -{{ entry.debuffResistanceReduction }}</template>
+                  <template v-if="entry.debuffArmorReduction != null"> Armor reduced by {{ entry.debuffArmorReduction }}</template>
+                  <template v-if="entry.debuffResistanceReduction != null"> Resistance reduced by {{ entry.debuffResistanceReduction }}</template>
                   <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} damage/round</template>
                   for {{ entry.debuffDuration }} rounds
                 </div>
@@ -937,8 +937,8 @@
             <div class="detail-row">
               <span class="detail-label">Armor</span>
               <span class="detail-value tooltip-wrap has-tip">
-                {{ getEffectiveArmor(selectedMonster) }}
-                <span class="tooltip-text">Absorbs {{ getEffectiveArmor(selectedMonster) }} physical damage per hit</span>
+                {{ getMonsterDisplayArmor(selectedMonster) }}
+                <span class="tooltip-text">{{ getMonsterArmorTooltip(selectedMonster) }}</span>
               </span>
             </div>
             <div class="detail-row">
@@ -1027,6 +1027,22 @@ import {
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+
+function getMonsterDisplayArmor(unit) {
+  return Math.max(0, getEffectiveArmor(unit))
+}
+function getMonsterArmorTooltip(unit) {
+  const effective = getMonsterDisplayArmor(unit)
+  const debuffs = unitDebuffs(unit)
+  const totalReduction = debuffs
+    .filter((d) => d.armorReduction != null)
+    .reduce((sum, d) => sum + d.armorReduction, 0)
+  if (totalReduction > 0) {
+    const base = (unit.armor || 0)
+    return `Base ${base}, reduced by ${totalReduction} = effective ${effective} (min 0)`
+  }
+  return `Absorbs ${effective} physical damage per hit`
+}
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
 import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
@@ -1092,7 +1108,7 @@ function resourceFillClass(heroClass) {
 function damageFormulaEquation(entry) {
   const final = entry.finalDamage
   const defLabel = entry.damageType === 'magic' ? 'Resist' : 'Armor'
-  const defVal = entry.targetDefense
+  const defVal = Math.max(0, entry.targetDefense ?? 0)
   if (entry.skillId && entry.skillCoefficient != null) {
     const coeff = entry.skillCoefficient
     if (entry.isCrit) {

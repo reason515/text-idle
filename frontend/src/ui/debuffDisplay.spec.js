@@ -11,23 +11,23 @@ describe('debuffDisplay', () => {
   describe('getDebuffTip', () => {
     it('returns Sunder Armor tip with armor reduction and rounds', () => {
       expect(getDebuffTip({ type: 'sunder', armorReduction: 8, remainingRounds: 3 })).toBe(
-        'Armor -8 for 3 round(s)'
+        'Armor reduced by 8 for 3 round(s)'
       )
     })
     it('uses defaults when sunder fields are missing', () => {
-      expect(getDebuffTip({ type: 'sunder' })).toBe('Armor -8 for 0 round(s)')
+      expect(getDebuffTip({ type: 'sunder' })).toBe('Armor reduced by 8 for 0 round(s)')
     })
     it('returns generic rounds for unknown type', () => {
       expect(getDebuffTip({ type: 'unknown', remainingRounds: 5 })).toBe('5 round(s)')
     })
     it('returns Dazed tip with armor reduction', () => {
       expect(getDebuffTip({ type: 'dazed', armorReduction: 3, remainingRounds: 2 })).toBe(
-        'Armor -3 for 2 round(s)'
+        'Armor reduced by 3 for 2 round(s)'
       )
     })
     it('returns Splinter tip with resistance reduction', () => {
       expect(getDebuffTip({ type: 'splinter', resistanceReduction: 2, remainingRounds: 2 })).toBe(
-        'Resistance -2 for 2 round(s)'
+        'Resistance reduced by 2 for 2 round(s)'
       )
     })
     it('returns Bleed tip with damage per round', () => {
@@ -37,7 +37,7 @@ describe('debuffDisplay', () => {
     })
     it('returns Frostbolt tip with resistance reduction', () => {
       expect(getDebuffTip({ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 3 })).toBe(
-        'Resistance -6 for 3 round(s)'
+        'Resistance reduced by 6 for 3 round(s)'
       )
     })
     it('returns Burn tip with damage per round', () => {
