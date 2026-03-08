@@ -4,8 +4,9 @@ import {
   getWarriorSkillById,
   getSkillWithEnhancements,
   getEnhancementPreviewEffectDesc,
-  rageFromDamageTaken,
-  rageFromDamageDealt,
+  rageFromAttack,
+  RAGE_PER_ATTACK,
+  RAGE_CRIT_MULTIPLIER,
   getSunderDebuff,
   getEffectiveArmor,
   applySunderDebuff,
@@ -119,23 +120,14 @@ describe('Example12: Warrior initial skill definitions', () => {
 // ---------------------------------------------------------------------------
 
 describe('Example13: Rage generation', () => {
-  it('AC9: gains 0 Rage for 0 damage', () => {
-    expect(rageFromDamageTaken(0)).toBe(0)
-    expect(rageFromDamageTaken(1)).toBe(1)
-    expect(rageFromDamageDealt(0)).toBe(0)
+  it('AC9: fixed rage per attack; crit doubles; dodge gives 0', () => {
+    expect(rageFromAttack(false)).toBe(RAGE_PER_ATTACK)
+    expect(rageFromAttack(true)).toBe(RAGE_PER_ATTACK * RAGE_CRIT_MULTIPLIER)
   })
 
-  it('gains Rage from taking damage: floor(damage/2), min 1 when damage > 0', () => {
-    expect(rageFromDamageTaken(10)).toBe(5)
-    expect(rageFromDamageTaken(7)).toBe(3)
-    expect(rageFromDamageTaken(2)).toBe(1)
-  })
-
-  it('gains Rage from dealing damage: floor(damage / 4)', () => {
-    expect(rageFromDamageDealt(12)).toBe(3)
-    expect(rageFromDamageDealt(5)).toBe(1)
-    expect(rageFromDamageDealt(3)).toBe(0)
-    expect(rageFromDamageDealt(4)).toBe(1)
+  it('gains fixed Rage per attack (dealing or taking); crit doubles', () => {
+    expect(rageFromAttack(false)).toBe(4)
+    expect(rageFromAttack(true)).toBe(8)
   })
 })
 
@@ -219,14 +211,13 @@ describe('Example13: Heroic Strike', () => {
     expect(desc).toMatch(/1\.4x\s*->\s*1\.6x/)
   })
 
-  it('rage gained from dealing damage', () => {
+  it('rage gained from dealing damage: fixed per attack, crit doubles', () => {
     const warrior = makeWarrior({ physAtk: 15, currentMP: 20 })
     const target = makeTarget({ armor: 5 })
 
     const rageBeforeResult = warrior.currentMP - skill.rageCost
     executeWarriorSkill(warrior, target, skill, { isCrit: false })
-    // final damage = 13; rage gain = floor(13/4) = 3
-    const expectedRage = Math.min(100, rageBeforeResult + Math.floor(13 / 4))
+    const expectedRage = Math.min(100, rageBeforeResult + RAGE_PER_ATTACK)
     expect(warrior.currentMP).toBe(expectedRage)
   })
 

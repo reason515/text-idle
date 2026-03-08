@@ -441,7 +441,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Rage**: Warriors start combat at 0 Rage; Rage gains from taking damage (+1 per 2 damage, minimum 1 when damage > 0) and dealing damage (+1 per 4 damage); max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
+- **Rage**: Warriors start combat at 0 Rage; fixed rage per attack (dealing or taking); crit doubles rage gain; dodge gives 0; max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
 - **Damage formula**: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * physMultiplier) + physAtkBonus`; `physMultiplier = 1 + baseAttr * 0.2`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)`. Unarmed baseRoll 1–4; with weapon, weapon roll adds to range. AC tests with fixed RNG for deterministic verification.
 - **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 3, cap 1.8).
 - **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 3; cap 1.5, 30%).

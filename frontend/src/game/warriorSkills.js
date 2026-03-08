@@ -2,7 +2,7 @@
  * Warrior initial skill definitions and combat mechanics.
  * Three specs: Arms (Heroic Strike), Fury (Bloodthirst), Protection (Sunder Armor).
  * Rage: starts at 0 each combat, max 100.
- *   Gain: +1 per 2 damage taken (floor), +1 per 4 damage dealt (floor).
+ *   Gain: fixed amount per attack (dealing or taking); crit doubles; dodge gives 0.
  */
 
 export const WARRIOR_INITIAL_SKILLS = [
@@ -133,23 +133,19 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
   return base.effectDesc ?? ''
 }
 
-/**
- * Rage gained from taking damage: floor(damage / 2), minimum 1 when damage > 0.
- * @param {number} damageTaken
- * @returns {number}
- */
-export function rageFromDamageTaken(damageTaken) {
-  if (damageTaken <= 0) return 0
-  return Math.max(1, Math.floor(damageTaken / 2))
-}
+/** Fixed rage per attack (dealing or taking). Crit doubles. Dodge gives 0. */
+export const RAGE_PER_ATTACK = 4
+export const RAGE_CRIT_MULTIPLIER = 2
 
 /**
- * Rage gained from dealing damage: floor(damage / 4).
- * @param {number} damageDealt
+ * Rage gained from a single attack (dealing or taking). Fixed amount; crit doubles.
+ * Dodge (no hit) gives 0 - caller must only invoke when attack actually hits.
+ * @param {boolean} isCrit
  * @returns {number}
  */
-export function rageFromDamageDealt(damageDealt) {
-  return Math.floor(damageDealt / 4)
+export function rageFromAttack(isCrit) {
+  const base = RAGE_PER_ATTACK
+  return isCrit ? base * RAGE_CRIT_MULTIPLIER : base
 }
 
 /**
@@ -296,7 +292,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   const actualDebuffArmorReduction =
     skill.id === 'sunder-armor' ? (getSunderDebuff(target)?.armorReduction ?? 0) : undefined
 
-  const rageGained = rageFromDamageDealt(finalDamage)
+  const rageGained = rageFromAttack(isCrit)
   warrior.currentMP = Math.min(100, (warrior.currentMP || 0) + rageGained)
 
   return {
@@ -351,7 +347,7 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
     hits.push({ target, targetId: target.id, targetName: target.name, baseRaw, finalDamage, effectiveArmor, targetHPBefore })
   }
 
-  const rageGained = rageFromDamageDealt(totalDamage)
+  const rageGained = rageFromAttack(isCrit)
   warrior.currentMP = Math.min(100, (warrior.currentMP || 0) + rageGained)
 
   return {

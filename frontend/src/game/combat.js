@@ -3,8 +3,7 @@ import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_M
 import {
   getAnyWarriorSkillById,
   getSkillWithEnhancements,
-  rageFromDamageTaken,
-  rageFromDamageDealt,
+  rageFromAttack,
   getEffectiveArmor,
   getEffectiveResistance,
   tickDebuffs,
@@ -679,15 +678,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         debuffResult = applyMonsterSkillDebuff(target, skillDef)
       }
 
-      // Rage gain for Warriors from dealing damage
-      if (actor.side === 'hero' && actor.class === 'Warrior') {
-        const gained = rageFromDamageDealt(damage.finalDamage)
-        actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
-      }
-      // Rage gain for Warriors from taking damage
-      if (target.side === 'hero' && target.class === 'Warrior') {
-        const gained = rageFromDamageTaken(damage.finalDamage)
-        target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
+      // Rage gain for Warriors: fixed per attack; crit doubles; dodge (no hit) gives 0
+      if (damage.finalDamage > 0) {
+        if (actor.side === 'hero' && actor.class === 'Warrior') {
+          const gained = rageFromAttack(isCrit)
+          actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
+        }
+        if (target.side === 'hero' && target.class === 'Warrior') {
+          const gained = rageFromAttack(isCrit)
+          target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
+        }
       }
 
       const logEntry = {
