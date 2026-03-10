@@ -1,0 +1,164 @@
+# 策略配置设计 (Tactics / Strategize)
+
+> 玩家为每位角色配置技能施放策略，对应核心循环中的「布局 (Strategize)」阶段。技能效果定义见 [05-skills.md](./05-skills.md)。
+
+## 一、设计目标与约束
+
+| 目标 | 说明 |
+|------|------|
+| **玩家影响** | 通过预配置战术影响战斗，符合 idle 游戏「布局」阶段 |
+| **透明化** | 策略规则清晰、可预期，便于战后复盘与优化 |
+| **可扩展** | 覆盖现有技能（斩杀、复仇、嘲讽、破甲协同等）及后续新技能 |
+
+**约束**：回合制、每回合一次行动、无实时操控。
+
+---
+
+## 二、策略配置结构（数据模型）
+
+每个英雄绑定一套 **tactics**，结构如下：
+
+```javascript
+{
+  skillPriority: ['taunt', 'shield-slam', 'sunder-armor', 'heroic-strike'],
+  targetRule: 'lowest-hp',
+  conditions: [
+    { skillId: 'taunt', when: 'ally-ot' },
+    { skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' },
+    { skillId: 'execute', when: 'target-hp-below', value: 0.30 },
+    { skillId: 'heal', when: 'ally-hp-below', value: 0.40, targetRule: 'lowest-hp-ally' }
+  ]
+}
+```
+
+---
+
+## 三、可配置维度
+
+### 3.1 技能释放优先级 (skillPriority)
+
+| 配置项 | 说明 |
+|--------|------|
+| **skillPriority** | 技能 ID 的有序列表，按顺序尝试 |
+| **执行逻辑** | 第一个满足「资源 + 冷却 + 条件」的技能被使用 |
+| **普攻** | 若所有技能均不可用，则普攻；可视为 `basic-attack` 放在列表末尾 |
+
+默认值：`hero.skills` 的当前顺序，或按职业预设。
+
+### 3.2 目标选择规则 (targetRule)
+
+**敌方目标**
+
+| 规则 ID | 说明 |
+|---------|------|
+| lowest-hp | 敌方当前 HP 最低 |
+| highest-hp | 敌方当前 HP 最高 |
+| highest-threat | 仇恨最高（占位，仇恨系统实现后接入） |
+| random | 随机存活目标 |
+| first | 列表第一个（默认） |
+
+**友方目标**（治疗、Buff 等）
+
+| 规则 ID | 说明 |
+|---------|------|
+| lowest-hp-ally | 己方 HP 最低 |
+| self | 仅自己 |
+| tank | 坦克（仇恨最高者） |
+
+技能若有目标类型（单体伤害 / 治疗 / 己方 Buff），目标规则仅在该类型内生效。技能级可覆盖 `targetRule`（如治疗用 `lowest-hp-ally`）。
+
+### 3.3 触发条件 (conditions)
+
+技能级条件，决定「何时可尝试该技能」及「目标池如何过滤」：
+
+| 条件类型 | 说明 | 适用技能示例 |
+|----------|------|--------------|
+| target-hp-below | 目标 HP 比例低于 X | 斩杀 (30%) |
+| target-hp-above | 目标 HP 比例高于 X | — |
+| self-hp-below | 自身 HP 比例低于 X | 破釜沉舟 |
+| ally-hp-below | 任意友方 HP 比例低于 X | 治疗技能 |
+| self-hit-this-round | 本回合受到过攻击 | 复仇 |
+| target-has-debuff | 目标有指定 debuff；同时过滤目标池 | 盾牌猛击（破甲）、深度冻结（冰霜 debuff） |
+| ally-ot | 存在至少一个怪物，其仇恨最高目标不是坦克 | 嘲讽 |
+| resource-above | 资源高于 X | 爆发技 |
+| resource-below | 资源低于 X | 填充技 |
+| round-gte | 回合数 ≥ X | 起手 Buff |
+
+**说明**：
+
+- `target-has-debuff`：先按 debuff 过滤目标池，若无有效目标则跳过该技能。
+- `ally-ot`：依赖仇恨系统，实现前占位（恒为 false，嘲讽不触发）。
+
+---
+
+## 四、策略执行流程
+
+```
+每回合、每个英雄行动时：
+1. 获取该英雄的 tactics（若无则用默认）
+2. 按 skillPriority 顺序遍历技能：
+   a. 检查资源是否足够
+   b. 检查冷却
+   c. 检查 conditions 中该技能的触发条件
+   d. 根据 targetRule（或技能级 targetRule）选取目标；条件涉及目标池时先过滤
+   e. 若全部通过，执行该技能并结束
+3. 若无一技能可用，执行普攻（目标仍按 targetRule）
+```
+
+---
+
+## 五、示例：战士防护坦克
+
+| 情况 | 行为 |
+|------|------|
+| 有队友 OT | 优先嘲讽 |
+| 无 OT，目标有破甲 | 盾牌猛击 |
+| 无 OT，目标无破甲 | 破甲 |
+| 其他 | 英勇打击等 |
+
+配置：
+
+```javascript
+{
+  skillPriority: ['taunt', 'shield-slam', 'sunder-armor', 'heroic-strike'],
+  targetRule: 'lowest-hp',
+  conditions: [
+    { skillId: 'taunt', when: 'ally-ot' },
+    { skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }
+  ]
+}
+```
+
+---
+
+## 六、与技能设计的衔接
+
+| 技能 | 内置条件 | 策略可配置 |
+|------|----------|------------|
+| 斩杀 Execute | 目标 HP < 30% | 可配置阈值 |
+| 复仇 Revenge | 本回合受击 | 条件固定，策略控制优先级 |
+| 盾牌猛击 Shield Slam | 目标有破甲 | 条件固定 |
+| 深度冻结 Deep Freeze | 目标有冰霜 debuff | 条件固定 |
+| 嘲讽 Taunt | 无 | 优先级 + ally-ot 条件 |
+| 治疗技能 | 无 | ally-hp-below + lowest-hp-ally |
+
+---
+
+## 七、UI 与 MVP 范围
+
+**MVP**：skillPriority、targetRule（含友方）、conditions（target-hp-below、ally-hp-below、target-has-debuff、self-hit-this-round、ally-ot 占位）。
+
+**暂不做**：全局条件、预设方案（坦克/集火/均衡等）。
+
+**UI 入口**：布局/策略界面 → 选择角色 → 配置技能优先级、目标规则、条件。
+
+---
+
+## 八、与核心循环的衔接
+
+| 循环阶段 | 策略系统贡献 |
+|----------|--------------|
+| **布局 (Strategize)** | 为每位角色配置 tactics，使策略自动执行 |
+| **放置 (Engage)** | 战斗中按 tactics 选择技能与目标 |
+| **分析 (Analyze)** | 战斗日志与数据统计验证策略效果 |
+| **优化 (Optimize)** | 根据数据调整 tactics |

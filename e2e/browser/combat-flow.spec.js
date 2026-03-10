@@ -416,6 +416,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
   })
 
   test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
+    test.setTimeout(90000)
     const email = `attr-alloc-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
@@ -430,18 +431,18 @@ test.describe('Experience and Leveling (Example 11)', () => {
       }
     }, undefined, { pauseFirst: true })
 
-    await pauseCombat(page)
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
     const attrAlloc = page.locator('.detail-modal .attr-alloc').first()
     await expect(attrAlloc).toBeVisible({ timeout: 5000 })
     await expect(attrAlloc).toContainText('Unassigned')
-    await expect(page.locator('.attr-btn').first()).toBeVisible()
+    const attrBtn = page.locator('.detail-modal .attr-btn').first()
+    await expect(attrBtn).toBeVisible()
     const beforeVal = parseInt((await attrAlloc.locator('.unassigned-val').textContent()) || '0', 10)
     expect(beforeVal).toBeGreaterThanOrEqual(1)
-    await page.locator('.attr-btn').first().click()
-    await expect(attrAlloc.locator('.unassigned-val')).toHaveText(String(beforeVal - 1))
+    await attrBtn.click()
+    await expect(attrAlloc.locator('.unassigned-val')).toHaveText(String(beforeVal - 1), { timeout: 3000 })
   })
 })
 

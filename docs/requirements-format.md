@@ -952,6 +952,101 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 28: Tactics Configuration (Strategize)
+
+**User Story**
+
+> As a player,  
+> I want to configure skill priority, target selection, and conditions for each hero's tactics,  
+> So that my pre-configured strategies execute automatically in combat and I can tune them based on combat logs.
+
+**Design Reference (from design doc)**
+
+- **Tactics structure**: Each hero has `tactics` with `skillPriority`, `targetRule`, and optional `conditions`. See [10-tactics.md](design/10-tactics.md).
+- **Skill priority**: Ordered list of skill IDs; the first skill that passes resource, cooldown, and conditions is used; if none, basic attack.
+- **Target rules (enemy)**: lowest-hp, highest-hp, highest-threat (placeholder), random, first.
+- **Target rules (ally)**: lowest-hp-ally, self, tank — for heals and buffs.
+- **Conditions**: Per-skill triggers (target-hp-below, target-has-debuff, ally-ot, etc.); `target-has-debuff` filters target pool; `ally-ot` is placeholder until threat system exists.
+- **Default**: When no tactics configured, use hero's skill list order and first alive target.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player is on the main screen or squad view | Player opens the Tactics/Strategize UI | A tactics configuration interface is shown; player can select a hero to configure |
+| AC2 | Player has selected a hero and opened tactics config | Player views the config | Skill priority (ordered list), target rule (dropdown), and optional conditions per skill are editable |
+| AC3 | Player sets skill priority to [Shield Slam, Sunder Armor, Heroic Strike] for a Warrior | Player saves tactics | The hero's tactics are persisted; in combat, the hero tries Shield Slam first, then Sunder Armor, then Heroic Strike (subject to resource, cooldown, conditions) |
+| AC4 | Player sets target rule to "lowest-hp" for a DPS hero | Hero acts in combat | The hero selects the enemy with the lowest current HP as the target (among valid targets for the chosen skill) |
+| AC5 | Player sets target rule to "lowest-hp-ally" for a heal skill condition | Healer acts in combat | The healer selects the ally with the lowest current HP as the heal target |
+| AC6 | Hero has tactics configured with skill priority [A, B, C] | Hero's turn arrives and skill A fails (insufficient resource or cooldown) | The hero tries skill B next; if B fails, tries C; if all fail, performs basic attack |
+| AC7 | Hero has no tactics configured | Hero acts in combat | Default behavior: use hero's skill list order; target is first alive enemy |
+| AC8 | Player configures condition `{ skillId: 'execute', when: 'target-hp-below', value: 0.30 }` | Warrior's turn and Execute is in priority list | Execute is only attempted when the selected target has HP below 30%; otherwise Execute is skipped and next skill is tried |
+| AC9 | Player configures condition `{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }` | Warrior's turn and no enemy has Sunder debuff | Shield Slam is skipped (no valid target); next skill in priority (e.g., Sunder Armor) is tried |
+| AC10 | Player configures condition `{ skillId: 'taunt', when: 'ally-ot' }` | Threat system is not yet implemented | ally-ot evaluates to false; Taunt is skipped; next skill in priority is tried (placeholder behavior) |
+
+---
+
+## Example 29: Tactics Execution — Protection Tank (Sunder, Shield Slam, Taunt)
+
+**User Story**
+
+> As a player,  
+> I want my Protection Warrior to prioritize Taunt when a teammate is OT, then Shield Slam on Sundered targets, then Sunder Armor when no enemy has it,  
+> So that I can maintain threat and maximize damage synergy with Sunder + Shield Slam.
+
+**Design Reference (from design doc)**
+
+- **Tactics example** (from [10-tactics.md](design/10-tactics.md) section 5):
+  - `skillPriority: ['taunt', 'shield-slam', 'sunder-armor', 'heroic-strike']`
+  - `targetRule: 'lowest-hp'`
+  - `conditions`: Taunt when ally-ot; Shield Slam when target has Sunder debuff.
+- **Execution order**: Try Taunt first (if ally-ot); if skipped, try Shield Slam (only on enemies with Sunder); if skipped, try Sunder Armor (any enemy); else Heroic Strike.
+- **ally-ot**: Placeholder until threat system; when implemented, true when at least one monster's highest-threat target is not the tank.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Warrior has tactics [taunt, shield-slam, sunder-armor, heroic-strike] with Taunt condition ally-ot; threat system implemented and ally-ot is true | Warrior's turn arrives | Taunt is used (assuming resource and cooldown allow); Taunt forces target to attack the Warrior |
+| AC2 | Warrior has same tactics; ally-ot is false; at least one enemy has Sunder Armor debuff; Warrior has 25 Rage, Shield Slam off cooldown | Warrior's turn arrives | Shield Slam is used on an enemy that has Sunder debuff; target selection (e.g., lowest-hp among Sundered enemies) follows targetRule |
+| AC3 | Warrior has same tactics; ally-ot is false; no enemy has Sunder debuff; Warrior has 20 Rage | Warrior's turn arrives | Sunder Armor is used on an enemy (e.g., lowest-hp); Sunder debuff is applied |
+| AC4 | Warrior has same tactics; ally-ot is false; one enemy has Sunder but Shield Slam is on cooldown | Warrior's turn arrives | Shield Slam is skipped; Sunder Armor is tried next; if an enemy lacks Sunder, Sunder Armor is used |
+| AC5 | Warrior has same tactics; ally-ot is false; all enemies have Sunder; Shield Slam on cooldown | Warrior's turn arrives | Shield Slam is skipped; Sunder Armor is tried and used (refresh/stack on a Sundered target, or apply to another); Sunder Armor has no condition blocking use when target already has debuff |
+| AC6 | Warrior has tactics with targetRule lowest-hp; two enemies have Sunder, one at 50% HP and one at 20% HP | Shield Slam is selected | The enemy with 20% HP (lowest) is chosen as the Shield Slam target |
+
+---
+
+## Example 30: Tactics Conditions (Skill-Specific Triggers)
+
+**User Story**
+
+> As a player,  
+> I want to attach conditions to specific skills in my tactics (e.g., Execute only when target HP is low, Revenge only when I was hit),  
+> So that my heroes use skills at the right moment and I can express nuanced strategies.
+
+**Design Reference (from design doc)**
+
+- **Condition types** (from [10-tactics.md](design/10-tactics.md)): target-hp-below, target-hp-above, self-hp-below, ally-hp-below, self-hit-this-round, target-has-debuff, ally-ot, resource-above, resource-below, round-gte.
+- **target-has-debuff**: Filters target pool; if no target has the debuff, the skill is skipped.
+- **ally-ot**: Placeholder; always false until threat system.
+- **No global conditions**: Only per-skill conditions in MVP.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Warrior has Execute with condition target-hp-below 0.30; target has 25% HP | Execute is in priority and Warrior has sufficient Rage | Execute is attempted and used on the low-HP target |
+| AC2 | Warrior has Execute with condition target-hp-below 0.30; all enemies have > 30% HP | Execute is in priority | Execute is skipped; next skill in priority is tried |
+| AC3 | Warrior has Revenge with condition self-hit-this-round; Warrior was hit this round | Revenge is in priority and Warrior has 5 Rage | Revenge is used |
+| AC4 | Warrior has Revenge with condition self-hit-this-round; Warrior was not hit this round | Revenge is in priority | Revenge is skipped; next skill is tried |
+| AC5 | Mage has heal skill with condition ally-hp-below 0.40 and targetRule lowest-hp-ally; at least one ally has < 40% HP | Healer's turn | Heal is used on the ally with lowest HP (among those below 40% or all allies, per design) |
+| AC6 | Mage has heal skill with condition ally-hp-below 0.40; all allies have ≥ 40% HP | Healer's turn | Heal is skipped; next skill is tried |
+| AC7 | Warrior has Shield Slam with condition target-has-debuff sunder; two enemies, one with Sunder | Shield Slam is in priority | Target pool is filtered to the enemy with Sunder; Shield Slam is used on that enemy |
+| AC8 | Warrior has Shield Slam with condition target-has-debuff sunder; no enemy has Sunder | Shield Slam is in priority | No valid target; Shield Slam is skipped |
+| AC9 | Player configures condition round-gte 1 for a buff skill | Combat round 1 begins | Buff skill can be used (round ≥ 1); useful for opening buffs |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

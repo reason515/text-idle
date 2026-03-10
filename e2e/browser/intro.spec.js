@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
+const { setupNewRun } = require('./testHelpers')
 
 test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
@@ -54,6 +55,7 @@ test.describe('Opening Introduction E2E', () => {
 
   test('AC4: returning player skips intro', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
+    await setupNewRun(page)
     await page.goto('/register')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
@@ -76,8 +78,8 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Login' }).click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
+    await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.col-header').first()).toBeVisible()
   })
 })

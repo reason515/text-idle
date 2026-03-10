@@ -47,13 +47,14 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
   } = options
 
   if (pauseFirst) await pauseCombat(page)
-  await page.goto(safePath, { waitUntil: 'load' })
+  // Use domcontentloaded for SPA routes to avoid load-event delays from timers/combat
+  await page.goto(safePath, { waitUntil: 'domcontentloaded', timeout: 15000 })
   if (typeof arg === 'undefined') {
     await page.evaluate(pageFunction)
   } else {
     await page.evaluate(pageFunction, arg)
   }
-  await page.goto(returnPath, { waitUntil: 'load' })
+  await page.goto(returnPath, { waitUntil: 'domcontentloaded', timeout: 30000 })
   if (expectReturnUrl && returnPath === '/main') {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
   }

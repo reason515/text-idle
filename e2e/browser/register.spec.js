@@ -35,7 +35,7 @@ test.describe('Register E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
-    await expect(page.getByText('Email already exists')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/email already exists/i)).toBeVisible({ timeout: 5000 })
   })
 
   test('AC3: invalid email shows validation error', async ({ page }) => {

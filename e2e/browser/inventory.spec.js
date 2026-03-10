@@ -58,7 +58,7 @@ test.describe('Inventory (Example 22)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_ITEM)
+    }, SAMPLE_ITEM, { pauseFirst: true })
 
     await expect(page.locator('.backpack-btn')).toContainText('/100', { timeout: 5000 })
     await page.locator('.backpack-btn').click()
@@ -79,7 +79,7 @@ test.describe('Inventory (Example 22)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_ITEM)
+    }, SAMPLE_ITEM, { pauseFirst: true })
 
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).hover()
@@ -97,11 +97,11 @@ test.describe('Inventory (Example 22)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_ITEM)
+    }, SAMPLE_ITEM, { pauseFirst: true })
 
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
-    await expect(page.locator('.item-detail-modal')).toBeVisible()
+    await expect(page.locator('.item-detail-modal')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.item-detail-modal')).toContainText('Cap')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Slot' })).toContainText('Helm')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Level Req' })).toBeVisible()
@@ -119,7 +119,7 @@ test.describe('Inventory (Example 22)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_ITEM)
+    }, SAMPLE_ITEM, { pauseFirst: true })
 
     const goldEl = page.locator('.gold-display .gold-value')
     const goldBefore = parseInt(await goldEl.textContent(), 10) || 0

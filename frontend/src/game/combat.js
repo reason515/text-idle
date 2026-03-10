@@ -18,6 +18,14 @@ import {
 import { getHeroSkillIds } from './skillChoice.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
+import {
+  getSkillPriority,
+  getTargetRule,
+  getConditions,
+  checkCondition,
+  filterTargetsByCondition,
+  pickTargetByRule,
+} from './tactics.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -365,6 +373,9 @@ function heroCombatStats(hero) {
     skills: getHeroSkillIds(hero),
     skillEnhancements: hero.skillEnhancements ?? {},
     debuffs: [],
+    tactics: hero.tactics ?? null,
+    hitThisRound: false,
+    skillCooldowns: {},
   }
 }
 
@@ -401,11 +412,20 @@ function buildRoundOrder(heroes, monsters, rng) {
   return ordered
 }
 
-function pickTarget(actor, heroes, monsters) {
-  if (actor.side === 'hero') {
-    return alive(monsters)[0] ?? null
+function pickTarget(actor, heroes, monsters, opts = {}) {
+  if (actor.side === 'monster') {
+    return alive(heroes)[0] ?? null
   }
-  return alive(heroes)[0] ?? null
+  const { skillId, conditions, rng } = opts
+  const conditionsList = conditions ?? getConditions(actor)
+  const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
+  const targetRule = getTargetRule(actor, skillId || '', conditionsList)
+  const candidates = alive(monsters)
+  const filtered = cond
+    ? filterTargetsByCondition(candidates, cond, actor, opts)
+    : candidates
+  const chosen = pickTargetByRule(filtered, targetRule, rng)
+  return chosen ?? (filtered.length === 0 ? null : filtered[0])
 }
 
 function actorDamage(actor, rng, round) {
@@ -477,6 +497,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   let initialOrder = []
 
   while (round <= maxRounds && alive(heroUnits).length > 0 && alive(monsterUnits).length > 0) {
+    for (const h of heroUnits) h.hitThisRound = false
     const roundOrder = buildRoundOrder(heroUnits, monsterUnits, rng)
     if (round === 1) {
       initialOrder = roundOrder.map((u) => u.name)
@@ -484,20 +505,34 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     turnActedByRound[round] = []
     for (const actor of roundOrder) {
       if (actor.currentHP <= 0) continue
-      const target = pickTarget(actor, heroUnits, monsterUnits)
-      if (!target) break
+      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng })
+      if (!defaultTarget) break
 
       turnActedByRound[round].push(actor.id)
 
-      // Warrior skill path: use first affordable skill from skills array
-      if (actor.side === 'hero' && actor.class === 'Warrior' && Array.isArray(actor.skills) && actor.skills.length > 0) {
+      const ctx = { round, rng }
+      const conditions = getConditions(actor)
+      const skillPriority = getSkillPriority(actor)
+
+      // Warrior skill path: use first affordable skill from priority (tactics or skills)
+      if (actor.side === 'hero' && actor.class === 'Warrior' && skillPriority.length > 0) {
         let usedSkill = false
-        for (const skillId of actor.skills) {
+        for (const skillId of skillPriority) {
           const skill = getSkillWithEnhancements(actor, skillId) ?? getAnyWarriorSkillById(skillId)
           if (!skill || (skill.rageCost ?? 0) > (actor.currentMP || 0)) continue
           const cooldown = skill.cooldown ?? 0
           const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
+
+          const cond = conditions.find((c) => c.skillId === skillId)
+          if (cond && !checkCondition(cond, actor, null, heroUnits, monsterUnits, ctx)) continue
+          const target = pickTarget(actor, heroUnits, monsterUnits, {
+            skillId,
+            conditions,
+            rng,
+            round,
+          })
+          if (!target) continue
 
           const isCrit = rng() < (actor.physCrit || 0)
           if (skill.targets && skill.targets >= 2) {
@@ -595,10 +630,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (usedSkill) continue
       }
 
-      // Mage skill path: use first affordable skill from skills array
-      if (actor.side === 'hero' && actor.class === 'Mage' && Array.isArray(actor.skills) && actor.skills.length > 0) {
+      // Mage skill path: use first affordable skill from priority (tactics or skills)
+      const mageSkillPriority = getSkillPriority(actor)
+      if (actor.side === 'hero' && actor.class === 'Mage' && mageSkillPriority.length > 0) {
         let usedSkill = false
-        for (const skillId of actor.skills) {
+        for (const skillId of mageSkillPriority) {
           const skill = getMageSkillWithEnhancements(actor, skillId) ?? getAnyMageSkillById(skillId)
           const manaCost = skill?.manaCost ?? skill?.rageCost ?? 999
           if (!skill || manaCost > (actor.currentMP || 0)) continue
@@ -606,9 +642,19 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
 
+          const mageCond = conditions.find((c) => c.skillId === skillId)
+          if (mageCond && !checkCondition(mageCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+          const mageTarget = pickTarget(actor, heroUnits, monsterUnits, {
+            skillId,
+            conditions,
+            rng,
+            round,
+          })
+          if (!mageTarget) continue
+
           const isCrit = rng() < (actor.spellCrit || 0)
-          const targetHPBefore = target.currentHP
-          const sr = executeMageSkill(actor, target, skill, { isCrit, rng })
+          const targetHPBefore = mageTarget.currentHP
+          const sr = executeMageSkill(actor, mageTarget, skill, { isCrit, rng })
           if (!actor.skillCooldowns) actor.skillCooldowns = {}
           actor.skillCooldowns[skillId] = round
           const entry = {
@@ -623,10 +669,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             skillName: sr.skillName,
             skillSpec: sr.skillSpec,
             skillCoefficient: sr.skillCoefficient,
-            targetId: target.id,
-            targetName: target.name,
-            targetClass: target.class || null,
-            targetTier: target.tier || null,
+            targetId: mageTarget.id,
+            targetName: mageTarget.name,
+            targetClass: mageTarget.class || null,
+            targetTier: mageTarget.tier || null,
             damageType: 'magic',
             rawDamage: sr.rawDamage,
             isCrit: sr.isCrit,
@@ -634,8 +680,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
             targetDefense: sr.effectiveResistance,
             targetHPBefore,
-            targetHPAfter: target.currentHP,
-            targetMaxHP: target.maxHP,
+            targetHPAfter: mageTarget.currentHP,
+            targetMaxHP: mageTarget.maxHP,
             manaConsumed: sr.manaConsumed,
             manaAfter: actor.currentMP,
           }
@@ -656,6 +702,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
 
       // Basic attack / monster skill path
+      const target = defaultTarget
       const action = actorDamage(actor, rng, round)
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)
@@ -667,6 +714,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const targetHPBefore = target.currentHP
       const damage = applyDamage(rawAfterCrit, action.damageType, target)
       target.currentHP = damage.nextHP
+      if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
 
       if (actor.side === 'monster' && action.skillId) {
         actor.lastSkillRound = round

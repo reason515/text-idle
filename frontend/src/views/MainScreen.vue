@@ -662,6 +662,13 @@
               :class="{ active: heroDetailTab === 'skills' }"
               @click="heroDetailTab = 'skills'"
             >SKILLS</button>
+            <button
+              v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0"
+              type="button"
+              class="detail-tab"
+              :class="{ active: heroDetailTab === 'tactics' }"
+              @click="heroDetailTab = 'tactics'"
+            >TACTICS</button>
           </div>
           <div class="detail-tab-content">
           <div v-show="heroDetailTab === 'attrs'" class="detail-tab-pane">
@@ -791,6 +798,46 @@
               </div>
             </template>
             <div v-else class="detail-empty-hint">No skills learned yet.</div>
+          </div>
+          <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
+            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0">
+              <div class="detail-sep-line">Skill Priority</div>
+              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried.</div>
+              <div class="tactics-skill-list">
+                <div
+                  v-for="(skillId, idx) in tacticsSkillPriority(selectedHero)"
+                  :key="skillId"
+                  class="tactics-skill-row"
+                >
+                  <span class="tactics-skill-order">{{ idx + 1 }}.</span>
+                  <span class="tactics-skill-name">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
+                  <div class="tactics-skill-btns">
+                    <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
+                    <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === tacticsSkillPriority(selectedHero).length - 1" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
+                  </div>
+                </div>
+              </div>
+              <div class="detail-sep-line">Target Rule</div>
+              <div class="detail-section">
+                <div class="detail-row">
+                  <span class="detail-label">Enemy target</span>
+                  <span class="detail-value">
+                    <select
+                      :value="tacticsTargetRule(selectedHero)"
+                      class="tactics-select"
+                      data-testid="tactics-target-rule"
+                      @change="setTacticsTargetRule(selectedHero, $event.target.value)"
+                    >
+                      <option value="first">First (default)</option>
+                      <option value="lowest-hp">Lowest HP</option>
+                      <option value="highest-hp">Highest HP</option>
+                      <option value="random">Random</option>
+                    </select>
+                  </span>
+                </div>
+              </div>
+            </template>
+            <div v-else class="detail-empty-hint">No skills to configure tactics.</div>
           </div>
           </div>
           <button class="btn" @click="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
@@ -1587,6 +1634,42 @@ function assignPoint(attr) {
 
 function heroSkillIds(hero) {
   return getHeroSkillIds(hero)
+}
+
+function tacticsSkillPriority(hero) {
+  const tactics = hero?.tactics
+  const skills = heroSkillIds(hero)
+  if (tactics?.skillPriority?.length) {
+    return tactics.skillPriority.filter((id) => skills.includes(id))
+  }
+  return skills
+}
+
+function tacticsTargetRule(hero) {
+  return hero?.tactics?.targetRule || 'first'
+}
+
+function saveTacticsToSquad(hero, updater) {
+  const sh = squad.value.find((h) => h.id === hero?.id)
+  if (!sh) return
+  if (!sh.tactics) sh.tactics = {}
+  updater(sh.tactics)
+  saveSquad(squad.value)
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
+}
+
+function moveTacticsSkill(hero, idx, delta) {
+  const priority = tacticsSkillPriority(hero)
+  const newIdx = idx + delta
+  if (newIdx < 0 || newIdx >= priority.length) return
+  const next = [...priority]
+  ;[next[idx], next[newIdx]] = [next[newIdx], next[idx]]
+  saveTacticsToSquad(hero, (t) => { t.skillPriority = next })
+}
+
+function setTacticsTargetRule(hero, value) {
+  saveTacticsToSquad(hero, (t) => { t.targetRule = value })
 }
 
 function getHeroSkillDisplay(skillId, hero = null) {
@@ -3120,6 +3203,54 @@ onUnmounted(() => {
 .detail-tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+}
+.tactics-priority-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.tactics-skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+.tactics-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.tactics-skill-order {
+  color: var(--text-muted);
+  min-width: 1.5rem;
+}
+.tactics-skill-name {
+  flex: 1;
+  font-size: 0.9rem;
+}
+.tactics-skill-btns {
+  display: flex;
+  gap: 0.15rem;
+}
+.tactics-move-btn {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.75rem;
+}
+.tactics-move-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tactics-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
 }
 .detail-empty-hint {
   color: var(--text-muted);

@@ -794,6 +794,115 @@ describe('combat progression and systems', () => {
     expect(stepsTwoDeaths).toBeGreaterThan(stepsOneDeath)
   })
 
+  it('Example29: tactics skillPriority Shield Slam before Sunder when target has sunder', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      agility: 12,
+      strength: 20,
+      skills: ['sunder-armor', 'shield-slam', 'heroic-strike'],
+      tactics: {
+        skillPriority: ['shield-slam', 'sunder-armor', 'heroic-strike'],
+        targetRule: 'lowest-hp',
+        conditions: [{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }],
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob A',
+          damageType: 'physical',
+          base: { hp: 150, physAtk: 5, spellPower: 0, agility: 5, armor: 2, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 15 })
+    const sunderFirst = result.log.find((e) => e.skillId === 'sunder-armor')
+    const shieldSlamAfter = result.log.filter((e) => e.skillId === 'shield-slam')
+    expect(sunderFirst).toBeDefined()
+    if (shieldSlamAfter.length > 0) {
+      const firstSunderRound = sunderFirst.round
+      const firstShieldRound = shieldSlamAfter[0].round
+      expect(firstShieldRound).toBeGreaterThanOrEqual(firstSunderRound)
+    }
+  })
+
+  it('Example29: tactics target-has-debuff skips Shield Slam when no enemy has sunder', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      agility: 12,
+      strength: 20,
+      skills: ['sunder-armor', 'shield-slam', 'heroic-strike'],
+      tactics: {
+        skillPriority: ['shield-slam', 'sunder-armor', 'heroic-strike'],
+        targetRule: 'lowest-hp',
+        conditions: [{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }],
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Fresh Mob',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 5, spellPower: 0, agility: 4, armor: 2, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng(Array(30).fill(0.5))
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 12 })
+    const firstSkillUse = result.log.find(
+      (e) => e.actorName === 'Hero One' && e.action === 'skill'
+    )
+    expect(firstSkillUse).toBeDefined()
+    expect(firstSkillUse.skillId).toBe('sunder-armor')
+  })
+
+  it('Example28: tactics targetRule lowest-hp selects lowest-HP enemy', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 15,
+      strength: 20,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'], targetRule: 'lowest-hp' },
+    })
+    const m1 = createMonster(
+      {
+        id: 'm1',
+        name: 'Full HP',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const m2 = createMonster(
+      {
+        id: 'm2',
+        name: 'Low HP',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    m2.currentHP = 80
+    const monsters = [m1, m2]
+    const rng = fixedRng(Array(50).fill(0.5))
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 20 })
+    const heroSkillHits = result.log.filter(
+      (e) => e.actorName === 'Tank' && e.skillId === 'heroic-strike' && e.targetName
+    )
+    expect(heroSkillHits.length).toBeGreaterThan(0)
+    const lowHpTargets = heroSkillHits.filter((e) => e.targetName === 'Low HP')
+    expect(lowHpTargets.length).toBeGreaterThan(0)
+  })
+
   it('Warrior rage: resets to 0 when entering rest, does not recover during rest', () => {
     const warrior = {
       ...sampleHero({ id: 'w-rest', class: 'Warrior', spirit: 5 }),
