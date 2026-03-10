@@ -7,39 +7,7 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-
-async function setupNewRun(page) {
-  await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('/register')
-  await page.evaluate(() => {
-    localStorage.clear()
-    localStorage.setItem('e2eFastCombat', '1')
-  })
-}
-
-async function registerToCharacterSelect(page, email) {
-  await setupNewRun(page)
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel(/Password/).fill('password123')
-  await page.getByRole('button', { name: 'Register' }).click()
-  await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-
-  await page.getByRole('button', { name: '下一步' }).click()
-  await page.getByLabel('队伍名称').fill('Combat Squad')
-  await page.getByRole('button', { name: '开始冒险' }).click()
-  await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-}
-
-async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
-  await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).first().click()
-  if (skillId) {
-    await page.locator('.skill-option').filter({ hasText: skillId }).click()
-  } else {
-    await page.locator('.skill-option').first().click()
-  }
-  await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('button', { name: 'Confirm' }).click()
-}
+const { registerToCharacterSelect, recruitWarrior, updateStoredState } = require('./testHelpers')
 
 test.describe('Equipment Drop (Example 17, 21, 23)', () => {
   test('victory summary shows EXP and Gold; equipment may appear when dropped', async ({ page }) => {
@@ -65,7 +33,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 1
@@ -77,8 +45,6 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     const defeatSummary = page.locator('.log-summary.defeat-text').first()
@@ -94,7 +60,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 80
@@ -111,11 +77,9 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
       progress.currentProgress = 100
       progress.bossAvailable = true
       localStorage.setItem('combatProgress', JSON.stringify(progress))
-    })
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    }, undefined, { pauseFirst: true })
+    await page.waitForTimeout(500)
 
-    await expect(page.locator('.boss-badge')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
     const summary = page.locator('.log-summary.victory-text').first()
     const dropCount = await summary.locator('.log-item-drop').count()

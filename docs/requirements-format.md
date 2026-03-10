@@ -468,6 +468,31 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 13a: Shield Slam (Warrior Lv 10 Skill)
+
+**User Story**
+
+> As a player,  
+> I want Shield Slam to guarantee a critical hit when the target has the Sunder Armor debuff,  
+> So that I can synergize Sunder Armor with Shield Slam for consistent burst damage as a Protection tank.
+
+**Design Reference (from design doc)**
+
+- **Shield Slam**: 20 Rage, 1 round CD. 1.2x physical damage, requires shield, extra threat. **Guaranteed crit when target has Sunder Armor debuff** (synergy with Sunder Armor).
+- **Sunder Armor**: Initial Protection skill; applies Armor -8 debuff for 3 rounds.
+- **Crit**: CritMultiplier = 1.5; when Shield Slam hits a target with Sunder debuff, the attack is forced to crit (1.5x damage).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Warrior has Shield Slam, 25 Rage, target has **no** Sunder debuff | Warrior uses Shield Slam | 20 Rage consumed; damage uses normal crit roll (no forced crit); combat log shows damage |
+| AC2 | Warrior has Shield Slam, 25 Rage, target **has** Sunder Armor debuff | Warrior uses Shield Slam | 20 Rage consumed; attack **guaranteed crit** (1.5x damage); combat log shows CRIT! and 1.5x damage |
+| AC3 | Warrior has Sunder Armor and Shield Slam, target has no debuff | Warrior uses Sunder Armor first, then Shield Slam on next turn | Sunder applies debuff; Shield Slam on the Sundered target guarantees crit |
+| AC4 | Target has Sunder debuff | Warrior uses Shield Slam with isCrit=false from RNG | Damage is still 1.5x (forced crit overrides RNG); result.isCrit is true |
+
+---
+
 ## Example 14: Mage Initial Skill Selection (Design Reference)
 
 **Design Reference (from design doc)**

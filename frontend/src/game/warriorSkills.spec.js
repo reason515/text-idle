@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   WARRIOR_INITIAL_SKILLS,
   getWarriorSkillById,
+  getAnyWarriorSkillById,
   getSkillWithEnhancements,
   getEnhancementPreviewEffectDesc,
   rageFromAttack,
@@ -595,5 +596,63 @@ describe('Example13: Combat integration', () => {
     // At least one application entry
     const applied = sunderLogs.filter((e) => e.debuffApplied)
     expect(applied.length).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Example 13a: Shield Slam (guaranteed crit when target has Sunder debuff)
+// ---------------------------------------------------------------------------
+
+describe('Example13a: Shield Slam', () => {
+  const skill = getAnyWarriorSkillById('shield-slam')
+
+  it('AC1: Shield Slam without Sunder debuff uses normal crit roll', () => {
+    const warrior = makeWarrior({ physAtk: 20, currentMP: 25 })
+    const target = makeTarget({ armor: 5, debuffs: [] })
+
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+
+    expect(result.rageConsumed).toBe(20)
+    expect(result.isCrit).toBe(false)
+    const rawExpected = Math.round(20 * 1.2)
+    expect(result.rawDamage).toBe(rawExpected)
+    expect(result.finalDamage).toBe(Math.max(1, rawExpected - 5))
+  })
+
+  it('AC2: Shield Slam with Sunder debuff guarantees crit (1.5x damage)', () => {
+    const warrior = makeWarrior({ physAtk: 20, currentMP: 25 })
+    const target = makeTarget({ armor: 5, debuffs: [{ type: 'sunder', armorReduction: 8, remainingRounds: 2 }] })
+
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+
+    expect(result.rageConsumed).toBe(20)
+    expect(result.isCrit).toBe(true)
+    const rawBase = Math.round(20 * 1.2)
+    const rawAfterCrit = Math.round(rawBase * 1.5)
+    expect(result.rawAfterCrit).toBe(rawAfterCrit)
+    // Effective armor = max(0, 5 - 8) = 0 due to Sunder
+    expect(result.finalDamage).toBe(Math.max(1, rawAfterCrit - 0))
+  })
+
+  it('AC4: Shield Slam on Sundered target overrides RNG isCrit=false', () => {
+    const warrior = makeWarrior({ physAtk: 10, currentMP: 25 })
+    const target = makeTarget({ armor: 0, debuffs: [{ type: 'sunder', armorReduction: 8, remainingRounds: 1 }] })
+
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
+
+    expect(result.isCrit).toBe(true)
+    const rawBase = Math.round(10 * 1.2)
+    expect(result.rawDamage).toBe(rawBase)
+    expect(result.rawAfterCrit).toBe(Math.round(rawBase * 1.5))
+  })
+
+  it('Shield Slam without Sunder can still crit if RNG says so', () => {
+    const warrior = makeWarrior({ physAtk: 10, currentMP: 25 })
+    const target = makeTarget({ armor: 0, debuffs: [] })
+
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: true })
+
+    expect(result.isCrit).toBe(true)
+    expect(result.rawAfterCrit).toBe(Math.round(Math.round(10 * 1.2) * 1.5))
   })
 })

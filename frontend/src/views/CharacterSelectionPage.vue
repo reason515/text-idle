@@ -180,6 +180,7 @@
                   :key="item.key"
                   class="secondary-item secondary-item-tooltip"
                   :class="{ 'has-formula': item.formula !== '-' }"
+                  :data-tooltip="item.formula !== '-' ? item.formula : undefined"
                   @mouseenter="(e) => item.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(item.formula))"
                   @mouseleave="hideFormulaTooltip"
                 >

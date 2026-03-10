@@ -1,6 +1,6 @@
 /**
  * Global hooks for E2E tests.
- * Sets e2eFastCombat so combat animations use 200ms instead of 2000ms.
+ * Sets e2eFastCombat so combat animations use 0ms (skip delays).
  */
 const { test } = require('@playwright/test')
 

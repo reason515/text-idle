@@ -8,32 +8,7 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-
-async function setupNewRun(page) {
-  await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('/register')
-  await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
-}
-
-async function registerToCharacterSelect(page, email) {
-  await setupNewRun(page)
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel(/Password/).fill('password123')
-  await page.getByRole('button', { name: 'Register' }).click()
-  await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-
-  await page.getByRole('button', { name: '下一步' }).click()
-  await page.getByLabel('队伍名称').fill('Combat Squad')
-  await page.getByRole('button', { name: '开始冒险' }).click()
-  await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-}
-
-async function recruitWarrior(page) {
-  await page.getByRole('button', { name: /^Varian Wrynn\b/ }).first().click()
-  await page.locator('.skill-option').first().click()
-  await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('button', { name: 'Confirm' }).click()
-}
+const { registerToCharacterSelect, recruitWarrior, updateStoredState } = require('./testHelpers')
 
 test.describe('Shop (Example 24)', () => {
   test('Shop button visible next to Backpack button', async ({ page }) => {
@@ -76,9 +51,7 @@ test.describe('Shop (Example 24)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => localStorage.setItem('playerGold', '5000'))
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await updateStoredState(page, () => localStorage.setItem('playerGold', '5000'))
 
     const goldBefore = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0
 
@@ -109,9 +82,7 @@ test.describe('Shop (Example 24)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => localStorage.setItem('playerGold', '1'))
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await updateStoredState(page, () => localStorage.setItem('playerGold', '1'))
 
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()

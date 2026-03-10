@@ -1680,12 +1680,18 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** When e2eFastCombat is set (by E2E tests), use 200ms instead of normal delays. */
-function combatDelayMs(normalMs) {
+function isE2eFastMode() {
   try {
-    if (localStorage.getItem('e2eFastCombat') === '1') return 200
+    if (localStorage.getItem('e2eFastCombat') === '1') return true
   } catch { /* localStorage may be unavailable */ }
-  return normalMs
+  if (typeof navigator !== 'undefined' && !!navigator.webdriver) return true
+  if (typeof location !== 'undefined' && location.search.includes('e2e=1')) return true
+  return false
+}
+
+/** When E2E fast mode, use 0ms to skip animation delays. */
+function combatDelayMs(normalMs) {
+  return isE2eFastMode() ? 0 : normalMs
 }
 
 async function sleepMsRespectingPause(ms) {
@@ -1711,79 +1717,89 @@ function buildDebuffFromEntry(entry) {
   return debuff
 }
 
+function applyOneCombatEntry(entry) {
+  currentActorId.value = entry.actorId ?? null
+  currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
+  addLogEntry(entry)
+
+  if (entry.type === 'dot') {
+    pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
+  } else if (entry.targetId && entry.finalDamage > 0) {
+    const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : 'Skill') : null)
+    pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, { skillName: skillName ?? null, type: 'damage' })
+  }
+  if (entry.heal > 0 && entry.actorId) {
+    const skillName = entry.skillName ?? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : null)
+    pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
+  }
+
+  const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
+  const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
+  if (mi >= 0) {
+    const updated = [...currentMonsters.value]
+    updated[mi] = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
+    if (entry.debuffApplied || entry.debuffRefreshed) {
+      const newDebuff = buildDebuffFromEntry(entry)
+      const debuffs = [...(updated[mi].debuffs || [])]
+      const existing = debuffs.find((d) => d.type === newDebuff.type)
+      if (existing) Object.assign(existing, newDebuff)
+      else debuffs.push(newDebuff)
+      updated[mi] = { ...updated[mi], debuffs }
+    }
+    currentMonsters.value = updated
+  }
+  let updated = [...displayHeroes.value]
+  const hi = updated.findIndex((h) => h.id === entry.targetId)
+  if (hi >= 0) {
+    updated[hi] = { ...updated[hi], currentHP: Math.max(0, targetHpAfter ?? updated[hi].currentHP) }
+    if (entry.targetRageAfter !== undefined) updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
+    if (entry.debuffApplied || entry.debuffRefreshed) {
+      const newDebuff = buildDebuffFromEntry(entry)
+      const debuffs = [...(updated[hi].debuffs || [])]
+      const existing = debuffs.find((d) => d.type === newDebuff.type)
+      if (existing) Object.assign(existing, newDebuff)
+      else debuffs.push(newDebuff)
+      updated[hi] = { ...updated[hi], debuffs }
+    }
+  }
+  const actorRage = entry.actorRageAfter ?? entry.rageAfter
+  const ai = updated.findIndex((h) => h.id === entry.actorId)
+  if (ai >= 0 && actorRage !== undefined) updated[ai] = { ...updated[ai], currentMP: actorRage }
+  if (hi >= 0 || (ai >= 0 && actorRage !== undefined)) displayHeroes.value = updated
+}
+
 async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
+
+  if (isE2eFastMode()) {
+    for (let i = 0; i < result.log.length; i++) {
+      if (!isRunning.value) return
+      const entry = result.log[i]
+      applyOneCombatEntry(entry)
+      const nextEntry = result.log[i + 1]
+      const isLastOfRound = !nextEntry || nextEntry.round !== entry.round
+      if (isLastOfRound) {
+        addLogEntry({ type: 'roundSeparator' })
+        for (const unit of [...displayHeroes.value, ...currentMonsters.value]) {
+          if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) tickDebuffs(unit)
+        }
+        displayHeroes.value = [...displayHeroes.value]
+        currentMonsters.value = [...currentMonsters.value]
+      }
+    }
+    await scrollLog()
+    currentActorId.value = null
+    currentTargetId.value = null
+    return
+  }
+
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
     await sleepMsRespectingPause(combatDelayMs(2000))
     if (!isRunning.value) return
-    currentActorId.value = entry.actorId ?? null
-    currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
-    addLogEntry(entry)
-
-    if (entry.type === 'dot') {
-      pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
-    } else if (entry.targetId && entry.finalDamage > 0) {
-      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : 'Skill') : null)
-      pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, {
-        skillName: skillName ?? null,
-        type: 'damage',
-      })
-    }
-    if (entry.heal > 0 && entry.actorId) {
-      const skillName = entry.skillName ?? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : null)
-      pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
-    }
-
-    const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
-
-    const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
-    if (mi >= 0) {
-      const updated = [...currentMonsters.value]
-      updated[mi] = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
-      if (entry.debuffApplied || entry.debuffRefreshed) {
-        const newDebuff = buildDebuffFromEntry(entry)
-        const debuffs = [...(updated[mi].debuffs || [])]
-        const existing = debuffs.find((d) => d.type === newDebuff.type)
-        if (existing) {
-          Object.assign(existing, newDebuff)
-        } else {
-          debuffs.push(newDebuff)
-        }
-        updated[mi] = { ...updated[mi], debuffs }
-      }
-      currentMonsters.value = updated
-    }
-    let updated = [...displayHeroes.value]
-    const hi = updated.findIndex((h) => h.id === entry.targetId)
-    if (hi >= 0) {
-      updated[hi] = { ...updated[hi], currentHP: Math.max(0, targetHpAfter ?? updated[hi].currentHP) }
-      if (entry.targetRageAfter !== undefined) {
-        updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
-      }
-      if (entry.debuffApplied || entry.debuffRefreshed) {
-        const newDebuff = buildDebuffFromEntry(entry)
-        const debuffs = [...(updated[hi].debuffs || [])]
-        const existing = debuffs.find((d) => d.type === newDebuff.type)
-        if (existing) {
-          Object.assign(existing, newDebuff)
-        } else {
-          debuffs.push(newDebuff)
-        }
-        updated[hi] = { ...updated[hi], debuffs }
-      }
-    }
-    const actorRage = entry.actorRageAfter ?? entry.rageAfter
-    const ai = updated.findIndex((h) => h.id === entry.actorId)
-    if (ai >= 0 && actorRage !== undefined) {
-      updated[ai] = { ...updated[ai], currentMP: actorRage }
-    }
-    if (hi >= 0 || (ai >= 0 && actorRage !== undefined)) {
-      displayHeroes.value = updated
-    }
-
+    applyOneCombatEntry(entry)
     await scrollLog()
 
     const nextEntry = result.log[i + 1]
@@ -1791,9 +1807,7 @@ async function animateCombatLog(result) {
     if (isLastOfRound) {
       addLogEntry({ type: 'roundSeparator' })
       for (const unit of [...displayHeroes.value, ...currentMonsters.value]) {
-        if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) {
-          tickDebuffs(unit)
-        }
+        if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) tickDebuffs(unit)
       }
       displayHeroes.value = [...displayHeroes.value]
       currentMonsters.value = [...currentMonsters.value]

@@ -253,8 +253,13 @@ export function tickDebuffs(unit) {
  * @returns {Object} Execution result with damage, heal, debuff info
  */
 export function executeWarriorSkill(warrior, target, skill, opts = {}) {
-  const { isCrit = false, rng } = opts
+  let { isCrit = false, rng } = opts
   const CRIT_MULTIPLIER = 1.5
+
+  // Shield Slam: guaranteed crit when target has Sunder Armor debuff (design doc 8.1.4)
+  if (skill.id === 'shield-slam' && getSunderDebuff(target)) {
+    isCrit = true
+  }
 
   warrior.currentMP = Math.max(0, (warrior.currentMP || 0) - skill.rageCost)
 

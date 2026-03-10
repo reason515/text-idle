@@ -16,7 +16,7 @@ export const WARRIOR_LEVEL_SKILLS = {
   10: [
     { id: 'rend', name: 'Rend', spec: 'Arms', rageCost: 10, cooldown: 0, coefficient: 0.5, effectDesc: '0.5x damage + bleed 4 rounds' },
     { id: 'raging-strike', name: 'Raging Strike', spec: 'Fury', rageCost: 12, cooldown: 0, coefficient: 1.2, effectDesc: '1.2x physical damage, low cost filler' },
-    { id: 'shield-slam', name: 'Shield Slam', spec: 'Protection', rageCost: 20, cooldown: 1, coefficient: 1.2, effectDesc: '1.2x damage, requires shield, 1 round CD' },
+    { id: 'shield-slam', name: 'Shield Slam', spec: 'Protection', rageCost: 20, cooldown: 1, coefficient: 1.2, effectDesc: '1.2x damage, requires shield, 1 round CD; guaranteed crit when target has Sunder Armor' },
   ],
   15: [
     { id: 'thunder-clap', name: 'Thunder Clap', spec: 'Arms', rageCost: 20, cooldown: 2, coefficient: 0.45, targets: -1, effectDesc: '0.45x damage to all, -25% agility 2 rounds' },
