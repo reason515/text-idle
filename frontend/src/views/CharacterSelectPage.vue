@@ -112,7 +112,7 @@ function confirmAdd() {
 .subtitle {
   margin-bottom: 1.5rem;
   color: var(--text-label);
-  font-size: 0.9rem;
+  font-size: var(--font-base);
 }
 
 .hero-grid {
@@ -147,18 +147,18 @@ function confirmAdd() {
 
 .hero-name {
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: var(--font-lg);
   margin-bottom: 0.25rem;
 }
 
 .hero-class {
   color: var(--text-label);
-  font-size: 0.85rem;
+  font-size: var(--font-base-sm);
   margin-bottom: 0.5rem;
 }
 
 .hero-stats-mini {
-  font-size: 0.75rem;
+  font-size: var(--font-sm);
   color: var(--text-label);
 }
 
@@ -166,7 +166,7 @@ function confirmAdd() {
   position: absolute;
   top: 0.25rem;
   right: 0.25rem;
-  font-size: 0.65rem;
+  font-size: var(--font-xs);
   background: var(--accent);
   padding: 0.15rem 0.35rem;
 }
@@ -188,7 +188,7 @@ function confirmAdd() {
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  font-size: var(--font-base);
 }
 
 .stat-row {

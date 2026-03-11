@@ -154,7 +154,7 @@ watch(() => [props.hero, props.level], () => {
 
 .skill-choice-subtitle {
   color: var(--text-label);
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   margin-bottom: 1rem;
 }
 
@@ -163,7 +163,7 @@ watch(() => [props.hero, props.level], () => {
 }
 
 .section-label {
-  font-size: 0.95rem;
+  font-size: var(--font-base-md);
   color: var(--accent);
   margin-bottom: 0.5rem;
 }
@@ -212,12 +212,12 @@ watch(() => [props.hero, props.level], () => {
 }
 
 .skill-option-spec.spec-badge {
-  font-size: 0.7rem;
+  font-size: var(--font-sm);
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   border: 1px solid var(--border);
   color: var(--color-skill);
-  background: rgba(255, 238, 102, 0.07);
+  background: var(--bg-skill-tint);
 }
 
 .skill-option-meta {
@@ -225,7 +225,7 @@ watch(() => [props.hero, props.level], () => {
   align-items: center;
   gap: 0.3rem;
   margin-bottom: 0.35rem;
-  font-size: 0.78rem;
+  font-size: var(--font-s);
 }
 
 .skill-cost-label {
@@ -233,12 +233,12 @@ watch(() => [props.hero, props.level], () => {
 }
 
 .skill-cost-value {
-  color: #e06060;
+  color: var(--color-rage);
   font-weight: bold;
 }
 
 .skill-option-desc {
-  font-size: 0.85rem;
+  font-size: var(--font-base-sm);
   color: var(--text-muted);
   margin: 0;
   line-height: 1.35;

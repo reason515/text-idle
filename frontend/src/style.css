@@ -43,6 +43,46 @@
   --color-boss: #ff6644;
   --color-elite: #cc88ff;
   --color-normal: #66aa88;
+  --color-heal: #5cb85c;
+  --color-debuff: #d4a017;
+  --color-debuff-light: #e8c547;
+  --color-formula-var: #88ccdd;
+  --color-formula-op: #8a9ba8;
+  --color-formula-equip: #7a9cb8;
+
+  --font-xs: 0.65rem;
+  --font-sm: 0.75rem;
+  --font-base-sm: 0.85rem;
+  --font-base: 0.9rem;
+  --font-base-md: 0.95rem;
+  --font-md: 1rem;
+  --font-lg: 1.1rem;
+  --font-xl: 1.25rem;
+  --font-2xl: 1.5rem;
+  --font-3xl: 2rem;
+
+  --bg-hover: rgba(0, 255, 136, 0.06);
+  --bg-selected: rgba(0, 255, 136, 0.1);
+  --bg-gold-hover: rgba(255, 204, 68, 0.1);
+  --bg-skill-tint: rgba(255, 238, 102, 0.07);
+  --bg-error-hover: rgba(255, 102, 102, 0.08);
+  --bg-darker: #0a0a0a;
+  --bg-elevated: #111111;
+  --border-subtle: #1a1a1a;
+  --border-dashed: #2a3a2a;
+  --scrollbar-track: #0a0a0a;
+  --scrollbar-thumb: #1a3a1a;
+  --scrollbar-thumb-hover: #2a5a2a;
+  --scrollbar-thumb-alt: #0d6633;
+  --color-formula-value: #88ccaa;
+  --color-log-connector: #88bb99;
+  --color-log-detail: #99ccaa;
+  --color-log-detail-alt: #88aa88;
+  --color-log-phys: #dddddd;
+  --color-log-basic: #ffffff;
+  --border-dark: #336633;
+  --border-darkest: #0d0d0d;
+  --font-s: 0.8rem;
 
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }
@@ -91,7 +131,7 @@ body {
 
 .header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--font-3xl);
   color: var(--text);
   text-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
 }
@@ -115,7 +155,7 @@ body {
 
 .panel h2 {
   margin: 0 0 1.5rem 0;
-  font-size: 1.5rem;
+  font-size: var(--font-2xl);
   color: var(--text);
   text-shadow: 0 0 4px rgba(0, 255, 136, 0.3);
 }
@@ -127,7 +167,7 @@ body {
 .form-group label {
   display: block;
   margin-bottom: 0.25rem;
-  font-size: 1rem;
+  font-size: var(--font-md);
   color: var(--text-label);
 }
 
@@ -135,7 +175,7 @@ body {
   width: 100%;
   padding: 0.5rem;
   font-family: inherit;
-  font-size: 1.1rem;
+  font-size: var(--font-lg);
   background: var(--bg-dark);
   border: 1px solid var(--border);
   color: var(--text);
@@ -150,14 +190,14 @@ body {
 
 .error-msg {
   color: var(--error);
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   margin-top: 0.25rem;
   text-shadow: 0 0 2px rgba(204, 68, 68, 0.3);
 }
 
 .success-msg {
   color: var(--accent);
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   margin-top: 0.25rem;
   text-shadow: 0 0 2px rgba(0, 255, 136, 0.3);
 }
@@ -166,7 +206,7 @@ body {
   width: 100%;
   padding: 0.75rem;
   font-family: inherit;
-  font-size: 1.1rem;
+  font-size: var(--font-lg);
   background: var(--bg-dark);
   border: 2px solid var(--border);
   color: var(--text);

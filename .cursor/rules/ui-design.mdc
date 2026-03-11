@@ -1,0 +1,34 @@
+---
+description: UI design tokens - colors, fonts, spacing. All new UI MUST follow.
+alwaysApply: true
+---
+
+# UI Design Standards
+
+All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md). Summary:
+
+## Colors (MANDATORY)
+
+- **Never** hardcode `#hex`, `rgb()`, `rgba()` in components. Use CSS variables only.
+- `var(--color-gold)`: **ONLY** for gold/currency/sell/costs. NOT for skill, victory, accent.
+- Labels: `var(--text-label)`. Values: `var(--text-value)`. Muted: `var(--text-muted)`.
+- Accent/selected/highlight: `var(--accent)`. Error: `var(--error)`. Warning: `var(--warning)`.
+- Semantic: `--color-hp`, `--color-exp`, `--color-skill`, `--color-victory`, `--color-defeat`, etc.
+
+## Fonts (MANDATORY)
+
+- Use font scale tokens: `var(--font-xs)` through `var(--font-3xl)`.
+- Avoid arbitrary sizes (0.72rem, 0.78rem). Use nearest token (e.g. `--font-sm` 0.75rem, `--font-base` 0.9rem).
+
+## Backgrounds
+
+- Hover: `var(--bg-hover)`. Selected: `var(--bg-selected)`.
+
+## Tooltip
+
+- Use `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`. No `title=` for user tips.
+
+## Prohibited
+
+- `--color-green` (does not exist; use `--accent`).
+- New color variables without adding to `style.css` and `11-ui-tokens.md`.

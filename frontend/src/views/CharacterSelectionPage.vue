@@ -500,7 +500,7 @@ function resetRecruitState() {
 .subtitle {
   color: var(--text-label);
   margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  font-size: var(--font-base);
 }
 
 .hero-grid {
@@ -523,12 +523,12 @@ function resetRecruitState() {
 }
 
 .hero-card:hover {
-  background: rgba(0, 255, 136, 0.06);
+  background: var(--bg-hover);
   box-shadow: 0 0 10px rgba(0, 255, 136, 0.35);
 }
 
 .hero-name {
-  font-size: 1.2rem;
+  font-size: var(--font-xl);
   font-weight: bold;
   text-shadow: 0 0 3px rgba(0, 255, 136, 0.3);
 }
@@ -541,31 +541,31 @@ function resetRecruitState() {
 }
 
 .hero-class-level {
-  font-size: 0.9rem;
+  font-size: var(--font-base);
 }
 
 .hero-role {
-  font-size: 0.75rem;
+  font-size: var(--font-sm);
   color: var(--text-label);
 }
 
 .hero-class-desc {
   margin: 0.35rem 0 0 0;
-  font-size: 0.72rem;
+  font-size: var(--font-sm);
   line-height: 1.3;
   color: var(--text-label);
 }
 
 .hero-bio {
   margin: 0.5rem 0 0 0;
-  font-size: 0.75rem;
+  font-size: var(--font-sm);
   line-height: 1.35;
   color: var(--text-muted);
 }
 
 .hero-attributes-mini {
   margin-top: 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--font-sm);
   color: var(--text-label);
   display: flex;
   flex-wrap: wrap;
@@ -576,7 +576,7 @@ function resetRecruitState() {
   margin-top: 0.35rem;
   padding-top: 0.35rem;
   border-top: 1px dashed var(--border);
-  font-size: 0.72rem;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
@@ -606,7 +606,7 @@ function resetRecruitState() {
 
 .formula-hint {
   margin: 0.25rem 0 0.5rem 0;
-  font-size: 0.7rem;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -615,7 +615,7 @@ function resetRecruitState() {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.35rem 1.5rem;
-  font-size: 0.8rem;
+  font-size: var(--font-s);
   margin-top: 0.5rem;
 }
 
@@ -631,7 +631,7 @@ function resetRecruitState() {
 }
 
 .secondary-item:hover {
-  background: rgba(0, 204, 102, 0.06);
+  background: var(--bg-hover);
 }
 
 .secondary-item.has-formula {
@@ -647,7 +647,7 @@ function resetRecruitState() {
   display: block;
   padding: 0.4rem 0.6rem;
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
-  font-size: 0.72rem;
+  font-size: var(--font-sm);
   line-height: 1.6;
   white-space: pre-line;
   color: var(--text);
@@ -656,14 +656,14 @@ function resetRecruitState() {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
-.formula-tip :deep(.tip-attr-var) { color: #88ccdd; font-weight: 600; }
+.formula-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
 .formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
-.formula-tip :deep(.tip-op) { color: #8a9ba8; }
-.formula-tip :deep(.tip-equip-label) { color: #7a9cb8; font-weight: 600; }
+.formula-tip :deep(.tip-op) { color: var(--color-formula-op); }
+.formula-tip :deep(.tip-equip-label) { color: var(--color-formula-equip); font-weight: 600; }
 
 .secondary-label {
   color: var(--text-label);
-  font-size: 0.78rem;
+  font-size: var(--font-s);
 }
 
 .secondary-value {
@@ -673,7 +673,7 @@ function resetRecruitState() {
 }
 
 .attributes-title {
-  font-size: 0.8rem;
+  font-size: var(--font-s);
   color: var(--text-label);
   margin-bottom: 0.25rem;
 }
@@ -683,7 +683,7 @@ function resetRecruitState() {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 0.85rem;
+  font-size: var(--font-base-sm);
 }
 
 .attribute-row {
@@ -726,7 +726,7 @@ function resetRecruitState() {
 }
 
 .section-label {
-  font-size: 0.75rem;
+  font-size: var(--font-sm);
   color: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -734,7 +734,7 @@ function resetRecruitState() {
 
 .section-text {
   margin: 0.25rem 0 0 0;
-  font-size: 0.85rem;
+  font-size: var(--font-base-sm);
   line-height: 1.4;
   color: var(--text);
 }
@@ -787,13 +787,13 @@ function resetRecruitState() {
 }
 
 .skill-option:hover {
-  background: rgba(0, 255, 136, 0.05);
-  border-color: var(--color-green);
+  background: var(--bg-hover);
+  border-color: var(--accent);
 }
 
 .skill-option.selected {
-  border-color: var(--color-green);
-  background: rgba(0, 255, 136, 0.1);
+  border-color: var(--accent);
+  background: var(--bg-selected);
   box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
 }
 
@@ -811,12 +811,12 @@ function resetRecruitState() {
 }
 
 .spec-badge {
-  font-size: 0.7rem;
+  font-size: var(--font-sm);
   padding: 0.1rem 0.4rem;
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--color-skill);
-  background: rgba(255, 238, 102, 0.07);
+  background: var(--bg-skill-tint);
 }
 
 .skill-option-meta {
@@ -824,7 +824,7 @@ function resetRecruitState() {
   align-items: center;
   gap: 0.3rem;
   margin-bottom: 0.35rem;
-  font-size: 0.78rem;
+  font-size: var(--font-s);
 }
 
 .skill-cost-label {
@@ -832,20 +832,20 @@ function resetRecruitState() {
 }
 
 .skill-cost-value {
-  color: #e06060;
+  color: var(--color-rage);
   font-weight: bold;
 }
 
 .skill-option-desc {
-  font-size: 0.78rem;
+  font-size: var(--font-s);
   color: var(--text-muted);
   margin: 0;
   line-height: 1.35;
 }
 
 .skill-error {
-  color: #e06060;
-  font-size: 0.82rem;
+  color: var(--error);
+  font-size: var(--font-base);
   margin-bottom: 0.5rem;
 }
 
@@ -860,7 +860,7 @@ function resetRecruitState() {
 }
 
 .attr-alloc-remaining {
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   color: var(--text-value);
   margin-bottom: 0.75rem;
 }
@@ -884,7 +884,7 @@ function resetRecruitState() {
 
 .attr-btn {
   padding: 0.2rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--font-base-sm);
 }
 
 .chosen-skill {
@@ -900,11 +900,11 @@ function resetRecruitState() {
 }
 
 .chosen-skill-spec {
-  font-size: 0.7rem;
+  font-size: var(--font-sm);
 }
 
 .chosen-skill-desc {
-  font-size: 0.8rem;
+  font-size: var(--font-s);
   color: var(--text-muted);
   margin: 0.25rem 0 0 0;
 }

@@ -17,7 +17,7 @@ alwaysApply: true
 
 On every change, check whether these need updates:
 
-- `docs/design/` - design doc (formulas, attributes, UI specs); see [index.md](docs/design/index.md)
+- `docs/design/` - design doc (formulas, attributes, UI specs); see [index.md](docs/design/index.md); UI tokens: [11-ui-tokens.md](docs/design/11-ui-tokens.md)
 - `docs/requirements-format.md` - acceptance criteria, user stories
 - Unit tests: `frontend/src/**/*.spec.js`
 - E2E tests: `e2e/browser/*.spec.js`

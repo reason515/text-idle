@@ -110,7 +110,7 @@ async function submit() {
 
 .link-msg {
   margin-top: 1rem;
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   color: var(--text-label);
 }
 .link-msg a {

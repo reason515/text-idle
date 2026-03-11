@@ -16,6 +16,7 @@
 | **背包系统** | [07-inventory.md](./07-inventory.md) | 背包规格、出售、UI 入口 |
 | **商店系统** | [08-shop.md](./08-shop.md) | 赌博式购买、鉴定、价格、槽位 |
 | **社交与 UI** | [09-social-ui.md](./09-social-ui.md) | 排行榜、交易、PVP、UI/UX、技术规格、版本规划 |
+| **UI 设计令牌** | [11-ui-tokens.md](./11-ui-tokens.md) | 颜色、字体、间距等设计规范，新 UI 必须遵循 |
 
 ## 快速导航
 
@@ -23,3 +24,4 @@
 - **策略配置**：技能优先级、目标选择、触发条件 → [10-tactics.md](./10-tactics.md)
 - **底材与词缀**：装备底材表 → [06-equipment.md](./06-equipment.md) 4.3、4.4；词缀池 → [06-equipment.md](./06-equipment.md) 七
 - **UI 规格**：主界面、战斗日志、角色/怪物面板 → [09-social-ui.md](./09-social-ui.md)
+- **UI 设计令牌**：颜色、字体、间距规范 → [11-ui-tokens.md](./11-ui-tokens.md)
