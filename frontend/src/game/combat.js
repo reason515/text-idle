@@ -9,6 +9,7 @@ import {
   tickDebuffs,
   executeWarriorSkill,
   executeCleave,
+  getSunderDebuff,
 } from './warriorSkills.js'
 import {
   getAnyMageSkillById,
@@ -421,10 +422,14 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
   const targetRule = getTargetRule(actor, skillId || '', conditionsList)
   const candidates = alive(monsters)
-  const filtered = cond
+  let filtered = cond
     ? filterTargetsByCondition(candidates, cond, actor, opts)
     : candidates
-  const chosen = pickTargetByRule(filtered, targetRule, rng)
+  if (targetRule === 'sunder-first' && filtered.length > 0) {
+    const sunderPool = filtered.filter((t) => getSunderDebuff(t))
+    if (sunderPool.length > 0) filtered = sunderPool
+  }
+  const chosen = pickTargetByRule(filtered, targetRule === 'sunder-first' ? 'lowest-hp' : targetRule, rng)
   return chosen ?? (filtered.length === 0 ? null : filtered[0])
 }
 

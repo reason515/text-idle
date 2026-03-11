@@ -801,39 +801,98 @@
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
             <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0">
-              <div class="detail-sep-line">Skill Priority</div>
-              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried.</div>
+              <div class="detail-sep-line">Skill Priority & Per-Skill Config</div>
+              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried. Each skill can have its own target rule and condition.</div>
+              <div class="detail-section">
+                <span class="detail-label tactics-default-label">Default target</span>
+                <select
+                  :value="tacticsTargetRule(selectedHero)"
+                  class="tactics-select tactics-default-target"
+                  data-testid="tactics-target-rule"
+                  @change="setTacticsTargetRule(selectedHero, $event.target.value)"
+                >
+                  <option value="first">First</option>
+                  <option value="lowest-hp">Lowest HP</option>
+                  <option value="highest-hp">Highest HP</option>
+                  <option value="sunder-first">Sunder first, else lowest HP</option>
+                  <option value="random">Random</option>
+                </select>
+                <span class="tactics-default-hint">(used when skill has no override)</span>
+              </div>
               <div class="tactics-skill-list">
                 <div
                   v-for="(skillId, idx) in tacticsSkillPriority(selectedHero)"
                   :key="skillId"
-                  class="tactics-skill-row"
+                  class="tactics-skill-row tactics-skill-row-expanded"
                 >
-                  <span class="tactics-skill-order">{{ idx + 1 }}.</span>
-                  <span class="tactics-skill-name">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
-                  <div class="tactics-skill-btns">
-                    <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
-                    <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === tacticsSkillPriority(selectedHero).length - 1" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
+                  <div class="tactics-skill-header">
+                    <span class="tactics-skill-order">{{ idx + 1 }}.</span>
+                    <span class="tactics-skill-name">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
+                    <div class="tactics-skill-btns">
+                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
+                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === tacticsSkillPriority(selectedHero).length - 1" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div class="detail-sep-line">Target Rule</div>
-              <div class="detail-section">
-                <div class="detail-row">
-                  <span class="detail-label">Enemy target</span>
-                  <span class="detail-value">
-                    <select
-                      :value="tacticsTargetRule(selectedHero)"
-                      class="tactics-select"
-                      data-testid="tactics-target-rule"
-                      @change="setTacticsTargetRule(selectedHero, $event.target.value)"
-                    >
-                      <option value="first">First (default)</option>
-                      <option value="lowest-hp">Lowest HP</option>
-                      <option value="highest-hp">Highest HP</option>
-                      <option value="random">Random</option>
-                    </select>
-                  </span>
+                  <div class="tactics-skill-config">
+                    <div class="tactics-skill-config-row">
+                      <span class="tactics-skill-config-label">Target</span>
+                      <select
+                        :value="getSkillTargetRule(selectedHero, skillId)"
+                        class="tactics-select tactics-skill-target"
+                        :data-testid="'tactics-skill-target-' + skillId"
+                        @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
+                      >
+                        <option value="">Default</option>
+                        <option value="first">First</option>
+                        <option value="lowest-hp">Lowest HP</option>
+                        <option value="highest-hp">Highest HP</option>
+                        <option value="sunder-first">Sunder first, else lowest HP</option>
+                        <option value="random">Random</option>
+                      </select>
+                    </div>
+                    <div class="tactics-skill-config-row">
+                      <span class="tactics-skill-config-label">Condition</span>
+                      <select
+                        :value="getSkillConditionTargetType(selectedHero, skillId)"
+                        class="tactics-select tactics-condition-target"
+                        :data-testid="'tactics-condition-target-' + skillId"
+                        @change="setSkillConditionTargetType(selectedHero, skillId, $event.target.value)"
+                      >
+                        <option v-for="t in TACTICS_CONDITION_TARGETS" :key="t.id" :value="t.id">{{ t.label }}</option>
+                      </select>
+                      <select
+                        :value="getSkillConditionWhen(selectedHero, skillId)"
+                        class="tactics-select tactics-skill-condition"
+                        :data-testid="'tactics-skill-condition-' + skillId"
+                        @change="setSkillConditionWhen(selectedHero, skillId, $event.target.value)"
+                      >
+                        <option v-for="opt in conditionOptionsForTarget(getSkillConditionTargetType(selectedHero, skillId))" :key="opt.when" :value="opt.when">
+                          {{ opt.label }}
+                        </option>
+                      </select>
+                      <template v-if="conditionNeedsValue(getSkillConditionWhen(selectedHero, skillId))">
+                        <input
+                          v-if="conditionValueType(getSkillConditionWhen(selectedHero, skillId)) === 'number'"
+                          type="number"
+                          min="1"
+                          max="99"
+                          :value="conditionValueAsPercent(getSkillConditionValue(selectedHero, skillId))"
+                          class="tactics-condition-value tactics-skill-condition-value"
+                          :data-testid="'tactics-skill-value-' + skillId"
+                          @input="setSkillConditionValuePercent(selectedHero, skillId, $event.target.value)"
+                        />
+                        <select
+                          v-else-if="conditionValueType(getSkillConditionWhen(selectedHero, skillId)) === 'debuff'"
+                          :value="getSkillConditionValue(selectedHero, skillId) ?? 'sunder'"
+                          class="tactics-select tactics-condition-value tactics-condition-debuff"
+                          :data-testid="'tactics-skill-value-' + skillId"
+                          @change="setSkillConditionValue(selectedHero, skillId, $event.target.value)"
+                        >
+                          <option v-for="(info, key) in DEBUFF_DISPLAY" :key="key" :value="key">{{ info.name }}</option>
+                        </select>
+                      </template>
+                    </div>
+                  </div>
                 </div>
               </div>
             </template>
@@ -1131,6 +1190,30 @@ const MONSTER_TIER_COLORS = {
   normal: 'var(--color-normal)',
   elite: 'var(--color-elite)',
   boss: 'var(--color-boss)',
+}
+
+const TACTICS_CONDITION_TARGETS = [
+  { id: 'enemy', label: 'Enemy' },
+  { id: 'ally', label: 'Ally' },
+  { id: 'self', label: 'Self' },
+]
+
+const TACTICS_CONDITION_BY_TARGET = {
+  enemy: [
+    { when: '', label: 'None' },
+    { when: 'target-hp-below', label: 'HP below %', valueDefault: 0.3, valueType: 'number' },
+    { when: 'target-hp-above', label: 'HP above %', valueDefault: 0.5, valueType: 'number' },
+    { when: 'target-has-debuff', label: 'Has debuff', valueDefault: 'sunder', valueType: 'debuff' },
+  ],
+  ally: [
+    { when: '', label: 'None' },
+    { when: 'ally-hp-below', label: 'HP below %', valueDefault: 0.4, valueType: 'number' },
+  ],
+  self: [
+    { when: '', label: 'None' },
+    { when: 'self-hp-below', label: 'HP below %', valueDefault: 0.3, valueType: 'number' },
+    { when: 'self-hit-this-round', label: 'Hit this round', valueType: 'none' },
+  ],
 }
 
 function formatAffixStat(stat) {
@@ -1672,6 +1755,136 @@ function setTacticsTargetRule(hero, value) {
   saveTacticsToSquad(hero, (t) => { t.targetRule = value })
 }
 
+function getSkillCondition(hero, skillId) {
+  return (hero?.tactics?.conditions ?? []).find((c) => c.skillId === skillId)
+}
+
+function getSkillTargetRule(hero, skillId) {
+  const cond = getSkillCondition(hero, skillId)
+  return cond?.targetRule ?? ''
+}
+
+function whenToTargetType(when) {
+  if (!when) return 'enemy'
+  if (when.startsWith('target-') || when === 'target-has-debuff') return 'enemy'
+  if (when.startsWith('ally-')) return 'ally'
+  if (when.startsWith('self-')) return 'self'
+  return 'enemy'
+}
+
+function getSkillConditionTargetType(hero, skillId) {
+  const when = getSkillConditionWhen(hero, skillId)
+  return whenToTargetType(when)
+}
+
+function getSkillConditionWhen(hero, skillId) {
+  const cond = getSkillCondition(hero, skillId)
+  return cond?.when ?? ''
+}
+
+function getSkillConditionValue(hero, skillId) {
+  const cond = getSkillCondition(hero, skillId)
+  return cond?.value
+}
+
+function conditionOptionsForTarget(targetType) {
+  return TACTICS_CONDITION_BY_TARGET[targetType] ?? TACTICS_CONDITION_BY_TARGET.enemy
+}
+
+function findConditionOption(when) {
+  for (const opts of Object.values(TACTICS_CONDITION_BY_TARGET)) {
+    const found = opts.find((o) => o.when === when)
+    if (found) return found
+  }
+  return null
+}
+
+function upsertSkillCondition(hero, skillId, updater) {
+  saveTacticsToSquad(hero, (t) => {
+    if (!t.conditions) t.conditions = []
+    let c = t.conditions.find((x) => x.skillId === skillId)
+    if (!c) {
+      c = { skillId }
+      t.conditions.push(c)
+    }
+    updater(c)
+    if (!c.when && !c.targetRule && c.value === undefined) {
+      t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
+    }
+  })
+}
+
+function setSkillTargetRule(hero, skillId, value) {
+  if (!value) {
+    saveTacticsToSquad(hero, (t) => {
+      const c = (t.conditions ?? []).find((x) => x.skillId === skillId)
+      if (c) {
+        delete c.targetRule
+        if (!c.when && c.value === undefined) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
+      }
+    })
+    return
+  }
+  upsertSkillCondition(hero, skillId, (c) => { c.targetRule = value })
+}
+
+function setSkillConditionTargetType(hero, skillId, targetType) {
+  saveTacticsToSquad(hero, (t) => {
+    const c = (t.conditions ?? []).find((x) => x.skillId === skillId)
+    if (c) {
+      delete c.when
+      delete c.value
+      if (!c.targetRule) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
+    }
+  })
+}
+
+function setSkillConditionWhen(hero, skillId, value) {
+  if (!value) {
+    saveTacticsToSquad(hero, (t) => {
+      const c = (t.conditions ?? []).find((x) => x.skillId === skillId)
+      if (c) {
+        delete c.when
+        delete c.value
+        if (!c.targetRule) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
+      }
+    })
+    return
+  }
+  const opt = findConditionOption(value)
+  const val = opt?.valueDefault ?? (opt?.valueType === 'number' ? 0.3 : 'sunder')
+  upsertSkillCondition(hero, skillId, (c) => {
+    c.when = value
+    c.value = opt?.valueType === 'none' ? undefined : val
+  })
+}
+
+function setSkillConditionValue(hero, skillId, value) {
+  upsertSkillCondition(hero, skillId, (c) => { c.value = value })
+}
+
+function setSkillConditionValuePercent(hero, skillId, percentStr) {
+  const p = parseInt(percentStr, 10)
+  const val = Number.isNaN(p) ? 0.3 : Math.max(0.01, Math.min(0.99, p / 100))
+  upsertSkillCondition(hero, skillId, (c) => { c.value = val })
+}
+
+function conditionNeedsValue(when) {
+  const opt = findConditionOption(when)
+  return when && opt && opt.valueType && opt.valueType !== 'none'
+}
+
+function conditionValueType(when) {
+  const opt = findConditionOption(when)
+  return opt?.valueType ?? 'debuff'
+}
+
+function conditionValueAsPercent(val) {
+  if (val == null) return 30
+  const n = typeof val === 'number' ? val : parseFloat(val)
+  return Math.round((Number.isNaN(n) ? 0.3 : n) * 100)
+}
+
 function getHeroSkillDisplay(skillId, hero = null) {
   const heroClass = hero?.class
   if (heroClass === 'Warrior') {
@@ -2086,9 +2299,12 @@ async function runCombatLoop() {
   }
 }
 
-watch(selectedHero, (val) => {
-  if (val) heroDetailTab.value = 'attrs'
-  else hideFormulaTooltip()
+watch(selectedHero, (val, oldVal) => {
+  if (val) {
+    if (!oldVal || oldVal.id !== val.id) heroDetailTab.value = 'attrs'
+  } else {
+    hideFormulaTooltip()
+  }
 })
 
 onMounted(() => {
@@ -3215,6 +3431,16 @@ onUnmounted(() => {
   gap: 0.25rem;
   margin-bottom: 1rem;
 }
+.tactics-default-label {
+  margin-right: 0.5rem;
+}
+.tactics-default-target {
+  margin-right: 0.5rem;
+}
+.tactics-default-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
 .tactics-skill-row {
   display: flex;
   align-items: center;
@@ -3223,6 +3449,16 @@ onUnmounted(() => {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
+}
+.tactics-skill-row-expanded {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+.tactics-skill-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .tactics-skill-order {
   color: var(--text-muted);
@@ -3243,6 +3479,36 @@ onUnmounted(() => {
 .tactics-move-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.tactics-skill-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 1.5rem;
+  font-size: 0.85rem;
+}
+.tactics-skill-config-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.tactics-skill-config-label {
+  color: var(--text-muted);
+  min-width: 4.5rem;
+}
+.tactics-condition-target {
+  min-width: 5rem;
+}
+.tactics-skill-target,
+.tactics-skill-condition {
+  min-width: 10rem;
+}
+.tactics-condition-debuff {
+  min-width: 7rem;
+}
+.tactics-condition-value {
+  width: 4rem;
 }
 .tactics-select {
   padding: 0.25rem 0.5rem;
