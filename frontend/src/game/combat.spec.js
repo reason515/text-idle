@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getSquadMaxLevel } from '../data/heroes.js'
+import { getEffectivePhysAtk } from './damageUtils.js'
 import {
   MAPS,
   MAP_MONSTER_POOLS,
@@ -409,6 +410,21 @@ describe('combat progression and systems', () => {
     for (const d of rawDamages) {
       expect(d).toBeGreaterThanOrEqual(minExpected)
       expect(d).toBeLessThanOrEqual(maxExpected)
+    }
+  })
+
+  it('monster damage uses range like hero - rawDamage varies per attack', () => {
+    const monster = { side: 'monster', physAtk: 10 }
+    const damages = new Set()
+    for (let i = 0; i < 100; i += 1) {
+      const rng = () => Math.random()
+      damages.add(getEffectivePhysAtk(monster, rng))
+    }
+    expect(damages.size).toBeGreaterThan(1)
+    // physAtk 10, baseRoll 1-4 -> rawDamage 4, 8, 12, 16
+    for (const d of damages) {
+      expect(d).toBeGreaterThanOrEqual(4)
+      expect(d).toBeLessThanOrEqual(16)
     }
   })
 

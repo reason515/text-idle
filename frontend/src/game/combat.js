@@ -458,8 +458,8 @@ function actorDamage(actor, rng, round) {
   const onCooldown = cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown
 
   const canUseSkill = actor.skillChance > 0 && actor.skill && !onCooldown && rng() < actor.skillChance
-  const effPhys = actor.side === 'hero' ? getEffectivePhysAtk(actor, rng) : actor.physAtk
-  const effSpell = actor.side === 'hero' ? getEffectiveSpellPower(actor, rng) : actor.spellPower
+  const effPhys = getEffectivePhysAtk(actor, rng)
+  const effSpell = getEffectiveSpellPower(actor, rng)
   if (!canUseSkill) {
     if (actor.damageType === 'magic') return { action: 'basic', damageType: 'magic', rawDamage: effSpell }
     if (actor.damageType === 'mixed') {

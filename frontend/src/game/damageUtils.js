@@ -14,9 +14,12 @@ function randomInRange(min, max, rng) {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
+/** Expected value of unarmed roll (1-4) for monster damage scaling. */
+export const UNARMED_ROLL_EXPECTED = 2.5
+
 /**
  * Hero: baseRoll = unarmed(1-4) + weapon; rawDamage = round(baseRoll * physMultiplier) + physAtkBonus.
- * Monster: flat physAtk.
+ * Monster: baseRoll = unarmed(1-4); rawDamage = round(baseRoll * physAtk / 2.5). Expectation = physAtk.
  */
 export function getEffectivePhysAtk(actor, rng) {
   if (actor.side === 'hero' && actor.physMultiplier != null && rng) {
@@ -29,12 +32,18 @@ export function getEffectivePhysAtk(actor, rng) {
     const physAtkBonus = actor.physAtkBonus ?? 0
     return Math.round(baseRoll * actor.physMultiplier) + physAtkBonus
   }
-  return actor.physAtk ?? 0
+  const physAtk = actor.physAtk ?? 0
+  if (physAtk <= 0) return 0
+  if (actor.side === 'monster' && rng) {
+    const baseRoll = randomInRange(PHYS_ATK_UNARMED_MIN, PHYS_ATK_UNARMED_MAX, rng)
+    return Math.round((baseRoll * physAtk) / UNARMED_ROLL_EXPECTED)
+  }
+  return physAtk
 }
 
 /**
  * Hero: baseRoll = unarmed(1-4) + weapon; rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus.
- * Monster: flat spellPower.
+ * Monster: baseRoll = unarmed(1-4); rawDamage = round(baseRoll * spellPower / 2.5). Expectation = spellPower.
  */
 export function getEffectiveSpellPower(actor, rng) {
   if (actor.side === 'hero' && actor.spellMultiplier != null && rng) {
@@ -47,5 +56,11 @@ export function getEffectiveSpellPower(actor, rng) {
     const spellPowerBonus = actor.spellPowerBonus ?? 0
     return Math.round(baseRoll * actor.spellMultiplier) + spellPowerBonus
   }
-  return actor.spellPower ?? 0
+  const spellPower = actor.spellPower ?? 0
+  if (spellPower <= 0) return 0
+  if (actor.side === 'monster' && rng) {
+    const baseRoll = randomInRange(SPELL_UNARMED_MIN, SPELL_UNARMED_MAX, rng)
+    return Math.round((baseRoll * spellPower) / UNARMED_ROLL_EXPECTED)
+  }
+  return spellPower
 }
