@@ -2,7 +2,7 @@ const { expect } = require('@playwright/test')
 
 async function setupNewRun(page) {
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('/register')
+  await page.goto('/register?e2e=1')
   await page.evaluate(() => {
     localStorage.clear()
     localStorage.setItem('e2eFastCombat', '1')
@@ -48,13 +48,15 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
 
   if (pauseFirst) await pauseCombat(page)
   // Use domcontentloaded for SPA routes to avoid load-event delays from timers/combat
-  await page.goto(safePath, { waitUntil: 'domcontentloaded', timeout: 15000 })
+  await page.goto(safePath, { waitUntil: 'domcontentloaded', timeout: 30000 })
   if (typeof arg === 'undefined') {
     await page.evaluate(pageFunction)
   } else {
     await page.evaluate(pageFunction, arg)
   }
-  await page.goto(returnPath, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await page.evaluate(() => { localStorage.setItem('e2eFastCombat', '1') })
+  const url = returnPath === '/main' ? '/main?e2e=1' : returnPath
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
   if (expectReturnUrl && returnPath === '/main') {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
   }

@@ -3,7 +3,7 @@ require('./globalHooks')
 
 async function registerAndGoToCharacterSelect(page, email) {
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('/register')
+  await page.goto('/register?e2e=1')
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
   await page.getByLabel('Email').fill(email)
   await page.getByLabel(/Password/).fill('password123')

@@ -10,6 +10,12 @@ if (Test-Path test-results) {
     Write-Host "Cleared test-results."
 }
 
+# Reset DB so E2E runs against fresh data (avoids slowdown from accumulated users)
+if (Test-Path text-idle.db) {
+    Remove-Item -Force text-idle.db
+    Write-Host "Reset text-idle.db for fresh E2E run."
+}
+
 function Stop-ProcessOnPort {
     param([int]$Port)
     $stopped = $false

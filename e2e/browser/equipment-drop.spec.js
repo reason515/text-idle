@@ -78,7 +78,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
       progress.bossAvailable = true
       localStorage.setItem('combatProgress', JSON.stringify(progress))
     }, undefined, { pauseFirst: true })
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(150)
 
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
     const summary = page.locator('.log-summary.victory-text').first()

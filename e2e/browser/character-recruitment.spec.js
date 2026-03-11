@@ -3,8 +3,11 @@ require('./globalHooks')
 const { updateStoredState } = require('./testHelpers')
 
 async function registerAndCompleteIntro(page, email) {
-  await page.goto('/register')
-  await page.evaluate(() => { localStorage.setItem('e2eFastCombat', '1') })
+  await page.goto('/register?e2e=1')
+  await page.evaluate(() => {
+    localStorage.clear()
+    localStorage.setItem('e2eFastCombat', '1')
+  })
   await page.getByLabel('Email').fill(email)
   await page.getByLabel(/Password/).fill('password123')
   await page.getByRole('button', { name: 'Register' }).click()
@@ -33,7 +36,7 @@ async function clickRecruitBtn(page) {
   for (let i = 0; i < 5; i++) {
     if (await btn.isVisible().catch(() => false)) break
     await prepareForRecruit(page, false)
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(100)
   }
   if (!(await btn.isVisible().catch(() => false))) {
     await page.goto('/character-select', { waitUntil: 'load' })
@@ -220,9 +223,9 @@ test.describe('Character Recruitment (Example 4)', () => {
       localStorage.setItem('e2eFastCombat', '1')
     }, undefined, { pauseFirst: true })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(200)
     await prepareForRecruit(page)
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(100)
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
@@ -310,9 +313,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     })
     await page.goto('/main', { waitUntil: 'load' })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(200)
     await prepareForRecruit(page)
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(100)
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
@@ -361,9 +364,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     })
     await page.goto('/main', { waitUntil: 'load' })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(200)
     await prepareForRecruit(page)
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(100)
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
@@ -421,7 +424,8 @@ test.describe('Character Recruitment (Example 4)', () => {
       p.unlockedMapCount = 5
       localStorage.setItem('combatProgress', JSON.stringify(p))
     })
-    await page.goto('/main', { waitUntil: 'load' })
+    await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 15000 })
+    await page.goto('/main', { waitUntil: 'domcontentloaded', timeout: 15000 })
 
     await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })

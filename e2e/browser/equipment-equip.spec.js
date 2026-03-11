@@ -157,7 +157,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_HELM)
+    }, SAMPLE_HELM, { pauseFirst: true })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
@@ -182,7 +183,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, ({ helm, boots }) => {
       localStorage.setItem('playerInventory', JSON.stringify([helm, boots]))
-    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS })
+    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS }, { pauseFirst: true })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
@@ -211,8 +213,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
         localStorage.setItem('squad', JSON.stringify(squad))
         localStorage.setItem('playerInventory', JSON.stringify([]))
       }
-    }, SAMPLE_HELM)
-
+    }, SAMPLE_HELM, { pauseFirst: true })
     await pauseCombat(page)
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toBeVisible()
@@ -234,7 +235,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_WEAPON_RANGE)
+    }, SAMPLE_WEAPON_RANGE, { pauseFirst: true })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
@@ -264,7 +266,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
-    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT })
+    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()

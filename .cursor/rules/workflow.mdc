@@ -52,13 +52,13 @@ All hover tips must use the custom tooltip pattern, not native `title`:
 
 ## E2E Port Release (Before Running)
 
-Before running `npm run e2e`, release ports 8080 and 5173:
+Before running `npm run e2e`, release ports 8080 and 5173 and reset DB:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1
 ```
 
-The `e2e` npm script runs this automatically. If running e2e manually or ports are in use, run the script first.
+The `e2e` npm script runs this automatically. The script also clears `test-results` and resets `text-idle.db` for a fresh run. If running e2e manually or ports are in use, run the script first.
 
 ## Anti-Hang Execution Mode
 

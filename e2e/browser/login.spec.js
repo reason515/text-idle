@@ -3,7 +3,7 @@ require('./globalHooks')
 
 test.describe('Login E2E', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/login?e2e=1')
   })
 
   test('AC1: correct email and password logs in, returning player goes to main', async ({ page }) => {

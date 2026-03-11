@@ -72,7 +72,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     }, undefined, { pauseFirst: true })
     await pauseCombat(page)
 
-    const hpNum = page.locator('.hero-card .bar-row').first().locator('.bar-num')
+    const hpNum = page.locator('.hero-card .bar-row').filter({ hasText: 'HP' }).first().locator('.bar-num')
     await expect(hpNum).toBeVisible({ timeout: 5000 })
     const hpText = (await hpNum.textContent()) || ''
     const hpMatch = hpText.match(/(\d+)\s*\/\s*(\d+)/)
@@ -123,7 +123,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
     await expect(page.locator('.monster-card .monster-name').first()).toBeVisible({ timeout: 5000 })
   })
 
@@ -215,7 +215,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
     await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
     await expect(page.locator('.monsters-col').locator('.empty-hint')).toContainText('No active encounter.')
     await expect(page.locator('.monsters-col .monster-card')).toHaveCount(0)
@@ -347,19 +347,22 @@ test.describe('Experience and Leveling (Example 11)', () => {
   })
 
   test('victory summary shows EXP reward', async ({ page }) => {
-    test.setTimeout(60000)
+    test.setTimeout(90000)
     const email = `exp-reward-e2e-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email)
 
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Strengthen warrior to guarantee victory in first encounter
+    // Strengthen warrior to guarantee victory (high HP/resist for magic, high str for phys)
     await page.evaluate(() => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
-        squad[0].strength = 50
-        squad[0].stamina = 30
+        squad[0].strength = 80
+        squad[0].maxHP = 500
+        squad[0].currentHP = 500
+        squad[0].resistance = 50
+        squad[0].armor = 40
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })

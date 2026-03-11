@@ -8,7 +8,7 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerToCharacterSelect, recruitWarrior, updateStoredState } = require('./testHelpers')
+const { registerToCharacterSelect, recruitWarrior, updateStoredState, pauseCombat } = require('./testHelpers')
 
 test.describe('Shop (Example 24)', () => {
   test('Shop button visible next to Backpack button', async ({ page }) => {
@@ -51,7 +51,8 @@ test.describe('Shop (Example 24)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await updateStoredState(page, () => localStorage.setItem('playerGold', '5000'))
+    await updateStoredState(page, () => localStorage.setItem('playerGold', '5000'), undefined, { pauseFirst: true })
+    await pauseCombat(page)
 
     const goldBefore = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0
 
@@ -82,7 +83,8 @@ test.describe('Shop (Example 24)', () => {
     await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await updateStoredState(page, () => localStorage.setItem('playerGold', '1'))
+    await updateStoredState(page, () => localStorage.setItem('playerGold', '1'), undefined, { pauseFirst: true })
+    await pauseCombat(page)
 
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()

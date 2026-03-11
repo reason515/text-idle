@@ -5,7 +5,7 @@ const { setupNewRun } = require('./testHelpers')
 test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
-    await page.goto('/register')
+    await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
@@ -17,7 +17,7 @@ test.describe('Opening Introduction E2E', () => {
 
   test('AC2: clicking Next shows team name step', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
-    await page.goto('/register')
+    await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
@@ -31,7 +31,7 @@ test.describe('Opening Introduction E2E', () => {
 
   test('AC3: entering team name and confirming redirects to main', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
-    await page.goto('/register')
+    await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
@@ -56,7 +56,7 @@ test.describe('Opening Introduction E2E', () => {
   test('AC4: returning player skips intro', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await setupNewRun(page)
-    await page.goto('/register')
+    await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()

@@ -38,13 +38,14 @@ test.describe('Inventory (Example 22)', () => {
 
     await updateStoredState(page, () => { localStorage.setItem('playerInventory', '[]') }, undefined, { pauseFirst: true })
 
+    await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 10000 })
     const backpackBtn = page.locator('.backpack-btn').first()
-    await expect(backpackBtn).toBeVisible()
-    await expect(backpackBtn).toContainText('/100')
+    await expect(backpackBtn).toBeVisible({ timeout: 10000 })
+    await expect(backpackBtn).toContainText('/100', { timeout: 5000 })
 
     await backpackBtn.click()
-    await expect(page.locator('.inventory-modal')).toBeVisible()
-    await expect(page.locator('.inventory-counter')).toContainText('/ 100')
+    await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.inventory-counter')).toContainText(/\/\s*100/, { timeout: 5000 })
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
   })

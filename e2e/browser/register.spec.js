@@ -4,9 +4,10 @@ require('./globalHooks')
 test.describe('Register E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage to ensure clean state for each test
-    await page.goto('/register')
+    await page.goto('/register?e2e=1')
     await page.evaluate(() => {
       localStorage.clear()
+      localStorage.setItem('e2eFastCombat', '1')
     })
   })
 
