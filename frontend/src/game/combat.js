@@ -1,4 +1,12 @@
-import { getClassCritRates, computeHeroMaxHP, computeHeroArmor, computeHeroResistance, getPhysBaseAttr, getSpellBaseAttr } from '../data/heroes.js'
+import {
+  getClassCritRates,
+  computeHeroMaxHP,
+  computeHeroArmor,
+  computeHeroResistance,
+  getPhysBaseAttr,
+  getSpellBaseAttr,
+  CLASS_COEFFICIENTS,
+} from '../data/heroes.js'
 import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from './damageUtils.js'
 import {
   getAnyWarriorSkillById,
@@ -437,8 +445,9 @@ function actorDamage(actor, rng, round) {
   if (actor.side === 'hero') {
     const effPhys = getEffectivePhysAtk(actor, rng)
     const effSpell = getEffectiveSpellPower(actor, rng)
-    if (effSpell > effPhys && rng() < 0.5) {
-      return { action: 'skill', damageType: 'magic', rawDamage: effSpell }
+    const hasSpellPower = CLASS_COEFFICIENTS[actor.class]?.k_SpellPower != null
+    if (hasSpellPower && effSpell > effPhys && rng() < 0.5) {
+      return { action: 'skill', skillName: 'Magic Attack', damageType: 'magic', rawDamage: effSpell }
     }
     return { action: 'basic', damageType: 'physical', rawDamage: effPhys }
   }
@@ -751,7 +760,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorClass: actor.class || null,
         actorTier: actor.tier || null,
         action: action.action,
-        ...(action.skillId && { skillId: action.skillId, skillName: action.skillName }),
+        ...(action.skillId && { skillId: action.skillId }),
+        ...(action.skillName && { skillName: action.skillName }),
         targetId: target.id,
         targetName: target.name,
         targetClass: target.class || null,

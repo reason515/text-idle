@@ -500,6 +500,65 @@ describe('combat progression and systems', () => {
     expect(monsterSkillEntry.skillName).toBe('Stone Shard')
   })
 
+  it('Warrior never uses Magic Attack (physical-only class)', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      strength: 2,
+      agility: 2,
+      intellect: 20,
+      spirit: 20,
+      tactics: { skillPriority: [], targetRule: 'lowest-hp' },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Young Wolf',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 5 })
+    const magicAttackEntry = result.log.find((e) => e.actorName === 'Hero One' && e.skillName === 'Magic Attack')
+    expect(magicAttackEntry).toBeUndefined()
+    const basicEntries = result.log.filter((e) => e.actorName === 'Hero One' && e.action === 'basic')
+    expect(basicEntries.length).toBeGreaterThan(0)
+  })
+
+  it('hero magic basic attack (effSpell > effPhys) shows skillName Magic Attack in log', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      intellect: 20,
+      spirit: 20,
+      strength: 2,
+      agility: 2,
+      currentMP: 0,
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Young Wolf',
+          damageType: 'physical',
+          base: { hp: 100, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes: [mage], monsters, rng, maxRounds: 3 })
+    const magicAttackEntry = result.log.find(
+      (e) => e.actorName === 'Hero One' && e.action === 'skill' && e.skillName === 'Magic Attack'
+    )
+    expect(magicAttackEntry).toBeDefined()
+    expect(magicAttackEntry.damageType).toBe('magic')
+  })
+
   it('Mage with Arcane Blast uses skill when mana sufficient', () => {
     const mage = sampleHero({
       id: 'm1',
