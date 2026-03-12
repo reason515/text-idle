@@ -1,6 +1,52 @@
 # UI Design Tokens
 
-> 本规范定义 Text Idle 的字体、颜色、间距等设计令牌，确保界面统一美观。所有新 UI 必须严格遵循，现有 UI 应逐步迁移。
+> 本规范定义 Text Idle 的字体、颜色、间距等设计令牌，确保界面统一美观、层级清晰。所有新 UI 必须严格遵循，现有 UI 应逐步迁移。
+
+## 0. 视觉层级与清晰度原则 (Visual Hierarchy & Clarity)
+
+**目标**：兼顾美观与清晰，避免界面单调、区分不明。
+
+### 0.1 背景层级（由深到浅）
+
+| 层级 | Token | 用途 | 示例 |
+|------|-------|------|------|
+| 最底层 | `var(--bg-dark)` | 页面主背景、最外层 | body、主容器 |
+| 面板层 | `var(--bg-panel)` | 面板、Modal、Tab 栏 | 弹窗、标签栏背景 |
+| 卡片层 | `var(--bg-darker)` | 嵌套卡片、列表项容器 | 背包槽位区、技能列表 |
+| 浮起层 | `var(--bg-elevated)` | 悬浮/对比区域 | 装备对比列、进度条填充 |
+
+**规则**：嵌套结构必须使用不同层级背景，避免同色堆叠导致边界模糊。
+
+### 0.2 边框层级（由强到弱）
+
+| 层级 | Token | 用途 |
+|------|-------|------|
+| 主边框 | `var(--border)` | 面板外框、按钮、输入框、主要分割 |
+| 次级 | `var(--border-dark)` | 区块内部分割、次要分隔线 |
+| 弱化 | `var(--border-dashed)` | 虚线分隔、软分割 |
+| 极弱 | `var(--border-subtle)` | 列表项间、极细分割 |
+
+### 0.3 文字对比层级
+
+| 层级 | Token | 用途 | 对比度 |
+|------|-------|------|--------|
+| 主内容 | `var(--text)` | 标题、正文、核心信息 | 最高 |
+| 数值/高亮 | `var(--text-value)` | 数值、重要数据 | 高 |
+| 标签 | `var(--text-label)` | 属性名、label、分类 | 中 |
+| 次要 | `var(--text-muted)` | 辅助说明、禁用、占位 | 低 |
+
+**规则**：同一区块内，标签与数值必须使用不同 token（label vs value），避免混用导致难以扫读。
+
+### 0.4 语义色优先
+
+当内容有明确语义时，优先使用语义色而非通用色：
+- 金币/成本 → `--color-gold`（不用 `--accent`）
+- 经验/升级 → `--color-exp`
+- 技能名 → `--color-skill`
+- 胜利/失败 → `--color-victory` / `--color-defeat`
+- 物理/魔法伤害 → `--color-phys` / `--color-magic`
+
+---
 
 ## 1. 颜色 (Colors)
 
@@ -95,16 +141,39 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 
 | Token | 用途 |
 |-------|------|
-| `var(--bg-dark)` | 主背景、输入框、按钮 |
-| `var(--bg-panel)` | 面板、Modal 背景 |
+| `var(--bg-dark)` | 主背景、输入框、按钮、最底层 |
+| `var(--bg-panel)` | 面板、Modal、Tab 栏（略浅于 dark，形成层级） |
+| `var(--bg-darker)` | 嵌套卡片、列表容器（介于 dark 与 elevated 之间） |
+| `var(--bg-elevated)` | 浮起区域、对比块、强调块 |
 | `var(--bg-hover)` | 悬停态（半透明） |
 | `var(--bg-selected)` | 选中态（半透明） |
+| `var(--bg-gold-hover)` | 金币相关按钮悬停 |
+| `var(--bg-skill-tint)` | 技能相关区块淡色底 |
+| `var(--bg-error-hover)` | 错误/危险按钮悬停 |
 
-### 3.2 发光与阴影
+### 3.2 边框
+
+| Token | 用途 |
+|-------|------|
+| `var(--border)` | 主边框、面板外框、按钮、输入框 |
+| `var(--border-dark)` | 次级分割线、区块内部分隔 |
+| `var(--border-dashed)` | 虚线分隔、软分割 |
+| `var(--border-subtle)` | 极弱分割、列表项间 |
+| `var(--border-darkest)` | 最弱分割（几乎不可见） |
+
+### 3.3 发光与阴影
 
 - 主发光：`rgba(0, 255, 136, 0.3)` 系列（与 `--border` 一致，由 `style.css` 统一管理）
 - 错误发光：`rgba(255, 68, 68, 0.3)` 系列
 - 避免在组件内写死 rgba，优先使用 `style.css` 中已定义的类
+
+### 3.4 应用检查清单
+
+新建或修改 UI 时，确认：
+- [ ] 嵌套区块使用了不同背景层级（panel / darker / elevated）
+- [ ] 标签用 `--text-label`，数值用 `--text-value`，不混用
+- [ ] 分割线根据重要性选用 `--border` / `--border-dark` / `--border-dashed`
+- [ ] 有语义的内容使用对应语义色（gold / exp / skill 等）
 
 ---
 

@@ -7,6 +7,13 @@ alwaysApply: true
 
 All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md). Summary:
 
+## Visual Hierarchy (MANDATORY - Clarity & Aesthetics)
+
+- **Background layering**: Nested blocks MUST use different levels. `--bg-dark` (base) -> `--bg-panel` (panels/modals) -> `--bg-darker` (cards) -> `--bg-elevated` (floating blocks). Never stack same bg.
+- **Label vs value**: In same block, labels use `--text-label`, values use `--text-value`. Do NOT mix.
+- **Border hierarchy**: Main borders `--border`; inner splits `--border-dark`; soft splits `--border-dashed`; subtle `--border-subtle`.
+- **Semantic colors first**: Gold/cost -> `--color-gold`. Exp/level -> `--color-exp`. Skill -> `--color-skill`. Victory/defeat -> `--color-victory`/`--color-defeat`. Use these instead of generic `--accent` when applicable.
+
 ## Colors (MANDATORY)
 
 - **Never** hardcode `#hex`, `rgb()`, `rgba()` in components. Use CSS variables only.
@@ -22,6 +29,7 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 
 ## Backgrounds
 
+- Base: `var(--bg-dark)`. Panel: `var(--bg-panel)`. Card: `var(--bg-darker)`. Elevated: `var(--bg-elevated)`.
 - Hover: `var(--bg-hover)`. Selected: `var(--bg-selected)`.
 
 ## Tooltip
@@ -32,3 +40,4 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 
 - `--color-green` (does not exist; use `--accent`).
 - New color variables without adding to `style.css` and `11-ui-tokens.md`.
+- Same background for nested blocks (causes flat, monotonous look).
