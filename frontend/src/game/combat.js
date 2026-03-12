@@ -716,7 +716,14 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
 
       // Basic attack / monster skill path
-      const target = defaultTarget
+      const target =
+        actor.side === 'hero'
+          ? pickTarget(actor, heroUnits, monsterUnits, {
+              skillId: 'basic-attack',
+              conditions,
+              rng,
+            }) ?? defaultTarget
+          : defaultTarget
       const action = actorDamage(actor, rng, round)
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)

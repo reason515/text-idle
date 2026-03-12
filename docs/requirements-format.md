@@ -983,6 +983,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC8 | Player configures condition `{ skillId: 'execute', when: 'target-hp-below', value: 0.30 }` | Warrior's turn and Execute is in priority list | Execute is only attempted when the selected target has HP below 30%; otherwise Execute is skipped and next skill is tried |
 | AC9 | Player configures condition `{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }` | Warrior's turn and no enemy has Sunder debuff | Shield Slam is skipped (no valid target); next skill in priority (e.g., Sunder Armor) is tried |
 | AC10 | Player configures condition `{ skillId: 'taunt', when: 'ally-ot' }` | Threat system is not yet implemented | ally-ot evaluates to false; Taunt is skipped; next skill in priority is tried (placeholder behavior) |
+| AC11 | Player sets target rule for Basic Attack to "lowest-hp" in tactics | Hero performs basic attack (no skill available) | The hero selects the enemy with the lowest current HP as the target |
 
 ---
 

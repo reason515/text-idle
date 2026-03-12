@@ -55,6 +55,16 @@ describe('tactics', () => {
     it('defaults to first when no tactics', () => {
       expect(getTargetRule({}, 'heroic-strike', [])).toBe('first')
     })
+
+    it('uses basic-attack targetRule when configured in conditions', () => {
+      const actor = {
+        tactics: {
+          targetRule: 'first',
+          conditions: [{ skillId: 'basic-attack', targetRule: 'lowest-hp' }],
+        },
+      }
+      expect(getTargetRule(actor, 'basic-attack', actor.tactics.conditions)).toBe('lowest-hp')
+    })
   })
 
   describe('checkCondition', () => {

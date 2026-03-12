@@ -800,9 +800,9 @@
             <div v-else class="detail-empty-hint">No skills learned yet.</div>
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
-            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0">
+            <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage'">
               <div class="detail-sep-line">Skill Priority & Per-Skill Config</div>
-              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried. Each skill can have its own target rule and condition.</div>
+              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried. Basic Attack is used when no skill is available. Each skill can have its own target rule and condition.</div>
               <div class="detail-section">
                 <span class="detail-label tactics-default-label">Default target</span>
                 <select
@@ -821,16 +821,16 @@
               </div>
               <div class="tactics-skill-list">
                 <div
-                  v-for="(skillId, idx) in tacticsSkillPriority(selectedHero)"
+                  v-for="(skillId, idx) in tacticsDisplaySkillList(selectedHero)"
                   :key="skillId"
                   class="tactics-skill-row tactics-skill-row-expanded"
                 >
                   <div class="tactics-skill-header">
                     <span class="tactics-skill-order">{{ idx + 1 }}.</span>
                     <span class="tactics-skill-name">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
-                    <div class="tactics-skill-btns">
+                    <div v-if="skillId !== 'basic-attack'" class="tactics-skill-btns">
                       <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
-                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === tacticsSkillPriority(selectedHero).length - 1" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
+                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx >= tacticsDisplaySkillList(selectedHero).length - 2" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
                     </div>
                   </div>
                   <div class="tactics-skill-config">
@@ -850,7 +850,7 @@
                         <option value="random">Random</option>
                       </select>
                     </div>
-                    <div class="tactics-skill-config-row">
+                    <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
                       <span class="tactics-skill-config-label">Condition</span>
                       <select
                         :value="getSkillConditionTargetType(selectedHero, skillId)"
@@ -1728,6 +1728,10 @@ function tacticsSkillPriority(hero) {
   return skills
 }
 
+function tacticsDisplaySkillList(hero) {
+  return [...tacticsSkillPriority(hero), 'basic-attack']
+}
+
 function tacticsTargetRule(hero) {
   return hero?.tactics?.targetRule || 'first'
 }
@@ -1886,6 +1890,9 @@ function conditionValueAsPercent(val) {
 }
 
 function getHeroSkillDisplay(skillId, hero = null) {
+  if (skillId === 'basic-attack') {
+    return { name: 'Basic Attack', spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
+  }
   const heroClass = hero?.class
   if (heroClass === 'Warrior') {
     const base = getAnyWarriorSkillById(skillId)

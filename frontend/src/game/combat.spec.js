@@ -978,6 +978,50 @@ describe('combat progression and systems', () => {
     expect(lowHpTargets.length).toBeGreaterThan(0)
   })
 
+  it('basic-attack uses per-skill targetRule from conditions', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      name: 'Basic',
+      class: 'Warrior',
+      agility: 20,
+      strength: 20,
+      skills: ['heroic-strike'],
+      tactics: {
+        skillPriority: ['heroic-strike'],
+        targetRule: 'highest-hp',
+        conditions: [{ skillId: 'basic-attack', targetRule: 'lowest-hp' }],
+      },
+    })
+    const m1 = createMonster(
+      {
+        id: 'm1',
+        name: 'Full HP',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const m2 = createMonster(
+      {
+        id: 'm2',
+        name: 'Low HP',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    m2.currentHP = 80
+    const monsters = [m1, m2]
+    const rng = fixedRng(Array(50).fill(0))
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 20 })
+    const basicHits = result.log.filter(
+      (e) => e.actorName === 'Basic' && e.action === 'basic' && e.targetName
+    )
+    expect(basicHits.length).toBeGreaterThan(0)
+    const lowHpTargets = basicHits.filter((e) => e.targetName === 'Low HP')
+    expect(lowHpTargets.length).toBeGreaterThan(0)
+  })
+
   it('Warrior rage: resets to 0 when entering rest, does not recover during rest', () => {
     const warrior = {
       ...sampleHero({ id: 'w-rest', class: 'Warrior', spirit: 5 }),
