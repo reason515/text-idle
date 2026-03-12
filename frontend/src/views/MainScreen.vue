@@ -814,7 +814,6 @@
                   <option value="first">First</option>
                   <option value="lowest-hp">Lowest HP</option>
                   <option value="highest-hp">Highest HP</option>
-                  <option value="sunder-first">Sunder first, else lowest HP</option>
                   <option value="random">Random</option>
                 </select>
                 <span class="tactics-default-hint">(used when skill has no override)</span>
@@ -846,7 +845,6 @@
                         <option value="first">First</option>
                         <option value="lowest-hp">Lowest HP</option>
                         <option value="highest-hp">Highest HP</option>
-                        <option value="sunder-first">Sunder first, else lowest HP</option>
                         <option value="random">Random</option>
                       </select>
                     </div>

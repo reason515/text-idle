@@ -60,14 +60,14 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(skillTarget).toBeVisible()
     await expect(skillCondition).toBeVisible()
 
-    await skillTarget.selectOption('sunder-first')
+    await skillTarget.selectOption('lowest-hp')
     await skillCondition.selectOption('target-has-debuff')
     await page.getByRole('button', { name: 'Close' }).click()
 
     await page.locator('.hero-card').first().click()
     await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
     const rowAfter = page.locator('.tactics-skill-row-expanded').first()
-    await expect(rowAfter.locator('[data-testid^="tactics-skill-target-"]')).toHaveValue('sunder-first')
+    await expect(rowAfter.locator('[data-testid^="tactics-skill-target-"]')).toHaveValue('lowest-hp')
     await expect(rowAfter.locator('[data-testid^="tactics-skill-condition-"]')).toHaveValue('target-has-debuff')
   })
 

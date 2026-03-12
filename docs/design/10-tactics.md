@@ -53,7 +53,6 @@
 |---------|------|
 | lowest-hp | 敌方当前 HP 最低 |
 | highest-hp | 敌方当前 HP 最高 |
-| sunder-first | 优先有破甲 debuff 的敌人（若有则从中选 HP 最低；否则从全部中选 HP 最低） |
 | highest-threat | 仇恨最高（占位，仇恨系统实现后接入） |
 | random | 随机存活目标 |
 | first | 列表第一个（默认） |
