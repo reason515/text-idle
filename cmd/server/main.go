@@ -1,11 +1,13 @@
 package main
 
 import (
+	"io/fs"
 	"log"
 
 	"github.com/glebarez/sqlite"
 	"github.com/text-idle/text-idle/internal/model"
 	"github.com/text-idle/text-idle/internal/server"
+	"github.com/text-idle/text-idle/internal/static"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +20,11 @@ func main() {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 
-	r := server.NewRouter(db)
+	var staticFS fs.FS
+	if f := static.GetFS(); f != nil {
+		staticFS = *f
+	}
+	r := server.NewRouter(db, staticFS)
 	log.Println("server starting on :8080")
 	r.Run(":8080")
 }

@@ -19,6 +19,9 @@ Thumbs.db
 # Build output
 dist/
 build/
+# Embedded frontend (populated by build:dist)
+internal/static/web/*
+!internal/static/web/.gitkeep
 *.log
 *.exe
 text-idle.db
