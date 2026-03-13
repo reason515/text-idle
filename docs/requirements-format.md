@@ -1048,6 +1048,84 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 31: Threat System (Monster Target Selection and Aggro)
+
+**User Story**
+
+> As a player,  
+> I want monsters to choose attack targets based on threat values,  
+> So that I can maintain aggro as a tank through threat skills and Taunt, and protect my teammates from being focused.
+
+**Design Reference (from design doc)**
+
+- **Source**: [12-threat.md](design/12-threat.md)
+- **Threat table**: Each monster maintains an independent threat table; threat values are non-negative integers, initial 0; MVP: threat does not decay.
+- **Monster target selection** (priority order): (1) If under Taunt/Challenging Shout, attack the caster; (2) Else attack the hero with highest threat on that monster; (3) If tied, random.
+- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); Healing → threat = healAmount × 0.5 to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
+- **Taunt**: Forces target monster to attack caster for 2 actions; Challenging Shout forces all monsters for 2 rounds.
+- **Tank definition**: Hero with highest threat on the most monsters; tie-break by total threat sum.
+- **ally-ot**: True when at least one monster's highest-threat target is not the tank.
+- **highest-threat target rule**: Among enemies not currently attacking self, pick the one with highest threat on any ally; if all attack self, random.
+- **tank (ally target)**: For heals/buffs, target = tank as defined above.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Combat has started; all heroes have 0 threat on Monster A | Monster A's turn arrives | Monster A selects a random hero (tie-break) or the first in list as target |
+| AC2 | Warrior has dealt 20 damage to Monster A; Mage has 0 threat on Monster A | Monster A's turn arrives | Monster A attacks the Warrior (highest threat) |
+| AC3 | Warrior has 15 threat on Monster A; Mage has 25 threat on Monster A (e.g., from damage) | Monster A's turn arrives | Monster A attacks the Mage (highest threat) |
+| AC4 | Warrior uses Taunt on Monster A; Monster A had been targeting Mage | Taunt is applied | Monster A is forced to attack the Warrior for its next 2 actions; threat table is updated (Warrior's threat = max × 1.1) |
+| AC5 | Monster A is under Taunt (2 actions remaining) | Monster A's first action | Monster A attacks the Warrior (Taunt overrides threat) |
+| AC6 | Monster A is under Taunt (1 action remaining) | Monster A's second action | Monster A attacks the Warrior; Taunt counter decrements to 0 |
+| AC7 | Monster A's Taunt has expired (0 actions remaining) | Monster A's next action | Monster A selects target by threat (highest threat hero) |
+| AC8 | Warrior deals 10 physical damage to Monster A with Heroic Strike (threatMultiplier 1.0) | Damage is applied | Monster A's threat table: Warrior += 10 |
+| AC9 | Warrior uses Sunder Armor, deals 8 damage (threatMultiplier 1.5) | Damage is applied | Monster A's threat table: Warrior += 12 (8 × 1.5) |
+| AC10 | Mage heals an ally for 15 HP | Heal is applied | All alive monsters add 7.5 threat (15 × 0.5) to the Mage |
+| AC11 | Warrior has highest threat on Monster A and Monster B; Mage has highest threat on Monster C | ally-ot is evaluated | ally-ot is true (Monster C's highest-threat target is Mage, not the tank Warrior) |
+| AC12 | Warrior has highest threat on all 3 monsters | ally-ot is evaluated | ally-ot is false (all monsters target the tank) |
+| AC13 | Warrior has tactics with targetRule highest-threat; one monster attacks Warrior, one attacks Mage | Warrior's turn | Warrior selects the monster attacking Mage (the one that may OT) as target |
+| AC14 | Healer has targetRule tank for a heal skill | Healer's turn | Healer selects the tank (hero with highest threat on most monsters) as heal target |
+| AC15 | Warrior uses Challenging Shout | Skill is applied | All alive monsters are forced to attack the Warrior for 2 rounds |
+| AC16 | Two heroes have equal highest threat on Monster A | Monster A's turn | Monster A randomly selects one of the two as target |
+
+---
+
+## Example 32: Threat Display in Combat Log and UI
+
+**User Story**
+
+> As a player,  
+> I want to see threat changes reflected in the combat log and UI,  
+> So that I can analyze combat outcomes and design tactics based on aggro data.
+
+**Design Reference (from design doc)**
+
+- **Source**: [12-threat.md](design/12-threat.md) 6.2
+- **Layer 1**: OT event log, monster attack target reason, Taunt effect clarification
+- **Layer 2**: Damage/heal threat hint in log detail, monster card target indicator
+- **OT event**: When a monster switches target from one hero to another, add a log entry: `[R4] Wolf switched target to Mage (OT!)`
+- **Monster attack reason**: In log detail box: `Attacking Tank (highest threat)` or `Attacking Tank (taunted)`
+- **Taunt entry**: `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions`
+- **Damage threat**: In damage log detail: `Threat +15 to Wolf`
+- **Heal threat**: In heal log detail: `Threat +8 to all monsters`
+- **Monster card**: Show `→ Tank` or `→ Mage` next to monster name/HP to indicate current target
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Combat in progress; Monster A was targeting Tank; Mage gains higher threat | Monster A's turn and it selects Mage as target | Combat log shows an OT entry: `[R4] Wolf switched target to Mage (OT!)` (or equivalent monster/hero names) |
+| AC2 | Monster attacks a hero (highest threat, no taunt) | Player views the monster attack log entry detail | Log detail box shows `Attacking Tank (highest threat)` or similar |
+| AC3 | Monster attacks a hero (under Taunt) | Player views the monster attack log entry detail | Log detail box shows `Attacking Tank (taunted)` or similar |
+| AC4 | Warrior uses Taunt on a monster | Taunt is applied | Combat log shows `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions` (or equivalent names) |
+| AC5 | Hero deals damage to a monster (e.g., 15 final damage) | Player views the damage log entry detail | Log detail box shows `Threat +15 to Wolf` (or equivalent; value matches threat formula) |
+| AC6 | Hero heals an ally (e.g., 16 HP) | Player views the heal log entry detail | Log detail box shows `Threat +8 to all monsters` (healAmount × 0.5) |
+| AC7 | Monster is targeting Tank | Player views the monster card | Monster card displays `→ Tank` or equivalent target indicator |
+| AC8 | Monster is targeting Mage | Player views the monster card | Monster card displays `→ Mage` or equivalent target indicator |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

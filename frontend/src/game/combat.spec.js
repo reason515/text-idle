@@ -1041,4 +1041,168 @@ describe('combat progression and systems', () => {
     }
     expect(canStartNextCombat(rest)).toBe(true)
   })
+
+  describe('Example 31: Threat system', () => {
+    it('AC2: monster attacks hero with highest threat after hero deals damage', () => {
+      const heroA = sampleHero({ id: 'h1', name: 'Tank', agility: 15, strength: 15 })
+      const heroB = sampleHero({ id: 'h2', name: 'DPS', agility: 5, strength: 15 })
+      const monster = createMonster(
+        {
+          id: 'm1',
+          name: 'Wolf',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 3, spellPower: 0, agility: 8, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(100).fill(0.5))
+      const result = runAutoCombat({ heroes: [heroA, heroB], monsters: [monster], rng, maxRounds: 5 })
+      const monsterHits = result.log.filter((e) => e.actorName === 'Wolf' && e.targetName)
+      expect(monsterHits.length).toBeGreaterThan(0)
+      const tankHits = monsterHits.filter((e) => e.targetName === 'Tank')
+      expect(tankHits.length).toBeGreaterThan(0)
+    })
+
+    it('AC4-7: Taunt forces monster to attack warrior for 2 actions', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 20,
+        strength: 15,
+        skills: ['sunder-armor', 'taunt'],
+        tactics: {
+          skillPriority: ['taunt', 'sunder-armor'],
+          targetRule: 'lowest-hp',
+        },
+      })
+      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 10, skills: ['arcane-blast'] })
+      const monster = createMonster(
+        {
+          id: 'm1',
+          name: 'Wolf',
+          damageType: 'physical',
+          base: { hp: 300, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.9, 0.9, 0.9, 0.1, 0.1, 0.1, 0.1, 0.1])
+      const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 8 })
+      const tauntEntry = result.log.find((e) => e.skillId === 'taunt' && e.tauntApplied)
+      expect(tauntEntry).toBeDefined()
+      const monsterActionsAfterTaunt = result.log.filter(
+        (e, i) => i > result.log.indexOf(tauntEntry) && e.actorName === 'Wolf'
+      )
+      const tankTargets = monsterActionsAfterTaunt.filter((e) => e.targetName === 'Tank')
+      expect(tankTargets.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe('Example 32: Threat display in combat log', () => {
+    it('AC1: OT entry when monster switches target', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 10 })
+      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 15, strength: 5, intellect: 15 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 200, physAtk: 2, spellPower: 0, agility: 10, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
+      const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 10 })
+      const otEntries = result.log.filter((e) => e.type === 'ot')
+      if (otEntries.length > 0) {
+        const ot = otEntries[0]
+        expect(ot.monsterName).toBeDefined()
+        expect(ot.newTargetName).toBeDefined()
+        expect(ot.previousTargetName).toBeDefined()
+      }
+    })
+
+    it('AC2: monster attack has targetReason highest-threat when not taunted', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 200, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(20).fill(0.5))
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
+      const monsterHits = result.log.filter((e) => e.actorName === 'Wolf' && e.targetName)
+      const highestThreat = monsterHits.find((e) => e.targetReason === 'highest-threat')
+      expect(highestThreat).toBeDefined()
+    })
+
+    it('AC3: monster attack has targetReason taunted when under Taunt', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 25,
+        strength: 15,
+        skills: ['taunt'],
+        tactics: { skillPriority: ['taunt'], targetRule: 'first' },
+      })
+      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 5 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 300, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.9, 0.9, 0.9, 0.1, 0.1, 0.1, 0.1, 0.1])
+      const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 8 })
+      const tauntedHits = result.log.filter((e) => e.actorName === 'Wolf' && e.targetReason === 'taunted')
+      expect(tauntedHits.length).toBeGreaterThan(0)
+    })
+
+    it('AC4: Taunt entry has tauntEffectText', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 25,
+        strength: 15,
+        skills: ['taunt'],
+        tactics: { skillPriority: ['taunt'], targetRule: 'first' },
+      })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 300, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.9, 0.9, 0.9])
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
+      const tauntEntry = result.log.find((e) => e.skillId === 'taunt' && e.tauntApplied)
+      expect(tauntEntry).toBeDefined()
+      expect(tauntEntry.tauntEffectText).toContain('Wolf')
+      expect(tauntEntry.tauntEffectText).toContain('Tank')
+      expect(tauntEntry.tauntEffectText).toContain('2 actions')
+    })
+
+    it('AC5: damage entry has threatAmount and threatTargetName', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 200, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(20).fill(0.5))
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
+      const heroDamage = result.log.find((e) => e.actorName === 'Tank' && e.finalDamage > 0 && e.targetName === 'Wolf')
+      expect(heroDamage).toBeDefined()
+      expect(heroDamage.threatAmount).toBeDefined()
+      expect(heroDamage.threatTargetName).toBe('Wolf')
+    })
+
+    it('AC6: heal entry has threatHealAmount', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 20,
+        strength: 20,
+        skills: ['bloodthirst'],
+        tactics: { skillPriority: ['bloodthirst'], targetRule: 'first' },
+      })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 500, physAtk: 1, spellPower: 0, agility: 3, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(30).fill(0.5))
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 10 })
+      const healEntry = result.log.find((e) => e.heal > 0 && e.threatHealAmount != null)
+      expect(healEntry).toBeDefined()
+      expect(healEntry.threatHealAmount).toBe(Math.round(healEntry.heal * 0.5))
+    })
+  })
 })

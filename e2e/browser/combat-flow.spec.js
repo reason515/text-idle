@@ -331,6 +331,87 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Sunder Armor' }).first()).toBeVisible({ timeout: 90000 })
     await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Armor reduced by 8' }).first()).toBeVisible({ timeout: 5000 })
   })
+
+  test('Example 31: Taunt appears in combat log when warrior has Taunt skill (AC4)', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `taunt-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].skills = ['sunder-armor', 'taunt']
+        squad[0].tactics = { skillPriority: ['taunt', 'sunder-armor'], targetRule: 'lowest-hp' }
+        squad[0].strength = 30
+        squad[0].stamina = 80
+        squad[0].maxHP = 400
+        squad[0].currentHP = 400
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Taunt' }).first()).toBeVisible({ timeout: 60000 })
+  })
+})
+
+test.describe('Threat Display (Example 32)', () => {
+  test('AC4: Taunt entry shows effect text (Wolf will attack Tank for 2 actions)', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `taunt-effect-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].name = 'Tank'
+        squad[0].skills = ['sunder-armor', 'taunt']
+        squad[0].tactics = { skillPriority: ['taunt', 'sunder-armor'], targetRule: 'first' }
+        squad[0].strength = 30
+        squad[0].stamina = 80
+        squad[0].maxHP = 400
+        squad[0].currentHP = 400
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Taunt' }).first()).toBeVisible({ timeout: 60000 })
+    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: 'will attack' }).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: '2 actions' }).first()).toBeVisible({ timeout: 5000 })
+  })
+
+  test('AC2: monster attack log detail shows target reason (highest threat or taunted)', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `threat-display-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+    const logOrDetail = page.locator('.log-entry, .log-detail-box')
+    await expect(logOrDetail.filter({ hasText: /highest threat|taunted/ }).first()).toBeVisible({ timeout: 60000 })
+  })
+
+
+  test('AC5: damage log detail shows Threat +N to monster', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `threat-dmg-e2e-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email)
+
+    await recruitWarrior(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('.log-threat').filter({ hasText: 'Threat +' }).first()).toBeVisible({ timeout: 60000 })
+  })
 })
 
 test.describe('Experience and Leveling (Example 11)', () => {

@@ -17,10 +17,11 @@
 | **商店系统** | [08-shop.md](./08-shop.md) | 赌博式购买、鉴定、价格、槽位 |
 | **社交与 UI** | [09-social-ui.md](./09-social-ui.md) | 排行榜、交易、PVP、UI/UX、技术规格、版本规划 |
 | **UI 设计令牌** | [11-ui-tokens.md](./11-ui-tokens.md) | 颜色、字体、间距等设计规范，新 UI 必须遵循 |
+| **仇恨系统** | [12-threat.md](./12-threat.md) | 仇恨表、怪物目标选择、仇恨生成、战斗日志/UI 仇恨展示 (6.2) |
 
 ## 快速导航
 
-- **公式与数值**：职业系数 → [04-classes-attributes.md](./04-classes-attributes.md)；伤害/减伤 → [04-classes-attributes.md](./04-classes-attributes.md) 2.2.3；怪物属性 → [02-levels-monsters.md](./02-levels-monsters.md) 2.3
+- **公式与数值**：职业系数 → [04-classes-attributes.md](./04-classes-attributes.md)；伤害/减伤 → [04-classes-attributes.md](./04-classes-attributes.md) 2.2.3；怪物属性 → [02-levels-monsters.md](./02-levels-monsters.md) 2.3；仇恨生成 → [12-threat.md](./12-threat.md)
 - **策略配置**：技能优先级、目标选择、触发条件 → [10-tactics.md](./10-tactics.md)
 - **底材与词缀**：装备底材表 → [06-equipment.md](./06-equipment.md) 4.3、4.4；词缀池 → [06-equipment.md](./06-equipment.md) 七
 - **UI 规格**：主界面、战斗日志、角色/怪物面板 → [09-social-ui.md](./09-social-ui.md)

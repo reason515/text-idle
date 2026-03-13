@@ -94,7 +94,10 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
   }
 
   if (when === 'ally-ot') {
-    return false
+    const threat = ctx?.threat
+    const isAllyOTFn = ctx?.isAllyOT
+    if (!threat || !isAllyOTFn) return false
+    return isAllyOTFn(heroes, monsters, threat)
   }
 
   if (when === 'resource-above') {
@@ -156,12 +159,14 @@ export function filterTargetsByCondition(targets, condition, actor, ctx) {
 
 /**
  * Pick a target from candidates using the target rule.
+ * For highest-threat (enemy), requires opts.threat, opts.actor, opts.heroes.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
- * @param {string} targetRule - lowest-hp, highest-hp, first, random
+ * @param {string} targetRule - lowest-hp, highest-hp, highest-threat, first, random
  * @param {Function} rng - Random function for random rule
+ * @param {Object} opts - { threat, actor, heroes } for highest-threat
  * @returns {Object|null}
  */
-export function pickTargetByRule(candidates, targetRule, rng = Math.random) {
+export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts = {}) {
   const alive = candidates.filter((u) => (u.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
 
@@ -171,6 +176,42 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random) {
 
   if (targetRule === 'highest-hp') {
     return alive.reduce((a, b) => ((a.currentHP ?? 0) > (b.currentHP ?? 0) ? a : b))
+  }
+
+  if (targetRule === 'highest-threat') {
+    const { threat, actor, heroes } = opts
+    if (!threat || !actor || !heroes) return alive[0]
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const notTargetingSelf = alive.filter((m) => {
+      const table = threat[m.id] ?? {}
+      let maxT = -1
+      let topId = null
+      for (const h of aliveHeroes) {
+        const t = table[h.id] ?? 0
+        if (t > maxT) { maxT = t; topId = h.id }
+      }
+      return topId !== actor.id
+    })
+    const pool = notTargetingSelf.length > 0 ? notTargetingSelf : alive
+    let best = null
+    let bestSum = -1
+    for (const m of pool) {
+      const table = threat[m.id] ?? {}
+      const sum = aliveHeroes.reduce((s, h) => s + (table[h.id] ?? 0), 0)
+      if (sum > bestSum) { bestSum = sum; best = m }
+    }
+    return best ?? alive[0]
+  }
+
+  if (targetRule === 'tank') {
+    const { threat, heroes, monsters, getTank: getTankFn } = opts
+    if (!threat || !heroes || !getTankFn) return alive[0]
+    const tank = getTankFn(heroes, monsters ?? [], threat)
+    if (tank) {
+      const found = alive.find((a) => a.id === tank.id)
+      if (found) return found
+    }
+    return alive[0]
   }
 
   if (targetRule === 'random') {

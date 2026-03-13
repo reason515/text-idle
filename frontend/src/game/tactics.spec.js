@@ -7,6 +7,7 @@ import {
   filterTargetsByCondition,
   pickTargetByRule,
 } from './tactics.js'
+import { isAllyOT } from './threat.js'
 
 describe('tactics', () => {
   describe('getSkillPriority', () => {
@@ -92,9 +93,18 @@ describe('tactics', () => {
       expect(checkCondition(cond, actor, null, [], [], {})).toBe(false)
     })
 
-    it('ally-ot returns false (placeholder)', () => {
+    it('ally-ot returns false when no threat or isAllyOT in ctx', () => {
       const cond = { when: 'ally-ot' }
       expect(checkCondition(cond, {}, null, [], [], {})).toBe(false)
+      expect(checkCondition(cond, {}, null, [], [], { threat: {} })).toBe(false)
+    })
+
+    it('ally-ot uses isAllyOT from ctx when threat and isAllyOT provided', () => {
+      const cond = { when: 'ally-ot' }
+      const heroes = [{ id: 'h1', currentHP: 100 }, { id: 'h2', currentHP: 80 }]
+      const monsters = [{ id: 'm1', currentHP: 50 }, { id: 'm2', currentHP: 40 }]
+      const threat = { m1: { h1: 50, h2: 10 }, m2: { h1: 5, h2: 50 } }
+      expect(checkCondition(cond, {}, null, heroes, monsters, { threat, isAllyOT })).toBe(true)
     })
 
     it('round-gte passes when round >= value', () => {

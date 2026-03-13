@@ -35,6 +35,16 @@ import {
   filterTargetsByCondition,
   pickTargetByRule,
 } from './tactics.js'
+import {
+  createThreatTables,
+  addThreatFromDamage,
+  addThreatFromHeal,
+  applyTauntThreatBoost,
+  getMonsterTarget,
+  decrementTauntActions,
+  getThreatMultiplier,
+  isAllyOT,
+} from './threat.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -422,10 +432,10 @@ function buildRoundOrder(heroes, monsters, rng) {
 }
 
 function pickTarget(actor, heroes, monsters, opts = {}) {
+  const { threat, tauntState, skillId, conditions, rng } = opts
   if (actor.side === 'monster') {
-    return alive(heroes)[0] ?? null
+    return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng)
   }
-  const { skillId, conditions, rng } = opts
   const conditionsList = conditions ?? getConditions(actor)
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
   const targetRule = getTargetRule(actor, skillId || '', conditionsList)
@@ -437,7 +447,9 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
     const sunderPool = filtered.filter((t) => getSunderDebuff(t))
     if (sunderPool.length > 0) filtered = sunderPool
   }
-  const chosen = pickTargetByRule(filtered, targetRule === 'sunder-first' ? 'lowest-hp' : targetRule, rng)
+  const rule = targetRule === 'sunder-first' ? 'lowest-hp' : targetRule
+  const pickOpts = (rule === 'highest-threat' && threat) ? { threat, actor, heroes } : {}
+  const chosen = pickTargetByRule(filtered, rule, rng, pickOpts)
   return chosen ?? (filtered.length === 0 ? null : filtered[0])
 }
 
@@ -505,6 +517,9 @@ function rewardForVictory(monsters, rng) {
 export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds = 40 }) {
   const heroUnits = heroes.map((h) => heroCombatStats(h))
   const monsterUnits = deepCopy(monsters).map((m) => ({ ...m, side: 'monster', debuffs: [] }))
+  const threat = createThreatTables(heroUnits, monsterUnits)
+  const tauntState = {}
+  const monsterLastTarget = {}
   const log = []
   const turnActedByRound = {}
   let round = 1
@@ -519,12 +534,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     turnActedByRound[round] = []
     for (const actor of roundOrder) {
       if (actor.currentHP <= 0) continue
-      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng })
+      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng, threat, tauntState })
       if (!defaultTarget) break
 
       turnActedByRound[round].push(actor.id)
 
-      const ctx = { round, rng }
+      const ctx = { round, rng, threat, isAllyOT }
       const conditions = getConditions(actor)
       const skillPriority = getSkillPriority(actor)
 
@@ -545,8 +560,37 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             conditions,
             rng,
             round,
+            threat,
+            tauntState,
           })
           if (!target) continue
+
+          if (skillId === 'taunt') {
+            tauntState[target.id] = { casterId: actor.id, actionsRemaining: 2 }
+            applyTauntThreatBoost(threat, target.id, actor.id, heroUnits)
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: 'taunt',
+              skillName: 'Taunt',
+              skillSpec: 'Protection',
+              targetId: target.id,
+              targetName: target.name,
+              targetClass: target.class || null,
+              targetTier: target.tier || null,
+              tauntApplied: true,
+              tauntEffectText: `${target.name} will attack ${actor.name} for 2 actions`,
+            })
+            usedSkill = true
+            break
+          }
 
           const isCrit = rng() < (actor.physCrit || 0)
           if (skill.targets && skill.targets >= 2) {
@@ -584,6 +628,15 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 rageConsumed: sr.rageConsumed,
                 rageAfter: actor.currentMP,
                 cleaveTargets: sr.targetCount,
+              }
+              for (const hit of sr.hits) {
+                const mult = getThreatMultiplier(skillId)
+                addThreatFromDamage(threat, hit.target.id, actor.id, hit.finalDamage, mult)
+              }
+              if (firstHit) {
+                const mult = getThreatMultiplier(skillId)
+                entry.threatAmount = Math.round(firstHit.finalDamage * mult)
+                entry.threatTargetName = firstHit.target.name
               }
               log.push(entry)
               usedSkill = true
@@ -628,7 +681,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.actorHPBefore = actorHPBefore
               entry.actorHPAfter = actor.currentHP
               entry.actorMaxHP = actor.maxHP
+              addThreatFromHeal(threat, alive(monsterUnits), actor.id, sr.heal)
+              entry.threatHealAmount = Math.round(sr.heal * 0.5)
             }
+            const threatMult = getThreatMultiplier(skillId)
+            addThreatFromDamage(threat, target.id, actor.id, sr.finalDamage, threatMult)
+            entry.threatAmount = Math.round(sr.finalDamage * threatMult)
+            entry.threatTargetName = target.name
             if (sr.debuffApplied || sr.debuffRefreshed) {
               entry.debuffApplied = sr.debuffApplied
               entry.debuffRefreshed = sr.debuffRefreshed
@@ -663,6 +722,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             conditions,
             rng,
             round,
+            threat,
+            tauntState,
           })
           if (!mageTarget) continue
 
@@ -708,6 +769,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             if (sr.debuffDamagePerRound != null) entry.debuffDamagePerRound = sr.debuffDamagePerRound
             if (sr.debuffDamageType != null) entry.debuffDamageType = sr.debuffDamageType
           }
+          if (sr.finalDamage > 0) {
+            addThreatFromDamage(threat, mageTarget.id, actor.id, sr.finalDamage, 1)
+            entry.threatAmount = sr.finalDamage
+            entry.threatTargetName = mageTarget.name
+          }
           log.push(entry)
           usedSkill = true
           break
@@ -722,6 +788,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               skillId: 'basic-attack',
               conditions,
               rng,
+              threat,
+              tauntState,
             }) ?? defaultTarget
           : defaultTarget
       const action = actorDamage(actor, rng, round)
@@ -737,8 +805,32 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       target.currentHP = damage.nextHP
       if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
 
-      if (actor.side === 'monster' && action.skillId) {
-        actor.lastSkillRound = round
+      if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
+        addThreatFromDamage(threat, target.id, actor.id, damage.finalDamage, 1)
+      }
+      const targetReason = actor.side === 'monster'
+        ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
+        : null
+      if (actor.side === 'monster') {
+        const lastTargetId = monsterLastTarget[actor.id]
+        if (lastTargetId != null && lastTargetId !== target.id) {
+          const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
+          const lastTargetName = lastTarget?.name ?? 'Unknown'
+          log.push({
+            round,
+            type: 'ot',
+            monsterId: actor.id,
+            monsterName: actor.name,
+            monsterTier: actor.tier ?? null,
+            previousTargetName: lastTargetName,
+            newTargetId: target.id,
+            newTargetName: target.name,
+            newTargetClass: target.class || null,
+          })
+        }
+        monsterLastTarget[actor.id] = target.id
+        decrementTauntActions(tauntState, actor.id)
+        if (action.skillId) actor.lastSkillRound = round
       }
 
       let debuffResult = null
@@ -782,6 +874,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         targetHPBefore,
         targetHPAfter: target.currentHP,
         targetMaxHP: target.maxHP,
+      }
+      if (targetReason) logEntry.targetReason = targetReason
+      if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
+        const threatMult = 1
+        logEntry.threatAmount = Math.round(damage.finalDamage * threatMult)
+        logEntry.threatTargetName = target.name
       }
       if (actor.side === 'hero' && actor.class === 'Warrior') {
         logEntry.actorRageAfter = actor.currentMP

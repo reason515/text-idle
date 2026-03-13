@@ -104,6 +104,7 @@
             </div>
             <div class="card-top">
               <span class="monster-name">{{ m.name }}</span>
+              <span v-if="monsterTargets[m.id]" class="monster-target"> &rarr; {{ monsterTargets[m.id].targetName }}</span>
               <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
             </div>
             <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
@@ -215,6 +216,16 @@
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
               </div>
             </div>
+            <div v-else-if="entry.type === 'ot'" class="log-entry log-ot">
+              <span class="log-round">[R{{ entry.round }}]</span>
+              <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
+              <span class="log-sep">switched target to</span>
+              <span
+                class="log-target"
+                :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
+              >{{ entry.newTargetName }}</span>
+              <span class="log-ot-mark">(OT!)</span>
+            </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
                 Recovering...
@@ -242,20 +253,29 @@
                 class="log-target"
                 :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
               >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? ' (+' + (entry.cleaveTargets - 1) + ' more)' : '' }}</span>
-              <span class="log-sep">for</span>
-              <span
-                class="log-dmg"
-                :class="[
-                  entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
-                  entry.isCrit ? 'log-crit' : ''
-                ]"
-              >{{ entry.finalDamage }}</span>
-              <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
-              <span class="log-dtype">({{ entry.damageType }})</span>
+              <template v-if="entry.tauntApplied">
+                <span class="log-sep">-</span>
+                <span class="log-taunt-effect">{{ entry.tauntEffectText }}</span>
+              </template>
+              <template v-else-if="entry.finalDamage != null">
+                <span class="log-sep">for</span>
+                <span
+                  class="log-dmg"
+                  :class="[
+                    entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
+                    entry.isCrit ? 'log-crit' : ''
+                  ]"
+                >{{ entry.finalDamage }}</span>
+                <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
+                <span class="log-dtype">({{ entry.damageType }})</span>
+              </template>
               <div
-                v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null || entry.heal > 0 || entry.debuffApplied || entry.debuffRefreshed"
+                v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null || entry.heal > 0 || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
                 class="log-detail-box"
               >
+                <div v-if="entry.targetReason" class="log-target-reason">
+                  Attacking {{ entry.targetName }} ({{ entry.targetReason === 'taunted' ? 'taunted' : 'highest threat' }})
+                </div>
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
                 </div>
@@ -283,6 +303,12 @@
                 <div v-if="entry.debuffRefreshed" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
                   <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: 'Debuff' }).name }}</span> refreshed ({{ entry.debuffDuration }} rounds)
+                </div>
+                <div v-if="entry.threatAmount != null && entry.threatTargetName" class="log-threat">
+                  Threat +{{ entry.threatAmount }} to {{ entry.threatTargetName }}
+                </div>
+                <div v-if="entry.threatHealAmount != null" class="log-threat">
+                  Threat +{{ entry.threatHealAmount }} to all monsters
                 </div>
               </div>
             </div>
@@ -1283,6 +1309,7 @@ const isRunning = ref(false)
 const isPaused = ref(false)
 const currentActorId = ref(null)
 const currentTargetId = ref(null)
+const monsterTargets = ref({})
 const unitFloatingNumbers = ref({})
 let floatNumId = 0
 const toastMessages = ref([])
@@ -2021,6 +2048,12 @@ function buildDebuffFromEntry(entry) {
 function applyOneCombatEntry(entry) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
+  if (entry.actorTier != null && entry.targetId && entry.targetName) {
+    monsterTargets.value = { ...monsterTargets.value, [entry.actorId]: { targetName: entry.targetName } }
+  }
+  if (entry.type === 'ot' && entry.monsterId && entry.newTargetName) {
+    monsterTargets.value = { ...monsterTargets.value, [entry.monsterId]: { targetName: entry.newTargetName } }
+  }
   addLogEntry(entry)
 
   if (entry.type === 'dot') {
@@ -2208,6 +2241,7 @@ async function runCombatLoop() {
     currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
     displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
     unitFloatingNumbers.value = {}
+    monsterTargets.value = {}
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, equipment: [] }
 
@@ -3210,6 +3244,24 @@ onUnmounted(() => {
 .log-crit-mark {
   color: var(--color-boss);
   font-weight: bold;
+}
+.log-ot .log-ot-mark {
+  color: var(--warning);
+  font-weight: bold;
+  margin-left: 0.25rem;
+}
+.log-taunt-effect {
+  color: var(--color-skill);
+  font-style: italic;
+}
+.log-target-reason,
+.log-threat {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+.monster-target {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
   font-size: var(--font-s);
 }
 .log-dtype {
