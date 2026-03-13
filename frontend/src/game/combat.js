@@ -24,6 +24,12 @@ import {
   getMageSkillWithEnhancements,
   executeMageSkill,
 } from './mageSkills.js'
+import {
+  getPriestSkillById,
+  executeFlashHeal,
+  executePowerWordShield,
+  applyDamageToShieldedUnit,
+} from './priestSkills.js'
 import { getHeroSkillIds } from './skillChoice.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
@@ -39,11 +45,13 @@ import {
   createThreatTables,
   addThreatFromDamage,
   addThreatFromHeal,
+  addThreatFromShield,
   applyTauntThreatBoost,
   getMonsterTarget,
   decrementTauntActions,
   getThreatMultiplier,
   isAllyOT,
+  getTank,
 } from './threat.js'
 
 export const CRIT_MULTIPLIER = 1.5
@@ -180,8 +188,14 @@ export function createInitialProgress() {
   }
 }
 
+/**
+ * Squad size limit. Design 02-levels-monsters 1.2: initial 3 (fixed trio), +1 after map 1 boss, +1 after map 2 boss, max 5.
+ * @param {Object} progress - combatProgress
+ * @returns {number} 3, 4, or 5
+ */
 export function getRecruitLimit(progress) {
-  return clamp(progress.unlockedMapCount, 1, 5)
+  const n = progress?.unlockedMapCount ?? 1
+  return clamp(2 + n, 3, 5)
 }
 
 /**
@@ -189,6 +203,11 @@ export function getRecruitLimit(progress) {
  * Design doc 02-levels-monsters.md 1.2.1: Map 1 boss -> Lv5, Map 2 -> Lv10, etc.
  * @param {Object} progress - combatProgress
  * @returns {number} Level 5, 10, 15, or 20; 1 if not expansion (unlockedMapCount 1)
+ */
+/**
+ * Expansion hero level. Design 02-levels-monsters 1.2.1: map 1 boss -> Lv5, map 2 -> Lv10. Only 2 expansion recruits (4th, 5th).
+ * @param {Object} progress - combatProgress
+ * @returns {number} 5, 10, 15, or 20; 1 if not expansion (unlockedMapCount 1)
  */
 export function getExpansionHeroLevel(progress) {
   const n = progress?.unlockedMapCount ?? 1
@@ -431,6 +450,8 @@ function buildRoundOrder(heroes, monsters, rng) {
   return ordered
 }
 
+const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
+
 function pickTarget(actor, heroes, monsters, opts = {}) {
   const { threat, tauntState, skillId, conditions, rng } = opts
   if (actor.side === 'monster') {
@@ -439,16 +460,22 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   const conditionsList = conditions ?? getConditions(actor)
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
   const targetRule = getTargetRule(actor, skillId || '', conditionsList)
-  const candidates = alive(monsters)
+  const targetAllies = skillId && ALLY_TARGET_SKILLS.includes(skillId)
+  const candidates = targetAllies ? alive(heroes) : alive(monsters)
   let filtered = cond
     ? filterTargetsByCondition(candidates, cond, actor, opts)
     : candidates
-  if (targetRule === 'sunder-first' && filtered.length > 0) {
+  if (!targetAllies && targetRule === 'sunder-first' && filtered.length > 0) {
     const sunderPool = filtered.filter((t) => getSunderDebuff(t))
     if (sunderPool.length > 0) filtered = sunderPool
   }
   const rule = targetRule === 'sunder-first' ? 'lowest-hp' : targetRule
-  const pickOpts = (rule === 'highest-threat' && threat) ? { threat, actor, heroes } : {}
+  const pickOpts =
+    rule === 'highest-threat' && threat
+      ? { threat, actor, heroes }
+      : rule === 'tank' && threat
+        ? { threat, heroes, monsters, getTank }
+        : {}
   const chosen = pickTargetByRule(filtered, rule, rng, pickOpts)
   return chosen ?? (filtered.length === 0 ? null : filtered[0])
 }
@@ -781,6 +808,88 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (usedSkill) continue
       }
 
+      // Priest skill path: Flash Heal, Power Word: Shield (ally targets)
+      const priestSkillPriority = getSkillPriority(actor)
+      if (actor.side === 'hero' && actor.class === 'Priest' && priestSkillPriority.length > 0) {
+        let usedSkill = false
+        for (const skillId of priestSkillPriority) {
+          const skill = getPriestSkillById(skillId)
+          const manaCost = skill?.manaCost ?? 999
+          if (!skill || manaCost > (actor.currentMP || 0)) continue
+
+          const priestCond = conditions.find((c) => c.skillId === skillId)
+          if (priestCond && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+          const priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
+            skillId,
+            conditions,
+            rng,
+            round,
+            threat,
+            tauntState,
+          })
+          if (!priestTarget) continue
+
+          if (skillId === 'flash-heal') {
+            const sr = executeFlashHeal(actor, priestTarget, skill, { rng })
+            const entry = {
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: priestTarget.id,
+              targetName: priestTarget.name,
+              targetClass: priestTarget.class || null,
+              targetTier: null,
+              heal: sr.heal,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            }
+            addThreatFromHeal(threat, alive(monsterUnits), actor.id, sr.heal)
+            entry.threatHealAmount = Math.round(sr.heal * 0.5)
+            log.push(entry)
+            usedSkill = true
+            break
+          }
+          if (skillId === 'power-word-shield') {
+            const sr = executePowerWordShield(actor, priestTarget, skill, { rng })
+            addThreatFromShield(threat, alive(monsterUnits), actor.id, sr.absorbAmount)
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: priestTarget.id,
+              targetName: priestTarget.name,
+              targetClass: priestTarget.class || null,
+              targetTier: null,
+              absorbAmount: sr.absorbAmount,
+              shieldDuration: sr.shieldDuration,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              threatShieldAmount: Math.round(sr.absorbAmount * 0.25),
+            })
+            usedSkill = true
+            break
+          }
+        }
+        if (usedSkill) continue
+      }
+
       // Basic attack / monster skill path
       const target =
         actor.side === 'hero'
@@ -802,7 +911,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         : action.rawDamage
       const targetHPBefore = target.currentHP
       const damage = applyDamage(rawAfterCrit, action.damageType, target)
-      target.currentHP = damage.nextHP
+      if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
+        const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
+        damage.absorbedByShield = shieldResult.absorbed
+        damage.overflowDamage = shieldResult.overflow
+      } else {
+        target.currentHP = damage.nextHP
+      }
       if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
 
       if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
@@ -860,6 +975,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorTier: actor.tier || null,
         action: action.action,
         ...(action.skillId && { skillId: action.skillId }),
+        ...(damage.absorbedByShield != null && damage.absorbedByShield > 0 && { shieldAbsorbed: damage.absorbedByShield }),
         ...(action.skillName && { skillName: action.skillName }),
         targetId: target.id,
         targetName: target.name,
@@ -928,13 +1044,21 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
     }
 
-    // Mage mana recovery per round (Base + Spirit * k)
+    // Mage/Priest mana recovery per round (Base + Spirit * k)
     const MANA_REGEN_BASE = 4
     const MANA_REGEN_SPIRIT_SCALE = 1
     for (const hero of heroUnits) {
-      if (hero.currentHP <= 0 || hero.class !== 'Mage') continue
+      if (hero.currentHP <= 0) continue
+      if (hero.class !== 'Mage' && hero.class !== 'Priest') continue
       const regen = MANA_REGEN_BASE + (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
       hero.currentMP = Math.min(hero.maxMP, (hero.currentMP || 0) + Math.max(1, Math.floor(regen)))
+    }
+
+    // Tick shield duration (Power Word: Shield)
+    for (const unit of heroUnits) {
+      if (unit.currentHP <= 0 || !unit.shield) continue
+      unit.shield.remainingRounds = (unit.shield.remainingRounds ?? 1) - 1
+      if (unit.shield.remainingRounds <= 0) delete unit.shield
     }
 
     // Tick debuffs at end of each round

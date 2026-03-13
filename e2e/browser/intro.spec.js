@@ -29,7 +29,7 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page.getByLabel('队伍名称')).toBeVisible()
   })
 
-  test('AC3: entering team name and confirming redirects to main', async ({ page }) => {
+  test('AC3: entering team name and confirming redirects to main with fixed trio', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
@@ -41,16 +41,12 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
 
-    await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.battle-screen')).toBeVisible()
     await expect(page.locator('.col-header').first()).toBeVisible()
+    await expect(page.getByText('Varian')).toBeVisible()
+    await expect(page.getByText('Jaina')).toBeVisible()
+    await expect(page.getByText('Anduin')).toBeVisible()
   })
 
   test('AC4: returning player skips intro', async ({ page }) => {
@@ -65,12 +61,6 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('勇者小队')
     await page.getByRole('button', { name: '开始冒险' }).click()
-    await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.goto('/login')

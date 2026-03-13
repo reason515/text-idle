@@ -47,11 +47,11 @@ function sampleHero(overrides = {}) {
 }
 
 describe('combat progression and systems', () => {
-  it('Example5: starts with only first map unlocked and recruit limit 1', () => {
+  it('Example5: starts with only first map unlocked and recruit limit 3 (fixed trio)', () => {
     const progress = createInitialProgress()
     expect(progress.unlockedMapCount).toBe(1)
     expect(progress.currentMapId).toBe(MAPS[0].id)
-    expect(getRecruitLimit(progress)).toBe(1)
+    expect(getRecruitLimit(progress)).toBe(3)
   })
 
   it('each map has a description for combat log map entry', () => {
@@ -114,7 +114,7 @@ describe('combat progression and systems', () => {
     const next = unlockNextMapAfterBoss(progress)
     expect(next.unlockedMapCount).toBe(2)
     expect(next.currentMapId).toBe(MAPS[1].id)
-    expect(getRecruitLimit(next)).toBe(2)
+    expect(getRecruitLimit(next)).toBe(4)
     expect(next.currentProgress).toBe(0)
     expect(next.bossAvailable).toBe(false)
   })

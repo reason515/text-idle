@@ -170,7 +170,7 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
   const alive = candidates.filter((u) => (u.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
 
-  if (targetRule === 'lowest-hp') {
+  if (targetRule === 'lowest-hp' || targetRule === 'lowest-hp-ally') {
     return alive.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))
   }
 

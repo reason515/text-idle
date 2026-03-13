@@ -24,6 +24,8 @@ On every change, check whether these need updates:
 
 Update them when the change affects formulas, attributes, UI behavior, or acceptance criteria.
 
+**Design change impact**: When modifying core flows (squad, recruitment, skills, intro, routing), run the [Design Change Impact Checklist](docs/design-change-impact.md) to avoid UI/flow oversights (e.g., Examples, E2E, routing).
+
 ## Color Usage (Gold)
 
 - `var(--color-gold)` / gold color: **ONLY** for gold-related content (currency, rewards, sell, costs)

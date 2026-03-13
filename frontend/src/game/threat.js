@@ -5,6 +5,7 @@
  */
 
 const HEAL_THREAT_MULTIPLIER = 0.5
+const SHIELD_THREAT_MULTIPLIER = 0.25
 const TAUNT_THREAT_BOOST = 1.1
 
 /** Skill threat multipliers. Default 1.0 for damage-based threat. */
@@ -71,6 +72,23 @@ export function addThreatFromHeal(threat, monsters, healerId, healAmount) {
     if (!threat[m.id]) threat[m.id] = {}
     const current = threat[m.id][healerId] ?? 0
     threat[m.id][healerId] = current + amount
+  }
+}
+
+/**
+ * Add threat from shield (Power Word: Shield). Design 12-threat 3.2: low threat, 0.25x.
+ * @param {Object} threat - Mutable threat tables
+ * @param {Object[]} monsters - Alive monsters
+ * @param {string} casterId
+ * @param {number} absorbAmount
+ */
+export function addThreatFromShield(threat, monsters, casterId, absorbAmount) {
+  const amount = Math.round(absorbAmount * SHIELD_THREAT_MULTIPLIER)
+  for (const m of monsters) {
+    if ((m.currentHP ?? 0) <= 0) continue
+    if (!threat[m.id]) threat[m.id] = {}
+    const current = threat[m.id][casterId] ?? 0
+    threat[m.id][casterId] = current + amount
   }
 }
 

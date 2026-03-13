@@ -3,6 +3,7 @@ import {
   createThreatTables,
   addThreatFromDamage,
   addThreatFromHeal,
+  addThreatFromShield,
   applyTauntThreatBoost,
   getHighestThreatHero,
   getMonsterTarget,
@@ -46,6 +47,15 @@ describe('threat', () => {
     it('adds threat to all monsters for healer', () => {
       const threat = createThreatTables([heroA, heroB], [monsterA, monsterB])
       addThreatFromHeal(threat, [monsterA, monsterB], 'h2', 20)
+      expect(threat.m1.h2).toBe(10)
+      expect(threat.m2.h2).toBe(10)
+    })
+  })
+
+  describe('addThreatFromShield', () => {
+    it('adds threat at 0.25x absorb amount to all monsters', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA, monsterB])
+      addThreatFromShield(threat, [monsterA, monsterB], 'h2', 40)
       expect(threat.m1.h2).toBe(10)
       expect(threat.m2.h2).toBe(10)
     })

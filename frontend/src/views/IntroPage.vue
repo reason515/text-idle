@@ -46,6 +46,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { createFixedTrioSquad, saveSquad } from '../data/heroes.js'
 
 const router = useRouter()
 const step = ref(1)
@@ -64,7 +65,11 @@ function confirmTeamName() {
   }
   error.value = ''
   localStorage.setItem('teamName', name)
-  router.push('/character-select')
+  const squad = createFixedTrioSquad()
+  if (squad.length > 0) {
+    saveSquad(squad)
+  }
+  router.push('/main')
 }
 </script>
 

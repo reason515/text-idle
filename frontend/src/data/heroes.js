@@ -489,7 +489,7 @@ export function getSquadMaxLevel(squad) {
 /**
  * Create a character from a hero template with initial attributes.
  * @param {Object} hero - Hero template object (id, name, class)
- * @param {Object} opts - { skill?: string } optional skill id for Warriors
+ * @param {Object} opts - { skill?: string, skills?: string[] } optional skill id or skills array
  * @returns {Object} Character object with level and initial attributes
  */
 export function createCharacter(hero, opts = {}) {
@@ -502,7 +502,9 @@ export function createCharacter(hero, opts = {}) {
     equipment: hero.equipment || {},
     ...initialAttrs,
   }
-  if (opts.skill) {
+  if (opts.skills && Array.isArray(opts.skills)) {
+    character.skills = [...opts.skills]
+  } else if (opts.skill) {
     character.skills = [opts.skill]
   }
   return character
@@ -544,6 +546,32 @@ export function createExpansionCharacter(hero, opts = {}) {
     }
   }
   return character
+}
+
+/**
+ * Create the fixed initial trio (Warrior, Mage, Priest) per design 02-levels-monsters 1.2.0.
+ * Warrior: Sunder Armor, Taunt. Mage: Fireball, Arcane Blast. Priest: Flash Heal, Power Word: Shield.
+ * @returns {Object[]} Array of 3 character objects
+ */
+export function createFixedTrioSquad() {
+  const warrior = HEROES.find((h) => h.id === 'varian')
+  const mage = HEROES.find((h) => h.id === 'jaina')
+  const priest = HEROES.find((h) => h.id === 'anduin')
+  if (!warrior || !mage || !priest) return []
+  const w = createCharacter(warrior, { skills: ['sunder-armor', 'taunt'] })
+  w.tactics = { skillPriority: ['taunt', 'sunder-armor'], targetRule: 'lowest-hp', conditions: [{ skillId: 'taunt', when: 'ally-ot' }] }
+  const m = createCharacter(mage, { skills: ['fireball', 'arcane-blast'] })
+  m.tactics = { skillPriority: ['fireball', 'arcane-blast'], targetRule: 'lowest-hp' }
+  const p = createCharacter(priest, { skills: ['flash-heal', 'power-word-shield'] })
+  p.tactics = {
+    skillPriority: ['power-word-shield', 'flash-heal'],
+    targetRule: 'tank',
+    conditions: [
+      { skillId: 'flash-heal', targetRule: 'lowest-hp-ally' },
+      { skillId: 'power-word-shield', targetRule: 'tank' },
+    ],
+  }
+  return [w, m, p]
 }
 
 export function addHeroToSquad(hero) {

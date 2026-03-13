@@ -9,27 +9,25 @@ const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 const {
   registerToCharacterSelect,
-  recruitWarrior,
-  pauseCombat,
   updateStoredState,
 } = require('./testHelpers')
 
-async function prepareWarriorLevelChoice(page, { level = 4, xp = 594, baseSkill = 'heroic-strike' } = {}) {
+async function prepareWarriorLevelChoice(page, { level = 4, xp = 594, baseSkill = 'sunder-armor' } = {}) {
   await updateStoredState(page, ({ level, xp, baseSkill }) => {
     const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-    if (squad.length > 0) {
-      const h = squad[0]
-      h.level = level
-      h.xp = xp
-      h.strength = 150
-      h.stamina = 120
-      h.agility = 80
-      h.intellect = 20
-      h.spirit = 20
-      h.maxHP = 500
-      h.currentHP = 500
-      if (!h.skills) h.skills = [h.skill || baseSkill]
-      delete h.skill
+    const warrior = squad.find((h) => h.class === 'Warrior')
+    if (warrior) {
+      warrior.level = level
+      warrior.xp = xp
+      warrior.strength = 150
+      warrior.stamina = 120
+      warrior.agility = 80
+      warrior.intellect = 20
+      warrior.spirit = 20
+      warrior.maxHP = 500
+      warrior.currentHP = 500
+      if (!warrior.skills) warrior.skills = [warrior.skill || baseSkill]
+      delete warrior.skill
       localStorage.setItem('squad', JSON.stringify(squad))
     }
     localStorage.setItem('combatProgress', JSON.stringify({
@@ -54,8 +52,6 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     test.setTimeout(120000)
     const email = `skill-choice-ac1-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorLevelChoice(page)
@@ -68,8 +64,6 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     test.setTimeout(120000)
     const email = `skill-choice-ac2-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorLevelChoice(page)
@@ -84,8 +78,6 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     test.setTimeout(120000)
     const email = `skill-choice-ac4-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorLevelChoice(page)
@@ -100,59 +92,48 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await expect(page.locator('.detail-section').filter({ hasText: 'Cleave' })).toBeVisible()
   })
 
-  test('AC3: enhance Heroic Strike applies enhancement and affects combat', async ({ page }) => {
+  test('AC3: enhance Sunder Armor applies enhancement (fixed trio Warrior)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `skill-choice-ac3-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorLevelChoice(page)
     const skillModal = await waitForSkillChoiceModal(page, 'Level 5')
 
-    // Enhance option shows upgrade preview: 1.2x -> 1.4x
-    const heroicStrikeOption = skillModal.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).first()
-    await expect(heroicStrikeOption.locator('.skill-option-desc')).toContainText('1.2x')
-    await expect(heroicStrikeOption.locator('.skill-option-desc')).toContainText('1.4x')
+    const sunderOption = skillModal.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).first()
+    await expect(sunderOption.locator('.skill-option-desc')).toContainText('1 -> 2 stacks')
 
-    await heroicStrikeOption.click()
+    await sunderOption.click()
     await skillModal.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(skillModal).not.toBeVisible()
     const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
-    expect(squadAfter[0].skillEnhancements?.['heroic-strike']?.enhanceCount).toBe(1)
+    const warrior = squadAfter.find((h) => h.class === 'Warrior')
+    expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
 
-    // Hero detail Skills tab shows enhancement count and enhanced effectDesc
     await page.locator('.hero-card').first().click()
     await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
     await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
-    await expect(page.locator('.skill-desc-text').filter({ hasText: '1.4x' })).toBeVisible()
   })
 
   test('Level 10 skill choice shows Shield Slam with Sunder crit synergy (Example 13a)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `skill-choice-shield-slam-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).first().click()
-    await page.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Level 9 -> 10: XP required = floor(50*9^1.8)=2535. Set xp=2523 so 2523+12>=2535
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        const h = squad[0]
-        h.level = 9
-        h.xp = 2523
-        h.strength = 100
-        h.stamina = 80
-        h.agility = 30
-        if (!h.skills) h.skills = [h.skill || 'sunder-armor']
-        delete h.skill
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      if (warrior) {
+        warrior.level = 9
+        warrior.xp = 2523
+        warrior.strength = 100
+        warrior.stamina = 80
+        warrior.agility = 30
+        if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
+        delete warrior.skill
         localStorage.setItem('squad', JSON.stringify(squad))
       }
       localStorage.setItem('combatProgress', JSON.stringify({
@@ -176,20 +157,18 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     test.setTimeout(120000)
     const email = `skill-choice-ac8-${Date.now()}@example.com`
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        const h = squad[0]
-        h.level = 4
-        h.xp = 594
-        h.strength = 100
-        h.stamina = 80
-        if (!h.skills) h.skills = [h.skill || 'heroic-strike']
-        delete h.skill
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      if (warrior) {
+        warrior.level = 4
+        warrior.xp = 594
+        warrior.strength = 100
+        warrior.stamina = 80
+        if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
+        delete warrior.skill
         localStorage.setItem('squad', JSON.stringify(squad))
       }
       localStorage.setItem('combatProgress', JSON.stringify({

@@ -36,7 +36,7 @@ function getSquad() {
   }
 }
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const hasToken = !!localStorage.getItem('token')
   const hasTeamName = !!localStorage.getItem('teamName')
   const squad = getSquad()
@@ -50,9 +50,24 @@ router.beforeEach((to, _from, next) => {
     next('/intro')
     return
   }
-  // First-time player (no squad) must pick a hero before main
-  if (to.path === '/main' && hasToken && squad.length === 0) {
-    next('/character-select')
+  // Character select is for expansion only; empty squad goes to main (which creates fixed trio)
+  if (to.path === '/character-select' && hasToken && squad.length === 0) {
+    next('/main')
+    return
+  }
+  // First-time player (no squad but has team name): create fixed trio and go to main
+  if (to.path === '/main' && hasToken && hasTeamName && squad.length === 0) {
+    const { createFixedTrioSquad, saveSquad } = await import('./data/heroes.js')
+    const fixedSquad = createFixedTrioSquad()
+    if (fixedSquad.length > 0) {
+      saveSquad(fixedSquad)
+    }
+    next()
+    return
+  }
+  // No squad and no team name: must complete intro first (intro will create trio)
+  if (to.path === '/main' && hasToken && !hasTeamName && squad.length === 0) {
+    next('/intro')
     return
   }
   // Returning player with team name skips intro

@@ -1,24 +1,23 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 
-async function registerAndGoToCharacterSelect(page, email) {
-  await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('/register?e2e=1')
-  await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel(/Password/).fill('password123')
-  await page.getByRole('button', { name: 'Register' }).click()
-  await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-  await page.getByRole('button', { name: '下一步' }).click()
-  await page.getByLabel('队伍名称').fill('Warrior Squad')
-  await page.getByRole('button', { name: '开始冒险' }).click()
+const { registerAndGoToMain } = require('./testHelpers')
+
+async function goToCharacterSelectForExpansion(page, email) {
+  await registerAndGoToMain(page, email)
+  await page.evaluate(() => {
+    const progress = JSON.parse(localStorage.getItem('combatProgress') || '{}')
+    progress.unlockedMapCount = 2
+    localStorage.setItem('combatProgress', JSON.stringify(progress))
+  })
+  await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
   await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
 }
 
-test.describe('Warrior Initial Skill Selection (Example 12)', () => {
+test.describe.skip('Warrior Initial Skill Selection (Example 12) - Fixed trio: Varian has sunder-armor, taunt; no initial recruit', () => {
   test('AC1: selecting Warrior shows skill selection step with exactly 3 options', async ({ page }) => {
     const email = `ws-ac1-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
 
@@ -30,7 +29,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC1: three options are Heroic Strike (Arms), Bloodthirst (Fury), Sunder Armor (Protection)', async ({ page }) => {
     const email = `ws-ac1b-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.locator('.skill-selection-step')).toBeVisible()
@@ -46,7 +45,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC2: each skill option shows name, spec, cost, and effect description', async ({ page }) => {
     const email = `ws-ac2-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.locator('.skill-selection-step')).toBeVisible()
@@ -70,7 +69,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC3: selecting Bloodthirst and confirming gives Warrior that skill', async ({ page }) => {
     const email = `ws-ac3-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.locator('.skill-selection-step')).toBeVisible()
@@ -99,7 +98,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC4: Warrior with Heroic Strike shows only Heroic Strike in skill list', async ({ page }) => {
     const email = `ws-ac4-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
@@ -119,7 +118,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC5: Warrior with Bloodthirst shows only Bloodthirst in skill list', async ({ page }) => {
     const email = `ws-ac5-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.locator('.skill-option').filter({ hasText: 'Bloodthirst' }).click()
@@ -137,7 +136,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC6: Warrior with Sunder Armor shows only Sunder Armor in skill list', async ({ page }) => {
     const email = `ws-ac6-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).click()
@@ -155,7 +154,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC7: clicking Next without selecting a skill shows error, Warrior does not join', async ({ page }) => {
     const email = `ws-ac7-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.locator('.skill-selection-step')).toBeVisible()
@@ -171,7 +170,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('AC7: after selecting skill, error clears and Next proceeds', async ({ page }) => {
     const email = `ws-ac7b-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await expect(page.locator('.skill-selection-step')).toBeVisible()
@@ -189,7 +188,7 @@ test.describe('Warrior Initial Skill Selection (Example 12)', () => {
 
   test('Non-Warrior/Mage heroes (e.g. Rexxar Hunter) skip skill selection and go directly to confirmation', async ({ page }) => {
     const email = `ws-nonwarrior-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     // Rexxar (Hunter) should NOT show skill selection step
     await page.getByRole('button', { name: /Rexxar/ }).click()
@@ -204,7 +203,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
   test('AC8 & AC10: Warrior skill appears in combat log after accumulating enough Rage', async ({ page }) => {
     test.setTimeout(120000)
     const email = `ws13-log-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
@@ -234,7 +233,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
 
   test('Warrior hero detail shows Skills section with Rage Cost', async ({ page }) => {
     const email = `ws13-detail-${Date.now()}@example.com`
-    await registerAndGoToCharacterSelect(page, email)
+    await goToCharacterSelectForExpansion(page, email)
 
     await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
     await page.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).click()

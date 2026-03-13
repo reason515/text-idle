@@ -9,7 +9,7 @@ async function setupNewRun(page) {
   })
 }
 
-async function registerToCharacterSelect(page, email, options = {}) {
+async function registerAndGoToMain(page, email, options = {}) {
   const teamName = options.teamName || 'Combat Squad'
   await setupNewRun(page)
   await page.getByLabel('Email').fill(email)
@@ -19,7 +19,12 @@ async function registerToCharacterSelect(page, email, options = {}) {
   await page.getByRole('button', { name: '下一步' }).click()
   await page.getByLabel('队伍名称').fill(teamName)
   await page.getByRole('button', { name: '开始冒险' }).click()
-  await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
+  await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+}
+
+/** @deprecated Use registerAndGoToMain. Kept for compatibility; fixed trio flow goes to main directly. */
+async function registerToCharacterSelect(page, email, options = {}) {
+  return registerAndGoToMain(page, email, options)
 }
 
 async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
@@ -64,6 +69,7 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
 
 module.exports = {
   setupNewRun,
+  registerAndGoToMain,
   registerToCharacterSelect,
   recruitWarrior,
   pauseCombat,

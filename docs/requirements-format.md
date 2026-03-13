@@ -93,17 +93,74 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 3a: Game Start Flow (No Character Selection)
+
+**User Story**
+
+> As a first-time player,  
+> I want to begin my adventure immediately after the intro without choosing characters,  
+> So that I can start playing quickly with a ready-made tank/healer/DPS squad.
+
+**Design Reference (from design doc)**
+
+- **Flow change**: The old design had a character selection screen (choose 1 hero) after intro. The new design has **no character selection** for the initial squad.
+- **Sequence**: Intro (Example 3) → Team name → **Direct to main screen** with fixed trio (Warrior, Mage, Priest) pre-created.
+- **No intermediate screens**: No "Choose your hero", "Select character", or roster picker between team name and main screen.
+- **Reference**: [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player has completed the team name step (or equivalent "Start Adventure" action) | Player confirms | Player is redirected **directly** to the main screen; no character selection screen is shown |
+| AC2 | Player expects to choose a hero at game start | Player completes the intro flow | No hero selection UI appears; the fixed trio is already in the squad when the main screen loads |
+| AC3 | Player is a first-time player | Full intro flow completes | The total flow is: intro step(s) → team name → main screen; no additional "recruitment" or "character pick" step for the initial squad |
+| AC4 | Intro or team name step includes a "Start Adventure" (or equivalent) button | Player clicks it | The main screen loads with the fixed trio; no modal or intermediate screen for hero selection |
+
+---
+
+## Example 3b: First-Time Main Screen Layout and Squad Display
+
+**User Story**
+
+> As a first-time player,  
+> I want to see my squad of 3 heroes and the main battle layout as soon as I start,  
+> So that I understand the game structure and can begin exploring immediately.
+
+**Design Reference (from design doc)**
+
+- **Main layout**: Three-column layout per [09-social-ui.md](design/09-social-ui.md): Squad (left), Monsters (center-left), Combat Log (right). Top bar: map selector, backpack, shop, gold, user.
+- **Initial state**: Squad has 3 hero cards; map is Elwynn Forest (only option); combat may auto-start or require map confirmation.
+- **Hero cards**: Each shows name, class (WoW color), level 1, HP bar, resource bar; click opens detail modal.
+- **Reference**: [09-social-ui.md](design/09-social-ui.md).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player has just completed the intro and landed on the main screen | Main screen loads | The left column (Squad) displays **3 hero cards** (Warrior, Mage, Priest) in a vertical or grid layout |
+| AC2 | Player views the main screen for the first time | Player inspects the layout | Top bar shows map selector (Elwynn Forest), backpack, shop, gold; center shows monster area (empty or first encounter); right shows combat log |
+| AC3 | Player views the squad panel | Squad is displayed | Each of the 3 hero cards shows: hero name, class label (Warrior/Mage/Priest) in WoW class color, Level 1, HP bar, resource bar (Rage/MP/MP) |
+| AC4 | Player has not defeated any map boss | Player views the squad area | A "Recruit" or expansion button is either hidden, disabled, or shows a lock/tooltip (e.g., "Defeat Hogger to recruit"); no 4th hero slot is available yet |
+| AC5 | Player clicks a hero card (e.g., Warrior) | Hero detail modal opens | Modal shows full hero info: name, class, level, attributes, equipment slots, **skill list** (Sunder Armor, Taunt for Warrior); player can configure tactics |
+| AC6 | First-time main screen has loaded | Auto-combat or first encounter | Combat log begins showing encounter message and turn-by-turn actions; or map selection triggers first encounter |
+| AC7 | Player views the 3 hero cards | Cards are displayed | Hero names use the fixed trio defaults (e.g., Varian, Jaina, Anduin or equivalent); class colors are correct (Warrior #C79C6E, Mage #69CCF0, Priest #FFFFFF) |
+
+---
+
 ## Example 4: Character Recruitment (Squad Formation)
 
 **User Story**
 
 > As a player,  
-> I want to choose a character to join my squad when I start an adventure,  
-> So that I can build my adventure party with iconic heroes and expand it as I progress.
+> I want to start with a fixed tank/healer/DPS trio and expand my squad by recruiting heroes as I progress,  
+> So that I can build my adventure party with iconic heroes and understand threat/role synergy from the start.
 
 **Design Reference (from design doc)**
 
-- **Classes**: Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman. Each class has at least one hero available.
+- **Fixed initial trio**: Warrior (tank), Mage (DPS), Priest (healer). No character selection at start; each has 2 fixed initial skills. Skill choice (enhance or learn new) begins at level 5.
+- **Squad expansion**: After defeating map 1 boss (Hogger) → recruit 4th hero; after defeating map 2 boss (VanCleef) → recruit 5th hero. Max 5 heroes.
+- **Classes**: Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman. Each class has at least one hero available for expansion recruitment.
 - **Hero roster (one per class minimum)**:
   | Class | Hero Example | WoW Class Color (hex) |
   |-------|--------------|------------------------|
@@ -134,11 +191,50 @@ Then [expected result/verifiable behavior].
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | A character selection screen is shown with available WoW-style heroes; each of the 9 classes has at least one hero to choose |
-| AC2 | Player is on the character selection screen | Player selects a hero (e.g., Jaina, Rexxar, Uther) | Hero's class and frame are rendered in the corresponding WoW class color; a confirmation step is shown; after player confirms, the selected character joins the squad and the adventure begins |
+| AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | The adventure begins with a fixed trio (Warrior, Mage, Priest); no character selection for initial squad; player is redirected to the main screen |
+| AC2 | Player has started the adventure | Player views the squad panel | The squad has 3 heroes: Warrior (tank), Mage (DPS), Priest (healer); each has 2 fixed initial skills (e.g., Warrior: Sunder Armor, Taunt; Mage: Fireball, Arcane Blast; Priest: Flash Heal, Power Word: Shield) |
 | AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values |
-| AC4 | Player has fewer than 5 characters in the squad and has met the unlock condition | Player triggers squad expansion (e.g., via progress milestone) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero; expansion heroes (after map boss defeat) join at level 5+ with full onboarding flow (Example 27) |
+| AC4 | Player has fewer than 5 characters in the squad and has defeated a map boss (map 1 or 2) | Player triggers squad expansion (e.g., via recruitment UI) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero; expansion heroes join at level 5 (map 1) or 10 (map 2) with full onboarding flow (Example 27) |
 | AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
+
+---
+
+## Example 4a: Fixed Initial Trio (Skills and Roles)
+
+**User Story**
+
+> As a player,  
+> I want my starting squad to have a clear tank/healer/DPS composition with role-appropriate skills,  
+> So that I can immediately experience threat mechanics, Taunt, healing, and shield synergy without a lengthy onboarding flow.
+
+**Design Reference (from design doc)**
+
+- **Fixed trio**: Warrior (tank), Mage (DPS), Priest (healer). No character selection at start.
+- **Each hero has 2 fixed initial skills**; skill choice (enhance or learn new) begins at level 5.
+- **Skill table**:
+  | Class | Role | Skill 1 | Skill 2 | Purpose |
+  |-------|------|--------|--------|---------|
+  | Warrior | Tank | Sunder Armor | Taunt | Debuff + threat; force target for 2 actions |
+  | Mage | DPS | Fireball | Arcane Blast | Fire + Arcane damage; Burn DoT |
+  | Priest | Healer | Flash Heal | Power Word: Shield | Direct heal; absorb shield (low threat) |
+
+- **Reference**: [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0; [05-skills.md](design/05-skills.md) 3.1, 8.3.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Player has started the adventure | Player views the Warrior's skill list | Warrior has Sunder Armor and Taunt; both are available in combat |
+| AC2 | Player has started the adventure | Player views the Mage's skill list | Mage has Fireball and Arcane Blast; both are available in combat |
+| AC3 | Player has started the adventure | Player views the Priest's skill list | Priest has Flash Heal and Power Word: Shield; both are available in combat |
+| AC4 | Fixed trio Warrior uses Sunder Armor in combat | Skill is used | Target gains Armor -8 debuff for 3 rounds; threat is generated (1.5x damage); combat log shows damage and debuff |
+| AC5 | Fixed trio Warrior uses Taunt on a monster | Skill is used | Monster is forced to attack the Warrior for its next 2 actions; threat is updated; combat log shows Taunt effect |
+| AC6 | Fixed trio Priest uses Flash Heal on an ally | Skill is used | Ally recovers HP (SpellPower × ~1.0); threat = healAmount × 0.5 to all alive monsters; combat log shows heal |
+| AC7 | Fixed trio Priest uses Power Word: Shield on an ally | Skill is used | Ally gains a shield absorbing damage (SpellPower × ~1.0); threat = absorbAmount × 0.25 (low) to all alive monsters; combat log shows shield applied |
+| AC8 | Ally has Power Word: Shield and receives 12 damage; shield absorb is 15 | Damage is applied | Shield absorbs 12; shield remaining = 3; ally loses 0 HP |
+| AC9 | Ally has Power Word: Shield (absorb 5) and receives 12 damage | Damage is applied | Shield absorbs 5 and breaks; ally loses 7 HP |
+| AC10 | Fixed trio heroes are level 1–4 | Hero gains XP and levels | No skill selection modal appears; heroes use only their 2 fixed skills |
+| AC11 | Fixed trio Warrior reaches level 5 | Level-up is triggered | Skill selection modal appears; "Enhance existing" offers Sunder Armor or Taunt; "Learn new" offers Cleave, Whirlwind (Taunt already owned, excluded) |
 
 ---
 
@@ -153,7 +249,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Map unlock flow (Greater Rift-style)**: Start on initial map only → fight monsters to accumulate exploration progress → when progress reaches 100%, the zone boss appears → defeat boss to unlock the next map.
-- **Squad expansion trigger**: Each new map unlock allows recruiting 1 additional hero (see Example 4 AC4). Initial: 1 hero; after map 2: 2 heroes; ... after map 5: 5 heroes max.
+- **Squad expansion trigger**: Initial: 3 heroes (fixed Warrior, Mage, Priest). Defeat map 1 boss (Hogger) → recruit 4th hero; defeat map 2 boss (VanCleef) → recruit 5th hero. Max 5 heroes (see Example 4 AC4).
 - **Classic WoW maps (in order)**:
   | # | Map | Zone Boss |
   |---|-----|-----------|
@@ -169,11 +265,11 @@ Then [expected result/verifiable behavior].
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player has completed character recruitment (Example 4) and adventure has begun | Player views the map selection screen | Only Elwynn Forest is available; other maps are locked or hidden |
+| AC1 | Player has started the adventure (fixed trio from Example 4) and adventure has begun | Player views the map selection screen | Only Elwynn Forest is available; other maps are locked or hidden |
 | AC2 | Player is on Elwynn Forest and the auto-combat loop is running | Squad automatically encounters random monsters (Normal and Elite mixed) and wins | Exploration progress increases automatically; progress bar or equivalent is visible; Normal kills contribute less than Elite kills; no manual selection of encounter type is required |
 | AC3 | Player is on a map and exploration progress has reached 100% | Progress reaches 100% | The zone boss (e.g., Hogger for Elwynn Forest) is automatically challenged in the next encounter |
 | AC4 | Player has defeated the zone boss on the current map | Boss is defeated | The next map is unlocked; player can select the new map to explore via the map modal; squad expansion becomes available (Example 4 AC4: player may recruit 1 more hero; expansion hero onboarding per Example 27) |
-| AC5 | Player has unlocked all 5 maps and defeated all 5 zone bosses | Player views the map selection screen | All 5 maps (Elwynn Forest through Stranglethorn Vale) are available; squad has reached max size (5 heroes) |
+| AC5 | Player has unlocked all 5 maps and defeated all 5 zone bosses | Player views the map selection screen | All 5 maps (Elwynn Forest through Stranglethorn Vale) are available; squad has reached max size (5 heroes) after recruiting 4th hero post-map 1 and 5th hero post-map 2 |
 | AC6 | Player is in combat with an Elite or Boss monster | Monster acts | Monster may use skills (not just basic attacks); combat log or UI indicates damage type (Physical or Magic) when applicable |
 | AC7 | Squad loses a combat encounter on any map | Defeat occurs | Exploration progress is deducted by a fixed amount (default 10 points); progress does not drop below 0; the auto-combat loop resumes after a short pause |
 
@@ -397,17 +493,18 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 12: Warrior Initial Skill Selection
+## Example 12: Warrior Initial Skill Selection (Expansion Heroes Only)
 
 **User Story**
 
 > As a player,  
-> I want to choose one initial skill when recruiting a Warrior hero,  
+> I want to choose one initial skill when recruiting a Warrior hero as an expansion hero,  
 > So that I can shape the Warrior's role (Arms DPS, Fury sustain, or Protection tank) from the start.
 
 **Design Reference (from design doc)**
 
-- **Trigger**: When a Warrior hero joins the squad (during recruitment flow).
+- **Scope**: Applies to **expansion hero** recruitment only. The fixed initial trio's Warrior has 2 fixed skills (Sunder Armor, Taunt) and does not use this flow.
+- **Trigger**: When a Warrior expansion hero joins the squad (during recruitment flow after map 1 or 2 boss defeat).
 - **Options**: Exactly 3 skills, one from each spec (Arms, Fury, Protection). Player must pick 1.
 - **Result**: The chosen skill becomes the Warrior's first and only skill until level 5 (when more skills unlock).
 - **Initial skills**:
@@ -493,12 +590,44 @@ Then [expected result/verifiable behavior].
 
 ---
 
+## Example 13b: Fixed Trio Warrior Skills (Sunder Armor, Taunt)
+
+**User Story**
+
+> As a player,  
+> I want my starting Warrior to debuff enemies and Taunt them to maintain aggro,  
+> So that I can learn threat mechanics and protect my healer and DPS from the first battle.
+
+**Design Reference (from design doc)**
+
+- **Scope**: Fixed initial trio Warrior only. Has Sunder Armor + Taunt (no Heroic Strike or Bloodthirst).
+- **Sunder Armor**: 15 Rage, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. Threat multiplier 1.5. See Example 13 AC5–AC7.
+- **Taunt**: 0 Rage, 2 round CD. Forces target monster to attack the Warrior for its next 2 actions. Threat = max(current highest, caster's) × 1.1 on target.
+- **Rage**: Same as Example 13; starts at 0; gains from dealing/taking damage.
+- **Reference**: [05-skills.md](design/05-skills.md) 8.1; [12-threat.md](design/12-threat.md).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Fixed trio Warrior has Sunder Armor, 20 Rage, target has no debuff | Warrior uses Sunder Armor | 15 Rage consumed; 0.8x damage; target gains Armor -8 for 3 rounds; threat += damage × 1.5 to that monster |
+| AC2 | Fixed trio Warrior has Taunt, 0 Rage, Taunt off cooldown | Warrior uses Taunt on Monster A | 0 Rage consumed; Monster A is forced to attack Warrior for 2 actions; Monster A's threat table: Warrior = max(highest, Warrior's) × 1.1 |
+| AC3 | Fixed trio Warrior has Taunt on cooldown (1 round left) | Warrior's turn | Taunt is not available; Warrior uses Sunder Armor or basic attack |
+| AC4 | Warrior has tactics [Taunt, Sunder Armor] with Taunt condition ally-ot | ally-ot is true (Mage has higher threat on one monster) | Warrior uses Taunt on that monster to pull aggro |
+| AC5 | Warrior has tactics [Taunt, Sunder Armor]; ally-ot is false | Warrior's turn | Taunt is skipped (condition not met); Sunder Armor is used on a valid target |
+| AC6 | Fixed trio Warrior reaches level 5 | Skill selection modal appears | "Enhance existing" offers Sunder Armor or Taunt; "Learn new" offers Cleave, Whirlwind (Taunt excluded; Heroic Strike is Lv 0/initial for expansion only) |
+| AC7 | Fixed trio Warrior uses Sunder Armor in combat | Combat log records | Log shows skill name, target, damage, debuff applied; threat sub-line visible in detail |
+| AC8 | Fixed trio Warrior uses Taunt in combat | Combat log records | Log shows "Tank used Taunt on [monster] — [monster] will attack Tank for 2 actions" |
+
+---
+
 ## Example 14: Mage Initial Skill Selection (Design Reference)
 
 **Design Reference (from design doc)**
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
+- **Fixed trio Mage**: Has Fireball + Arcane Blast (no selection). Fireball: 20 MP, 1.2x damage + Burn DoT. Arcane Blast: 15 MP, 1.2x damage. At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
 - **Initial skills (3选1)**:
@@ -509,6 +638,40 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   | Frost | Frostbolt | Frostbolt | 15 MP | 1.0x magic damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage |
 
 - **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
+
+---
+
+## Example 14a: Priest Fixed Initial Skills (Flash Heal, Power Word: Shield)
+
+**User Story**
+
+> As a player,  
+> I want my Priest to heal allies and apply damage-absorbing shields,  
+> So that I can sustain the tank and proactively protect teammates with low-threat shields.
+
+**Design Reference (from design doc)**
+
+- **Scope**: Fixed initial trio Priest only. Expansion Priest recruitment uses the same skill pool (when Priest skill design is complete).
+- **Flash Heal**: 15 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 to all alive monsters.
+- **Power Word: Shield**: 15 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) to all alive monsters.
+- **Shield mechanics**: Damage to shielded target is absorbed first; excess goes to HP. Recasting refreshes absorb and duration. One shield per target.
+- **Mana**: Same as Mage; MP from Int/Spirit; recovers per turn. See [04-classes-attributes.md](design/04-classes-attributes.md).
+- **Reference**: [05-skills.md](design/05-skills.md) 8.3; [12-threat.md](design/12-threat.md) 3.2.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Priest has Flash Heal, 20 MP, ally has 30/50 HP | Priest uses Flash Heal on ally | 15 MP consumed; ally heals (SpellPower × 1.0); combat log shows heal amount; threat += healAmount × 0.5 to all monsters |
+| AC2 | Priest has Flash Heal, 10 MP | Priest's turn and tactics select Flash Heal | Skill is not used (insufficient MP); Priest performs basic attack or waits |
+| AC3 | Priest has Power Word: Shield, 20 MP, ally has no shield | Priest uses Power Word: Shield on ally | 15 MP consumed; ally gains shield (absorb = SpellPower × 1.0, 3 rounds); combat log shows shield applied; threat += absorbAmount × 0.25 to all monsters |
+| AC4 | Ally has Power Word: Shield (absorb 20, 2 rounds left) | Ally receives 15 physical damage | Shield absorbs 15; shield remaining = 5; ally loses 0 HP |
+| AC5 | Ally has Power Word: Shield (absorb 8, 1 round left) | Ally receives 20 damage | Shield absorbs 8 and breaks; ally loses 12 HP |
+| AC6 | Ally has Power Word: Shield | Priest casts Power Word: Shield on same ally again | Shield is refreshed: new absorb amount and 3-round duration; previous shield replaced |
+| AC7 | Priest uses Power Word: Shield | Player views combat log detail | Log detail shows `Threat +N to all monsters` (N = absorbAmount × 0.25); lower than heal threat for same magnitude |
+| AC8 | Priest uses Flash Heal for 18 HP | Player views combat log detail | Log detail shows `Threat +9 to all monsters` (18 × 0.5) |
+| AC9 | Ally has shield and takes damage | Damage is applied | Combat log or floating number indicates shield absorbed X, overflow Y to HP (or shield broke) |
+| AC10 | Priest has targetRule tank for Flash Heal | Priest's turn | Priest selects the tank (highest threat on most monsters) as heal target when no other condition overrides |
 
 ---
 
@@ -525,6 +688,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | A unit (hero or monster) has an active debuff (e.g. Sunder Armor) | User views the unit's panel (Squad or Monsters column) | A debuff badge is shown on the panel (e.g. "SA" for Sunder Armor) |
+| AC1a | A hero has Power Word: Shield (absorb active) | User views the hero's panel | A shield/buff badge is shown (e.g. "PW:S" or shield icon); hover shows absorb amount and remaining duration |
 | AC2 | User hovers over a debuff badge on a unit panel | Tooltip appears | Tooltip shows debuff name and details (e.g. "Sunder Armor: Armor -8 for 3 round(s)") |
 | AC3 | User opens the detail modal for a unit that has debuffs | Modal displays | A "Debuffs" section lists active debuffs with their remaining duration and effect |
 | AC4 | Debuff expires (remaining rounds reaches 0) | Round ends | The debuff badge is removed from the unit panel |
@@ -548,6 +712,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | A hero receives skill-based healing (e.g. Bloodthirst) | Healing is applied | A floating animation shows the skill name and "+X" (heal value) on the healer's panel |
 | AC4 | A floating number animation is displayed | Animation plays | Damage numbers use red color; heal numbers use green color; skill names use skill color and italic style |
 | AC5 | A new combat encounter starts | Battle begins | Any floating numbers from the previous encounter are cleared |
+| AC6 | Ally has Power Word: Shield and receives damage | Damage is applied | Floating animation shows shield absorption (e.g., "Shield -12") and/or overflow to HP (e.g., "-5" in red if shield broke and 5 overflow) |
 
 ---
 
@@ -895,7 +1060,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   - **Exclude already learned**: Skills the hero already has do not appear in the new-skill list.
   - **Pool exhausted**: If fewer than 3 unlearned skills remain at that level, show only the remaining ones; if all skills at that level are already learned, only the "Enhance existing skill" option is available.
 - **Max skills**: At level 60, the hero has triggered 12 times (5, 10, ..., 60); theoretical max = 1 (initial) + 12 = 13 skills, or fewer if the player chose to enhance existing skills multiple times.
-- **Example (Warrior Lv 5)**: Enhance existing (Heroic Strike / Bloodthirst / Sunder Armor), or learn one of: Cleave (Arms), Whirlwind (Fury), Taunt (Protection).
+- **Example (Warrior Lv 5)**: Expansion Warrior: Enhance existing (Heroic Strike / Bloodthirst / Sunder Armor), or learn one of: Cleave (Arms), Whirlwind (Fury), Taunt (Protection). Fixed trio Warrior: Enhance existing (Sunder Armor / Taunt), or learn one of: Cleave (Arms), Whirlwind (Fury) — Taunt excluded (already owned).
 - **Enhancement rules**: Each skill can be enhanced at most 3 times. Heroic Strike: +0.2 coefficient per enhance (max 1.8). Bloodthirst: +0.1 coefficient and +5% heal per enhance (max 1.5, 30%). Sunder Armor: +1 max stack per enhance (max 4 layers), each layer -8 armor, +2% damage per excess point when armor below 0, refresh duration on apply.
 
 **Acceptance Criteria**
@@ -915,40 +1080,40 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
-## Example 27: Squad Expansion Hero Recruitment (First Map Boss Defeat)
+## Example 27: Squad Expansion Hero Recruitment (Map 1 or Map 2 Boss Defeat)
 
 **User Story**
 
 > As a player,
-> I want to recruit a new hero at level 5 when I defeat the first map boss,
-> So that I can expand my squad with a ready-to-fight hero and customize their build through attribute allocation, initial skill, and level 5 skill selection in one onboarding flow.
+> I want to recruit a new hero when I defeat the first or second map boss,
+> So that I can expand my squad (from 3 to 4, then 4 to 5) with ready-to-fight heroes and customize their build through attribute allocation, initial skill, and level skill selection in one onboarding flow.
 
 **Design Reference (from design doc)**
 
-- **Trigger**: Player defeats the zone boss on the first map (e.g., Hogger in Elwynn Forest).
-- **Result**: Second map (Westfall) is unlocked; squad expansion becomes available; player may recruit 1 additional hero.
-- **Expansion hero level**: The new hero joins at **level 5** (not level 1).
-- **Recruitment flow order**: (1) Select hero from roster (same as Example 4); (2) Allocate 20 attribute points (equivalent to levels 1–5: 4 level-ups × 5 points); (3) Select initial skill (3 options, pick 1, per Example 12); (4) Complete level 5 skill selection (enhance existing or learn new, per Example 26).
-- **Attribute points**: 20 points to assign to Strength, Agility, Intellect, Stamina, or Spirit before the hero joins the squad.
+- **Trigger (4th hero)**: Player defeats the zone boss on the first map (e.g., Hogger in Elwynn Forest). Squad expands from 3 to 4.
+- **Trigger (5th hero)**: Player defeats the zone boss on the second map (e.g., VanCleef in Westfall). Squad expands from 4 to 5. Max squad size reached.
+- **Expansion hero level**: 4th hero joins at **level 5**; 5th hero joins at **level 10**.
+- **Recruitment flow order**: (1) Select hero from roster (same as Example 4); (2) Allocate attribute points (20 for Lv 5, 45 for Lv 10); (3) Select initial skill (3 options, pick 1, per Example 12); (4) Complete level N skill selection (enhance existing or learn new, per Example 26).
 - **Initial skill**: Same rules as Example 12 (e.g., Warrior: Heroic Strike, Bloodthirst, Sunder Armor — pick 1).
-- **Level 5 skill**: Same rules as Example 26 — enhance the chosen initial skill or learn one of the 3 fixed Lv 5 skills (e.g., Warrior: Cleave, Whirlwind, Taunt).
-- **Subsequent expansions**: After defeating map 2, 3, 4 bosses, new heroes join at level 10, 15, 20 respectively, with corresponding attribute points and skill selection steps (see design doc 02-levels-monsters.md 1.2.1).
+- **Level skill**: Same rules as Example 26 — enhance the chosen initial skill or learn one of the 3 fixed Lv N skills (e.g., Warrior Lv 5: Cleave, Whirlwind, Taunt).
+- **Reference**: See design doc 02-levels-monsters.md 1.2.1.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player has defeated the zone boss on the first map (Elwynn Forest) | Boss is defeated | The second map (Westfall) is unlocked; a recruitment prompt or squad expansion UI appears; player can select a new hero to join the squad |
+| AC1 | Player has defeated the zone boss on the first map (Elwynn Forest) | Boss is defeated | The second map (Westfall) is unlocked; a recruitment prompt or squad expansion UI appears; player can select a new hero to join as the 4th squad member |
 | AC2 | Player triggers squad expansion after first map boss defeat | Player enters the recruitment flow | The new hero is created at **level 5** with base attributes from their class; 20 unassigned attribute points are available |
-| AC3 | Player is on the attribute allocation step for the expansion hero | Player allocates the 20 attribute points | Player assigns points to Strength, Agility, Intellect, Stamina, or Spirit; all 20 must be assigned before proceeding; assignment is saved when confirmed |
+| AC3 | Player is on the attribute allocation step for the expansion hero | Player allocates the attribute points | Player assigns points to Strength, Agility, Intellect, Stamina, or Spirit; all points must be assigned before proceeding; assignment is saved when confirmed |
 | AC4 | Player has completed attribute allocation | Player proceeds | The initial skill selection step is shown (3 options, one per spec, per Example 12); player must select 1 skill |
-| AC5 | Player has selected the initial skill | Player proceeds | The level 5 skill selection step is shown (enhance existing or learn new, per Example 26); player must make a choice or skip |
-| AC6 | Player has completed all recruitment steps (hero select, attributes, initial skill, level 5 skill) | Player confirms | The new hero joins the squad at level 5 with the assigned attributes, initial skill, and level 5 skill choice; the recruitment flow ends |
-| AC7 | Player views the squad after recruiting an expansion hero | Squad panel is displayed | The new hero shows level 5, the allocated attributes, and the chosen skills (initial + level 5 choice) |
-| AC8 | Player has not completed attribute allocation | Player attempts to skip or proceed | The flow does not complete; player must allocate all 20 points before the initial skill step |
-| AC9 | Player has not selected an initial skill | Player attempts to proceed | The flow does not complete; player must select 1 of the 3 initial skills before the level 5 skill step |
-| AC10 | Expansion hero (e.g., Warrior) joins with Bloodthirst and chooses "Enhance existing" at level 5 | Recruitment completes | The Warrior has Bloodthirst enhanced once (e.g., +0.1 coefficient, +5% heal); no new skill is learned |
-| AC11 | Expansion hero (e.g., Warrior) joins with Heroic Strike and chooses "Learn new skill" — Cleave | Recruitment completes | The Warrior has Heroic Strike and Cleave; both are available in combat |
+| AC5 | Player has selected the initial skill | Player proceeds | The level 5 (or 10 for 5th hero) skill selection step is shown (enhance existing or learn new, per Example 26); player must make a choice or skip |
+| AC6 | Player has completed all recruitment steps (hero select, attributes, initial skill, level skill) | Player confirms | The new hero joins the squad at the designated level with the assigned attributes, initial skill, and level skill choice; the recruitment flow ends |
+| AC7 | Player views the squad after recruiting an expansion hero | Squad panel is displayed | The new hero shows the correct level (5 or 10), the allocated attributes, and the chosen skills (initial + level skill choice) |
+| AC8 | Player has defeated the zone boss on the second map (Westfall) | Boss is defeated | The third map (Duskwood) is unlocked; squad expansion becomes available for the 5th hero (level 10) |
+| AC9 | Player has not completed attribute allocation | Player attempts to skip or proceed | The flow does not complete; player must allocate all points before the initial skill step |
+| AC10 | Player has not selected an initial skill | Player attempts to proceed | The flow does not complete; player must select 1 of the 3 initial skills before the level skill step |
+| AC11 | Expansion hero (e.g., Warrior) joins with Bloodthirst and chooses "Enhance existing" at level 5 | Recruitment completes | The Warrior has Bloodthirst enhanced once (e.g., +0.1 coefficient, +5% heal); no new skill is learned |
+| AC12 | Expansion hero (e.g., Warrior) joins with Heroic Strike and chooses "Learn new skill" — Cleave | Recruitment completes | The Warrior has Heroic Strike and Cleave; both are available in combat |
 
 ---
 
@@ -1061,7 +1226,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Source**: [12-threat.md](design/12-threat.md)
 - **Threat table**: Each monster maintains an independent threat table; threat values are non-negative integers, initial 0; MVP: threat does not decay.
 - **Monster target selection** (priority order): (1) If under Taunt/Challenging Shout, attack the caster; (2) Else attack the hero with highest threat on that monster; (3) If tied, random.
-- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); Healing → threat = healAmount × 0.5 to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
+- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); Healing → threat = healAmount × 0.5 to all alive monsters; Shield (Power Word: Shield) → threat = absorbAmount × 0.25 (low) to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
 - **Taunt**: Forces target monster to attack caster for 2 actions; Challenging Shout forces all monsters for 2 rounds.
 - **Tank definition**: Hero with highest threat on the most monsters; tie-break by total threat sum.
 - **ally-ot**: True when at least one monster's highest-threat target is not the tank.
@@ -1082,6 +1247,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC8 | Warrior deals 10 physical damage to Monster A with Heroic Strike (threatMultiplier 1.0) | Damage is applied | Monster A's threat table: Warrior += 10 |
 | AC9 | Warrior uses Sunder Armor, deals 8 damage (threatMultiplier 1.5) | Damage is applied | Monster A's threat table: Warrior += 12 (8 × 1.5) |
 | AC10 | Mage heals an ally for 15 HP | Heal is applied | All alive monsters add 7.5 threat (15 × 0.5) to the Mage |
+| AC10a | Priest uses Power Word: Shield on ally (absorb 20) | Shield is applied | All alive monsters add 5 threat (20 × 0.25, low) to the Priest |
 | AC11 | Warrior has highest threat on Monster A and Monster B; Mage has highest threat on Monster C | ally-ot is evaluated | ally-ot is true (Monster C's highest-threat target is Mage, not the tank Warrior) |
 | AC12 | Warrior has highest threat on all 3 monsters | ally-ot is evaluated | ally-ot is false (all monsters target the tank) |
 | AC13 | Warrior has tactics with targetRule highest-threat; one monster attacks Warrior, one attacks Mage | Warrior's turn | Warrior selects the monster attacking Mage (the one that may OT) as target |
@@ -1109,6 +1275,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Taunt entry**: `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions`
 - **Damage threat**: In damage log detail: `Threat +15 to Wolf`
 - **Heal threat**: In heal log detail: `Threat +8 to all monsters`
+- **Shield threat**: In shield log detail: `Threat +5 to all monsters` (absorbAmount × 0.25, low)
 - **Monster card**: Show `→ Tank` or `→ Mage` next to monster name/HP to indicate current target
 
 **Acceptance Criteria**
@@ -1121,6 +1288,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC4 | Warrior uses Taunt on a monster | Taunt is applied | Combat log shows `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions` (or equivalent names) |
 | AC5 | Hero deals damage to a monster (e.g., 15 final damage) | Player views the damage log entry detail | Log detail box shows `Threat +15 to Wolf` (or equivalent; value matches threat formula) |
 | AC6 | Hero heals an ally (e.g., 16 HP) | Player views the heal log entry detail | Log detail box shows `Threat +8 to all monsters` (healAmount × 0.5) |
+| AC6a | Priest uses Power Word: Shield (absorb 20) on ally | Player views the shield log entry detail | Log detail box shows `Threat +5 to all monsters` (absorbAmount × 0.25, low threat) |
 | AC7 | Monster is targeting Tank | Player views the monster card | Monster card displays `→ Tank` or equivalent target indicator |
 | AC8 | Monster is targeting Mage | Player views the monster card | Monster card displays `→ Mage` or equivalent target indicator |
 

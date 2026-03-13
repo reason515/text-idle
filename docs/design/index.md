@@ -2,6 +2,8 @@
 
 > 本文档为 Text Idle 游戏设计的主入口，各模块已拆分至独立文件，便于维护与扩展。
 
+**设计变更时**：修改核心流程（小队、招募、技能、引导、路由）后，请运行 [Design Change Impact Checklist](../design-change-impact.md)，避免遗漏 UI/流程/Examples/E2E 等衔接。
+
 ## 文档结构
 
 | 模块 | 文件 | 说明 |

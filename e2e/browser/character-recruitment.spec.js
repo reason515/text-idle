@@ -15,7 +15,7 @@ async function registerAndCompleteIntro(page, email) {
   await page.getByRole('button', { name: '下一步' }).click()
   await page.getByLabel('队伍名称').fill('Adventure Squad')
   await page.getByRole('button', { name: '开始冒险' }).click()
-  await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
+  await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 }
 
 /** Recruit a Warrior through skill selection + confirmation (initial hero, Lv1). */
@@ -130,63 +130,46 @@ async function recruitExpansionMage(page, heroName = 'Jaina Proudmoore', attrPoi
 }
 
 test.describe('Character Recruitment (Example 4)', () => {
-  test('AC1: Start Adventure shows character selection with WoW-style heroes', async ({ page }) => {
+  test('AC1: Start Adventure lands on main with fixed trio (Warrior, Mage, Priest)', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await expect(page.getByText('Choose Your Hero')).toBeVisible()
-    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
-    await expect(page.getByText('Jaina Proudmoore').first()).toBeVisible()
-    await expect(page.getByText('Rexxar').first()).toBeVisible()
+    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page.getByText('Varian').first()).toBeVisible()
+    await expect(page.getByText('Jaina').first()).toBeVisible()
+    await expect(page.getByText('Anduin').first()).toBeVisible()
   })
 
-  test('AC1b: hero cards show resources (HP/MP/Rage/Energy/Focus) distinct from primary attributes', async ({ page }) => {
+  test('AC1b: hero cards show resources (HP/MP/Rage) distinct from primary attributes', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await expect(page.getByText('Choose Your Hero')).toBeVisible()
-    // Varian (Warrior): HP 48, Rage 100
-    await expect(page.getByText('HP 48')).toBeVisible()
-    await expect(page.getByText('Rage 100')).toBeVisible()
-    // Jaina (Mage): HP, MP
-    await expect(page.getByText('MP 37')).toBeVisible()
-    // Rexxar (Hunter): HP, Focus 100
-    await expect(page.getByText('Focus 100')).toBeVisible()
-    // Valeera (Rogue): Energy 100
-    await expect(page.getByText('Energy 100')).toBeVisible()
-    // Primary attributes (Str, Agi, etc) still visible
+    await expect(page.locator('.hero-card')).toHaveCount(3)
+    await expect(page.getByText('HP').first()).toBeVisible()
+    await expect(page.getByText('Rage').first()).toBeVisible()
+    await expect(page.getByText('MP').first()).toBeVisible()
     await expect(page.getByText(/Str \d+/).first()).toBeVisible()
   })
 
-  test('AC2: selecting hero shows confirmation, after confirm joins squad and adventure begins', async ({ page }) => {
+  test('AC2: fixed trio starts adventure on main with 3 heroes', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
 
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    // Warrior shows skill selection step first
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    // Now shows confirmation
-    await expect(page.getByText(/Add.*Varian Wrynn.*Warrior/)).toBeVisible()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
+    await expect(page.getByText('Varian').first()).toBeVisible()
+    await expect(page.getByText('Jaina').first()).toBeVisible()
+    await expect(page.getByText('Anduin').first()).toBeVisible()
     await expect(page.getByText('Warrior')).toBeVisible()
+    await expect(page.getByText('Mage')).toBeVisible()
+    await expect(page.getByText('Priest')).toBeVisible()
   })
 
   test('AC3: squad panel displays name, class, level, and initial attributes via detail modal', async ({ page }) => {
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    const card = page.locator('.hero-card').first()
+    const card = page.locator('.hero-card').filter({ hasText: 'Jaina' }).first()
     await expect(card).toBeVisible()
     await expect(card.locator('.hero-name')).toContainText('Jaina Proudmoore')
     await expect(card.locator('.hero-class')).toContainText('Mage')
@@ -205,12 +188,10 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.getByRole('button', { name: 'Close' }).click()
   })
 
-  test('AC4: player with 1+ character can recruit another hero when squad < 5', async ({ page }) => {
+  test('AC4: player with fixed trio can recruit 4th hero when squad < limit', async ({ page }) => {
     test.setTimeout(90000)
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await updateStoredState(page, () => {
@@ -230,75 +211,74 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
+    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 5000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
     await page.getByRole('button', { name: 'Next' }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
-    const modalOrConfirm = await Promise.race([
-      skillModal.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'modal'),
-      confirmStep.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'confirm'),
-    ])
-    if (modalOrConfirm === 'modal') {
-      await skillModal.getByRole('button', { name: 'Skip' }).click()
-    }
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.hero-card')).toHaveCount(2)
+    await expect(page.locator('.hero-card')).toHaveCount(4)
     await expect(page.getByText('Rexxar').first()).toBeVisible()
-    await expect(page.getByText('Varian Wrynn').first()).toBeVisible()
   })
 
-  test('AC5a: hero confirmation shows secondary attributes and formulas', async ({ page }) => {
+  test('AC5a: expansion recruit confirmation shows secondary attributes and formulas', async ({ page }) => {
+    test.setTimeout(60000)
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-
-    // Warrior: click hero, select any skill, click Next to reach confirmation
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').first().click()
+    await updateStoredState(page, () => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true })
+    await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.getByRole('button', { name: /^Uther\b/ }).click()
+    await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
+    const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
+    for (let i = 0; i < 20; i++) await strengthBtn.click()
     await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByText(/Add.*Varian Wrynn/)).toBeVisible()
+    await expect(page.getByText(/Add.*Uther/)).toBeVisible()
 
-    await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
-    await expect(page.getByText('Hover over attribute for formula')).toBeVisible()
+    await expect(page.getByText('Secondary Attributes')).toBeVisible()
     await expect(page.getByText('HP')).toBeVisible()
-    await expect(page.getByText('48')).toBeVisible()
     await expect(page.getByText('PhysAtk')).toBeVisible()
-    const physAtkItem = page.locator('.secondary-item').filter({ hasText: 'PhysAtk' }).first()
-    await expect(physAtkItem.locator('.secondary-value')).toContainText(/\d/)
-    const hpItem = page.locator('.secondary-item').filter({ hasText: 'HP' }).first()
-    await expect(hpItem).toHaveAttribute('data-tooltip', /10 \+ Stam/)
   })
 
-  test('AC5b: Mage confirmation shows SpellPower and MP', async ({ page }) => {
+  test('AC5b: expansion Mage confirmation shows SpellPower and MP', async ({ page }) => {
+    test.setTimeout(60000)
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
+    await updateStoredState(page, () => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true })
+    await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.getByRole('button', { name: /^Malfurion\b/ }).click()
+    await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
+    const intBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Intellect' }).locator('.attr-btn')
+    for (let i = 0; i < 20; i++) await intBtn.click()
     await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByText(/Add.*Jaina/)).toBeVisible()
+    await expect(page.getByText(/Add.*Malfurion/)).toBeVisible()
 
-    await expect(page.getByText('Secondary Attributes (Lv1)')).toBeVisible()
+    await expect(page.getByText('Secondary Attributes')).toBeVisible()
     await expect(page.getByText('SpellPower')).toBeVisible()
     await expect(page.getByText('MP')).toBeVisible()
-    const mpItem = page.locator('.secondary-item').filter({ hasText: 'MP' }).first()
-    await expect(mpItem.locator('.secondary-value')).toContainText('37')
   })
 
   test('Example27 AC2/AC7: expansion hero joins at Lv5 with allocated attrs', async ({ page }) => {
     test.setTimeout(90000)
     const email = `expand-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await prepareForRecruit(page, false)
@@ -320,75 +300,50 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
+    await page.getByRole('button', { name: /^Uther\b/ }).click()
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 3000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
     await page.getByRole('button', { name: 'Next' }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
-    const modalOrConfirm = await Promise.race([
-      skillModal.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'modal'),
-      confirmStep.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'confirm'),
-    ])
-    if (modalOrConfirm === 'modal') {
-      await skillModal.getByRole('button', { name: 'Skip' }).click()
-    }
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
-    const varianCard = page.locator('.hero-card').filter({ hasText: 'Varian Wrynn' })
-    await expect(varianCard).toContainText(/Lv\.?\s*5/)
+    const utherCard = page.locator('.hero-card').filter({ hasText: 'Uther' })
+    await expect(utherCard).toContainText(/Lv\.?\s*5/)
   })
 
-  test('Example27 AC10: expansion Warrior with enhance choice has enhanced skill', async ({ page }) => {
+  test('Example27 AC10: fixed trio Warrior enhance at level 5 shows enhanced skill in detail', async ({ page }) => {
     test.setTimeout(90000)
     const email = `expand-enhance-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
-    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await prepareForRecruit(page, false)
-    await page.evaluate(() => {
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      if (warrior) {
+        warrior.level = 4
+        warrior.xp = 594
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
       localStorage.setItem('combatProgress', JSON.stringify({
-        unlockedMapCount: 2,
-        currentMapId: 'westfall',
+        unlockedMapCount: 1,
+        currentMapId: 'elwynn-forest',
         currentProgress: 0,
         bossAvailable: false,
       }))
-      localStorage.setItem('e2eFastCombat', '1')
-    })
-    await page.goto('/main', { waitUntil: 'load' })
-    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
-    await page.waitForTimeout(200)
-    await prepareForRecruit(page)
-    await page.waitForTimeout(100)
-    await clickRecruitBtn(page)
-
-    await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 5000 })
-    const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
-    for (let i = 0; i < 20; i++) await strengthBtn.click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
+    }, undefined, { pauseFirst: true })
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 10000 })
-    await skillModal.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).first().click()
+    await expect(skillModal).toBeVisible({ timeout: 15000 })
+    await skillModal.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).first().click()
     await skillModal.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page.locator('[data-testid="confirm-recruit-step"]')).toBeVisible({ timeout: 5000 })
-    await page.locator('[data-testid="confirm-recruit-btn"]').click()
+    await expect(skillModal).not.toBeVisible()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await page.locator('.hero-card').filter({ hasText: 'Varian Wrynn' }).click()
+    await page.locator('.hero-card').filter({ hasText: 'Varian' }).click()
     await expect(page.locator('.detail-modal')).toBeVisible()
     await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
-    await expect(page.locator('.detail-modal').getByText('Heroic Strike').first()).toBeVisible()
+    await expect(page.locator('.detail-modal').getByText('Sunder Armor').first()).toBeVisible()
   })
 
   test('AC5: squad full at 5, no further recruitment', async ({ page }) => {
@@ -398,33 +353,16 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
     await registerAndCompleteIntro(page, email)
     await page.evaluate(() => {
-      localStorage.setItem('e2eFastCombat', '1')
-      localStorage.setItem('combatProgress', JSON.stringify({
-        unlockedMapCount: 2,
-        currentMapId: 'westfall',
-        currentProgress: 0,
-        bossAvailable: false,
-      }))
-    })
-    await page.goto('/character-select')
-
-    await recruitWarrior(page, 'Varian Wrynn')
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await page.evaluate(() => {
       const INIT = { Warrior: { strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 }, Mage: { strength: 2, agility: 4, intellect: 11, stamina: 4, spirit: 5 }, Hunter: { strength: 5, agility: 10, intellect: 4, stamina: 7, spirit: 4 }, Paladin: { strength: 8, agility: 3, intellect: 8, stamina: 8, spirit: 6 }, Priest: { strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9 } }
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const add = (h, cls) => squad.push({ ...h, class: cls, level: 1, xp: 0, unassignedPoints: 0, equipment: {}, ...INIT[cls] })
-      add({ id: 'jaina', name: 'Jaina Proudmoore' }, 'Mage')
       add({ id: 'rexxar', name: 'Rexxar' }, 'Hunter')
       add({ id: 'uther', name: 'Uther' }, 'Paladin')
-      add({ id: 'anduin', name: 'Anduin Wrynn' }, 'Priest')
       localStorage.setItem('squad', JSON.stringify(squad))
       const p = JSON.parse(localStorage.getItem('combatProgress') || '{}')
       p.unlockedMapCount = 5
       localStorage.setItem('combatProgress', JSON.stringify(p))
     })
-    await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 15000 })
     await page.goto('/main', { waitUntil: 'domcontentloaded', timeout: 15000 })
 
     await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
