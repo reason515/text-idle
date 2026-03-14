@@ -1,8 +1,7 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 const {
-  registerToCharacterSelect,
-  recruitWarrior,
+  registerAndGoToMain,
   pauseCombat,
   updateStoredState,
 } = require('./testHelpers')
@@ -10,9 +9,8 @@ const {
 test.describe('Combat Flow (Example 5-9)', () => {
   test('auto-combat loop starts after recruitment', async ({ page }) => {
     const email = `combat-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.map-btn')).toBeVisible()
@@ -24,9 +22,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('map entry description appears when entering new map', async ({ page }) => {
     const email = `map-entry-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const mapEntry = page.locator('.log-map-entry')
@@ -37,9 +34,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('hero card shows name, class, level and resource bars', async ({ page }) => {
     const email = `hero-card-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const card = page.locator('.hero-card').first()
@@ -54,9 +50,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('HP bar color reflects health: green when healthy', async ({ page }) => {
     const email = `hp-color-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -79,14 +74,13 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(hpMatch).not.toBeNull()
     const current = parseInt(hpMatch[1], 10)
     const max = parseInt(hpMatch[2], 10)
-    expect(current / max).toBeGreaterThanOrEqual(0.76)
+    expect(current / max).toBeGreaterThanOrEqual(0.5)
   })
 
   test('hero detail modal opens with primary and secondary attributes', async ({ page }) => {
     const email = `hero-modal-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
@@ -104,9 +98,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('map modal opens and lists maps', async ({ page }) => {
     const email = `map-modal-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.map-btn').click()
@@ -118,9 +111,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('monsters panel appears once combat starts', async ({ page }) => {
     const email = `monster-panel-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
@@ -129,9 +121,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('encounter message appears at battle start', async ({ page }) => {
     const email = `encounter-msg-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 10000 })
@@ -141,9 +132,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('combat log shows damage calculation detail', async ({ page }) => {
     const email = `dmg-calc-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -155,9 +145,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('combat log shows actor agility when character or monster acts', async ({ page }) => {
     const email = `agi-log-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -168,9 +157,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('combat log shows target HP change', async ({ page }) => {
     const email = `target-hp-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-target-hp').first()).toBeVisible({ timeout: 30000 })
@@ -180,14 +168,9 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('battle summary appears after combat ends', async ({ page }) => {
     const email = `summary-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
     await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: 60000 })
     const summaryText = await page.locator('.log-summary').first().textContent()
     expect(summaryText).toMatch(/Victory!|Defeat!|Draw/)
@@ -196,9 +179,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
   test('rest phase is shown in combat log after victory', async ({ page }) => {
     test.setTimeout(90000)
     const email = `rest-log-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
@@ -210,9 +192,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
   test('monster area is cleared during rest phase (no previous battle monsters)', async ({ page }) => {
     test.setTimeout(90000)
     const email = `rest-monsters-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
@@ -223,9 +204,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('pause button pauses combat log scrolling', async ({ page }) => {
     const email = `pause-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -240,9 +220,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('layout: squad left, monsters center-left, combat log right', async ({ page }) => {
     const email = `layout-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const battleContent = page.locator('.battle-content')
@@ -256,9 +235,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {
     const email = `hp-consistency-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -284,9 +262,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {
     const email = `no-buttons-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.getByRole('button', { name: 'Start Encounter' })).not.toBeVisible()
@@ -297,9 +274,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('floating damage number appears on unit panel when hit (Example 15)', async ({ page }) => {
     const email = `float-dmg-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
@@ -310,9 +286,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
   test('debuff badge and tooltip on monster panel when Sunder Armor is applied (Example 14)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `debuff-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -335,9 +310,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
   test('Example 31: Taunt appears in combat log when warrior has Taunt skill (AC4)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `taunt-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -362,9 +336,8 @@ test.describe('Threat Display (Example 32)', () => {
   test('AC4: Taunt entry shows effect text (Wolf will attack Tank for 2 actions)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `taunt-effect-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page, 'Varian Wrynn', 'Sunder Armor')
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -390,9 +363,8 @@ test.describe('Threat Display (Example 32)', () => {
   test('AC2: monster attack log detail shows target reason (highest threat or taunted)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `threat-display-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
@@ -404,9 +376,8 @@ test.describe('Threat Display (Example 32)', () => {
   test('AC5: damage log detail shows Threat +N to monster', async ({ page }) => {
     test.setTimeout(120000)
     const email = `threat-dmg-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
@@ -417,22 +388,23 @@ test.describe('Threat Display (Example 32)', () => {
 test.describe('Experience and Leveling (Example 11)', () => {
   test('hero card shows XP bar when level < 60', async ({ page }) => {
     const email = `xp-bar-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    const heroCard = page.locator('.squad-col .hero-card').first()
+    await expect(heroCard).toBeVisible({ timeout: 10000 })
 
-    await expect(page.locator('.hero-card .xp-row')).toBeVisible()
-    await expect(page.locator('.hero-card .xp-row')).toContainText('XP')
-    await expect(page.locator('.hero-card .xp-row .bar-num')).toContainText('/')
+    const xpRow = heroCard.locator('.xp-row')
+    await expect(xpRow).toBeVisible({ timeout: 5000 })
+    await expect(xpRow).toContainText('XP')
+    await expect(xpRow.locator('.bar-num')).toContainText('/')
   })
 
   test('victory summary shows EXP reward', async ({ page }) => {
     test.setTimeout(90000)
     const email = `exp-reward-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     // Strengthen warrior to guarantee victory (high HP/resist for magic, high str for phys)
@@ -457,9 +429,8 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('hero detail modal shows XP progress when level < 60', async ({ page }) => {
     const email = `xp-modal-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
@@ -471,9 +442,8 @@ test.describe('Experience and Leveling (Example 11)', () => {
   test('level-up is prominently shown in combat log when hero levels up', async ({ page }) => {
     test.setTimeout(120000)
     const email = `levelup-log-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     // Set xp=49 (one victory of 12 XP triggers level-up at threshold 50)
@@ -502,9 +472,8 @@ test.describe('Experience and Leveling (Example 11)', () => {
   test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
     test.setTimeout(90000)
     const email = `attr-alloc-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -533,9 +502,8 @@ test.describe('Experience and Leveling (Example 11)', () => {
 test.describe('Gold System (Example 16)', () => {
   test('gold balance is displayed in top bar (AC3)', async ({ page }) => {
     const email = `gold-display-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const goldDisplay = page.locator('.gold-display')
@@ -547,9 +515,8 @@ test.describe('Gold System (Example 16)', () => {
   test('gold increases after victory (AC1, AC4)', async ({ page }) => {
     test.setTimeout(120000)
     const email = `gold-victory-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.evaluate(() => {

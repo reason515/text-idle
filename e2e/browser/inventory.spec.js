@@ -7,7 +7,7 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerToCharacterSelect, recruitWarrior, updateStoredState } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState } = require('./testHelpers')
 
 const SAMPLE_ITEM = {
   id: 'test-item-helm-1',
@@ -31,9 +31,8 @@ const SAMPLE_ITEM = {
 test.describe('Inventory (Example 22)', () => {
   test('backpack button opens modal and shows N/100', async ({ page }) => {
     const email = `inv-backpack-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => { localStorage.setItem('playerInventory', '[]') }, undefined, { pauseFirst: true })
@@ -52,9 +51,8 @@ test.describe('Inventory (Example 22)', () => {
 
   test('backpack with items shows count and grid', async ({ page }) => {
     const email = `inv-count-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
@@ -73,27 +71,28 @@ test.describe('Inventory (Example 22)', () => {
 
   test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
     const email = `inv-tooltip-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_ITEM, { pauseFirst: true })
+    }, SAMPLE_ITEM, { pauseFirst: true, safePath: '/main' })
 
-    await page.locator('.backpack-btn').click()
-    await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).hover()
+    await page.locator('.backpack-btn').first().click()
+    await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
+    const slot = page.locator('.inventory-slot').filter({ hasText: 'Cap' }).first()
+    await slot.hover()
+    await page.waitForTimeout(150)
     const tooltip = page.locator('.inventory-slot-tooltip')
-    await expect(tooltip).toBeVisible({ timeout: 2000 })
+    await expect(tooltip).toBeVisible({ timeout: 3000 })
     await expect(tooltip).toContainText('Armor')
   })
 
   test('click item opens detail modal with Slot, Level Req, Sell Price, Sell', async ({ page }) => {
     const email = `inv-detail-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
@@ -113,9 +112,8 @@ test.describe('Inventory (Example 22)', () => {
 
   test('Sell removes item and increases gold', async ({ page }) => {
     const email = `inv-sell-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {

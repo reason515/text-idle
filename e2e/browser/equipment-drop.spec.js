@@ -7,15 +7,14 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerToCharacterSelect, recruitWarrior, updateStoredState } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState } = require('./testHelpers')
 
 test.describe('Equipment Drop (Example 17, 21, 23)', () => {
   test('victory summary shows EXP and Gold; equipment may appear when dropped', async ({ page }) => {
     test.setTimeout(90000)
     const email = `eq-drop-victory-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 85000 })
@@ -28,23 +27,22 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
   test('defeat summary has no equipment links', async ({ page }) => {
     test.setTimeout(90000)
     const email = `eq-drop-defeat-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        squad[0].strength = 1
-        squad[0].agility = 1
-        squad[0].intellect = 1
-        squad[0].stamina = 1
-        squad[0].maxHP = 20
-        squad[0].currentHP = 20
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-    })
+      squad.forEach((h) => {
+        h.strength = 1
+        h.agility = 1
+        h.intellect = 1
+        h.stamina = 1
+        h.maxHP = 20
+        h.currentHP = 20
+      })
+      if (squad.length > 0) localStorage.setItem('squad', JSON.stringify(squad))
+    }, undefined, { safePath: '/main' })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     const defeatSummary = page.locator('.log-summary.defeat-text').first()
@@ -55,9 +53,8 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
   test('boss victory drops at least 1 magic (blue) item', async ({ page }) => {
     test.setTimeout(120000)
     const email = `eq-drop-boss-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => {
@@ -77,7 +74,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
       progress.currentProgress = 100
       progress.bossAvailable = true
       localStorage.setItem('combatProgress', JSON.stringify(progress))
-    }, undefined, { pauseFirst: true })
+    }, undefined, { pauseFirst: true, safePath: '/main' })
     await page.waitForTimeout(150)
 
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })

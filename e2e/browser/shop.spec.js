@@ -8,14 +8,13 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerToCharacterSelect, recruitWarrior, updateStoredState, pauseCombat } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState, pauseCombat } = require('./testHelpers')
 
 test.describe('Shop (Example 24)', () => {
   test('Shop button visible next to Backpack button', async ({ page }) => {
     const email = `shop-btn-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const backpackBtn = page.locator('.backpack-btn')
@@ -31,9 +30,8 @@ test.describe('Shop (Example 24)', () => {
 
   test('Shop modal opens and shows slots with prices', async ({ page }) => {
     const email = `shop-modal-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.shop-btn').click()
@@ -46,9 +44,8 @@ test.describe('Shop (Example 24)', () => {
 
   test('Buy with sufficient gold deducts gold and adds item', async ({ page }) => {
     const email = `shop-buy-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => localStorage.setItem('playerGold', '5000'), undefined, { pauseFirst: true })
@@ -78,9 +75,8 @@ test.describe('Shop (Example 24)', () => {
 
   test('Insufficient gold disables Buy and shows message', async ({ page }) => {
     const email = `shop-insufficient-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, () => localStorage.setItem('playerGold', '1'), undefined, { pauseFirst: true })
@@ -96,9 +92,8 @@ test.describe('Shop (Example 24)', () => {
 
   test('Close shop modal returns to main screen', async ({ page }) => {
     const email = `shop-close-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.shop-btn').click()

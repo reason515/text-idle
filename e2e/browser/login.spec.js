@@ -17,12 +17,6 @@ test.describe('Login E2E', () => {
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('Test Team')
     await page.getByRole('button', { name: '开始冒险' }).click()
-    await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-    await page.getByRole('button', { name: /Jaina Proudmoore/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.evaluate(() => localStorage.removeItem('token'))
@@ -31,8 +25,8 @@ test.describe('Login E2E', () => {
     await page.getByLabel(/Password/).fill('password123')
     await page.getByRole('button', { name: 'Login' }).click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.battle-screen')).toBeVisible()
+    await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
+    await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('.col-header').first()).toBeVisible()
   })
 

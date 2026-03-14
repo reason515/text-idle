@@ -3,252 +3,43 @@ require('./globalHooks')
 
 const { registerAndGoToMain } = require('./testHelpers')
 
-async function goToCharacterSelectForExpansion(page, email) {
-  await registerAndGoToMain(page, email)
-  await page.evaluate(() => {
-    const progress = JSON.parse(localStorage.getItem('combatProgress') || '{}')
-    progress.unlockedMapCount = 2
-    localStorage.setItem('combatProgress', JSON.stringify(progress))
-  })
-  await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
-  await expect(page).toHaveURL(/\/character-select/, { timeout: 5000 })
-}
-
-test.describe.skip('Warrior Initial Skill Selection (Example 12) - Fixed trio: Varian has sunder-armor, taunt; no initial recruit', () => {
-  test('AC1: selecting Warrior shows skill selection step with exactly 3 options', async ({ page }) => {
-    const email = `ws-ac1-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-
-    // Skill selection step must appear
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    const skillOptions = page.locator('.skill-option')
-    await expect(skillOptions).toHaveCount(3)
-  })
-
-  test('AC1: three options are Heroic Strike (Arms), Bloodthirst (Fury), Sunder Armor (Protection)', async ({ page }) => {
-    const email = `ws-ac1b-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-
-    await expect(page.locator('.skill-option').filter({ hasText: 'Heroic Strike' })).toBeVisible()
-    await expect(page.locator('.skill-option').filter({ hasText: 'Bloodthirst' })).toBeVisible()
-    await expect(page.locator('.skill-option').filter({ hasText: 'Sunder Armor' })).toBeVisible()
-
-    await expect(page.locator('.spec-badge').filter({ hasText: 'Arms' })).toBeVisible()
-    await expect(page.locator('.spec-badge').filter({ hasText: 'Fury' })).toBeVisible()
-    await expect(page.locator('.spec-badge').filter({ hasText: 'Protection' })).toBeVisible()
-  })
-
-  test('AC2: each skill option shows name, spec, cost, and effect description', async ({ page }) => {
-    const email = `ws-ac2-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-
-    const heroicStrike = page.locator('.skill-option').filter({ hasText: 'Heroic Strike' })
-    await expect(heroicStrike.locator('.skill-option-name')).toContainText('Heroic Strike')
-    await expect(heroicStrike.locator('.spec-badge')).toContainText('Arms')
-    await expect(heroicStrike.locator('.skill-cost-value')).toContainText('15')
-    await expect(heroicStrike.locator('.skill-option-desc')).toBeVisible()
-
-    const bloodthirst = page.locator('.skill-option').filter({ hasText: 'Bloodthirst' })
-    await expect(bloodthirst.locator('.skill-option-name')).toContainText('Bloodthirst')
-    await expect(bloodthirst.locator('.spec-badge')).toContainText('Fury')
-    await expect(bloodthirst.locator('.skill-cost-value')).toContainText('20')
-
-    const sunderArmor = page.locator('.skill-option').filter({ hasText: 'Sunder Armor' })
-    await expect(sunderArmor.locator('.skill-option-name')).toContainText('Sunder Armor')
-    await expect(sunderArmor.locator('.spec-badge')).toContainText('Protection')
-    await expect(sunderArmor.locator('.skill-cost-value')).toContainText('15')
-  })
-
-  test('AC3: selecting Bloodthirst and confirming gives Warrior that skill', async ({ page }) => {
-    const email = `ws-ac3-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-
-    // Select Bloodthirst
-    await page.locator('.skill-option').filter({ hasText: 'Bloodthirst' }).click()
-    await expect(page.locator('.skill-option').filter({ hasText: 'Bloodthirst' })).toHaveClass(/selected/)
-
-    await page.getByRole('button', { name: 'Next' }).click()
-
-    // Confirmation step - shows chosen skill
-    await expect(page.locator('.chosen-skill-name')).toContainText('Bloodthirst')
-    await expect(page.locator('.chosen-skill-spec')).toContainText('Fury')
-
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    // Verify skill is saved by checking hero detail modal
-    await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.getByRole('button', { name: 'Skills' }).click()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
-  })
-
-  test('AC4: Warrior with Heroic Strike shows only Heroic Strike in skill list', async ({ page }) => {
-    const email = `ws-ac4-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.getByRole('button', { name: 'Skills' }).click()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).not.toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).not.toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
-  })
-
-  test('AC5: Warrior with Bloodthirst shows only Bloodthirst in skill list', async ({ page }) => {
-    const email = `ws-ac5-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Bloodthirst' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.getByRole('button', { name: 'Skills' }).click()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Bloodthirst' })).toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).not.toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
-  })
-
-  test('AC6: Warrior with Sunder Armor shows only Sunder Armor in skill list', async ({ page }) => {
-    const email = `ws-ac6-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.getByRole('button', { name: 'Skills' }).click()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Heroic Strike' })).not.toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
-  })
-
-  test('AC7: clicking Next without selecting a skill shows error, Warrior does not join', async ({ page }) => {
-    const email = `ws-ac7-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-
-    // Click Next without selecting any skill
-    await page.getByRole('button', { name: 'Next' }).click()
-
-    // Error message appears, still on skill selection screen
-    await expect(page.locator('.skill-error')).toBeVisible()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-    await expect(page).not.toHaveURL(/\/main/)
-  })
-
-  test('AC7: after selecting skill, error clears and Next proceeds', async ({ page }) => {
-    const email = `ws-ac7b-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await expect(page.locator('.skill-selection-step')).toBeVisible()
-
-    // First attempt without selection
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.locator('.skill-error')).toBeVisible()
-
-    // Select a skill and proceed
-    await page.locator('.skill-option').first().click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.locator('.confirmation-step')).toBeVisible()
-    await expect(page.locator('.skill-error')).not.toBeVisible()
-  })
-
-  test('Non-Warrior/Mage heroes (e.g. Rexxar Hunter) skip skill selection and go directly to confirmation', async ({ page }) => {
-    const email = `ws-nonwarrior-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    // Rexxar (Hunter) should NOT show skill selection step
-    await page.getByRole('button', { name: /Rexxar/ }).click()
-    await expect(page.locator('.skill-selection-step')).not.toBeVisible()
-    await expect(page.getByText(/Add.*Rexxar/)).toBeVisible()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-  })
-})
-
 test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
   test('AC8 & AC10: Warrior skill appears in combat log after accumulating enough Rage', async ({ page }) => {
     test.setTimeout(120000)
     const email = `ws13-log-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Reduce warrior strength so monsters deal more damage (Rage from taking hits)
-    // With strength=2: warrior armor=2, monster hits deal max(1,9-2)=7 dmg, Rage per hit=floor(7/2)=3
-    // 3 monsters x 3 Rage = 9 Rage/round -> skill fires after round 2
+    // Fixed trio Warrior has Sunder Armor and Taunt. Reduce strength so Rage accumulates faster from taking hits.
     await page.evaluate(() => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 2
+        squad[0].armor = 2
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })
     await page.reload()
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
 
-    // Wait for a skill action in the log
-    await expect(page.locator('.log-skill').first()).toBeVisible({ timeout: 90000 })
-    const skillEntry = page.locator('.log-action.log-skill').first()
-    await expect(skillEntry).toBeVisible()
-    const skillText = await skillEntry.textContent()
-    expect(skillText.trim().length).toBeGreaterThan(0)
+    // Wait for a Warrior skill (Sunder Armor or Taunt) in the log
+    await expect(page.locator('.log-action').filter({ hasText: /Sunder Armor|Taunt/ }).first()).toBeVisible({ timeout: 90000 })
   })
 
   test('Warrior hero detail shows Skills section with Rage Cost', async ({ page }) => {
     const email = `ws13-detail-${Date.now()}@example.com`
-    await goToCharacterSelectForExpansion(page, email)
-
-    await page.getByRole('button', { name: /^Varian Wrynn\b/ }).click()
-    await page.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
+    const warriorCard = page.locator('.squad-col .hero-card').filter({ hasText: 'Varian' }).first()
+    await expect(warriorCard).toBeVisible({ timeout: 10000 })
+    await warriorCard.click()
+    await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
 
-    await page.getByRole('button', { name: 'Skills' }).click()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible()
-    await expect(page.locator('.skill-spec-tag')).toContainText('Protection')
-    await expect(page.locator('.skill-rage-cost')).toBeVisible()
+    await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Taunt' })).toBeVisible()
+    await expect(page.locator('.detail-modal .skill-rage-cost').first()).toBeVisible()
     await page.getByRole('button', { name: 'Close' }).click()
   })
 })

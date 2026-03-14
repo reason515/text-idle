@@ -148,7 +148,11 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('HP').first()).toBeVisible()
     await expect(page.getByText('Rage').first()).toBeVisible()
     await expect(page.getByText('MP').first()).toBeVisible()
-    await expect(page.getByText(/Str \d+/).first()).toBeVisible()
+    // Primary attributes (Str, Agi, etc.) are in the detail modal, not on the card
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.modal-box')).toBeVisible()
+    await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).click()
   })
 
   test('AC2: fixed trio starts adventure on main with 3 heroes', async ({ page }) => {
@@ -159,9 +163,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Varian').first()).toBeVisible()
     await expect(page.getByText('Jaina').first()).toBeVisible()
     await expect(page.getByText('Anduin').first()).toBeVisible()
-    await expect(page.getByText('Warrior')).toBeVisible()
-    await expect(page.getByText('Mage')).toBeVisible()
-    await expect(page.getByText('Priest')).toBeVisible()
+    await expect(page.locator('.hero-class').filter({ hasText: 'Warrior' })).toBeVisible()
+    await expect(page.locator('.hero-class').filter({ hasText: 'Mage' })).toBeVisible()
+    await expect(page.locator('.hero-class').filter({ hasText: 'Priest' })).toBeVisible()
   })
 
   test('AC3: squad panel displays name, class, level, and initial attributes via detail modal', async ({ page }) => {
@@ -202,11 +206,11 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
       localStorage.setItem('e2eFastCombat', '1')
-    }, undefined, { pauseFirst: true })
+    }, undefined, { pauseFirst: true, safePath: '/main' })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(300)
+    await prepareForRecruit(page, false)
     await page.waitForTimeout(200)
-    await prepareForRecruit(page)
-    await page.waitForTimeout(100)
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
@@ -215,18 +219,18 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 5000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
-    await page.getByRole('button', { name: 'Next' }).click()
+    // Hunter has no initial skill; confirm step appears when all points allocated
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
-    await page.locator('[data-testid="confirm-recruit-btn"]').click()
-
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.hero-card')).toHaveCount(4)
-    await expect(page.getByText('Rexxar').first()).toBeVisible()
+    const confirmBtn = page.locator('[data-testid="confirm-recruit-btn"]')
+    await confirmBtn.click()
+    await expect(page).toHaveURL(/\/main/, { timeout: 30000 })
+    await expect(page.locator('.hero-card')).toHaveCount(4, { timeout: 10000 })
+    await expect(page.locator('.squad-col').getByText('Rexxar')).toBeVisible({ timeout: 5000 })
   })
 
   test('AC5a: expansion recruit confirmation shows secondary attributes and formulas', async ({ page }) => {
-    test.setTimeout(60000)
+    test.setTimeout(120000)
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
     await updateStoredState(page, () => {
@@ -236,22 +240,26 @@ test.describe('Character Recruitment (Example 4)', () => {
         currentProgress: 0,
         bossAvailable: false,
       }))
-    }, undefined, { pauseFirst: true })
+      localStorage.setItem('e2eFastCombat', '1')
+    }, undefined, { pauseFirst: true, safePath: '/main' })
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 5000 })
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
+    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: /^Uther\b/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByText(/Add.*Uther/)).toBeVisible()
+    // Paladin has no initial skill; confirm step appears when all points allocated
+    await expect(page.getByText(/Add.*Uther/)).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByText('Secondary Attributes')).toBeVisible()
-    await expect(page.getByText('HP')).toBeVisible()
-    await expect(page.getByText('PhysAtk')).toBeVisible()
+    await expect(page.getByText(/Secondary Attributes/)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('HP')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('PhysAtk')).toBeVisible({ timeout: 5000 })
   })
 
   test('AC5b: expansion Mage confirmation shows SpellPower and MP', async ({ page }) => {
-    test.setTimeout(60000)
+    test.setTimeout(120000)
     const email = `recruit-e2e-${Date.now()}@example.com`
     await registerAndCompleteIntro(page, email)
     await updateStoredState(page, () => {
@@ -261,18 +269,22 @@ test.describe('Character Recruitment (Example 4)', () => {
         currentProgress: 0,
         bossAvailable: false,
       }))
-    }, undefined, { pauseFirst: true })
+      localStorage.setItem('e2eFastCombat', '1')
+    }, undefined, { pauseFirst: true, safePath: '/main' })
+    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 5000 })
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
+    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: /^Malfurion\b/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     const intBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Intellect' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await intBtn.click()
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByText(/Add.*Malfurion/)).toBeVisible()
+    // Druid has no initial skill; confirm step appears when all points allocated
+    await expect(page.getByText(/Add.*Malfurion/)).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByText('Secondary Attributes')).toBeVisible()
-    await expect(page.getByText('SpellPower')).toBeVisible()
-    await expect(page.getByText('MP')).toBeVisible()
+    await expect(page.getByText(/Secondary Attributes/)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('SpellPower')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('MP')).toBeVisible({ timeout: 5000 })
   })
 
   test('Example27 AC2/AC7: expansion hero joins at Lv5 with allocated attrs', async ({ page }) => {
@@ -304,12 +316,12 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 3000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
-    await page.getByRole('button', { name: 'Next' }).click()
+    // Paladin has no initial skill; confirm step appears when all points allocated
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 30000 })
     const utherCard = page.locator('.hero-card').filter({ hasText: 'Uther' })
     await expect(utherCard).toContainText(/Lv\.?\s*5/)
   })
@@ -333,9 +345,9 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
     }, undefined, { pauseFirst: true })
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 15000 })
+    await expect(skillModal).toBeVisible({ timeout: 30000 })
     await skillModal.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).first().click()
     await skillModal.getByRole('button', { name: 'Confirm' }).click()
     await expect(skillModal).not.toBeVisible()

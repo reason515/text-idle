@@ -44,9 +44,9 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.battle-screen')).toBeVisible()
     await expect(page.locator('.col-header').first()).toBeVisible()
-    await expect(page.getByText('Varian')).toBeVisible()
-    await expect(page.getByText('Jaina')).toBeVisible()
-    await expect(page.getByText('Anduin')).toBeVisible()
+    await expect(page.locator('.squad-col').getByText('Varian')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.squad-col').getByText('Jaina')).toBeVisible()
+    await expect(page.locator('.squad-col').getByText('Anduin')).toBeVisible()
   })
 
   test('AC4: returning player skips intro', async ({ page }) => {

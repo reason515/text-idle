@@ -8,8 +8,7 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 const {
-  registerToCharacterSelect,
-  recruitWarrior,
+  registerAndGoToMain,
   pauseCombat,
   updateStoredState,
 } = require('./testHelpers')
@@ -135,9 +134,8 @@ const SAMPLE_RING1_ALT = {
 test.describe('Equipment Equip (Example 19, 20)', () => {
   test('hero detail shows Equipment section with 10 slots (MainHand, OffHand, no TwoHand)', async ({ page }) => {
     const email = `eq-slots-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
@@ -149,59 +147,62 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
   })
 
   test('equip from backpack updates Armor in secondary attributes', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `eq-equip-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_HELM, { pauseFirst: true })
+    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    const armorRow = page.locator('.detail-row').filter({ hasText: 'Armor' }).filter({ hasNotText: 'Body' }).first()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    const armorRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'Armor' }).filter({ hasNotText: 'Body' }).first()
+    await expect(armorRow).toBeVisible({ timeout: 5000 })
     const armorBefore = await armorRow.locator('.detail-value').textContent()
 
-    await page.locator('.equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
+    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
-    await expect(page.locator('.inventory-modal')).not.toBeVisible()
+    await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
 
-    const armorAfter = await armorRow.locator('.detail-value').textContent()
-    expect(parseFloat(armorAfter)).toBeGreaterThan(parseFloat(armorBefore || '0'))
+    const armorAfterRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'Armor' }).filter({ hasNotText: 'Body' }).first()
+    const armorAfter = await armorAfterRow.locator('.detail-value').textContent()
+    expect(parseFloat(armorAfter || '0')).toBeGreaterThan(parseFloat(armorBefore || '0'))
   })
 
   test('clicking empty Helm slot shows only Helm items in backpack', async ({ page }) => {
     const email = `eq-filter-slot-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, ({ helm, boots }) => {
       localStorage.setItem('playerInventory', JSON.stringify([helm, boots]))
-    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS }, { pauseFirst: true })
+    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.locator('.equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    const helmSlot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val')
+    await helmSlot.scrollIntoViewIfNeeded()
+    await helmSlot.click()
     const inventoryModal = page.locator('.inventory-modal')
-    await expect(inventoryModal).toBeVisible()
-    await expect(inventoryModal.locator('.modal-title')).toContainText('Helm')
+    await expect(inventoryModal).toBeVisible({ timeout: 5000 })
+    await expect(inventoryModal.locator('.modal-title')).toContainText('Helm', { timeout: 5000 })
     const slots = inventoryModal.locator('.inventory-slot')
-    await expect(slots).toHaveCount(1)
+    await expect(slots).toHaveCount(1, { timeout: 5000 })
     await expect(slots.first()).toContainText('Cap')
   })
 
   test('unequip restores slot to Empty', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `eq-unequip-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
@@ -213,29 +214,29 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
         localStorage.setItem('squad', JSON.stringify(squad))
         localStorage.setItem('playerInventory', JSON.stringify([]))
       }
-    }, SAMPLE_HELM, { pauseFirst: true })
+    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
     await page.locator('.hero-card').first().click()
-    await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toBeVisible()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toBeVisible({ timeout: 5000 })
     await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
-    await expect(page.locator('.item-detail-modal').filter({ hasText: 'Cap' })).toBeVisible()
+    await expect(page.locator('.item-detail-modal').filter({ hasText: 'Cap' })).toBeVisible({ timeout: 5000 })
     await page.getByRole('button', { name: 'Unequip' }).click()
-    await expect(page.locator('.sell-confirm-text').filter({ hasText: 'Unequip and move to backpack' })).toBeVisible()
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toHaveCount(0)
-    await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' })).toContainText('Empty')
+    await expect(page.locator('.sell-confirm-text').filter({ hasText: 'Unequip and move to backpack' })).toBeVisible({ timeout: 5000 })
+    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toHaveCount(0, { timeout: 5000 })
+    await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' })).toContainText('Empty', { timeout: 5000 })
   })
 
   test('AC10/AC11: equip weapon with damage range shows PhysAtk as min-max in hero detail', async ({ page }) => {
     const email = `eq-weapon-range-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_WEAPON_RANGE, { pauseFirst: true })
+    }, SAMPLE_WEAPON_RANGE, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
@@ -253,9 +254,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
   test('equip second ring when first ring already equipped (Ring1 item to Ring2 slot)', async ({ page }) => {
     const email = `eq-dual-ring-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, ({ ring1, ring1Alt }) => {
@@ -266,17 +266,18 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
-    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true })
+    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    const ring2Slot = page.locator('.equipment-slot-row').nth(9).locator('.equipment-slot-val')
-    await expect(ring2Slot).toContainText('Empty')
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    const ring2Slot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Ring' }).nth(1).locator('.equipment-slot-val')
+    await ring2Slot.scrollIntoViewIfNeeded()
+    await expect(ring2Slot).toContainText('Empty', { timeout: 5000 })
     await ring2Slot.click()
     await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
-    await page.locator('.inventory-slot').filter({ hasText: 'Ring' }).first().click()
-    await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 3000 })
+    await page.locator('.inventory-modal .inventory-slot').filter({ hasText: 'Ring' }).first().click()
+    await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
 
     const equipment = await page.evaluate(() => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
@@ -288,9 +289,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
   test('equipping ring to occupied slot shows replace choice and puts old ring back to backpack', async ({ page }) => {
     const email = `eq-ring-replace-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await updateStoredState(page, ({ ring1, ring2, ring1Alt }) => {
@@ -302,7 +302,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
-    }, { ring1: SAMPLE_RING1, ring2: SAMPLE_RING2, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true })
+    }, { ring1: SAMPLE_RING1, ring2: SAMPLE_RING2, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
 
     await page.locator('.backpack-btn').click()
@@ -323,9 +323,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
   test('equipping to occupied non-ring slot shows replace confirmation', async ({ page }) => {
     const email = `eq-helm-replace-e2e-${Date.now()}@example.com`
-    await registerToCharacterSelect(page, email)
+    await registerAndGoToMain(page, email)
 
-    await recruitWarrior(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const helm2 = { ...SAMPLE_HELM, id: 'test-helm-2', armor: 5, resistance: 3 }
@@ -337,7 +336,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([helm2]))
-    }, { helm1: SAMPLE_HELM, helm2 }, { pauseFirst: true })
+    }, { helm1: SAMPLE_HELM, helm2 }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
     await page.waitForTimeout(200)
 
@@ -350,8 +349,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.item-compare-label').filter({ hasText: 'Current' })).toBeVisible()
     await expect(page.locator('.item-compare-label').filter({ hasText: 'New' })).toBeVisible()
     await expect(page.locator('.equip-replace-hint')).toContainText('backpack')
-    await page.getByRole('button', { name: 'Confirm' }).click()
-    await expect(page.locator('.item-detail-modal')).not.toBeVisible()
+    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.locator('.item-detail-modal')).not.toBeVisible({ timeout: 5000 })
 
     const result = await page.evaluate(() => {
       const inv = JSON.parse(localStorage.getItem('playerInventory') || '[]')
