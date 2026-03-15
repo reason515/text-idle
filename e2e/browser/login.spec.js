@@ -17,6 +17,7 @@ test.describe('Login E2E', () => {
 
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('Test Team')
+    await page.getByRole('button', { name: '下一步' }).click()
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

@@ -19,6 +19,7 @@ async function registerAndGoToMain(page, email, options = {}) {
   await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
   await page.getByRole('button', { name: '下一步' }).click()
   await page.getByLabel('队伍名称').fill(teamName)
+  await page.getByRole('button', { name: '下一步' }).click()
   await page.getByRole('button', { name: '开始冒险' }).click()
   await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 }

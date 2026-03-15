@@ -31,6 +31,26 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page.getByLabel('队伍名称')).toBeVisible()
   })
 
+  test('AC2b: entering team name and Next shows hero preview step', async ({ page }) => {
+    const email = `intro-e2e-${Date.now()}@example.com`
+    await page.goto('/register?e2e=1')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
+    await page.getByRole('button', { name: 'Register' }).click()
+
+    await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
+    await page.getByRole('button', { name: '下一步' }).click()
+    await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByRole('button', { name: '下一步' }).click()
+
+    await expect(page.getByText('你的初始队伍')).toBeVisible()
+    await expect(page.getByText('Varian')).toBeVisible()
+    await expect(page.getByText('Jaina')).toBeVisible()
+    await expect(page.getByText('Anduin')).toBeVisible()
+    await expect(page.getByRole('button', { name: '开始冒险' })).toBeVisible()
+  })
+
   test('AC3: entering team name and confirming redirects to main with fixed trio', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
@@ -42,6 +62,8 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByRole('button', { name: '下一步' }).click()
+    await expect(page.getByText('你的初始队伍')).toBeVisible()
     await page.getByRole('button', { name: '开始冒险' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -64,6 +86,7 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByRole('button', { name: '下一步' }).click()
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

@@ -79,17 +79,18 @@ Then [expected result/verifiable behavior].
 **User Story**
 
 > As a first-time player,  
-> I want to see an opening introduction and name my party,  
+> I want to see an opening introduction, name my party, and preview my initial heroes,  
 > So that I understand what the game is about and personalize my adventure.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | First-time player has just logged in | Player lands on the intro screen | Player sees a brief introduction explaining what kind of game this is |
+| AC1 | First-time player has just logged in | Player lands on the intro screen | Player sees a brief introduction explaining the game (3 heroes, gameplay, goals) |
 | AC2 | Player is on the introduction step | Player clicks "Next" | Player sees the team name input step |
-| AC3 | Player is on the team name step | Player enters a name and confirms | Team name is saved and player is redirected to the main screen |
-| AC4 | Player has completed the intro before | Player logs in | Player is redirected directly to the main screen (skips intro) |
+| AC3 | Player is on the team name step | Player enters a name and clicks "Next" | Team name is saved and player sees the hero preview step (3 fixed heroes) |
+| AC4 | Player is on the hero preview step | Player clicks "Start Adventure" | Fixed trio is created and player is redirected to the main screen |
+| AC5 | Player has completed the intro before | Player logs in | Player is redirected directly to the main screen (skips intro) |
 
 ---
 
@@ -104,18 +105,18 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Flow change**: The old design had a character selection screen (choose 1 hero) after intro. The new design has **no character selection** for the initial squad.
-- **Sequence**: Intro (Example 3) → Team name → **Direct to main screen** with fixed trio (Warrior, Mage, Priest) pre-created.
-- **No intermediate screens**: No "Choose your hero", "Select character", or roster picker between team name and main screen.
+- **Sequence**: Intro (Example 3) → Team name → **Hero preview** (view 3 fixed heroes) → Main screen with fixed trio (Warrior, Mage, Priest) pre-created.
+- **Hero preview**: Player can view the 3 initial heroes (name, class, role, skills, stats) before clicking "Start Adventure".
 - **Reference**: [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player has completed the team name step (or equivalent "Start Adventure" action) | Player confirms | Player is redirected **directly** to the main screen; no character selection screen is shown |
+| AC1 | Player has completed the hero preview step | Player clicks "Start Adventure" | Player is redirected **directly** to the main screen; no character selection screen is shown |
 | AC2 | Player expects to choose a hero at game start | Player completes the intro flow | No hero selection UI appears; the fixed trio is already in the squad when the main screen loads |
-| AC3 | Player is a first-time player | Full intro flow completes | The total flow is: intro step(s) → team name → main screen; no additional "recruitment" or "character pick" step for the initial squad |
-| AC4 | Intro or team name step includes a "Start Adventure" (or equivalent) button | Player clicks it | The main screen loads with the fixed trio; no modal or intermediate screen for hero selection |
+| AC3 | Player is a first-time player | Full intro flow completes | The total flow is: intro step(s) → team name → hero preview → main screen; no additional "recruitment" or "character pick" step for the initial squad |
+| AC4 | Hero preview step includes a "Start Adventure" (or equivalent) button | Player clicks it | The main screen loads with the fixed trio; no modal or intermediate screen for hero selection |
 
 ---
 
