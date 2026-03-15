@@ -42,7 +42,7 @@
             </div>
             <div class="card-top">
               <span class="hero-name">{{ hero.name }}</span>
-              <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
+              <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
             <span class="card-level">Lv.{{ hero.level || 1 }}</span>
             <div class="bar-row">
@@ -673,7 +673,7 @@
         <div class="modal-box detail-modal">
           <div class="modal-title">
             <span class="modal-hero-name">{{ selectedHero.name }}</span>
-            <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }}</span>
+            <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ classDisplayName(selectedHero.class) }}</span>
           </div>
           <div class="detail-tabs">
             <button
@@ -1135,7 +1135,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
+import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -1189,11 +1189,11 @@ import {
 } from '../game/equipment.js'
 
 const RESOURCE_MAP = {
-  Warrior: { label: 'Rage', fillClass: 'rage-fill' },
-  Rogue: { label: 'Energy', fillClass: 'energy-fill' },
-  Hunter: { label: 'Focus', fillClass: 'focus-fill' },
+  Warrior: { label: '怒气', fillClass: 'rage-fill' },
+  Rogue: { label: '能量', fillClass: 'energy-fill' },
+  Hunter: { label: '集中值', fillClass: 'focus-fill' },
 }
-const DEFAULT_RESOURCE = { label: 'MP', fillClass: 'mp-fill' }
+const DEFAULT_RESOURCE = { label: '法力', fillClass: 'mp-fill' }
 
 const PRIMARY_ATTRS = [
   { key: 'strength', label: '力量' },
@@ -1260,6 +1260,9 @@ function formatAffixDisplayName(name) {
 }
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
+function classDisplayName(heroClass) {
+  return CLASS_DISPLAY_NAMES[heroClass] ?? heroClass
 }
 function monsterTierColor(tier) {
   return MONSTER_TIER_COLORS[tier] || 'var(--color-normal)'

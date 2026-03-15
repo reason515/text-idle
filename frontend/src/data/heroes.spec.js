@@ -420,29 +420,29 @@ describe('heroes', () => {
     it('returns HP and Rage for Warrior', () => {
       const items = getResourceDisplay('Warrior', 1)
       expect(items).toHaveLength(2)
-      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: 'HP', value: 48 })
-      expect(items.find((i) => i.key === 'Rage')).toEqual({ key: 'Rage', label: 'Rage', value: 100 })
+      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: '生命', value: 48 })
+      expect(items.find((i) => i.key === 'Rage')).toEqual({ key: 'Rage', label: '怒气', value: 100 })
     })
 
     it('returns HP and MP for Mage', () => {
       const items = getResourceDisplay('Mage', 1)
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
-      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: 'MP', value: 37 })
+      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: '法力', value: 37 })
     })
 
     it('returns HP and Energy for Rogue', () => {
       const items = getResourceDisplay('Rogue', 1)
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
-      expect(items.find((i) => i.key === 'Energy')).toEqual({ key: 'Energy', label: 'Energy', value: 100 })
+      expect(items.find((i) => i.key === 'Energy')).toEqual({ key: 'Energy', label: '能量', value: 100 })
     })
 
     it('returns HP and Focus for Hunter', () => {
       const items = getResourceDisplay('Hunter', 1)
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
-      expect(items.find((i) => i.key === 'Focus')).toEqual({ key: 'Focus', label: 'Focus', value: 100 })
+      expect(items.find((i) => i.key === 'Focus')).toEqual({ key: 'Focus', label: '集中值', value: 100 })
     })
 
     it('returns HP, MP for Paladin (mana hybrid)', () => {

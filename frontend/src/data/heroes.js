@@ -215,16 +215,16 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   if (coef.k_MP != null) {
     const mp = 5 + attrs.intellect * coef.k_MP + level * 1
     values.MP = Math.round(mp)
-    formulaMap.Resource = { key: 'MP', label: 'MP', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * 1`, attrs, level, Math.round(mp))) }
+    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * 1`, attrs, level, Math.round(mp))) }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
-    formulaMap.Resource = { key: 'Rage', label: 'Rage', value: 100, formula: '固定 100' }
+    formulaMap.Resource = { key: 'Rage', label: '怒气', value: 100, formula: '固定 100' }
   } else if (heroClass === 'Rogue') {
     values.Energy = 100
-    formulaMap.Resource = { key: 'Energy', label: 'Energy', value: 100, formula: '固定 100' }
+    formulaMap.Resource = { key: 'Energy', label: '能量', value: 100, formula: '固定 100' }
   } else if (heroClass === 'Hunter') {
     values.Focus = 100
-    formulaMap.Resource = { key: 'Focus', label: 'Focus', value: 100, formula: '固定 100' }
+    formulaMap.Resource = { key: 'Focus', label: '集中值', value: 100, formula: '固定 100' }
   } else {
     formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
@@ -335,7 +335,7 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   formulaMap.Hit = fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
 
   // Build formulas array in fixed order
-  const labels = { PhysCrit: '物暴 %', SpellCrit: '法暴 %', Dodge: '闪避 %', Hit: '命中 %' }
+  const labels = { HP: '生命', PhysCrit: '物暴 %', SpellCrit: '法暴 %', Dodge: '闪避 %', Hit: '命中 %' }
   const formulas = []
   for (const key of SECONDARY_ATTR_ORDER) {
     if (key === 'Resource') {
@@ -364,11 +364,11 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
 export function getResourceDisplay(heroClass, level = 1) {
   const { values } = computeSecondaryAttributes(heroClass, level)
   const items = []
-  items.push({ key: 'HP', label: 'HP', value: values.HP })
-  if (values.MP != null) items.push({ key: 'MP', label: 'MP', value: values.MP })
-  if (values.Rage != null) items.push({ key: 'Rage', label: 'Rage', value: values.Rage })
-  if (values.Energy != null) items.push({ key: 'Energy', label: 'Energy', value: values.Energy })
-  if (values.Focus != null) items.push({ key: 'Focus', label: 'Focus', value: values.Focus })
+  items.push({ key: 'HP', label: '生命', value: values.HP })
+  if (values.MP != null) items.push({ key: 'MP', label: '法力', value: values.MP })
+  if (values.Rage != null) items.push({ key: 'Rage', label: '怒气', value: values.Rage })
+  if (values.Energy != null) items.push({ key: 'Energy', label: '能量', value: values.Energy })
+  if (values.Focus != null) items.push({ key: 'Focus', label: '集中值', value: values.Focus })
   return items
 }
 
@@ -442,6 +442,19 @@ export const CLASS_INFO = {
   Hunter: { role: '输出', desc: '远程物理。宠物、陷阱、稳固射击。' },
   Warlock: { role: '输出', desc: '持续伤害、召唤、生命吸取。暗影与火焰持续输出。' },
   Shaman: { role: '治疗 / 输出', desc: '图腾、元素法术、链式治疗。辅助与法术伤害。' },
+}
+
+/** Class display names (Chinese) for UI */
+export const CLASS_DISPLAY_NAMES = {
+  Warrior: '战士',
+  Paladin: '圣骑士',
+  Priest: '牧师',
+  Druid: '德鲁伊',
+  Mage: '法师',
+  Rogue: '盗贼',
+  Hunter: '猎人',
+  Warlock: '术士',
+  Shaman: '萨满',
 }
 
 /** WoW classic class colors (hex) for hero class and frame border display */

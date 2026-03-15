@@ -67,7 +67,7 @@
           >
             <div class="hero-card-header">
               <span class="hero-name">{{ hero.name }}</span>
-              <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ hero.class }}</span>
+              <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
             <span class="hero-role">{{ getClassInfo(hero.class)?.role }}</span>
             <div class="hero-skills">
@@ -105,7 +105,7 @@
         <div class="modal-box intro-hero-detail-modal" :style="{ borderColor: classColor(selectedHeroDetail.class) }">
           <div class="intro-hero-modal-header">
             <span class="modal-hero-name">{{ selectedHeroDetail.name }}</span>
-            <span class="modal-class-tag" :style="{ color: classColor(selectedHeroDetail.class) }">{{ selectedHeroDetail.class }}</span>
+            <span class="modal-class-tag" :style="{ color: classColor(selectedHeroDetail.class) }">{{ classDisplayName(selectedHeroDetail.class) }}</span>
           </div>
           <span class="intro-hero-role">{{ getClassInfo(selectedHeroDetail.class)?.role }}</span>
           <div v-if="selectedHeroDetail.bio" class="intro-hero-bio">
@@ -154,7 +154,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { createFixedTrioSquad, saveSquad, CLASS_COLORS, CLASS_INFO, getResourceDisplay, getInitialAttributes, computeSecondaryAttributes } from '../data/heroes.js'
+import { createFixedTrioSquad, saveSquad, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getResourceDisplay, getInitialAttributes, computeSecondaryAttributes } from '../data/heroes.js'
 import { getWarriorSkillById } from '../game/warriorSkills.js'
 import { getMageSkillById } from '../game/mageSkills.js'
 import { getPriestSkillById } from '../game/priestSkills.js'
@@ -178,6 +178,9 @@ const fixedTrioFull = computed(() => createFixedTrioSquad())
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
+function classDisplayName(heroClass) {
+  return CLASS_DISPLAY_NAMES[heroClass] ?? heroClass
 }
 
 function getClassInfo(heroClass) {

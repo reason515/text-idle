@@ -33,7 +33,7 @@
         >
           <span class="hero-name">{{ hero.name }}</span>
           <div class="hero-meta">
-            <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ hero.class }} (Lv{{ isExpansion ? expansionLevel : 1 }})</span>
+            <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }} (Lv{{ isExpansion ? expansionLevel : 1 }})</span>
             <span v-if="getClassInfo(hero.class)" class="hero-role">{{ getClassInfo(hero.class).role }}</span>
           </div>
           <p v-if="getClassInfo(hero.class)" class="hero-class-desc">{{ getClassInfo(hero.class).desc }}</p>
@@ -125,7 +125,7 @@
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
           <div class="hero-meta">
-            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} ({{ displayLevel }} 级)</span>
+            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ classDisplayName(selectedHero.class) }} ({{ displayLevel }} 级)</span>
             <span v-if="getClassInfo(selectedHero.class)" class="hero-role">{{ getClassInfo(selectedHero.class).role }}</span>
           </div>
           <div v-if="getClassInfo(selectedHero.class)" class="info-section class-section">
@@ -219,7 +219,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { HEROES, CLASS_COLORS, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
+import { HEROES, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints } from '../game/combat.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
@@ -253,6 +253,9 @@ function skillCostLabel(skill) {
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
+}
+function classDisplayName(heroClass) {
+  return CLASS_DISPLAY_NAMES[heroClass] ?? heroClass
 }
 
 function heroCardStyle(hero) {
