@@ -83,6 +83,7 @@
   --border-dark: #336633;
   --border-darkest: #0d0d0d;
   --font-s: 0.8rem;
+  --focus-glow: rgba(0, 255, 136, 0.4);
 
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }
@@ -185,7 +186,7 @@ body {
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 6px var(--focus-glow);
 }
 
 .error-msg {

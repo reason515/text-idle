@@ -3598,6 +3598,30 @@ onUnmounted(() => {
 .tactics-condition-value {
   width: 4rem;
 }
+/* Input must match select style (bg, border, font) - never use native defaults */
+input.tactics-condition-value {
+  padding: 0.25rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-base);
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  box-sizing: border-box;
+}
+input.tactics-condition-value:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+input.tactics-condition-value[type="number"]::-webkit-inner-spin-button,
+input.tactics-condition-value[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input.tactics-condition-value[type="number"] {
+  -moz-appearance: textfield;
+}
 .tactics-select {
   padding: 0.25rem 0.5rem;
   font-size: var(--font-base);

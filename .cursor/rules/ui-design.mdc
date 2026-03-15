@@ -36,6 +36,13 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 
 - Use `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`. No `title=` for user tips.
 
+## Form Inputs (MANDATORY)
+
+- **input / select / textarea** MUST use game tokens: `var(--bg-dark)`, `var(--border)`, `var(--text)`.
+- NEVER leave inputs with native browser defaults (white bg, system font, etc.).
+- Focus: `border-color: var(--accent)`, `box-shadow: 0 0 6px var(--focus-glow)`.
+- Match adjacent selects/buttons in font-size and padding.
+
 ## Prohibited
 
 - `--color-green` (does not exist; use `--accent`).

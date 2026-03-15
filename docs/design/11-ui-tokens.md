@@ -163,9 +163,9 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 
 ### 3.3 发光与阴影
 
-- 主发光：`rgba(0, 255, 136, 0.3)` 系列（与 `--border` 一致，由 `style.css` 统一管理）
+- 主发光：`var(--focus-glow)`（input/button focus 发光，由 `style.css` 定义）
 - 错误发光：`rgba(255, 68, 68, 0.3)` 系列
-- 避免在组件内写死 rgba，优先使用 `style.css` 中已定义的类
+- 避免在组件内写死 rgba，优先使用 `style.css` 中已定义的变量或类
 
 ### 3.4 应用检查清单
 
@@ -195,7 +195,10 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 ### 5.2 表单
 
 - label：`var(--text-label)`，`var(--font-base)` 或 `var(--font-sm)`
-- input：`var(--font-lg)`，focus 时 `var(--accent)` 边框
+- input / select / textarea：**必须**使用游戏风格，禁止使用浏览器原生默认样式
+  - 背景 `var(--bg-dark)`，边框 `var(--border)`，文字 `var(--text)`
+  - 字号 `var(--font-base)` 或 `var(--font-lg)`，与相邻 select/button 一致
+  - focus 时 `var(--accent)` 边框，`var(--focus-glow)` 发光
 
 ### 5.3 Tooltip
 
