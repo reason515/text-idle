@@ -8,31 +8,31 @@
 export const WARRIOR_INITIAL_SKILLS = [
   {
     id: 'heroic-strike',
-    name: 'Heroic Strike',
-    spec: 'Arms',
+    name: '英勇打击',
+    spec: '武器',
     rageCost: 15,
     coefficient: 1.2,
-    effectDesc: '1.2x physical damage to single target',
+    effectDesc: '对单体造成 1.2 倍物理伤害',
   },
   {
     id: 'bloodthirst',
-    name: 'Bloodthirst',
-    spec: 'Fury',
+    name: '嗜血',
+    spec: '狂暴',
     rageCost: 20,
     coefficient: 1.2,
     healPercent: 0.15,
-    effectDesc: '1.2x physical damage; heal 15% of damage dealt',
+    effectDesc: '1.2 倍物理伤害；治疗造成伤害的 15%',
   },
   {
     id: 'sunder-armor',
-    name: 'Sunder Armor',
-    spec: 'Protection',
+    name: '破甲',
+    spec: '防护',
     rageCost: 15,
     coefficient: 0.8,
     debuffArmorReduction: 8,
     debuffDuration: 3,
     excessDamagePercent: 2,
-    effectDesc: '0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point; stacks',
+    effectDesc: '0.8 倍伤害，目标护甲 -8 持续 3 回合；护甲降至 0 以下时，每点超额 +2% 伤害；可叠加',
   },
 ]
 
@@ -80,14 +80,14 @@ export function getSkillWithEnhancements(warrior, skillId) {
 
   if (skillId === 'heroic-strike') {
     out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
-    out.effectDesc = `${out.coefficient}x physical damage to single target`
+    out.effectDesc = `对单体造成 ${out.coefficient} 倍物理伤害`
   } else if (skillId === 'bloodthirst') {
     out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
     out.healPercent = Math.min(0.3, 0.15 + enhanceCount * 0.05)
-    out.effectDesc = `${out.coefficient}x physical damage; heal ${Math.round(out.healPercent * 100)}% of damage dealt`
+    out.effectDesc = `${out.coefficient} 倍物理伤害；治疗造成伤害的 ${Math.round(out.healPercent * 100)}%`
   } else if (skillId === 'sunder-armor') {
     out.sunderMaxStacks = 1 + enhanceCount
-    out.effectDesc = `0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point (max ${out.sunderMaxStacks} stacks)`
+    out.effectDesc = `0.8 倍伤害，目标护甲 -8 持续 3 回合；护甲降至 0 以下时每点超额 +2% 伤害（最多 ${out.sunderMaxStacks} 层）`
   }
 
   return out
@@ -115,19 +115,19 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
   if (skillId === 'heroic-strike') {
     const currCoeff = Math.min(1.8, 1.2 + current * 0.2)
     const nextCoeff = Math.min(1.8, 1.2 + next * 0.2)
-    return `${currCoeff}x -> ${nextCoeff}x physical damage to single target`
+    return `${currCoeff} -> ${nextCoeff} 倍物理伤害（单体）`
   }
   if (skillId === 'bloodthirst') {
     const currCoeff = Math.min(1.5, 1.2 + current * 0.1)
     const nextCoeff = Math.min(1.5, 1.2 + next * 0.1)
     const currHeal = Math.min(30, Math.round((0.15 + current * 0.05) * 100))
     const nextHeal = Math.min(30, Math.round((0.15 + next * 0.05) * 100))
-    return `${currCoeff}x -> ${nextCoeff}x physical damage; heal ${currHeal}% -> ${nextHeal}% of damage dealt`
+    return `${currCoeff} -> ${nextCoeff} 倍物理伤害；治疗 ${currHeal}% -> ${nextHeal}%`
   }
   if (skillId === 'sunder-armor') {
     const currStacks = 1 + current
     const nextStacks = 1 + next
-    return `0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point (max ${currStacks} -> ${nextStacks} stacks)`
+    return `0.8 倍伤害，护甲 -8 持续 3 回合；护甲超额时 +2%/点（最多 ${currStacks} -> ${nextStacks} 层）`
   }
 
   return base.effectDesc ?? ''

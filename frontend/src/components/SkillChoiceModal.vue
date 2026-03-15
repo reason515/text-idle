@@ -3,12 +3,12 @@
     <div class="modal-box skill-choice-modal" data-testid="skill-choice-modal">
       <div class="modal-title">
         <span :style="{ color: classColor(hero?.class) }">{{ hero?.name }}</span>
-        <span> reached Level {{ level }} — Skill Choice</span>
+        <span> 达到 {{ level }} 级 — 技能选择</span>
       </div>
-      <p class="skill-choice-subtitle">Enhance an existing skill or learn a new one. You may skip; the game continues.</p>
+      <p class="skill-choice-subtitle">强化已有技能或学习新技能。可跳过，游戏继续。</p>
 
       <div v-if="options.canEnhance" class="skill-choice-section">
-        <h3 class="section-label">Enhance existing skill</h3>
+        <h3 class="section-label">强化已有技能</h3>
         <div class="skill-options">
           <button
             v-for="sid in options.enhanceableSkillIds"
@@ -22,7 +22,7 @@
               <span class="skill-option-spec spec-badge">{{ getSkillDisplay(normalizeSkillId(sid)).spec }}</span>
             </div>
             <div v-if="getSkillCostLabel(getSkillDisplay(normalizeSkillId(sid)))" class="skill-option-meta">
-              <span class="skill-cost-label">Cost:</span>
+              <span class="skill-cost-label">消耗：</span>
               <span class="skill-cost-value">{{ getSkillCostLabel(getSkillDisplay(normalizeSkillId(sid))) }}</span>
             </div>
             <p class="skill-option-desc">{{ getEnhanceEffectDesc(normalizeSkillId(sid)) }}</p>
@@ -31,7 +31,7 @@
       </div>
 
       <div v-if="options.newSkills.length > 0" class="skill-choice-section">
-        <h3 class="section-label">Learn new skill</h3>
+        <h3 class="section-label">学习新技能</h3>
         <div class="skill-options">
           <button
             v-for="s in options.newSkills"
@@ -45,8 +45,8 @@
               <span class="skill-option-spec spec-badge">{{ s.spec }}</span>
             </div>
             <div v-if="s.rageCost != null || s.manaCost != null" class="skill-option-meta">
-              <span class="skill-cost-label">Cost:</span>
-              <span class="skill-cost-value">{{ s.manaCost != null ? s.manaCost + ' Mana' : s.rageCost + ' Rage' }}</span>
+              <span class="skill-cost-label">消耗：</span>
+              <span class="skill-cost-value">{{ s.manaCost != null ? s.manaCost + ' 法力' : s.rageCost + ' 怒气' }}</span>
             </div>
             <p class="skill-option-desc">{{ s.effectDesc }}</p>
           </button>
@@ -54,13 +54,13 @@
       </div>
 
       <div class="skill-choice-actions">
-        <button class="btn btn-secondary" @click="$emit('skip')">Skip</button>
+        <button class="btn btn-secondary" @click="$emit('skip')">跳过</button>
         <button
           class="btn"
           :disabled="!pendingAction"
           @click="confirmChoice"
         >
-          {{ pendingAction ? 'Confirm' : 'Select an option' }}
+          {{ pendingAction ? '确认' : '请选择一项' }}
         </button>
       </div>
     </div>
@@ -109,8 +109,8 @@ function getSkillDisplay(skillId) {
 }
 
 function getSkillCostLabel(skill) {
-  if (skill?.manaCost != null) return `${skill.manaCost} Mana`
-  if (skill?.rageCost != null) return `${skill.rageCost} Rage`
+  if (skill?.manaCost != null) return `${skill.manaCost} 法力`
+  if (skill?.rageCost != null) return `${skill.rageCost} 怒气`
   return null
 }
 

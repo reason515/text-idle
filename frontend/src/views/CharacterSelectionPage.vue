@@ -1,27 +1,27 @@
 <template>
   <div class="panel character-select-panel">
     <template v-if="showAttrAllocStep">
-      <h2>Allocate Attribute Points</h2>
-      <p class="subtitle">Assign {{ expansionAttrPoints }} points to <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>. All points must be allocated.</p>
+      <h2>分配属性点</h2>
+      <p class="subtitle">将 {{ expansionAttrPoints }} 点分配给 <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>。必须全部分配完毕。</p>
     </template>
     <template v-else-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
-      <h2>Choose Initial Skill</h2>
-      <p class="subtitle">Each spec grants a unique combat style. You must choose one before <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> joins your squad.</p>
+      <h2>选择初始技能</h2>
+      <p class="subtitle">每个专精提供独特战斗风格。在 <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> 加入小队前必须选择其一。</p>
     </template>
     <template v-else-if="showLevelChoiceStep">
-      <h2>Level {{ expansionLevel }} Skill Choice</h2>
-      <p class="subtitle">Enhance an existing skill or learn a new one for <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>.</p>
+      <h2>{{ expansionLevel }} 级技能选择</h2>
+      <p class="subtitle">为 <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span> 强化已有技能或学习新技能。</p>
     </template>
     <template v-else>
-      <h2>Choose Your Hero</h2>
-      <p class="subtitle">Select a hero to join your squad and begin the adventure.</p>
+      <h2>选择英雄</h2>
+      <p class="subtitle">选择一位英雄加入小队，开始冒险。</p>
     </template>
 
     <!-- Selection step -->
     <template v-if="!selectedHero">
       <div v-if="availableHeroes.length === 0" class="no-heroes">
-        <p>No more heroes available to recruit.</p>
-        <button class="btn" @click="router.push('/main')">Back to Main</button>
+        <p>没有更多可招募的英雄。</p>
+        <button class="btn" @click="router.push('/main')">返回主界面</button>
       </div>
       <div v-else class="hero-grid">
         <button
@@ -55,7 +55,7 @@
     <!-- Expansion: attribute allocation step -->
     <template v-else-if="showAttrAllocStep">
       <div class="attr-alloc-step" data-testid="attr-alloc-step">
-        <p class="attr-alloc-remaining">Points remaining: {{ pendingAttrPoints }}</p>
+        <p class="attr-alloc-remaining">剩余点数：{{ pendingAttrPoints }}</p>
         <div class="attr-alloc-grid">
           <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="attr-alloc-row">
             <span class="attr-label">{{ attr.label }}</span>
@@ -64,15 +64,15 @@
               type="button"
               class="btn btn-sm attr-btn"
               :disabled="pendingAttrPoints <= 0"
-              :title="'Add 1 to ' + attr.label"
+              :title="'为 ' + attr.label + ' 加 1'"
               @click="addAttrPoint(attr.key)"
             >+</button>
           </div>
         </div>
-        <p v-if="showAttrError" class="skill-error">Allocate all {{ expansionAttrPoints }} points before continuing.</p>
+        <p v-if="showAttrError" class="skill-error">请先分配全部 {{ expansionAttrPoints }} 点再继续。</p>
         <div class="confirmation-actions">
-          <button class="btn btn-secondary" @click="backFromAttrAlloc">Back</button>
-          <button class="btn" :disabled="pendingAttrPoints > 0" @click="confirmAttrAlloc">Next</button>
+          <button class="btn btn-secondary" @click="backFromAttrAlloc">返回</button>
+          <button class="btn" :disabled="pendingAttrPoints > 0" @click="confirmAttrAlloc">下一步</button>
         </div>
       </div>
     </template>
@@ -93,16 +93,16 @@
               <span class="skill-option-spec spec-badge">{{ skill.spec }}</span>
             </div>
             <div class="skill-option-meta">
-              <span class="skill-cost-label">Cost:</span>
+              <span class="skill-cost-label">消耗：</span>
               <span class="skill-cost-value">{{ skillCostLabel(skill) }}</span>
             </div>
             <p class="skill-option-desc">{{ skill.effectDesc }}</p>
           </button>
         </div>
-        <p v-if="showSkillError" class="skill-error">Please select a skill before continuing.</p>
+        <p v-if="showSkillError" class="skill-error">请先选择技能再继续。</p>
         <div class="confirmation-actions">
-          <button class="btn btn-secondary" @click="selectedHero = null; pendingSkillId = null; selectedSkillId = null; showSkillError = false">Back</button>
-          <button class="btn" @click="confirmSkillSelection">Next</button>
+          <button class="btn btn-secondary" @click="selectedHero = null; pendingSkillId = null; selectedSkillId = null; showSkillError = false">返回</button>
+          <button class="btn" @click="confirmSkillSelection">下一步</button>
         </div>
       </div>
     </template>
@@ -121,24 +121,24 @@
     <!-- Confirmation step -->
     <template v-else-if="selectedHero">
       <div class="confirmation-step" data-testid="confirm-recruit-step">
-        <p>Add <strong>{{ selectedHero.name }}</strong> to your squad?</p>
+        <p>将 <strong>{{ selectedHero.name }}</strong> 加入小队？</p>
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
           <span class="hero-name">{{ selectedHero.name }}</span>
           <div class="hero-meta">
-            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} (Level {{ displayLevel }})</span>
+            <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.class }} ({{ displayLevel }} 级)</span>
             <span v-if="getClassInfo(selectedHero.class)" class="hero-role">{{ getClassInfo(selectedHero.class).role }}</span>
           </div>
           <div v-if="getClassInfo(selectedHero.class)" class="info-section class-section">
-            <span class="section-label">Class</span>
+            <span class="section-label">职业</span>
             <p class="section-text">{{ getClassInfo(selectedHero.class).desc }}</p>
           </div>
           <div v-if="selectedHero.bio" class="info-section hero-section">
-            <span class="section-label">About</span>
+            <span class="section-label">简介</span>
             <p class="section-text">{{ selectedHero.bio }}</p>
           </div>
           <!-- Show chosen skill for Warriors / Mages -->
           <div v-if="needsInitialSkill(selectedHero) && selectedSkillId" class="info-section skill-section">
-            <span class="section-label">Initial Skill</span>
+            <span class="section-label">初始技能</span>
             <div class="chosen-skill">
               <span class="chosen-skill-name">{{ getSkillDisplay(selectedSkillId, selectedHero.class).name }}</span>
               <span class="chosen-skill-spec spec-badge">{{ getSkillDisplay(selectedSkillId, selectedHero.class).spec }}</span>
@@ -147,33 +147,33 @@
           </div>
           <div class="hero-stats-grid">
             <div class="hero-attributes-section">
-              <span class="attributes-title">Primary Attributes</span>
+              <span class="attributes-title">主属性</span>
               <div class="hero-attributes">
                 <div class="attribute-row">
-                  <span class="attr-label">Strength</span>
+                  <span class="attr-label">力量</span>
                   <span class="attr-value">{{ displayAttrs.strength }}</span>
                 </div>
                 <div class="attribute-row">
-                  <span class="attr-label">Agility</span>
+                  <span class="attr-label">敏捷</span>
                   <span class="attr-value">{{ displayAttrs.agility }}</span>
                 </div>
                 <div class="attribute-row">
-                  <span class="attr-label">Intellect</span>
+                  <span class="attr-label">智力</span>
                   <span class="attr-value">{{ displayAttrs.intellect }}</span>
                 </div>
                 <div class="attribute-row">
-                  <span class="attr-label">Stamina</span>
+                  <span class="attr-label">耐力</span>
                   <span class="attr-value">{{ displayAttrs.stamina }}</span>
                 </div>
                 <div class="attribute-row">
-                  <span class="attr-label">Spirit</span>
+                  <span class="attr-label">精神</span>
                   <span class="attr-value">{{ displayAttrs.spirit }}</span>
                 </div>
               </div>
             </div>
             <div class="hero-secondary-section">
-              <span class="attributes-title">Secondary Attributes (Lv{{ displayLevel }})</span>
-              <p class="formula-hint">Hover over attribute for formula</p>
+              <span class="attributes-title">副属性（{{ displayLevel }} 级）</span>
+              <p class="formula-hint">悬停查看公式</p>
               <div class="secondary-attributes-grid">
                 <div
                   v-for="item in getSecondaryFormulasForDisplay"
@@ -195,8 +195,8 @@
           <button
             class="btn btn-secondary"
             @click="backFromConfirm"
-          >Back</button>
-          <button class="btn" data-testid="confirm-recruit-btn" @click="confirmSelection">Confirm</button>
+          >返回</button>
+          <button class="btn" data-testid="confirm-recruit-btn" @click="confirmSelection">确认</button>
         </div>
       </div>
     </template>
@@ -228,11 +228,11 @@ import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 
 const PRIMARY_ATTRS = [
-  { key: 'strength', label: 'Strength' },
-  { key: 'agility', label: 'Agility' },
-  { key: 'intellect', label: 'Intellect' },
-  { key: 'stamina', label: 'Stamina' },
-  { key: 'spirit', label: 'Spirit' },
+  { key: 'strength', label: '力量' },
+  { key: 'agility', label: '敏捷' },
+  { key: 'intellect', label: '智力' },
+  { key: 'stamina', label: '耐力' },
+  { key: 'spirit', label: '精神' },
 ]
 
 function needsInitialSkill(hero) {
@@ -246,8 +246,8 @@ function initialSkillsForClass(heroClass) {
 }
 
 function skillCostLabel(skill) {
-  if (skill.manaCost != null) return `${skill.manaCost} Mana`
-  if (skill.rageCost != null) return `${skill.rageCost} Rage`
+  if (skill.manaCost != null) return `${skill.manaCost} 法力`
+  if (skill.rageCost != null) return `${skill.rageCost} 怒气`
   return '-'
 }
 

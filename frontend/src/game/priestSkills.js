@@ -9,20 +9,20 @@ import { getEffectiveSpellPower } from './damageUtils.js'
 export const PRIEST_INITIAL_SKILLS = [
   {
     id: 'flash-heal',
-    name: 'Flash Heal',
-    spec: 'Holy',
+    name: '快速治疗',
+    spec: '神圣',
     manaCost: 15,
     coefficient: 1.0,
-    effectDesc: 'Heal ally for SpellPower x 1.0',
+    effectDesc: '治疗友方 SpellPower x 1.0',
   },
   {
     id: 'power-word-shield',
-    name: 'Power Word: Shield',
-    spec: 'Holy',
+    name: '真言术：盾',
+    spec: '神圣',
     manaCost: 15,
     coefficient: 1.0,
     absorbDuration: 3,
-    effectDesc: 'Shield absorbs SpellPower x 1.0 damage for 3 rounds or until broken',
+    effectDesc: '护盾吸收 SpellPower x 1.0 伤害，持续 3 回合或直至打破',
   },
 ]
 

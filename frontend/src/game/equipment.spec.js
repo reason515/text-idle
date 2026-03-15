@@ -111,7 +111,7 @@ describe('equipment', () => {
       expect(item.spellPowerMin).toBeGreaterThan(0)
       expect(item.spellPowerMax).toBeGreaterThanOrEqual(item.spellPowerMin)
       expect(item.physAtk).toBe(0)
-      expect(['Short Staff', 'Jo Staff', 'Gnarled Staff', 'Battle Staff', 'Shadow Staff', 'Sacred Staff']).toContain(item.baseName)
+      expect(['短杖', '齐眉棍', '扭曲之杖', '战杖', '暗影之杖', '神圣之杖']).toContain(item.baseName)
     })
 
     it('generateShopItem MainHand-2H-Bow returns 2H bow with TwoHand slot and physAtk range', () => {
@@ -121,7 +121,7 @@ describe('equipment', () => {
       expect(item.physAtkMin).toBeGreaterThan(0)
       expect(item.physAtkMax).toBeGreaterThanOrEqual(item.physAtkMin)
       expect(item.spellPower).toBe(0)
-      expect(['Short Bow', "Hunter's Bow", 'Long Bow', 'Composite Bow', 'Long Battle Bow', 'Long War Bow']).toContain(item.baseName)
+      expect(['短弓', '猎人之弓', '长弓', '复合弓', '长战弓', '长战争弓']).toContain(item.baseName)
     })
 
     it('returns items with correct structure', () => {
@@ -344,7 +344,7 @@ describe('equipment', () => {
     it('returns level reason when level too low', () => {
       const hero = { level: 5, strength: 20, agility: 10, intellect: 4, spirit: 5 }
       const item = { levelReq: 10, strReq: 0, agiReq: 0, intReq: 0, spiReq: 0 }
-      expect(getEquipReasonsStructured(hero, item)).toContainEqual({ key: 'level', label: 'Level', required: 10, current: 5 })
+      expect(getEquipReasonsStructured(hero, item)).toContainEqual({ key: 'level', label: '等级', required: 10, current: 5 })
     })
 
     it('returns attribute reason when str too low', () => {

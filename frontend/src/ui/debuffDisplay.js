@@ -4,12 +4,12 @@
  */
 
 export const DEBUFF_DISPLAY = {
-  sunder: { name: 'Sunder Armor', short: 'SA', isDebuff: true },
-  dazed: { name: 'Dazed', short: 'DZ', isDebuff: true },
-  splinter: { name: 'Splinter', short: 'SP', isDebuff: true },
-  bleed: { name: 'Bleed', short: 'BL', isDebuff: true },
-  frostbolt: { name: 'Frostbolt', short: 'FB', isDebuff: true },
-  burn: { name: 'Burn', short: 'BN', isDebuff: true },
+  sunder: { name: '破甲', short: 'SA', isDebuff: true },
+  dazed: { name: '眩晕', short: 'DZ', isDebuff: true },
+  splinter: { name: '破法', short: 'SP', isDebuff: true },
+  bleed: { name: '流血', short: 'BL', isDebuff: true },
+  frostbolt: { name: '霜箭', short: 'FB', isDebuff: true },
+  burn: { name: '燃烧', short: 'BN', isDebuff: true },
 }
 
 /**
@@ -19,24 +19,24 @@ export const DEBUFF_DISPLAY = {
 export function getDebuffTip(debuff) {
   const rounds = debuff.remainingRounds ?? 0
   if (debuff.type === 'sunder') {
-    return `Armor reduced by ${debuff.armorReduction ?? 8} for ${rounds} round(s)`
+    return `护甲降低 ${debuff.armorReduction ?? 8}，持续 ${rounds} 回合`
   }
   if (debuff.type === 'dazed') {
-    return `Armor reduced by ${debuff.armorReduction ?? 3} for ${rounds} round(s)`
+    return `护甲降低 ${debuff.armorReduction ?? 3}，持续 ${rounds} 回合`
   }
   if (debuff.type === 'splinter') {
-    return `Resistance reduced by ${debuff.resistanceReduction ?? 2} for ${rounds} round(s)`
+    return `抗性降低 ${debuff.resistanceReduction ?? 2}，持续 ${rounds} 回合`
   }
   if (debuff.type === 'bleed') {
-    return `${debuff.damagePerRound ?? 0} damage/round for ${rounds} round(s)`
+    return `每回合 ${debuff.damagePerRound ?? 0} 点伤害，持续 ${rounds} 回合`
   }
   if (debuff.type === 'frostbolt') {
-    return `Resistance reduced by ${debuff.resistanceReduction ?? 6} for ${rounds} round(s)`
+    return `抗性降低 ${debuff.resistanceReduction ?? 6}，持续 ${rounds} 回合`
   }
   if (debuff.type === 'burn') {
-    return `${debuff.damagePerRound ?? 0} magic damage/round for ${rounds} round(s)`
+    return `每回合 ${debuff.damagePerRound ?? 0} 点法术伤害，持续 ${rounds} 回合`
   }
-  return `${rounds} round(s)`
+  return `${rounds} 回合`
 }
 
 /**

@@ -45,9 +45,9 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '下一步' }).click()
 
     await expect(page.getByText('你的初始队伍')).toBeVisible()
-    await expect(page.getByText('Varian')).toBeVisible()
-    await expect(page.getByText('Jaina')).toBeVisible()
-    await expect(page.getByText('Anduin')).toBeVisible()
+    await expect(page.getByText('瓦里安')).toBeVisible()
+    await expect(page.getByText('吉安娜')).toBeVisible()
+    await expect(page.getByText('安度因')).toBeVisible()
     await expect(page.getByRole('button', { name: '开始冒险' })).toBeVisible()
   })
 
@@ -69,9 +69,9 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.battle-screen')).toBeVisible()
     await expect(page.locator('.col-header').first()).toBeVisible()
-    await expect(page.locator('.squad-col').getByText('Varian')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('.squad-col').getByText('Jaina')).toBeVisible()
-    await expect(page.locator('.squad-col').getByText('Anduin')).toBeVisible()
+    await expect(page.locator('.squad-col').getByText('瓦里安')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.squad-col').getByText('吉安娜')).toBeVisible()
+    await expect(page.locator('.squad-col').getByText('安度因')).toBeVisible()
   })
 
   test('AC4: returning player skips intro', async ({ page }) => {

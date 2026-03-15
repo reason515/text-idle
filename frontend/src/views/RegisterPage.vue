@@ -1,9 +1,9 @@
 <template>
   <div class="panel auth-panel">
-    <h2>Register</h2>
+    <h2>注册</h2>
     <form @submit.prevent="submit">
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">邮箱</label>
         <input
           id="email"
           v-model="email"
@@ -15,7 +15,7 @@
         <p v-if="errors.email" class="error-msg">{{ errors.email }}</p>
       </div>
       <div class="form-group">
-        <label for="password">Password (min 8 chars)</label>
+        <label for="password">密码（至少 8 位）</label>
         <input
           id="password"
           v-model="password"
@@ -28,7 +28,7 @@
         <p v-if="errors.password" class="error-msg">{{ errors.password }}</p>
       </div>
       <div class="form-group">
-        <label for="confirmPassword">Confirm Password</label>
+        <label for="confirmPassword">确认密码</label>
         <input
           id="confirmPassword"
           v-model="confirmPassword"
@@ -40,13 +40,13 @@
         <p v-if="errors.confirmPassword" class="error-msg">{{ errors.confirmPassword }}</p>
       </div>
       <p v-if="errors.general" class="error-msg">{{ errors.general }}</p>
-      <p v-if="success" class="success-msg">Account created! You are logged in.</p>
+      <p v-if="success" class="success-msg">账号已创建，已登录。</p>
       <button type="submit" class="btn" :disabled="loading">
-        {{ loading ? 'Registering...' : 'Register' }}
+        {{ loading ? '注册中...' : '注册' }}
       </button>
     </form>
     <p class="link-msg">
-      Already have an account? <router-link to="/login">Login</router-link>
+      已有账号？<router-link to="/login">登录</router-link>
     </p>
   </div>
 </template>
@@ -70,12 +70,23 @@ function clearErrors() {
   errors.general = ''
 }
 
+const ERROR_ZH = {
+  'email already exists': '邮箱已存在',
+  'invalid input': '输入无效',
+  'registration failed': '注册失败',
+}
+function mapErrorToZh(msg) {
+  if (!msg || typeof msg !== 'string') return null
+  const key = msg.toLowerCase().trim()
+  return ERROR_ZH[key] ?? null
+}
+
 async function submit() {
   clearErrors()
   success.value = false
 
   if (password.value !== confirmPassword.value) {
-    errors.confirmPassword = 'Passwords do not match'
+    errors.confirmPassword = '两次密码不一致'
     return
   }
 
@@ -105,22 +116,23 @@ async function submit() {
       router.push('/intro')
     } else {
       if (res.status === 409) {
-        errors.general = data.error || 'Email already exists'
+        errors.general = mapErrorToZh(data.error) || '邮箱已存在'
       } else if (res.status === 400) {
         const msg = data.error || data.errors?.join?.(' ') || 'Invalid input'
+        const zhMsg = mapErrorToZh(msg) || '输入无效'
         if (msg.toLowerCase().includes('email')) {
-          errors.email = msg
+          errors.email = zhMsg
         } else if (msg.toLowerCase().includes('password')) {
-          errors.password = msg
+          errors.password = zhMsg
         } else {
-          errors.general = msg
+          errors.general = zhMsg
         }
       } else {
-        errors.general = data.error || 'Registration failed'
+        errors.general = mapErrorToZh(data.error) || '注册失败'
       }
     }
   } catch (e) {
-    errors.general = 'Network error. Is the server running?'
+    errors.general = '网络错误，服务器是否在运行？'
   } finally {
     loading.value = false
   }

@@ -66,7 +66,7 @@ test.describe('Inventory (Example 22)', () => {
     const counterMatch = counterText.match(/(\d+)\s*\/\s*100/)
     expect(counterMatch).not.toBeNull()
     expect(Number(counterMatch[1])).toBeGreaterThanOrEqual(1)
-    await expect(page.locator('.inventory-slot').first()).toContainText('Cap')
+    await expect(page.locator('.inventory-slot').first()).toContainText('便帽')
   })
 
   test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe('Inventory (Example 22)', () => {
     await page.waitForTimeout(150)
     const tooltip = page.locator('.inventory-slot-tooltip')
     await expect(tooltip).toBeVisible({ timeout: 3000 })
-    await expect(tooltip).toContainText('Armor')
+    await expect(tooltip).toContainText('护甲')
   })
 
   test('click item opens detail modal with Slot, Level Req, Sell Price, Sell', async ({ page }) => {
@@ -102,8 +102,8 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await expect(page.locator('.item-detail-modal')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.item-detail-modal')).toContainText('Cap')
-    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Slot' })).toContainText('Helm')
+    await expect(page.locator('.item-detail-modal')).toContainText('便帽')
+    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: '槽位' })).toContainText('头盔')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Level Req' })).toBeVisible()
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Sell Price' })).toBeVisible()
     await expect(page.locator('.item-detail-modal').getByRole('button', { name: 'Sell' })).toBeVisible()

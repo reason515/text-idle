@@ -13,10 +13,10 @@ test.describe('Register E2E', () => {
 
   test('AC1: valid email and password creates account and redirects to intro', async ({ page }) => {
     const email = `e2e-${Date.now()}@example.com`
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
@@ -26,50 +26,50 @@ test.describe('Register E2E', () => {
 
   test('AC2: duplicate email shows clear error', async ({ page }) => {
     const email = `dup-e2e-${Date.now()}@example.com`
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
     await page.goto('/register')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
 
-    await expect(page.getByText(/email already exists/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('邮箱已存在')).toBeVisible({ timeout: 5000 })
   })
 
   test('AC3: invalid email shows validation error', async ({ page }) => {
-    await page.getByLabel('Email').fill('not-an-email')
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill('not-an-email')
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/register/)
-    await expect(page.getByRole('button', { name: 'Register' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '注册' })).toBeVisible()
   })
 
   test('AC3: weak password shows validation error', async ({ page }) => {
-    await page.getByLabel('Email').fill('valid@example.com')
-    await page.getByLabel('Password (min 8 chars)').fill('short')
-    await page.getByLabel('Confirm Password').fill('short')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill('valid@example.com')
+    await page.getByLabel('密码（至少 8 位）').fill('short')
+    await page.getByLabel('确认密码').fill('short')
+    await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/register/)
-    await expect(page.getByRole('button', { name: 'Register' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '注册' })).toBeVisible()
   })
 
   test('AC3: password mismatch shows validation error', async ({ page }) => {
-    await page.getByLabel('Email').fill('valid@example.com')
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password456')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill('valid@example.com')
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password456')
+    await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/register/)
-    await expect(page.getByText(/passwords do not match/i)).toBeVisible()
+    await expect(page.getByText('两次密码不一致')).toBeVisible()
   })
 
   test('AC4: registration clears old localStorage data and redirects to intro', async ({ page }) => {
@@ -90,10 +90,10 @@ test.describe('Register E2E', () => {
     })
 
     const email = `e2e-clear-${Date.now()}@example.com`
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
 
     // Should redirect to intro page, not main screen
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })

@@ -21,7 +21,7 @@ test.describe('Shop (Example 24)', () => {
     const shopBtn = page.locator('.shop-btn')
     await expect(backpackBtn).toBeVisible()
     await expect(shopBtn).toBeVisible()
-    await expect(shopBtn).toContainText('Shop')
+    await expect(shopBtn).toContainText('商店')
 
     const backpackRect = await backpackBtn.boundingBox()
     const shopRect = await shopBtn.boundingBox()
@@ -36,8 +36,8 @@ test.describe('Shop (Example 24)', () => {
 
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()
-    await expect(page.locator('.shop-modal .modal-title')).toContainText('Shop')
-    await expect(page.locator('.shop-gold-row')).toContainText('Gold')
+    await expect(page.locator('.shop-modal .modal-title')).toContainText('商店')
+    await expect(page.locator('.shop-gold-row')).toContainText('金币')
     await expect(page.locator('.shop-slot-row').filter({ hasText: 'Body Armor' })).toBeVisible()
     await expect(page.locator('.shop-slot-row').filter({ hasText: 'gold' }).first()).toBeVisible()
   })

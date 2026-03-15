@@ -28,8 +28,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     const mapEntry = page.locator('.log-map-entry')
     await expect(mapEntry).toBeVisible({ timeout: 5000 })
-    await expect(mapEntry).toContainText('Arriving at Elwynn Forest')
-    await expect(mapEntry).toContainText('ancient oaks')
+    await expect(mapEntry).toContainText('抵达')
+    await expect(mapEntry).toContainText('艾尔文森林')
   })
 
   test('hero card shows name, class, level and resource bars', async ({ page }) => {
@@ -88,11 +88,11 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.modal-box')).toBeVisible()
     await expect(page.locator('.detail-section').first()).toBeVisible()
     // Primary attributes section
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Primary Attributes' })).toBeVisible()
+    await expect(page.locator('.detail-sep-line').filter({ hasText: '主属性' })).toBeVisible()
     // Secondary attributes section (after Skills for Warrior)
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Secondary Attributes' })).toBeVisible()
+    await expect(page.locator('.detail-sep-line').filter({ hasText: '副属性' })).toBeVisible()
     await expect(page.locator('.detail-row').first()).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
     await expect(page.locator('.modal-box')).not.toBeVisible()
   })
 
@@ -104,8 +104,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await page.locator('.map-btn').click()
     await expect(page.locator('.map-list-modal')).toBeVisible()
-    await expect(page.locator('.map-item').first()).toContainText('Elwynn Forest')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.locator('.map-item').first()).toContainText('艾尔文森林')
+    await page.getByRole('button', { name: '关闭' }).click()
     await expect(page.locator('.map-list-modal')).not.toBeVisible()
   })
 
@@ -127,7 +127,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 10000 })
     const text = await page.locator('.log-encounter').first().textContent()
-    expect(text).toContain('Your adventure party encountered')
+    expect(text).toContain('你的冒险小队遭遇了')
   })
 
   test('combat log shows damage calculation detail', async ({ page }) => {
@@ -173,7 +173,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: 60000 })
     const summaryText = await page.locator('.log-summary').first().textContent()
-    expect(summaryText).toMatch(/Victory!|Defeat!|Draw/)
+    expect(summaryText).toMatch(/胜利！|失败！|平局/)
   })
 
   test('rest phase is shown in combat log after victory', async ({ page }) => {
@@ -185,7 +185,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
     const restTexts = await page.locator('.log-rest').allTextContents()
-    const hasRecovering = restTexts.some((t) => t.includes('Resting') || t.includes('Recovering') || t.includes('Rest complete'))
+    const hasRecovering = restTexts.some((t) => t.includes('休息') || t.includes('恢复') || t.includes('休息完成'))
     expect(hasRecovering).toBe(true)
   })
 
@@ -198,7 +198,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
     await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
-    await expect(page.locator('.monsters-col').locator('.empty-hint')).toContainText('No active encounter.')
+    await expect(page.locator('.monsters-col').locator('.empty-hint')).toContainText('暂无遭遇')
     await expect(page.locator('.monsters-col .monster-card')).toHaveCount(0)
   })
 
@@ -211,11 +211,11 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
     const pauseBtn = page.locator('.pause-btn')
     await expect(pauseBtn).toBeVisible()
-    await expect(pauseBtn).toContainText('Pause')
+    await expect(pauseBtn).toContainText('暂停')
     await pauseBtn.click()
-    await expect(pauseBtn).toContainText('Resume')
+    await expect(pauseBtn).toContainText('继续')
     await pauseBtn.click()
-    await expect(pauseBtn).toContainText('Pause')
+    await expect(pauseBtn).toContainText('暂停')
   })
 
   test('layout: squad left, monsters center-left, combat log right', async ({ page }) => {
@@ -257,7 +257,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const secondaryHp = page.locator('.detail-section-secondary .detail-row').filter({ hasText: 'HP' })
     await expect(secondaryHp).toBeVisible()
     await expect(secondaryHp).toContainText(String(basicHpValue))
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
   })
 
   test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {
@@ -465,8 +465,8 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     // Level-up entry only appears after a victorious combat that pushes XP over threshold
     await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.log-levelup').first()).toContainText('Level 2')
-    await expect(page.locator('.log-levelup').first()).toContainText('attribute points')
+    await expect(page.locator('.log-levelup').first()).toContainText('2 级')
+    await expect(page.locator('.log-levelup').first()).toContainText('属性点')
   })
 
   test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
@@ -489,7 +489,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
     const attrAlloc = page.locator('.detail-modal .attr-alloc').first()
     await expect(attrAlloc).toBeVisible({ timeout: 5000 })
-    await expect(attrAlloc).toContainText('Unassigned')
+    await expect(attrAlloc).toContainText('未分配')
     const attrBtn = page.locator('.detail-modal .attr-btn').first()
     await expect(attrBtn).toBeVisible()
     const beforeVal = parseInt((await attrAlloc.locator('.unassigned-val').textContent()) || '0', 10)
@@ -508,7 +508,7 @@ test.describe('Gold System (Example 16)', () => {
 
     const goldDisplay = page.locator('.gold-display')
     await expect(goldDisplay).toBeVisible()
-    await expect(goldDisplay).toContainText('Gold')
+    await expect(goldDisplay).toContainText('金币')
     await expect(goldDisplay.locator('.gold-value')).toBeVisible()
   })
 

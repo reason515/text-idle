@@ -7,33 +7,33 @@
 export const MONSTER_SKILLS = {
   'stone-shard': {
     id: 'stone-shard',
-    name: 'Stone Shard',
+    name: '石片',
     coefficient: 1.2,
     cooldown: 2,
-    effectDesc: '1.2x magic damage; Splinter: Resistance -2 for 2 rounds. CD: 2 rounds',
+    effectDesc: '1.2 倍法术伤害；破法：抗性 -2 持续 2 回合。CD：2 回合',
     debuff: { type: 'splinter', resistanceReduction: 2, duration: 2 },
   },
   'blackjack': {
     id: 'blackjack',
-    name: 'Blackjack',
+    name: '闷棍',
     coefficient: 1.35,
     cooldown: 2,
-    effectDesc: '1.35x burst damage (physical or magic). CD: 2 rounds',
+    effectDesc: '1.35 倍爆发伤害（物理或法术）。CD：2 回合',
   },
   'swift-cut': {
     id: 'swift-cut',
-    name: 'Swift Cut',
+    name: '迅捷切割',
     coefficient: 1.1,
     cooldown: 2,
-    effectDesc: '1.1x physical damage; Bleed: 3 damage/round for 2 rounds. CD: 2 rounds',
+    effectDesc: '1.1 倍物理伤害；流血：每回合 3 点伤害持续 2 回合。CD：2 回合',
     debuff: { type: 'bleed', damagePerRound: 3, damageType: 'physical', duration: 2 },
   },
   'rend': {
     id: 'rend',
-    name: 'Rend',
+    name: '撕裂',
     coefficient: 1.5,
     cooldown: 3,
-    effectDesc: '1.5x savage burst damage. CD: 3 rounds',
+    effectDesc: '1.5 倍狂暴爆发伤害。CD：3 回合',
   },
 }
 

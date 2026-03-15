@@ -19,9 +19,9 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
 
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 85000 })
     const summary = page.locator('.log-summary.victory-text').first()
-    await expect(summary).toContainText('Victory!')
+    await expect(summary).toContainText('胜利！')
     await expect(summary).toContainText('EXP +')
-    await expect(summary).toContainText('Gold +')
+    await expect(summary).toContainText('金币 +')
   })
 
   test('defeat summary has no equipment links', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     const defeatSummary = page.locator('.log-summary.defeat-text').first()
-    await expect(defeatSummary).toContainText('Defeat!')
+    await expect(defeatSummary).toContainText('失败！')
     await expect(defeatSummary.locator('.log-item-drop')).toHaveCount(0)
   })
 

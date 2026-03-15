@@ -143,7 +143,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.detail-sep-line').filter({ hasText: 'Equipment' })).toBeVisible()
     const slotRows = page.locator('.equipment-slot-row')
     await expect(slotRows).toHaveCount(10)
-    await expect(slotRows.first()).toContainText('Empty')
+    await expect(slotRows.first()).toContainText('空')
   })
 
   test('equip from backpack updates Armor in secondary attributes', async ({ page }) => {
@@ -192,10 +192,10 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await helmSlot.click()
     const inventoryModal = page.locator('.inventory-modal')
     await expect(inventoryModal).toBeVisible({ timeout: 5000 })
-    await expect(inventoryModal.locator('.modal-title')).toContainText('Helm', { timeout: 5000 })
+    await expect(inventoryModal.locator('.modal-title')).toContainText('头盔', { timeout: 5000 })
     const slots = inventoryModal.locator('.inventory-slot')
     await expect(slots).toHaveCount(1, { timeout: 5000 })
-    await expect(slots.first()).toContainText('Cap')
+    await expect(slots.first()).toContainText('便帽')
   })
 
   test('unequip restores slot to Empty', async ({ page }) => {
@@ -225,7 +225,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.sell-confirm-text').filter({ hasText: 'Unequip and move to backpack' })).toBeVisible({ timeout: 5000 })
     await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
     await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toHaveCount(0, { timeout: 5000 })
-    await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' })).toContainText('Empty', { timeout: 5000 })
+    await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '头盔' })).toContainText('空', { timeout: 5000 })
   })
 
   test('AC10/AC11: equip weapon with damage range shows PhysAtk as min-max in hero detail', async ({ page }) => {
@@ -273,7 +273,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
     const ring2Slot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Ring' }).nth(1).locator('.equipment-slot-val')
     await ring2Slot.scrollIntoViewIfNeeded()
-    await expect(ring2Slot).toContainText('Empty', { timeout: 5000 })
+    await expect(ring2Slot).toContainText('空', { timeout: 5000 })
     await ring2Slot.click()
     await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
     await page.locator('.inventory-modal .inventory-slot').filter({ hasText: 'Ring' }).first().click()
@@ -348,7 +348,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.item-compare-section')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.item-compare-label').filter({ hasText: 'Current' })).toBeVisible()
     await expect(page.locator('.item-compare-label').filter({ hasText: 'New' })).toBeVisible()
-    await expect(page.locator('.equip-replace-hint')).toContainText('backpack')
+    await expect(page.locator('.equip-replace-hint')).toContainText('背包')
     await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible({ timeout: 5000 })
 

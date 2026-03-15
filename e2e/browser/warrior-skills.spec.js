@@ -23,7 +23,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
 
     // Wait for a Warrior skill (Sunder Armor or Taunt) in the log
-    await expect(page.locator('.log-action').filter({ hasText: /Sunder Armor|Taunt/ }).first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.log-action').filter({ hasText: /破甲|嘲讽/ }).first()).toBeVisible({ timeout: 90000 })
   })
 
   test('Warrior hero detail shows Skills section with Rage Cost', async ({ page }) => {
@@ -31,15 +31,15 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    const warriorCard = page.locator('.squad-col .hero-card').filter({ hasText: 'Varian' }).first()
+    const warriorCard = page.locator('.squad-col .hero-card').filter({ hasText: '瓦里安' }).first()
     await expect(warriorCard).toBeVisible({ timeout: 10000 })
     await warriorCard.click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
 
-    await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
-    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Sunder Armor' })).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Taunt' })).toBeVisible()
+    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: '破甲' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: '嘲讽' })).toBeVisible()
     await expect(page.locator('.detail-modal .skill-rage-cost').first()).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
   })
 })

@@ -4,45 +4,45 @@ import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from './debuffDisplay.js'
 describe('debuffDisplay', () => {
   describe('DEBUFF_DISPLAY', () => {
     it('has sunder with name and short label', () => {
-      expect(DEBUFF_DISPLAY.sunder).toEqual({ name: 'Sunder Armor', short: 'SA', isDebuff: true })
+      expect(DEBUFF_DISPLAY.sunder).toEqual({ name: '破甲', short: 'SA', isDebuff: true })
     })
   })
 
   describe('getDebuffTip', () => {
     it('returns Sunder Armor tip with armor reduction and rounds', () => {
       expect(getDebuffTip({ type: 'sunder', armorReduction: 8, remainingRounds: 3 })).toBe(
-        'Armor reduced by 8 for 3 round(s)'
+        '护甲降低 8，持续 3 回合'
       )
     })
     it('uses defaults when sunder fields are missing', () => {
-      expect(getDebuffTip({ type: 'sunder' })).toBe('Armor reduced by 8 for 0 round(s)')
+      expect(getDebuffTip({ type: 'sunder' })).toBe('护甲降低 8，持续 0 回合')
     })
     it('returns generic rounds for unknown type', () => {
-      expect(getDebuffTip({ type: 'unknown', remainingRounds: 5 })).toBe('5 round(s)')
+      expect(getDebuffTip({ type: 'unknown', remainingRounds: 5 })).toBe('5 回合')
     })
     it('returns Dazed tip with armor reduction', () => {
       expect(getDebuffTip({ type: 'dazed', armorReduction: 3, remainingRounds: 2 })).toBe(
-        'Armor reduced by 3 for 2 round(s)'
+        '护甲降低 3，持续 2 回合'
       )
     })
     it('returns Splinter tip with resistance reduction', () => {
       expect(getDebuffTip({ type: 'splinter', resistanceReduction: 2, remainingRounds: 2 })).toBe(
-        'Resistance reduced by 2 for 2 round(s)'
+        '抗性降低 2，持续 2 回合'
       )
     })
     it('returns Bleed tip with damage per round', () => {
       expect(getDebuffTip({ type: 'bleed', damagePerRound: 3, remainingRounds: 2 })).toBe(
-        '3 damage/round for 2 round(s)'
+        '每回合 3 点伤害，持续 2 回合'
       )
     })
     it('returns Frostbolt tip with resistance reduction', () => {
       expect(getDebuffTip({ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 3 })).toBe(
-        'Resistance reduced by 6 for 3 round(s)'
+        '抗性降低 6，持续 3 回合'
       )
     })
     it('returns Burn tip with damage per round', () => {
       expect(getDebuffTip({ type: 'burn', damagePerRound: 2, remainingRounds: 2 })).toBe(
-        '2 magic damage/round for 2 round(s)'
+        '每回合 2 点法术伤害，持续 2 回合'
       )
     })
   })

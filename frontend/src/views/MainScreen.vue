@@ -5,8 +5,8 @@
         <span class="map-name">{{ currentMapName }}</span>
         <span class="map-arrow">&#9660;</span>
       </button>
-      <div class="gold-display" :title="'Gold: ' + gold">
-        <span class="gold-label">Gold</span>
+      <div class="gold-display" :title="'金币: ' + gold">
+        <span class="gold-label">金币</span>
         <span class="gold-value">{{ gold }}</span>
       </div>
       <div class="explore-bar-wrap">
@@ -16,7 +16,7 @@
         <span class="explore-pct">{{ progress.currentProgress }}%</span>
         <span v-if="progress.bossAvailable" class="boss-badge">BOSS</span>
       </div>
-      <button class="btn-logout" @click="logout">Logout</button>
+      <button class="btn-logout" @click="logout">登出</button>
     </div>
 
     <div class="battle-content">
@@ -78,13 +78,13 @@
               </span>
             </div>
           </div>
-          <div v-if="displayHeroes.length === 0" class="empty-hint">No heroes. Recruit to begin.</div>
+          <div v-if="displayHeroes.length === 0" class="empty-hint">暂无英雄，招募开始冒险。</div>
         </div>
-        <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ Recruit</button>
+        <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ 招募</button>
       </div>
 
       <div class="monsters-col">
-        <div class="col-header">Monsters</div>
+        <div class="col-header">怪物</div>
         <div class="monster-list">
           <div
             v-for="(m, i) in currentMonsters"
@@ -127,55 +127,55 @@
               </span>
             </div>
           </div>
-          <div v-if="currentMonsters.length === 0" class="empty-hint">No active encounter.</div>
+          <div v-if="currentMonsters.length === 0" class="empty-hint">暂无遭遇。</div>
         </div>
       </div>
       <div class="log-col">
         <div class="log-col-header">
-          <span class="col-header">Combat Log</span>
+          <span class="col-header">战斗日志</span>
           <div class="log-actions">
             <button
               class="btn btn-sm pause-btn"
               :class="{ paused: isPaused }"
-              :title="isPaused ? 'Resume' : 'Pause'"
+              :title="isPaused ? '继续' : '暂停'"
               @click="isPaused = !isPaused"
             >
-              {{ isPaused ? 'Resume' : 'Pause' }}
+              {{ isPaused ? '继续' : '暂停' }}
             </button>
-            <button class="btn btn-sm backpack-btn" title="Backpack" @click="showBackpackModal = true">
-              Pack {{ inventoryCount }}/100
+            <button class="btn btn-sm backpack-btn" title="背包" @click="showBackpackModal = true">
+              背包 {{ inventoryCount }}/100
             </button>
-            <button class="btn btn-sm shop-btn" title="Shop" @click="showShopModal = true">
-              Shop
+            <button class="btn btn-sm shop-btn" title="商店" @click="showShopModal = true">
+              商店
             </button>
             <!-- Reserved for future: speed, settings, etc. -->
           </div>
         </div>
         <div class="log-list" ref="logListEl">
-          <div v-if="displayedLog.length === 0" class="empty-hint">Waiting for combat...</div>
+          <div v-if="displayedLog.length === 0" class="empty-hint">等待战斗...</div>
           <template v-for="(entry, i) in displayedLog" :key="i">
             <div v-if="entry.type === 'separator'" class="log-separator log-separator-battle"></div>
             <div v-else-if="entry.type === 'roundSeparator'" class="log-separator log-separator-round"></div>
             <div v-else-if="entry.type === 'mapEntry'" class="log-map-entry">
-              <span class="log-map-entry-label">Arriving at {{ entry.mapName }}:</span>
+              <span class="log-map-entry-label">抵达 {{ entry.mapName }}：</span>
               <span class="log-map-entry-desc">{{ entry.description }}</span>
             </div>
             <div v-else-if="entry.type === 'encounter'" class="log-encounter">
-              Your adventure party encountered <template v-if="entry.isBoss">the fearsome </template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">, </span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>!
+              你的冒险小队遭遇了<template v-if="entry.isBoss">可怕的</template><template v-for="(m, i) in entry.monsters" :key="i"><span v-if="i > 0">、</span><span :style="{ color: monsterTierColor(m.tier) }">{{ m.name }}</span></template>！
             </div>
             <div v-else-if="entry.type === 'levelUp'" class="log-levelup">
               <span class="log-levelup-icon">&#9733;</span>
               <span :style="{ color: classColor(entry.heroClass) }">{{ entry.heroName }}</span>
-              <span class="log-levelup-text">reached Level {{ entry.newLevel }}!</span>
-              <span class="log-levelup-bonus">+{{ entry.pointsGained }} attribute points</span>
+              <span class="log-levelup-text">达到 {{ entry.newLevel }} 级！</span>
+              <span class="log-levelup-bonus">+{{ entry.pointsGained }} 属性点</span>
             </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
               <template v-if="entry.outcome === 'victory'">
-                <span class="log-victory-label">Victory!</span>
-                <span class="log-summary-body">Defeated <span class="log-monster-count">{{ entry.monsterCount }}</span> monster(s) in <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
+                <span class="log-victory-label">胜利！</span>
+                <span class="log-summary-body">在 <span class="log-rounds-num">{{ entry.rounds }}</span> 回合内击败 <span class="log-monster-count">{{ entry.monsterCount }}</span> 只怪物。</span>
                 <div class="log-rewards-box">
                   <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
-                  <span class="val-gold">Gold +{{ entry.rewards.gold }}</span>
+                  <span class="val-gold">金币 +{{ entry.rewards.gold }}</span>
                   <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
                     <span
                       class="log-item-drop tooltip-wrap has-tip"
@@ -183,21 +183,21 @@
                       @click="selectedItem = eq"
                     >
                       {{ formatItemDisplayName(eq) }}
-                      <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - Click to inspect</span>
+                      <span class="tooltip-text">{{ SLOT_LABELS[eq.slot] || eq.slot }} - 点击查看</span>
                     </span>
                   </template>
-                  <span v-if="entry.inventoryFull" class="log-inv-full">Inventory full — loot discarded!</span>
+                  <span v-if="entry.inventoryFull" class="log-inv-full">背包已满，战利品已丢弃！</span>
                 </div>
               </template>
               <template v-else-if="entry.outcome === 'defeat'">
-                <span class="log-defeat-label">Defeat!</span>
-                <span class="log-summary-body">Your party was overwhelmed after <span class="log-rounds-num">{{ entry.rounds }}</span> round(s).</span>
+                <span class="log-defeat-label">失败！</span>
+                <span class="log-summary-body">你的队伍在 <span class="log-rounds-num">{{ entry.rounds }}</span> 回合后被击溃。</span>
                 <div class="log-rewards-box log-rewards-box-defeat">
-                  <span class="val-penalty">Exploration -10</span>
+                  <span class="val-penalty">探索度 -10</span>
                 </div>
               </template>
               <template v-else>
-                Draw after {{ entry.rounds }} round(s).
+                {{ entry.rounds }} 回合后平局。
               </template>
             </div>
             <div v-else-if="entry.type === 'dot'" class="log-entry log-dot">
@@ -208,7 +208,7 @@
                   :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
                 >{{ entry.targetName }}</span>
                 <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
-                <span class="log-sep">ticks for</span>
+                <span class="log-sep">造成</span>
                 <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
                 <span class="log-sep">HP:</span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
@@ -219,7 +219,7 @@
             <div v-else-if="entry.type === 'ot'" class="log-entry log-ot">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
-              <span class="log-sep">switched target to</span>
+              <span class="log-sep">切换目标至</span>
               <span
                 class="log-target"
                 :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
@@ -228,7 +228,7 @@
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
-                Recovering...
+                恢复中...
                 <template v-for="(h, i) in entry.heroes" :key="h.id">
                   <span v-if="i > 0" class="log-rest-sep"> | </span>
                   <span :style="{ color: classColor(h.class) }">{{ h.name }}</span>
@@ -244,9 +244,9 @@
                 :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
               >{{ entry.actorName }}</span>
               <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">(AGI {{ entry.actorAgility }})
-                <span class="tooltip-text">Higher agility acts first</span>
+                <span class="tooltip-text">敏捷越高先出手</span>
               </span>
-              <span class="log-sep">used</span>
+              <span class="log-sep">使用</span>
               <span class="log-action" :class="entry.action === 'basic' ? 'log-basic' : (entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
               <span class="log-sep">on</span>
               <span
@@ -295,20 +295,20 @@
                 <div v-if="entry.debuffApplied" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
                   <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
-                  <template v-if="entry.debuffArmorReduction != null"> Armor reduced by {{ entry.debuffArmorReduction }}</template>
-                  <template v-if="entry.debuffResistanceReduction != null"> Resistance reduced by {{ entry.debuffResistanceReduction }}</template>
-                  <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} damage/round</template>
-                  for {{ entry.debuffDuration }} rounds
+                  <template v-if="entry.debuffArmorReduction != null"> 护甲降低 {{ entry.debuffArmorReduction }}</template>
+                  <template v-if="entry.debuffResistanceReduction != null"> 抗性降低 {{ entry.debuffResistanceReduction }}</template>
+                  <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} 伤害/回合</template>
+                  持续 {{ entry.debuffDuration }} 回合
                 </div>
                 <div v-if="entry.debuffRefreshed" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: 'Debuff' }).name }}</span> refreshed ({{ entry.debuffDuration }} rounds)
+                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: '减益' }).name }}</span> 刷新（{{ entry.debuffDuration }} 回合）
                 </div>
                 <div v-if="entry.threatAmount != null && entry.threatTargetName" class="log-threat">
-                  Threat +{{ entry.threatAmount }} to {{ entry.threatTargetName }}
+                  仇恨 +{{ entry.threatAmount }} 对 {{ entry.threatTargetName }}
                 </div>
                 <div v-if="entry.threatHealAmount != null" class="log-threat">
-                  Threat +{{ entry.threatHealAmount }} to all monsters
+                  仇恨 +{{ entry.threatHealAmount }} 对所有怪物
                 </div>
               </div>
             </div>
@@ -321,60 +321,60 @@
       <div v-if="showShopModal" class="modal-overlay" @click.self="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">
         <div class="modal-box shop-modal">
           <div class="shop-modal-header">
-            <div class="modal-title">Shop</div>
+            <div class="modal-title">商店</div>
             <div class="shop-gold-row">
-              <span class="shop-gold-label">Gold:</span>
+              <span class="shop-gold-label">金币：</span>
               <span class="shop-gold-value">{{ gold }}</span>
             </div>
           </div>
-          <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === 'Insufficient gold' }">
+          <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === '金币不足' }">
             {{ shopMessage }}
           </div>
           <div class="shop-sections">
             <div class="shop-section">
-              <div class="shop-section-title">Weapons</div>
+              <div class="shop-section-title">武器</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => s.id.startsWith('MainHand') || s.id.startsWith('OffHand'))" :key="slot.id" class="shop-slot-row">
                   <span class="shop-slot-label">{{ slot.label }}</span>
-                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
                     :disabled="gold < getShopPriceForSlot(slot.id)"
                     @click="shopConfirmingSlot = slot.id"
                   >
-                    Buy
+                    购买
                   </button>
                 </div>
               </div>
             </div>
             <div class="shop-section">
-              <div class="shop-section-title">Armor</div>
+              <div class="shop-section-title">护甲</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => ['Helm','Armor','Gloves','Boots','Belt'].includes(s.id))" :key="slot.id" class="shop-slot-row">
                   <span class="shop-slot-label">{{ slot.label }}</span>
-                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
                     :disabled="gold < getShopPriceForSlot(slot.id)"
                     @click="shopConfirmingSlot = slot.id"
                   >
-                    Buy
+                    购买
                   </button>
                 </div>
               </div>
             </div>
             <div class="shop-section">
-              <div class="shop-section-title">Accessories</div>
+              <div class="shop-section-title">饰品</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => ['Amulet','Ring'].includes(s.id))" :key="slot.id" class="shop-slot-row">
                   <span class="shop-slot-label">{{ slot.label }}</span>
-                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} gold</span>
+                  <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
                     :disabled="gold < getShopPriceForSlot(slot.id)"
                     @click="shopConfirmingSlot = slot.id"
                   >
-                    Buy
+                    购买
                   </button>
                 </div>
               </div>
@@ -382,14 +382,14 @@
           </div>
           <div v-if="shopConfirmingSlot" class="shop-confirm-row">
             <span class="shop-confirm-text">
-              Buy {{ getShopConfirmLabel(shopConfirmingSlot) }} for <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} gold</span>?
+              花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买 {{ getShopConfirmLabel(shopConfirmingSlot) }}？
             </span>
             <div class="shop-confirm-actions">
-              <button class="btn btn-sm" @click="confirmShopBuy(shopConfirmingSlot)">Confirm</button>
-              <button class="btn btn-sm" @click="shopConfirmingSlot = null">Cancel</button>
+              <button class="btn btn-sm" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
+              <button class="btn btn-sm" @click="shopConfirmingSlot = null">取消</button>
             </div>
           </div>
-          <button class="btn shop-close-btn" @click="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">Close</button>
+          <button class="btn shop-close-btn" @click="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -397,7 +397,7 @@
     <Teleport to="body">
       <div v-if="showMapModal" class="modal-overlay" @click.self="showMapModal = false">
         <div class="modal-box">
-          <div class="modal-title">Select Map</div>
+          <div class="modal-title">选择地图</div>
           <div class="map-list-modal">
             <button
               v-for="map in MAPS"
@@ -408,11 +408,11 @@
               @click="selectMap(map.id)"
             >
               <span>{{ map.name }}</span>
-              <span v-if="!isMapUnlocked(map.id)" class="locked-tag">Locked</span>
-              <span v-else-if="map.id === progress.currentMapId" class="current-tag">Current</span>
+              <span v-if="!isMapUnlocked(map.id)" class="locked-tag">未解锁</span>
+              <span v-else-if="map.id === progress.currentMapId" class="current-tag">当前</span>
             </button>
           </div>
-          <button class="btn" @click="showMapModal = false">Close</button>
+          <button class="btn" @click="showMapModal = false">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -420,9 +420,9 @@
     <Teleport to="body">
       <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">
         <div class="modal-box inventory-modal">
-          <div class="modal-title">{{ pendingEquipSlot ? `Backpack - Equip ${SLOT_LABELS[pendingEquipSlot] || pendingEquipSlot}` : 'Backpack' }}</div>
+          <div class="modal-title">{{ pendingEquipSlot ? `背包 - 装备${SLOT_LABELS[pendingEquipSlot] || pendingEquipSlot}` : '背包' }}</div>
           <div class="inventory-counter">{{ inventoryCount }} / 100</div>
-          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">{{ pendingEquipSlot ? 'No items for this slot' : 'No items in backpack' }}</div>
+          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">{{ pendingEquipSlot ? '此槽位无可用物品' : '背包为空' }}</div>
           <div v-else class="inventory-grid" @scroll="hoveredBackpackItem = null">
             <div
               v-for="(item, idx) in inventoryItems"
@@ -437,7 +437,7 @@
               <span class="slot-lvl">Lv.{{ item.levelReq || 0 }}</span>
             </div>
           </div>
-          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">Close</button>
+          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">关闭</button>
         </div>
       </div>
       <div
@@ -463,21 +463,21 @@
       <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
         <div class="modal-box item-detail-modal">
           <template v-if="equipReplacePending?.mode === 'replace_confirm'">
-            <div class="modal-title item-compare-title">Compare — Replace in {{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
+            <div class="modal-title item-compare-title">对比 — 替换{{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
             <div class="item-compare-section">
               <div class="item-compare-columns">
                 <div class="item-compare-col">
-                  <div class="item-compare-label">Current (Equipped)</div>
+                  <div class="item-compare-label">当前（已装备）</div>
                   <div class="item-compare-item" :style="{ color: getQualityColor(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)?.quality) }">
                     {{ formatItemDisplayName(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)) }}
                   </div>
                   <div class="item-compare-stats" v-if="replaceCompareCurrent">
                     <div class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Lv.Req</span>
+                      <span class="item-compare-detail-label">等级需求</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.levelReq || 0 }}</span>
                     </div>
                     <div v-if="(replaceCompareCurrent.strReq || 0) > 0 || (replaceCompareCurrent.agiReq || 0) > 0 || (replaceCompareCurrent.intReq || 0) > 0 || (replaceCompareCurrent.spiReq || 0) > 0" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Req</span>
+                      <span class="item-compare-detail-label">属性需求</span>
                       <span class="item-compare-detail-value">
                         <span v-if="(replaceCompareCurrent.strReq || 0) > 0">Str {{ replaceCompareCurrent.strReq }}</span>
                         <span v-if="(replaceCompareCurrent.agiReq || 0) > 0">Agi {{ replaceCompareCurrent.agiReq }}</span>
@@ -486,19 +486,19 @@
                       </span>
                     </div>
                     <div v-if="(replaceCompareCurrent.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Armor</span>
+                      <span class="item-compare-detail-label">护甲</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.armor }}</span>
                     </div>
                     <div v-if="(replaceCompareCurrent.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Resist</span>
+                      <span class="item-compare-detail-label">抗性</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.resistance }}</span>
                     </div>
                     <div v-if="((replaceCompareCurrent.physAtk || 0) > 0 || (replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">PhysAtk</span>
+                      <span class="item-compare-detail-label">物攻</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null ? (replaceCompareCurrent.physAtkMin + '-' + replaceCompareCurrent.physAtkMax) : replaceCompareCurrent.physAtk }}</span>
                     </div>
                     <div v-if="((replaceCompareCurrent.spellPower || 0) > 0 || (replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Spell</span>
+                      <span class="item-compare-detail-label">法强</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null ? (replaceCompareCurrent.spellPowerMin + '-' + replaceCompareCurrent.spellPowerMax) : replaceCompareCurrent.spellPower }}</span>
                     </div>
                     <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
@@ -506,17 +506,17 @@
                   </div>
                 </div>
                 <div class="item-compare-col">
-                  <div class="item-compare-label">New</div>
+                  <div class="item-compare-label">新装备</div>
                   <div class="item-compare-item" :style="{ color: getQualityColor(equipReplacePending.item?.quality) }">
                     {{ formatItemDisplayName(equipReplacePending.item) }}
                   </div>
                   <div class="item-compare-stats" v-if="equipReplacePending.item">
                     <div class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Lv.Req</span>
+                      <span class="item-compare-detail-label">等级需求</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.levelReq || 0 }}</span>
                     </div>
                     <div v-if="(equipReplacePending.item.strReq || 0) > 0 || (equipReplacePending.item.agiReq || 0) > 0 || (equipReplacePending.item.intReq || 0) > 0 || (equipReplacePending.item.spiReq || 0) > 0" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Req</span>
+                      <span class="item-compare-detail-label">属性需求</span>
                       <span class="item-compare-detail-value">
                         <span v-if="(equipReplacePending.item.strReq || 0) > 0">Str {{ equipReplacePending.item.strReq }}</span>
                         <span v-if="(equipReplacePending.item.agiReq || 0) > 0">Agi {{ equipReplacePending.item.agiReq }}</span>
@@ -525,19 +525,19 @@
                       </span>
                     </div>
                     <div v-if="(equipReplacePending.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Armor</span>
+                      <span class="item-compare-detail-label">护甲</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.armor }}</span>
                     </div>
                     <div v-if="(equipReplacePending.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Resist</span>
+                      <span class="item-compare-detail-label">抗性</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.resistance }}</span>
                     </div>
                     <div v-if="((equipReplacePending.item.physAtk || 0) > 0 || (equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">PhysAtk</span>
+                      <span class="item-compare-detail-label">物攻</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
                     </div>
                     <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">Spell</span>
+                      <span class="item-compare-detail-label">法强</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
                     </div>
                     <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
@@ -546,10 +546,10 @@
                 </div>
               </div>
               <div class="item-compare-actions">
-                <span class="equip-replace-hint">Current item will be moved to backpack.</span>
+                <span class="equip-replace-hint">当前装备将移至背包。</span>
                 <div class="equip-replace-actions">
-                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">Confirm</button>
-                  <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
+                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">确认</button>
+                  <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
                 </div>
               </div>
             </div>
@@ -561,15 +561,15 @@
           </div>
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Slot</span>
+              <span class="detail-label">槽位</span>
               <span class="detail-value">{{ SLOT_LABELS[selectedItem.slot] || selectedItem.slot }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Level Req</span>
+              <span class="detail-label">等级需求</span>
               <span class="detail-value detail-value-req">{{ selectedItem.levelReq || 0 }}</span>
             </div>
             <div v-if="(selectedItem.strReq || 0) > 0 || (selectedItem.agiReq || 0) > 0 || (selectedItem.intReq || 0) > 0 || (selectedItem.spiReq || 0) > 0" class="detail-row">
-              <span class="detail-label">Requirements</span>
+              <span class="detail-label">属性需求</span>
               <span class="detail-value detail-value-req">
                 <span v-if="(selectedItem.strReq || 0) > 0">Str {{ selectedItem.strReq }}</span>
                 <span v-if="(selectedItem.agiReq || 0) > 0">Agi {{ selectedItem.agiReq }}</span>
@@ -578,22 +578,22 @@
               </span>
             </div>
             <div v-if="(selectedItem.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">Armor</span>
+              <span class="detail-label">护甲</span>
               <span class="detail-value">{{ selectedItem.armor }}</span>
             </div>
             <div v-if="(selectedItem.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">Resistance</span>
+              <span class="detail-label">抗性</span>
               <span class="detail-value">{{ selectedItem.resistance }}</span>
             </div>
             <div v-if="((selectedItem.physAtk || 0) > 0 || (selectedItem.physAtkMin != null && selectedItem.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">Phys Atk</span>
+              <span class="detail-label">物攻</span>
               <span class="detail-value">{{ selectedItem.physAtkMin != null && selectedItem.physAtkMax != null ? (selectedItem.physAtkMin + '-' + selectedItem.physAtkMax) : selectedItem.physAtk }}</span>
             </div>
             <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">Spell Power</span>
+              <span class="detail-label">法强</span>
               <span class="detail-value">{{ selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null ? (selectedItem.spellPowerMin + '-' + selectedItem.spellPowerMax) : selectedItem.spellPower }}</span>
             </div>
-            <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
+            <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
             <div class="affix-list">
               <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
@@ -609,20 +609,20 @@
               </div>
             </div>
             <div v-if="isItemInInventory(selectedItem)" class="detail-row">
-              <span class="detail-label">Sell Price</span>
-              <span class="detail-value val-gold">{{ getSellPrice(selectedItem) }} gold</span>
+              <span class="detail-label">出售价格</span>
+              <span class="detail-value val-gold">{{ getSellPrice(selectedItem) }} 金币</span>
             </div>
           </div>
           <div v-if="sellConfirmingItem?.id === selectedItem?.id" class="item-detail-sell-confirm">
-            <span class="sell-confirm-text">Sell for {{ getSellPrice(selectedItem) }} gold?</span>
+            <span class="sell-confirm-text">以 {{ getSellPrice(selectedItem) }} 金币出售？</span>
             <div class="item-detail-actions">
-              <button class="btn" @click="confirmSellItem(selectedItem)">Confirm</button>
-              <button class="btn" @click="sellConfirmingItem = null">Cancel</button>
+              <button class="btn" @click="confirmSellItem(selectedItem)">确认</button>
+              <button class="btn" @click="sellConfirmingItem = null">取消</button>
             </div>
           </div>
           <div v-else class="item-detail-actions">
             <div v-if="equipReplacePending?.mode === 'ring_choice'" class="equip-replace-section">
-              <span class="equip-to-label">Replace which ring for {{ equipReplacePending.hero.name }}?</span>
+              <span class="equip-to-label">为 {{ equipReplacePending.hero.name }} 替换哪个戒指？</span>
               <div class="equip-replace-choices">
                 <button
                   v-for="s in ['Ring1','Ring2']"
@@ -631,15 +631,15 @@
                   :style="{ color: getEquippedItemColorForHero(equipReplacePending.hero, s) }"
                   @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, s); equipReplacePending = null; selectedItem = null"
                 >
-                  <span class="equip-replace-slot">Ring {{ s === 'Ring1' ? '1' : '2' }}:</span>
-                  <span class="equip-replace-name">{{ getEquippedItemNameForHero(equipReplacePending.hero, s) || 'Empty' }}</span>
+                  <span class="equip-replace-slot">戒指{{ s === 'Ring1' ? '1' : '2' }}：</span>
+                  <span class="equip-replace-name">{{ getEquippedItemNameForHero(equipReplacePending.hero, s) || '空' }}</span>
                   <span class="equip-replace-lvl">Lv.{{ getEquippedItemLevelReqForHero(equipReplacePending.hero, s) }}</span>
                 </button>
               </div>
-              <button class="btn btn-sm" @click="equipReplacePending = null">Cancel</button>
+              <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
             </div>
             <div v-else-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
-              <span class="equip-to-label">Equip to:</span>
+              <span class="equip-to-label">装备给：</span>
               <span v-for="h in squad" :key="h.id" class="equip-to-row">
                 <button
                   v-if="canEquip(h, selectedItem)"
@@ -653,14 +653,14 @@
                   {{ h.name }}
                   <span class="tooltip-text">
                     <template v-for="(r, i) in getEquipReasonsStructured(h, selectedItem)" :key="r.key">
-                      <span v-if="i > 0">; </span>{{ r.label }} {{ r.required }} required (current: <span class="equip-unmet-val">{{ r.current }}</span>)
+                      <span v-if="i > 0">；</span>{{ r.label }} 需 {{ r.required }}（当前：<span class="equip-unmet-val">{{ r.current }}</span>）
                     </template>
                   </span>
                 </span>
               </span>
             </div>
-            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">Sell</button>
-            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">Close</button>
+            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">出售</button>
+            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">关闭</button>
           </div>
           </div>
           </template>
@@ -681,28 +681,28 @@
               class="detail-tab"
               :class="{ active: heroDetailTab === 'attrs' }"
               @click="heroDetailTab = 'attrs'"
-            >ATTRIBUTES</button>
+            >属性</button>
             <button
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'skills' }"
               @click="heroDetailTab = 'skills'"
-            >SKILLS</button>
+            >技能</button>
             <button
               v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0"
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'tactics' }"
               @click="heroDetailTab = 'tactics'"
-            >TACTICS</button>
+            >战术</button>
           </div>
           <div class="detail-tab-content">
           <div v-show="heroDetailTab === 'attrs'" class="detail-tab-pane">
-          <div class="detail-sep-line detail-sep-basic">Basic Info</div>
+          <div class="detail-sep-line detail-sep-basic">基本信息</div>
           <div class="detail-section detail-section-basic">
             <div class="detail-row">
-              <span class="detail-label">Level</span>
-              <span class="detail-value">{{ selectedHero.level || 1 }}{{ (selectedHero.level || 1) >= 60 ? ' (max)' : '' }}</span>
+              <span class="detail-label">等级</span>
+              <span class="detail-value">{{ selectedHero.level || 1 }}{{ (selectedHero.level || 1) >= 60 ? '（满级）' : '' }}</span>
             </div>
             <div v-if="(selectedHero.level || 1) < 60" class="detail-row">
               <span class="detail-label">XP</span>
@@ -719,15 +719,15 @@
           </div>
           <div class="detail-attr-equip-row">
             <div class="detail-attr-col">
-              <div class="detail-sep-line detail-sep-primary">Primary Attributes</div>
+              <div class="detail-sep-line detail-sep-primary">主属性</div>
               <div v-if="(selectedHero.unassignedPoints || 0) > 0" class="detail-section detail-section-primary attr-alloc">
                 <div class="detail-row attr-row">
-                  <span class="detail-label">Unassigned</span>
+                  <span class="detail-label">未分配</span>
                   <span class="detail-value">
                     <span class="attr-val unassigned-val">{{ selectedHero.unassignedPoints }}</span>
                   </span>
                 </div>
-                <div class="attr-buttons-hint">Click + to assign a point</div>
+                <div class="attr-buttons-hint">点击 + 分配属性点</div>
               </div>
               <div class="detail-section detail-section-primary">
                 <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
@@ -747,7 +747,7 @@
                   </span>
                 </div>
               </div>
-              <div class="detail-sep-line detail-sep-secondary">Secondary Attributes</div>
+              <div class="detail-sep-line detail-sep-secondary">副属性</div>
               <div class="detail-section detail-section-secondary">
                 <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
                   <span class="detail-label secondary-label" :class="{ 'secondary-label-rage': attr.key === 'Resource' && selectedHero.class === 'Warrior' }">{{ attr.label }}</span>
@@ -765,7 +765,7 @@
               </div>
             </div>
             <div class="detail-equip-col">
-              <div class="detail-sep-line detail-sep-equipment">Equipment</div>
+              <div class="detail-sep-line detail-sep-equipment">装备</div>
               <div class="detail-section detail-section-equipment equipment-slots">
                 <div v-for="slot in EQUIPMENT_SLOTS" :key="slot" class="equipment-slot-row">
                   <span class="detail-label">{{ SLOT_LABELS[slot] || slot }}</span>
@@ -775,12 +775,12 @@
                       :class="{ 'has-tip': !(slot === 'OffHand' && isOffHandBlockedForSelected()) }"
                       :style="{ color: getEquippedItemColor(slot) }"
                     >
-                      <span class="equip-name-text">{{ getEquippedItemName(slot) || 'Empty' }}</span>
-                      <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text tooltip-below">Blocked by two-hand weapon</span>
+                      <span class="equip-name-text">{{ getEquippedItemName(slot) || '空' }}</span>
+                      <span v-if="slot === 'OffHand' && isOffHandBlockedForSelected()" class="tooltip-text tooltip-below">双手武器占用</span>
                       <span v-else class="tooltip-text tooltip-below">
                         <span v-if="getEquippedItemName(slot)" :style="{ color: getEquippedItemColor(slot) }">{{ getEquippedItemName(slot) }}</span>
                         <template v-if="getEquippedItemName(slot)"> - </template>
-                        {{ getEquippedItemName(slot) ? 'Click to view details or equip from backpack' : 'Click to equip from backpack' }}
+                        {{ getEquippedItemName(slot) ? '点击查看详情或从背包装备' : '点击从背包装备' }}
                       </span>
                     </span>
                   </span>
@@ -788,7 +788,7 @@
               </div>
             </div>
           </div>
-          <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">Debuffs</div>
+          <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">减益</div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedHero)" :key="d.type" class="detail-row">
               <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
@@ -811,26 +811,26 @@
                     class="skill-enhance-badge tooltip-wrap has-tip"
                   >
                     {{ selectedHero.skillEnhancements[skillId].enhanceCount }}/3
-                    <span class="tooltip-text">Enhanced {{ selectedHero.skillEnhancements[skillId].enhanceCount }}/3 times</span>
+                    <span class="tooltip-text">已强化 {{ selectedHero.skillEnhancements[skillId].enhanceCount }}/3 次</span>
                   </span>
                 </div>
                 <div class="detail-row skill-desc-row">
                   <span class="skill-desc-text">{{ getHeroSkillDisplay(skillId, selectedHero).effectDesc }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">{{ selectedHero.class === 'Warrior' ? 'Rage Cost' : 'Mana Cost' }}</span>
+                  <span class="detail-label">{{ selectedHero.class === 'Warrior' ? '怒气消耗' : '法力消耗' }}</span>
                   <span class="detail-value" :class="selectedHero.class === 'Warrior' ? 'skill-rage-cost' : 'skill-mana-cost'">{{ getHeroSkillDisplay(skillId, selectedHero).rageCost ?? getHeroSkillDisplay(skillId, selectedHero).manaCost ?? 0 }}</span>
                 </div>
               </div>
             </template>
-            <div v-else class="detail-empty-hint">No skills learned yet.</div>
+            <div v-else class="detail-empty-hint">尚未学习技能。</div>
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
             <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
-              <div class="detail-sep-line">Skill Priority & Per-Skill Config</div>
-              <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried. Basic Attack is used when no skill is available. Each skill can have its own target rule and condition.</div>
+              <div class="detail-sep-line">技能优先级与单技能配置</div>
+              <div class="detail-section tactics-priority-hint">每回合按顺序尝试技能；若不可用则尝试下一个。无可用技能时使用普通攻击。每个技能可单独设置目标和条件。</div>
               <div class="detail-section">
-                <span class="detail-label tactics-default-label">Default target</span>
+                <span class="detail-label tactics-default-label">默认目标</span>
                 <select
                   :value="tacticsTargetRule(selectedHero)"
                   class="tactics-select tactics-default-target"
@@ -839,7 +839,7 @@
                 >
                   <option v-for="opt in tacticsDefaultTargetOptions(selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                 </select>
-                <span class="tactics-default-hint">(used when skill has no override)</span>
+                <span class="tactics-default-hint">（技能未单独设置时使用）</span>
               </div>
               <div class="tactics-skill-list">
                 <div
@@ -857,19 +857,19 @@
                   </div>
                   <div class="tactics-skill-config">
                     <div class="tactics-skill-config-row">
-                      <span class="tactics-skill-config-label">Target</span>
+                      <span class="tactics-skill-config-label">目标</span>
                       <select
                         :value="getSkillTargetRule(selectedHero, skillId)"
                         class="tactics-select tactics-skill-target"
                         :data-testid="'tactics-skill-target-' + skillId"
                         @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
                       >
-                        <option value="">Default</option>
+                        <option value="">默认</option>
                         <option v-for="opt in tacticsSkillTargetOptions(skillId, selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                       </select>
                     </div>
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
-                      <span class="tactics-skill-config-label">Condition</span>
+                      <span class="tactics-skill-config-label">条件</span>
                       <select
                         :value="getSkillConditionTargetType(selectedHero, skillId)"
                         class="tactics-select tactics-condition-target"
@@ -914,10 +914,10 @@
                 </div>
               </div>
             </template>
-            <div v-else class="detail-empty-hint">No skills to configure tactics.</div>
+            <div v-else class="detail-empty-hint">无可配置战术的技能。</div>
           </div>
           </div>
-          <button class="btn" @click="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
+          <button class="btn" @click="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -930,15 +930,15 @@
           </div>
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Slot</span>
+              <span class="detail-label">槽位</span>
               <span class="detail-value">{{ SLOT_LABELS[selectedEquippedItem.item.slot] || selectedEquippedItem.item.slot }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Level Req</span>
+              <span class="detail-label">等级需求</span>
               <span class="detail-value detail-value-req">{{ selectedEquippedItem.item.levelReq || 0 }}</span>
             </div>
             <div v-if="(selectedEquippedItem.item.strReq || 0) > 0 || (selectedEquippedItem.item.agiReq || 0) > 0 || (selectedEquippedItem.item.intReq || 0) > 0 || (selectedEquippedItem.item.spiReq || 0) > 0" class="detail-row">
-              <span class="detail-label">Requirements</span>
+              <span class="detail-label">属性需求</span>
               <span class="detail-value detail-value-req">
                 <span v-if="(selectedEquippedItem.item.strReq || 0) > 0">Str {{ selectedEquippedItem.item.strReq }}</span>
                 <span v-if="(selectedEquippedItem.item.agiReq || 0) > 0">Agi {{ selectedEquippedItem.item.agiReq }}</span>
@@ -947,22 +947,22 @@
               </span>
             </div>
             <div v-if="(selectedEquippedItem.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">Armor</span>
+              <span class="detail-label">护甲</span>
               <span class="detail-value">{{ selectedEquippedItem.item.armor }}</span>
             </div>
             <div v-if="(selectedEquippedItem.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">Resistance</span>
+              <span class="detail-label">抗性</span>
               <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
             </div>
             <div v-if="((selectedEquippedItem.item.physAtk || 0) > 0 || (selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">Phys Atk</span>
+              <span class="detail-label">物攻</span>
               <span class="detail-value">{{ selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null ? (selectedEquippedItem.item.physAtkMin + '-' + selectedEquippedItem.item.physAtkMax) : selectedEquippedItem.item.physAtk }}</span>
             </div>
             <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">Spell Power</span>
+              <span class="detail-label">法强</span>
               <span class="detail-value">{{ selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null ? (selectedEquippedItem.item.spellPowerMin + '-' + selectedEquippedItem.item.spellPowerMax) : selectedEquippedItem.item.spellPower }}</span>
             </div>
-            <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">Affixes</div>
+            <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
             <div class="affix-list">
               <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
@@ -979,15 +979,15 @@
             </div>
           </div>
           <div v-if="equippedUnequipConfirming" class="item-detail-sell-confirm">
-            <span class="sell-confirm-text">Unequip and move to backpack?</span>
+            <span class="sell-confirm-text">卸下并移至背包？</span>
             <div class="item-detail-actions">
-              <button class="btn" @click="confirmUnequipEquipment">Confirm</button>
-              <button class="btn" @click="equippedUnequipConfirming = false">Cancel</button>
+              <button class="btn" @click="confirmUnequipEquipment">确认</button>
+              <button class="btn" @click="equippedUnequipConfirming = false">取消</button>
             </div>
           </div>
           <div v-else class="item-detail-actions">
-            <button class="btn" @click="equippedUnequipConfirming = true">Unequip</button>
-            <button class="btn" @click="selectedEquippedItem = null; equippedUnequipConfirming = false">Close</button>
+            <button class="btn" @click="equippedUnequipConfirming = true">卸下</button>
+            <button class="btn" @click="selectedEquippedItem = null; equippedUnequipConfirming = false">关闭</button>
           </div>
         </div>
       </div>
@@ -1002,7 +1002,7 @@
           </div>
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Level</span>
+              <span class="detail-label">等级</span>
               <span class="detail-value">{{ selectedMonster.level ?? 1 }}</span>
             </div>
             <div class="detail-row">
@@ -1010,18 +1010,18 @@
               <span class="detail-value val-hp" :style="{ color: hpBarColor(monsterHpPct(selectedMonster)) }">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Damage Type</span>
+              <span class="detail-label">伤害类型</span>
               <span class="detail-value" :class="'log-' + selectedMonster.damageType">{{ selectedMonster.damageType }}</span>
             </div>
           </div>
-          <div class="detail-sep-line">Combat Stats</div>
+          <div class="detail-sep-line">战斗属性</div>
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Phys Atk</span>
+              <span class="detail-label">物攻</span>
               <span class="detail-value">{{ selectedMonster.physAtk }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Spell Power</span>
+              <span class="detail-label">法强</span>
               <span class="detail-value">{{ selectedMonster.spellPower }}</span>
             </div>
             <div class="detail-row">
@@ -1029,22 +1029,22 @@
               <span class="detail-value">{{ selectedMonster.agility }}</span>
             </div>
           </div>
-          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-sep-line">Skill</div>
+          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-sep-line">技能</div>
           <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Skill</span>
+              <span class="detail-label">技能</span>
               <span class="detail-value skill-spec-tag">{{ getMonsterSkillDisplay(selectedMonster.skill).name }}</span>
             </div>
             <div class="detail-row skill-desc-row">
               <span class="skill-desc-text">{{ getMonsterSkillDisplay(selectedMonster.skill).effectDesc }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Skill Chance</span>
+              <span class="detail-label">技能概率</span>
               <span class="detail-value">{{ Math.round((selectedMonster.skillChance ?? 0) * 100) }}%</span>
             </div>
             <div v-if="getMonsterSkillDisplay(selectedMonster.skill).cooldown" class="detail-row">
-              <span class="detail-label">Cooldown</span>
-              <span class="detail-value">{{ getMonsterSkillDisplay(selectedMonster.skill).cooldown }} rounds</span>
+              <span class="detail-label">冷却</span>
+              <span class="detail-value">{{ getMonsterSkillDisplay(selectedMonster.skill).cooldown }} 回合</span>
             </div>
           </div>
           <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">Debuffs</div>
@@ -1056,24 +1056,24 @@
               </span>
             </div>
           </div>
-          <div class="detail-sep-line">Defense</div>
+          <div class="detail-sep-line">防御</div>
           <div class="detail-section">
             <div class="detail-row">
-              <span class="detail-label">Armor</span>
+              <span class="detail-label">护甲</span>
               <span class="detail-value tooltip-wrap has-tip">
                 {{ getMonsterDisplayArmor(selectedMonster) }}
                 <span class="tooltip-text">{{ getMonsterArmorTooltip(selectedMonster) }}</span>
               </span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Resistance</span>
+              <span class="detail-label">抗性</span>
               <span class="detail-value tooltip-wrap has-tip">
                 {{ selectedMonster.resistance }}
-                <span class="tooltip-text">Absorbs {{ selectedMonster.resistance }} magic damage per hit</span>
+                <span class="tooltip-text">每次受击吸收 {{ selectedMonster.resistance }} 法术伤害</span>
               </span>
             </div>
           </div>
-          <button class="btn" @click="selectedMonster = null">Close</button>
+          <button class="btn" @click="selectedMonster = null">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -1102,16 +1102,16 @@
         >
           <template v-if="t.type === 'equip'">
             <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
-            equipped to {{ t.heroName }}
+            装备给 {{ t.heroName }}
           </template>
           <template v-else-if="t.type === 'sell'">
-            <span class="toast-gold">Gold +{{ t.gold }}</span>
-            <span class="toast-sold"> (sold </span>
+            <span class="toast-gold">金币 +{{ t.gold }}</span>
+            <span class="toast-sold">（已出售 </span>
             <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
-            <span class="toast-sold">)</span>
+            <span class="toast-sold">）</span>
           </template>
           <template v-else-if="t.type === 'shop'">
-            <span class="toast-shop">Purchased: </span>
+            <span class="toast-shop">已购买：</span>
             <span :style="{ color: getQualityColor(t.quality) }">{{ t.itemName }}</span>
           </template>
           <template v-else>{{ t.text }}</template>
@@ -1196,11 +1196,11 @@ const RESOURCE_MAP = {
 const DEFAULT_RESOURCE = { label: 'MP', fillClass: 'mp-fill' }
 
 const PRIMARY_ATTRS = [
-  { key: 'strength', label: 'Strength' },
-  { key: 'agility', label: 'Agility' },
-  { key: 'intellect', label: 'Intellect' },
-  { key: 'stamina', label: 'Stamina' },
-  { key: 'spirit', label: 'Spirit' },
+  { key: 'strength', label: '力量' },
+  { key: 'agility', label: '敏捷' },
+  { key: 'intellect', label: '智力' },
+  { key: 'stamina', label: '耐力' },
+  { key: 'spirit', label: '精神' },
 ]
 
 const MAX_LOG_ENTRIES = 300
@@ -1212,42 +1212,42 @@ const MONSTER_TIER_COLORS = {
 }
 
 const TACTICS_CONDITION_TARGETS = [
-  { id: 'enemy', label: 'Enemy' },
-  { id: 'ally', label: 'Ally' },
-  { id: 'self', label: 'Self' },
+  { id: 'enemy', label: '敌人' },
+  { id: 'ally', label: '友方' },
+  { id: 'self', label: '自身' },
 ]
 
 const TACTICS_CONDITION_BY_TARGET = {
   enemy: [
-    { when: '', label: 'None' },
-    { when: 'target-hp-below', label: 'HP below %', valueDefault: 0.3, valueType: 'number' },
-    { when: 'target-hp-above', label: 'HP above %', valueDefault: 0.5, valueType: 'number' },
-    { when: 'target-has-debuff', label: 'Has debuff', valueDefault: 'sunder', valueType: 'debuff' },
+    { when: '', label: '无' },
+    { when: 'target-hp-below', label: 'HP 低于 %', valueDefault: 0.3, valueType: 'number' },
+    { when: 'target-hp-above', label: 'HP 高于 %', valueDefault: 0.5, valueType: 'number' },
+    { when: 'target-has-debuff', label: '有减益', valueDefault: 'sunder', valueType: 'debuff' },
   ],
   ally: [
-    { when: '', label: 'None' },
-    { when: 'ally-hp-below', label: 'HP below %', valueDefault: 0.4, valueType: 'number' },
-    { when: 'ally-ot', label: 'Ally OT (pull aggro)', valueType: 'none' },
+    { when: '', label: '无' },
+    { when: 'ally-hp-below', label: 'HP 低于 %', valueDefault: 0.4, valueType: 'number' },
+    { when: 'ally-ot', label: '友方 OT（拉仇恨）', valueType: 'none' },
   ],
   self: [
-    { when: '', label: 'None' },
-    { when: 'self-hp-below', label: 'HP below %', valueDefault: 0.3, valueType: 'number' },
-    { when: 'self-hit-this-round', label: 'Hit this round', valueType: 'none' },
+    { when: '', label: '无' },
+    { when: 'self-hp-below', label: 'HP 低于 %', valueDefault: 0.3, valueType: 'number' },
+    { when: 'self-hit-this-round', label: '本回合受击', valueType: 'none' },
   ],
 }
 
 const TACTICS_TARGET_OPTIONS_ENEMY = [
-  { value: 'first', label: 'First' },
-  { value: 'lowest-hp', label: 'Lowest HP' },
-  { value: 'highest-hp', label: 'Highest HP' },
-  { value: 'highest-threat', label: 'Highest Threat' },
-  { value: 'lowest-threat', label: 'Lowest Threat (pull aggro)' },
-  { value: 'random', label: 'Random' },
+  { value: 'first', label: '首个' },
+  { value: 'lowest-hp', label: 'HP 最低' },
+  { value: 'highest-hp', label: 'HP 最高' },
+  { value: 'highest-threat', label: '仇恨最高' },
+  { value: 'lowest-threat', label: '仇恨最低（拉仇恨）' },
+  { value: 'random', label: '随机' },
 ]
 const TACTICS_TARGET_OPTIONS_ALLY = [
-  { value: 'tank', label: 'Tank' },
-  { value: 'lowest-hp-ally', label: 'Lowest HP (ally)' },
-  { value: 'self', label: 'Self' },
+  { value: 'tank', label: '坦克' },
+  { value: 'lowest-hp-ally', label: 'HP 最低（友方）' },
+  { value: 'self', label: '自身' },
 ]
 
 function formatAffixStat(stat) {
@@ -1288,7 +1288,7 @@ function damageFormulaEquation(entry) {
 }
 
 const router = useRouter()
-const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim() || 'Squad')
+const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim() || '小队')
 const currentSkillChoice = computed(() => pendingSkillChoices.value[0] ?? null)
 const squad = ref([])
 const displayHeroes = ref([])
@@ -1500,13 +1500,13 @@ function getItemTooltipLines(item) {
   if ((item.agiReq || 0) > 0) reqs.push('Agi ' + item.agiReq)
   if ((item.intReq || 0) > 0) reqs.push('Int ' + item.intReq)
   if ((item.spiReq || 0) > 0) reqs.push('Spi ' + item.spiReq)
-  if (reqs.length) lines.push({ label: 'Req', value: reqs.join(' ') })
-  if ((item.armor || 0) > 0) lines.push({ label: 'Armor', value: String(item.armor) })
-  if ((item.resistance || 0) > 0) lines.push({ label: 'Resist', value: String(item.resistance) })
-  if ((item.physAtk || 0) > 0) lines.push({ label: 'Phys Atk', value: String(item.physAtk) })
-  if ((item.spellPower || 0) > 0) lines.push({ label: 'Spell Power', value: String(item.spellPower) })
-  for (const p of item.prefixes || []) lines.push({ label: 'Prefix', value: p.name + ' +' + p.value + ' ' + p.stat })
-  for (const s of item.suffixes || []) lines.push({ label: 'Suffix', value: s.name + ' +' + s.value + ' ' + s.stat })
+  if (reqs.length) lines.push({ label: '需求', value: reqs.join(' ') })
+  if ((item.armor || 0) > 0) lines.push({ label: '护甲', value: String(item.armor) })
+  if ((item.resistance || 0) > 0) lines.push({ label: '抗性', value: String(item.resistance) })
+  if ((item.physAtk || 0) > 0) lines.push({ label: '物攻', value: String(item.physAtk) })
+  if ((item.spellPower || 0) > 0) lines.push({ label: '法强', value: String(item.spellPower) })
+  for (const p of item.prefixes || []) lines.push({ label: '前缀', value: p.name + ' +' + p.value + ' ' + p.stat })
+  for (const s of item.suffixes || []) lines.push({ label: '后缀', value: s.name + ' +' + s.value + ' ' + s.stat })
   return lines
 }
 
@@ -1539,8 +1539,8 @@ function getEquippedItemLevelReqForHero(hero, slot) {
 }
 
 function getSlotLabel(slot) {
-  if (slot === 'Ring1') return 'Ring 1'
-  if (slot === 'Ring2') return 'Ring 2'
+  if (slot === 'Ring1') return '戒指1'
+  if (slot === 'Ring2') return '戒指2'
   return SLOT_LABELS[slot] || slot
 }
 
@@ -2007,13 +2007,13 @@ function handleShopBuy(slotId) {
   shopMessage.value = null
   const result = buyFromShop(slotId, squadMaxLevel.value)
   if (!result.success) {
-    shopMessage.value = 'Insufficient gold'
+    shopMessage.value = '金币不足'
     return
   }
   gold.value = getGold()
   inventoryVersion.value++
   if (result.inventoryFull) {
-    shopMessage.value = 'Inventory full — loot discarded!'
+    shopMessage.value = '背包已满，战利品已丢弃！'
     showToast('Inventory full — loot discarded!')
   } else {
     showToast({
@@ -2187,8 +2187,8 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
 
   const startMsg = isDefeat
-    ? 'Recovering from defeat...'
-    : 'Resting... recovering HP and MP'
+    ? '战败恢复中...'
+    : '休息中...恢复 HP 与 MP'
   addLogEntry({ type: 'rest', message: startMsg, complete: false })
   if (deathCount > 0) {
     addLogEntry({
@@ -2217,7 +2217,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
 
   const endMsg = isDefeat
     ? 'Recovery complete. Heroes ready for battle.'
-    : 'Rest complete. All heroes fully recovered.'
+    : '休息完成，全员已恢复。'
   addLogEntry({ type: 'rest', message: endMsg, complete: true })
   await scrollLog()
 }

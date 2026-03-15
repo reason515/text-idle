@@ -8,10 +8,10 @@ async function registerAndCompleteIntro(page, email) {
     localStorage.clear()
     localStorage.setItem('e2eFastCombat', '1')
   })
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password (min 8 chars)').fill('password123')
-  await page.getByLabel('Confirm Password').fill('password123')
-  await page.getByRole('button', { name: 'Register' }).click()
+  await page.getByLabel('邮箱').fill(email)
+  await page.getByLabel('密码（至少 8 位）').fill('password123')
+  await page.getByLabel('确认密码').fill('password123')
+  await page.getByRole('button', { name: '注册' }).click()
   await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
   await page.getByRole('button', { name: '下一步' }).click()
   await page.getByLabel('队伍名称').fill('Adventure Squad')
@@ -21,15 +21,15 @@ async function registerAndCompleteIntro(page, email) {
 }
 
 /** Recruit a Warrior through skill selection + confirmation (initial hero, Lv1). */
-async function recruitWarrior(page, heroName = 'Varian Wrynn', skillId = null) {
+async function recruitWarrior(page, heroName = '瓦里安·乌瑞恩', skillId = null) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   if (skillId) {
     await page.locator('.skill-option').filter({ hasText: skillId }).click()
   } else {
     await page.locator('.skill-option').first().click()
   }
-  await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  await page.getByRole('button', { name: '下一步' }).click()
+  await page.getByRole('button', { name: '确认' }).click()
 }
 
 /** Click the recruit button (scoped to squad-col to avoid matching wrong elements). */
@@ -53,13 +53,13 @@ async function clickRecruitBtn(page) {
 async function prepareForRecruit(page, fast = true) {
   const w = fast ? 100 : 300
   await page.waitForTimeout(w)
-  await page.getByRole('button', { name: 'Pause' }).click({ timeout: 2000 }).catch(() => {})
-  await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible({ timeout: 2000 }).catch(() => {})
+  await page.getByRole('button', { name: '暂停' }).click({ timeout: 2000 }).catch(() => {})
+  await expect(page.getByRole('button', { name: '继续' })).toBeVisible({ timeout: 2000 }).catch(() => {})
   await page.waitForTimeout(fast ? 50 : 200)
   const modal = page.locator('[data-testid="skill-choice-modal"]')
   for (let i = 0; i < 15; i++) {
     try {
-      await modal.getByRole('button', { name: 'Skip' }).click({ timeout: fast ? 500 : 1000 })
+      await modal.getByRole('button', { name: '跳过' }).click({ timeout: fast ? 500 : 1000 })
       await page.waitForTimeout(fast ? 50 : 200)
     } catch {
       break
@@ -76,14 +76,14 @@ async function allocateAttrPoints(page, n) {
 }
 
 /** Recruit an expansion Warrior (Lv5): attr alloc -> initial skill -> level choice -> confirm. */
-async function recruitExpansionWarrior(page, heroName = 'Varian Wrynn', attrPoints = 20) {
+async function recruitExpansionWarrior(page, heroName = '瓦里安·乌瑞恩', attrPoints = 20) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
-  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
+  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: '下一步' }).click()
   await expect(page.locator('[data-testid="skill-selection-step"]')).toBeVisible({ timeout: 5000 })
-  await page.locator('.skill-option').filter({ hasText: 'Heroic Strike' }).click()
-  await page.getByRole('button', { name: 'Next' }).click()
+  await page.locator('.skill-option').filter({ hasText: '英勇打击' }).click()
+  await page.getByRole('button', { name: '下一步' }).click()
   const skillModal = page.locator('[data-testid="skill-choice-modal"]')
   const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
   const modalOrConfirm = await Promise.race([
@@ -91,7 +91,7 @@ async function recruitExpansionWarrior(page, heroName = 'Varian Wrynn', attrPoin
     confirmStep.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'confirm'),
   ])
   if (modalOrConfirm === 'modal') {
-    await skillModal.getByRole('button', { name: 'Skip' }).click()
+    await skillModal.getByRole('button', { name: '跳过' }).click()
   }
   await expect(confirmStep).toBeVisible({ timeout: 5000 })
   await page.locator('[data-testid="confirm-recruit-btn"]').click()
@@ -102,7 +102,7 @@ async function recruitExpansionOther(page, heroName, attrPoints = 20) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
-  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
+  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: '下一步' }).click()
   const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
   await expect(confirmStep).toBeVisible({ timeout: 5000 })
   await confirmStep.locator('[data-testid="confirm-recruit-btn"]').scrollIntoViewIfNeeded()
@@ -110,14 +110,14 @@ async function recruitExpansionOther(page, heroName, attrPoints = 20) {
 }
 
 /** Recruit an expansion Mage: same as Warrior but Mage skill options. */
-async function recruitExpansionMage(page, heroName = 'Jaina Proudmoore', attrPoints = 20) {
+async function recruitExpansionMage(page, heroName = '吉安娜·普罗德摩尔', attrPoints = 20) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
-  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: 'Next' }).click()
+  await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: '下一步' }).click()
   await expect(page.locator('[data-testid="skill-selection-step"]')).toBeVisible({ timeout: 5000 })
-  await page.locator('.skill-option').filter({ hasText: 'Arcane Blast' }).click()
-  await page.getByRole('button', { name: 'Next' }).click()
+  await page.locator('.skill-option').filter({ hasText: '奥术冲击' }).click()
+  await page.getByRole('button', { name: '下一步' }).click()
   const skillModal = page.locator('[data-testid="skill-choice-modal"]')
   const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
   const modalOrConfirm = await Promise.race([
@@ -125,7 +125,7 @@ async function recruitExpansionMage(page, heroName = 'Jaina Proudmoore', attrPoi
     confirmStep.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'confirm'),
   ])
   if (modalOrConfirm === 'modal') {
-    await skillModal.getByRole('button', { name: 'Skip' }).click()
+    await skillModal.getByRole('button', { name: '跳过' }).click()
   }
   await expect(confirmStep).toBeVisible({ timeout: 5000 })
   await page.locator('[data-testid="confirm-recruit-btn"]').click()
@@ -137,9 +137,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await expect(page.locator('.battle-screen')).toBeVisible()
-    await expect(page.getByText('Varian').first()).toBeVisible()
-    await expect(page.getByText('Jaina').first()).toBeVisible()
-    await expect(page.getByText('Anduin').first()).toBeVisible()
+    await expect(page.getByText('瓦里安').first()).toBeVisible()
+    await expect(page.getByText('吉安娜').first()).toBeVisible()
+    await expect(page.getByText('安度因').first()).toBeVisible()
   })
 
   test('AC1b: hero cards show resources (HP/MP/Rage) distinct from primary attributes', async ({ page }) => {
@@ -154,7 +154,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
   })
 
   test('AC2: fixed trio starts adventure on main with 3 heroes', async ({ page }) => {
@@ -162,9 +162,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.getByText('Varian').first()).toBeVisible()
-    await expect(page.getByText('Jaina').first()).toBeVisible()
-    await expect(page.getByText('Anduin').first()).toBeVisible()
+    await expect(page.getByText('瓦里安').first()).toBeVisible()
+    await expect(page.getByText('吉安娜').first()).toBeVisible()
+    await expect(page.getByText('安度因').first()).toBeVisible()
     await expect(page.locator('.hero-class').filter({ hasText: 'Warrior' })).toBeVisible()
     await expect(page.locator('.hero-class').filter({ hasText: 'Mage' })).toBeVisible()
     await expect(page.locator('.hero-class').filter({ hasText: 'Priest' })).toBeVisible()
@@ -175,9 +175,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await registerAndCompleteIntro(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    const card = page.locator('.hero-card').filter({ hasText: 'Jaina' }).first()
+    const card = page.locator('.hero-card').filter({ hasText: '吉安娜' }).first()
     await expect(card).toBeVisible()
-    await expect(card.locator('.hero-name')).toContainText('Jaina Proudmoore')
+    await expect(card.locator('.hero-name')).toContainText('吉安娜·普罗德摩尔')
     await expect(card.locator('.hero-class')).toContainText('Mage')
     await expect(card.locator('.card-level')).toContainText('Lv.')
 
@@ -189,9 +189,9 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.locator('.detail-row').filter({ hasText: 'Intellect' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Stamina' })).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: 'Spirit' })).toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: 'Intellect' })).toContainText('11')
-    await expect(page.locator('.detail-row').filter({ hasText: 'Strength' })).toContainText('2')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.locator('.detail-row').filter({ hasText: '智力' })).toContainText('11')
+    await expect(page.locator('.detail-row').filter({ hasText: '力量' })).toContainText('2')
+    await page.getByRole('button', { name: '关闭' }).click()
   })
 
   test('AC4: player with fixed trio can recruit 4th hero when squad < limit', async ({ page }) => {
@@ -217,7 +217,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^Rexxar\b/ }).click()
+    await page.getByRole('button', { name: /^雷克萨\b/ }).click()
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 5000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
@@ -248,12 +248,12 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
-    await page.getByRole('button', { name: /^Uther\b/ }).click()
+    await page.getByRole('button', { name: /^乌瑟尔\b/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
     // Paladin has no initial skill; confirm step appears when all points allocated
-    await expect(page.getByText(/Add.*Uther/)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/将.*乌瑟尔/)).toBeVisible({ timeout: 5000 })
 
     await expect(page.getByText(/Secondary Attributes/)).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('HP')).toBeVisible({ timeout: 5000 })
@@ -277,7 +277,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
-    await page.getByRole('button', { name: /^Malfurion\b/ }).click()
+    await page.getByRole('button', { name: /^玛法里奥\b/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     const intBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Intellect' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await intBtn.click()
@@ -314,7 +314,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
     await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^Uther\b/ }).click()
+    await page.getByRole('button', { name: /^乌瑟尔\b/ }).click()
     await expect(page.getByText('Allocate Attribute Points')).toBeVisible({ timeout: 3000 })
     const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: 'Strength' }).locator('.attr-btn')
     for (let i = 0; i < 20; i++) await strengthBtn.click()
@@ -324,7 +324,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 30000 })
-    const utherCard = page.locator('.hero-card').filter({ hasText: 'Uther' })
+    const utherCard = page.locator('.hero-card').filter({ hasText: '乌瑟尔' })
     await expect(utherCard).toContainText(/Lv\.?\s*5/)
   })
 
@@ -351,12 +351,12 @@ test.describe('Character Recruitment (Example 4)', () => {
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
     await expect(skillModal).toBeVisible({ timeout: 30000 })
     await skillModal.locator('.skill-option').filter({ hasText: 'Sunder Armor' }).first().click()
-    await skillModal.getByRole('button', { name: 'Confirm' }).click()
+    await skillModal.getByRole('button', { name: '确认' }).click()
     await expect(skillModal).not.toBeVisible()
 
-    await page.locator('.hero-card').filter({ hasText: 'Varian' }).click()
+    await page.locator('.hero-card').filter({ hasText: '瓦里安' }).click()
     await expect(page.locator('.detail-modal')).toBeVisible()
-    await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
+    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
     await expect(page.locator('.detail-modal').getByText('Sunder Armor').first()).toBeVisible()
   })
 
@@ -370,8 +370,8 @@ test.describe('Character Recruitment (Example 4)', () => {
       const INIT = { Warrior: { strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 }, Mage: { strength: 2, agility: 4, intellect: 11, stamina: 4, spirit: 5 }, Hunter: { strength: 5, agility: 10, intellect: 4, stamina: 7, spirit: 4 }, Paladin: { strength: 8, agility: 3, intellect: 8, stamina: 8, spirit: 6 }, Priest: { strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9 } }
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const add = (h, cls) => squad.push({ ...h, class: cls, level: 1, xp: 0, unassignedPoints: 0, equipment: {}, ...INIT[cls] })
-      add({ id: 'rexxar', name: 'Rexxar' }, 'Hunter')
-      add({ id: 'uther', name: 'Uther' }, 'Paladin')
+      add({ id: 'rexxar', name: '雷克萨' }, 'Hunter')
+      add({ id: 'uther', name: '乌瑟尔' }, 'Paladin')
       localStorage.setItem('squad', JSON.stringify(squad))
       const p = JSON.parse(localStorage.getItem('combatProgress') || '{}')
       p.unlockedMapCount = 5

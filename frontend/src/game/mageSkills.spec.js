@@ -25,7 +25,7 @@ import { applyDamage } from './combat.js'
 function makeMage(overrides = {}) {
   return {
     id: 'm1',
-    name: 'Jaina',
+    name: '吉安娜·普罗德摩尔',
     side: 'hero',
     class: 'Mage',
     physAtk: 0,
@@ -81,9 +81,9 @@ describe('Mage initial skill definitions', () => {
     expect(ids).toContain('frostbolt')
 
     const specs = MAGE_INITIAL_SKILLS.map((s) => s.spec)
-    expect(specs).toContain('Arcane')
-    expect(specs).toContain('Fire')
-    expect(specs).toContain('Frost')
+    expect(specs).toContain('奥术')
+    expect(specs).toContain('火焰')
+    expect(specs).toContain('冰霜')
   })
 
   it('AC2: each skill has name, spec, manaCost, and effectDesc', () => {
@@ -129,8 +129,8 @@ describe('Arcane Blast', () => {
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
     expect(result.skillId).toBe('arcane-blast')
-    expect(result.skillName).toBe('Arcane Blast')
-    expect(result.skillSpec).toBe('Arcane')
+    expect(result.skillName).toBe('奥术冲击')
+    expect(result.skillSpec).toBe('奥术')
     expect(result.skillCoefficient).toBe(1.2)
   })
 
@@ -158,8 +158,8 @@ describe('Arcane Blast', () => {
   it('getMageEnhancementPreviewEffectDesc shows 1.2x -> 1.4x when enhancing from 0', () => {
     const hero = makeMage({ skillEnhancements: {} })
     const desc = getMageEnhancementPreviewEffectDesc(hero, 'arcane-blast')
-    expect(desc).toContain('1.2x')
-    expect(desc).toContain('1.4x')
+    expect(desc).toContain('1.2')
+    expect(desc).toContain('1.4')
   })
 })
 

@@ -218,13 +218,13 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resource = { key: 'MP', label: 'MP', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * 1`, attrs, level, Math.round(mp))) }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
-    formulaMap.Resource = { key: 'Rage', label: 'Rage', value: 100, formula: 'Fixed 100' }
+    formulaMap.Resource = { key: 'Rage', label: 'Rage', value: 100, formula: '固定 100' }
   } else if (heroClass === 'Rogue') {
     values.Energy = 100
-    formulaMap.Resource = { key: 'Energy', label: 'Energy', value: 100, formula: 'Fixed 100' }
+    formulaMap.Resource = { key: 'Energy', label: 'Energy', value: 100, formula: '固定 100' }
   } else if (heroClass === 'Hunter') {
     values.Focus = 100
-    formulaMap.Resource = { key: 'Focus', label: 'Focus', value: 100, formula: 'Fixed 100' }
+    formulaMap.Resource = { key: 'Focus', label: 'Focus', value: 100, formula: '固定 100' }
   } else {
     formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
   }
@@ -335,7 +335,7 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   formulaMap.Hit = fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
 
   // Build formulas array in fixed order
-  const labels = { PhysCrit: 'PhysCrit %', SpellCrit: 'SpellCrit %', Dodge: 'Dodge %', Hit: 'Hit %' }
+  const labels = { PhysCrit: '物暴 %', SpellCrit: '法暴 %', Dodge: '闪避 %', Hit: '命中 %' }
   const formulas = []
   for (const key of SECONDARY_ATTR_ORDER) {
     if (key === 'Resource') {
@@ -375,57 +375,57 @@ export function getResourceDisplay(heroClass, level = 1) {
 export const HEROES = [
   {
     id: 'varian',
-    name: 'Varian Wrynn',
+    name: '瓦里安·乌瑞恩',
     class: 'Warrior',
-    bio: 'King of Stormwind and legendary warrior. Once fought as Lo\'Gosh the gladiator; reunited to lead the Alliance with unmatched blade and valor.',
+    bio: '暴风城之王，传奇战士。曾以角斗士洛戈什之名征战，重归后以无匹之剑与勇气统领联盟。',
   },
   {
     id: 'uther',
-    name: 'Uther',
+    name: '乌瑟尔',
     class: 'Paladin',
-    bio: 'The first Paladin of the Silver Hand. Mentor to Arthas, champion of the Light, and defender of Lordaeron until his tragic end.',
+    bio: '白银之手首位圣骑士。阿尔萨斯的导师，圣光捍卫者，洛丹伦的守护者直至悲剧收场。',
   },
   {
     id: 'anduin',
-    name: 'Anduin Wrynn',
+    name: '安度因·乌瑞恩',
     class: 'Priest',
-    bio: 'High King of the Alliance and son of Varian. A priest of the Holy Light who believes in peace and diplomacy over war.',
+    bio: '联盟至高王，瓦里安之子。信奉和平与外交的圣光牧师。',
   },
   {
     id: 'malfurion',
-    name: 'Malfurion Stormrage',
+    name: '玛法里奥·怒风',
     class: 'Druid',
-    bio: 'Archdruid of the night elves and first mortal student of Cenarius. Master of nature magic and guardian of the Emerald Dream.',
+    bio: '暗夜精灵大德鲁伊，塞纳留斯首位凡人弟子。自然魔法大师，翡翠梦境守护者。',
   },
   {
     id: 'jaina',
-    name: 'Jaina Proudmoore',
+    name: '吉安娜·普罗德摩尔',
     class: 'Mage',
-    bio: 'Archmage and former leader of the Kirin Tor. Apprentice of Antonidas, ruler of Theramore and Dalaran, wielder of frost and arcane.',
+    bio: '大法师，前肯瑞托领袖。安东尼达斯学徒，塞拉摩与达拉然统治者，冰霜与奥术的掌控者。',
   },
   {
     id: 'valeera',
-    name: 'Valeera',
+    name: '瓦莉拉',
     class: 'Rogue',
-    bio: 'Blood elf rogue and former gladiator. Loyal companion to Varian Wrynn, master of shadows and deadly precision.',
+    bio: '血精灵潜行者，前角斗士。瓦里安的忠诚伙伴，暗影与致命精准的大师。',
   },
   {
     id: 'rexxar',
-    name: 'Rexxar',
+    name: '雷克萨',
     class: 'Hunter',
-    bio: 'Mok\'nathal beastmaster and Champion of the Horde. A wanderer who fights alongside his loyal beasts Misha, Huffer, and Leokk.',
+    bio: '莫克纳萨兽王，部落勇士。与忠诚野兽米莎、霍弗、雷欧克并肩作战的流浪者。',
   },
   {
     id: 'guldan',
-    name: "Gul'dan",
+    name: '古尔丹',
     class: 'Warlock',
-    bio: 'The first orc warlock and founder of the Shadow Council. Corrupted the orcs with fel magic in pursuit of ultimate power.',
+    bio: '首位兽人术士，暗影议会创立者。以邪能魔法腐化兽人，追求终极力量。',
   },
   {
     id: 'thrall',
-    name: 'Thrall',
+    name: '萨尔',
     class: 'Shaman',
-    bio: 'Former Warchief of the Horde. A shaman who freed the orcs from internment and founded Durotar, champion of the elements.',
+    bio: '前部落大酋长。解放兽人于收容所、建立杜隆塔尔的萨满，元素勇士。',
   },
 ]
 
@@ -433,15 +433,15 @@ export const HEROES = [
  * Class role (Tank/Healer/DPS) and short description for player reference
  */
 export const CLASS_INFO = {
-  Warrior: { role: 'Tank / DPS', desc: 'High armor, shield block, rage. Front-line damage absorber and melee striker.' },
-  Paladin: { role: 'Tank / Healer / DPS', desc: 'Versatile. Holy Light heals, Judgement damages, plate armor tanks.' },
-  Priest: { role: 'Healer / DPS', desc: 'Strong healing and shields. Shadow form for damage output.' },
-  Druid: { role: 'Tank / Healer / DPS', desc: 'Shapeshifts between forms. HoT heals, bear tank, cat/owl DPS.' },
-  Mage: { role: 'DPS', desc: 'Arcane, frost, fire. Burst spells and crowd control.' },
-  Rogue: { role: 'DPS', desc: 'Combo points, backstab, poison. Melee burst and stealth.' },
-  Hunter: { role: 'DPS', desc: 'Ranged physical. Pet, traps, steady shot.' },
-  Warlock: { role: 'DPS', desc: 'DoT, summon, life drain. Sustained shadow and fire damage.' },
-  Shaman: { role: 'Healer / DPS', desc: 'Totems, elemental spells, chain heal. Support and spell damage.' },
+  Warrior: { role: '坦克 / 输出', desc: '高护甲、盾牌格挡、怒气。前排承伤与近战输出。' },
+  Paladin: { role: '坦克 / 治疗 / 输出', desc: '全能。圣光治疗、审判伤害、板甲坦克。' },
+  Priest: { role: '治疗 / 输出', desc: '强力治疗与护盾。暗影形态输出。' },
+  Druid: { role: '坦克 / 治疗 / 输出', desc: '形态切换。持续治疗、熊坦、猫/枭输出。' },
+  Mage: { role: '输出', desc: '奥术、冰霜、火焰。爆发法术与控场。' },
+  Rogue: { role: '输出', desc: '连击点、背刺、毒药。近战爆发与潜行。' },
+  Hunter: { role: '输出', desc: '远程物理。宠物、陷阱、稳固射击。' },
+  Warlock: { role: '输出', desc: '持续伤害、召唤、生命吸取。暗影与火焰持续输出。' },
+  Shaman: { role: '治疗 / 输出', desc: '图腾、元素法术、链式治疗。辅助与法术伤害。' },
 }
 
 /** WoW classic class colors (hex) for hero class and frame border display */

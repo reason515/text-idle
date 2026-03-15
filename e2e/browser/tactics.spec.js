@@ -11,7 +11,7 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible()
-    await expect(page.locator('.detail-tab').filter({ hasText: 'TACTICS' })).toBeVisible()
+    await expect(page.locator('.detail-tab').filter({ hasText: '战术' })).toBeVisible()
   })
 
   test('AC2: Tactics tab shows skill priority and target rule', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Tactics Configuration (Example 28)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.locator('.tactics-skill-list')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.tactics-skill-row')).toHaveCount(3)
     await expect(page.getByTestId('tactics-target-rule')).toBeVisible()
@@ -33,12 +33,12 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await page.getByTestId('tactics-target-rule').selectOption('lowest-hp')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
 
     await page.locator('.hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.getByTestId('tactics-target-rule')).toHaveValue('lowest-hp')
   })
 
@@ -49,10 +49,10 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await pauseCombat(page)
 
     await page.locator('.squad-col .hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.locator('.tactics-skill-row-expanded')).toHaveCount(3)
     // Use Sunder Armor row: target-has-debuff is only available for enemy-target skills (Sunder Armor), not ally-target (Taunt)
-    const sunderRow = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Sunder Armor' })
+    const sunderRow = page.locator('.tactics-skill-row-expanded').filter({ hasText: '破甲' })
     await expect(sunderRow).toBeVisible()
     const skillTarget = sunderRow.locator('[data-testid^="tactics-skill-target-"]')
     const skillCondition = sunderRow.locator('[data-testid^="tactics-skill-condition-"]')
@@ -61,11 +61,11 @@ test.describe('Tactics Configuration (Example 28)', () => {
 
     await skillTarget.selectOption('lowest-hp')
     await skillCondition.selectOption('target-has-debuff')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
 
     await page.locator('.squad-col .hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
-    const rowAfter = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Sunder Armor' })
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
+    const rowAfter = page.locator('.tactics-skill-row-expanded').filter({ hasText: '破甲' })
     await expect(rowAfter.locator('[data-testid^="tactics-skill-target-"]')).toHaveValue('lowest-hp')
     await expect(rowAfter.locator('[data-testid^="tactics-skill-condition-"]')).toHaveValue('target-has-debuff')
   })
@@ -76,16 +76,16 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await page.locator('.hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.locator('.tactics-skill-row')).toHaveCount(3)
     const basicAttackRow = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Basic Attack' })
     await expect(basicAttackRow).toBeVisible()
     const basicTarget = basicAttackRow.locator('[data-testid="tactics-skill-target-basic-attack"]')
     await basicTarget.selectOption('lowest-hp')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
 
     await page.locator('.hero-card').first().click()
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     const rowAfter = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Basic Attack' })
     await expect(rowAfter.locator('[data-testid="tactics-skill-target-basic-attack"]')).toHaveValue('lowest-hp')
   })
@@ -105,11 +105,11 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Power Word: Shield' })).toBeVisible()
     await expect(page.locator('.detail-modal .skill-mana-cost').first()).toBeVisible()
 
-    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.locator('.tactics-skill-list')).toBeVisible({ timeout: 5000 })
     await expect(page.getByTestId('tactics-target-rule')).toHaveValue('tank')
     const flashHealRow = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Flash Heal' })
     await expect(flashHealRow.locator('[data-testid="tactics-skill-target-flash-heal"]')).toHaveValue('lowest-hp-ally')
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '关闭' }).click()
   })
 })

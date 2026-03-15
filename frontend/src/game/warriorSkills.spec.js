@@ -23,7 +23,7 @@ import { runAutoCombat, applyDamage } from './combat.js'
 function makeWarrior(overrides = {}) {
   return {
     id: 'w1',
-    name: 'Varian',
+    name: '瓦里安·乌瑞恩',
     side: 'hero',
     class: 'Warrior',
     physAtk: 15,
@@ -66,7 +66,7 @@ function makeTarget(overrides = {}) {
 function heroForCombat(overrides = {}) {
   return {
     id: 'hero-warrior',
-    name: 'Varian',
+    name: '瓦里安·乌瑞恩',
     class: 'Warrior',
     strength: 10,
     agility: 4,
@@ -94,9 +94,9 @@ describe('Example12: Warrior initial skill definitions', () => {
     expect(ids).toContain('sunder-armor')
 
     const specs = WARRIOR_INITIAL_SKILLS.map((s) => s.spec)
-    expect(specs).toContain('Arms')
-    expect(specs).toContain('Fury')
-    expect(specs).toContain('Protection')
+    expect(specs).toContain('武器')
+    expect(specs).toContain('狂暴')
+    expect(specs).toContain('防护')
   })
 
   it('AC2: each skill has name, spec, rageCost, and effectDesc', () => {
@@ -158,8 +158,8 @@ describe('Example13: Heroic Strike', () => {
     const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
 
     expect(result.skillId).toBe('heroic-strike')
-    expect(result.skillName).toBe('Heroic Strike')
-    expect(result.skillSpec).toBe('Arms')
+    expect(result.skillName).toBe('英勇打击')
+    expect(result.skillSpec).toBe('武器')
     expect(result.skillCoefficient).toBe(1.2)
   })
 
@@ -195,21 +195,21 @@ describe('Example13: Heroic Strike', () => {
   it('effectDesc reflects enhanced coefficient for Heroic Strike', () => {
     const warrior = makeWarrior({ skillEnhancements: { 'heroic-strike': { enhanceCount: 2 } } })
     const skill = getSkillWithEnhancements(warrior, 'heroic-strike')
-    expect(skill.effectDesc).toContain('1.6x')
+    expect(skill.effectDesc).toContain('1.6')
   })
 
   it('getEnhancementPreviewEffectDesc shows 1.2x -> 1.4x when enhancing from 0', () => {
     const hero = makeWarrior({ skillEnhancements: {} })
     const desc = getEnhancementPreviewEffectDesc(hero, 'heroic-strike')
-    expect(desc).toContain('1.2x')
-    expect(desc).toContain('1.4x')
-    expect(desc).toMatch(/1\.2x\s*->\s*1\.4x/)
+    expect(desc).toContain('1.2')
+    expect(desc).toContain('1.4')
+    expect(desc).toMatch(/1\.2\s*->\s*1\.4/)
   })
 
   it('getEnhancementPreviewEffectDesc shows 1.4x -> 1.6x when enhancing from 1', () => {
     const hero = makeWarrior({ skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } })
     const desc = getEnhancementPreviewEffectDesc(hero, 'heroic-strike')
-    expect(desc).toMatch(/1\.4x\s*->\s*1\.6x/)
+    expect(desc).toMatch(/1\.4\s*->\s*1\.6/)
   })
 
   it('rage gained from dealing damage: fixed per attack, crit doubles', () => {
@@ -296,7 +296,7 @@ describe('Example13: Bloodthirst', () => {
   it('effectDesc reflects enhanced coefficient and heal for Bloodthirst', () => {
     const warrior = makeWarrior({ skillEnhancements: { bloodthirst: { enhanceCount: 1 } } })
     const skill = getSkillWithEnhancements(warrior, 'bloodthirst')
-    expect(skill.effectDesc).toContain('1.3x')
+    expect(skill.effectDesc).toContain('1.3')
     expect(skill.effectDesc).toContain('20%')
   })
 
@@ -370,8 +370,8 @@ describe('Example13: Sunder Armor', () => {
   it('effectDesc reflects enhanced max stacks for Sunder Armor', () => {
     const warrior = makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
     const skill = getSkillWithEnhancements(warrior, 'sunder-armor')
-    expect(skill.effectDesc).toContain('max 3 stacks')
-    expect(skill.effectDesc).toContain('+2% damage per excess point')
+    expect(skill.effectDesc).toContain('3 层')
+    expect(skill.effectDesc).toContain('+2%')
   })
 
   it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes; excess +12% when armor 2', () => {
@@ -509,7 +509,7 @@ describe('Example13: Combat integration', () => {
 
     const result = executeWarriorSkill(warrior, target, skill, { isCrit: false })
 
-    expect(result.skillName).toBe('Heroic Strike')
+    expect(result.skillName).toBe('英勇打击')
     expect(result.finalDamage).toBeGreaterThanOrEqual(1)
     expect(result.skillId).toBe('heroic-strike')
   })

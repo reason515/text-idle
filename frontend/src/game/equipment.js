@@ -383,20 +383,20 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
 
 /** Shop purchasable slots with subdivisions. Format: { id, label, slot, baseKey } */
 export const SHOP_SLOTS = [
-  { id: 'MainHand-1H-Phys', label: '1H Weapon (Phys)', slot: 'MainHand', baseKey: 'MainHand' },
-  { id: 'MainHand-2H', label: '2H Weapon (Phys)', slot: 'TwoHand', baseKey: 'MainHand2H' },
-  { id: 'MainHand-2H-Bow', label: '2H Weapon (Bow)', slot: 'TwoHand', baseKey: 'MainHand2HBow' },
-  { id: 'MainHand-2H-Magic', label: '2H Weapon (Magic)', slot: 'TwoHand', baseKey: 'MainHand2HStaff' },
-  { id: 'MainHand-Magic', label: '1H Weapon (Magic)', slot: 'MainHand', baseKey: 'MainHandWand' },
-  { id: 'OffHand-Shield', label: 'Shield', slot: 'OffHand', baseKey: 'Shield' },
-  { id: 'OffHand-Orb', label: 'Orb', slot: 'OffHand', baseKey: 'OffHand' },
-  { id: 'Helm', label: 'Helm', slot: 'Helm', baseKey: 'Helm' },
-  { id: 'Armor', label: 'Body Armor', slot: 'Armor', baseKey: 'Armor' },
-  { id: 'Gloves', label: 'Gloves', slot: 'Gloves', baseKey: 'Gloves' },
-  { id: 'Boots', label: 'Boots', slot: 'Boots', baseKey: 'Boots' },
-  { id: 'Belt', label: 'Belt', slot: 'Belt', baseKey: 'Belt' },
-  { id: 'Amulet', label: 'Amulet', slot: 'Amulet', baseKey: 'Amulet' },
-  { id: 'Ring', label: 'Ring', slot: null, baseKey: null },
+  { id: 'MainHand-1H-Phys', label: '单手武器（物理）', slot: 'MainHand', baseKey: 'MainHand' },
+  { id: 'MainHand-2H', label: '双手武器（物理）', slot: 'TwoHand', baseKey: 'MainHand2H' },
+  { id: 'MainHand-2H-Bow', label: '双手武器（弓）', slot: 'TwoHand', baseKey: 'MainHand2HBow' },
+  { id: 'MainHand-2H-Magic', label: '双手武器（法杖）', slot: 'TwoHand', baseKey: 'MainHand2HStaff' },
+  { id: 'MainHand-Magic', label: '单手武器（法杖）', slot: 'MainHand', baseKey: 'MainHandWand' },
+  { id: 'OffHand-Shield', label: '盾牌', slot: 'OffHand', baseKey: 'Shield' },
+  { id: 'OffHand-Orb', label: '副手球', slot: 'OffHand', baseKey: 'OffHand' },
+  { id: 'Helm', label: '头盔', slot: 'Helm', baseKey: 'Helm' },
+  { id: 'Armor', label: '胸甲', slot: 'Armor', baseKey: 'Armor' },
+  { id: 'Gloves', label: '手套', slot: 'Gloves', baseKey: 'Gloves' },
+  { id: 'Boots', label: '靴子', slot: 'Boots', baseKey: 'Boots' },
+  { id: 'Belt', label: '腰带', slot: 'Belt', baseKey: 'Belt' },
+  { id: 'Amulet', label: '项链', slot: 'Amulet', baseKey: 'Amulet' },
+  { id: 'Ring', label: '戒指', slot: null, baseKey: null },
 ]
 
 /**
@@ -594,7 +594,7 @@ export function getEquipReasonsStructured(hero, item) {
   const reasons = []
   const level = hero.level || 1
   const lvlReq = item.levelReq || 0
-  if (level < lvlReq) reasons.push({ key: 'level', label: 'Level', required: lvlReq, current: level })
+  if (level < lvlReq) reasons.push({ key: 'level', label: '等级', required: lvlReq, current: level })
   if ((hero.strength || 0) < (item.strReq || 0)) reasons.push({ key: 'str', label: 'Str', required: item.strReq, current: hero.strength || 0 })
   if ((hero.agility || 0) < (item.agiReq || 0)) reasons.push({ key: 'agi', label: 'Agi', required: item.agiReq, current: hero.agility || 0 })
   if ((hero.intellect || 0) < (item.intReq || 0)) reasons.push({ key: 'int', label: 'Int', required: item.intReq, current: hero.intellect || 0 })

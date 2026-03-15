@@ -59,38 +59,38 @@ export const CRIT_MULTIPLIER = 1.5
 export const MAPS = [
   {
     id: 'elwynn-forest',
-    name: 'Elwynn Forest',
-    bossName: 'Hogger',
+    name: '艾尔文森林',
+    bossName: '霍格',
     description:
-      'Sunlight filters through the canopy of ancient oaks. Birdsong fades as you tread deeper—beneath the rustling leaves, young wolves prowl and kobold miners scurry in the shadows. This is where every adventurer\'s tale begins.',
+      '阳光透过古橡树的树冠洒落。越往深处，鸟鸣渐稀——在沙沙作响的树叶下，幼狼潜行，狗头人矿工在阴影中穿梭。每位冒险者的故事都从这里开始。',
   },
   {
     id: 'westfall',
-    name: 'Westfall',
-    bossName: 'Edwin VanCleef',
+    name: '西部荒野',
+    bossName: '艾德温·范克里夫',
     description:
-      'Golden wheat sways in the wind as far as the eye can see. Once a breadbasket of the realm, now the Defias Brotherhood rules from abandoned farms. Bandits lurk behind every haystack; the harvest moon has turned blood-red.',
+      '金黄的麦浪随风摇曳，一望无际。曾是王国的粮仓，如今迪菲亚兄弟会盘踞于废弃农庄。盗匪藏身于每个草垛之后；收获之月已染成血红。',
   },
   {
     id: 'duskwood',
-    name: 'Duskwood',
-    bossName: 'Stitches',
+    name: '暮色森林',
+    bossName: '缝合怪',
     description:
-      'Twilight never lifts here. Gnarled branches claw at a sky that never brightens. The air tastes of decay. Undead shamble through the mist; worgen howls echo from the depths. You feel watched by things that no longer sleep.',
+      '暮色永不散去。扭曲的枝桠抓向永不放晴的天空。空气中弥漫着腐朽的气息。亡灵在雾中蹒跚；狼人的嚎叫从深处回荡。你感到被不再沉睡之物注视着。',
   },
   {
     id: 'redridge-mountains',
-    name: 'Redridge Mountains',
-    bossName: 'Kazon',
+    name: '赤脊山',
+    bossName: '卡松',
     description:
-      'Sheer cliffs rise into clouds. The wind howls through narrow passes where Blackrock orcs have dug in. Giant spiders spin webs across the trails. One misstep could send you tumbling—or into the jaws of something worse.',
+      '陡峭的悬崖直入云端。狂风在狭窄的山口呼啸，黑石兽人已在此扎根。巨型蜘蛛在小径上织网。一步踏错，便可能坠入深渊——或落入更可怕之物口中。',
   },
   {
     id: 'stranglethorn-vale',
-    name: 'Stranglethorn Vale',
-    bossName: 'King Bangalash',
+    name: '荆棘谷',
+    bossName: '邦加拉什',
     description:
-      'The jungle breathes—humid, suffocating. Vines strangle ancient ruins; the Bloodscalp tribe drums in the distance. Shadowmaw panthers stalk from the canopy. Every step crunches underfoot; every shadow could be your last.',
+      '丛林在呼吸——潮湿、窒息。藤蔓绞缠着古老废墟；血顶部族的鼓声在远处回荡。影牙豹从树冠潜行而下。每一步都踩碎枯枝；每一道阴影都可能是你的终结。',
   },
 ]
 
@@ -99,31 +99,31 @@ export const MAP_MONSTER_POOLS = {
     normal: [
       {
         id: 'young-wolf',
-        name: 'Young Wolf',
+        name: '幼狼',
         damageType: 'physical',
         base: { hp: 40, physAtk: 8, spellPower: 0, agility: 7, armor: 2, resistance: 1 },
       },
       {
         id: 'kobold-miner',
-        name: 'Kobold Miner',
+        name: '狗头人矿工',
         damageType: 'physical',
         base: { hp: 36, physAtk: 7, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
       },
       {
         id: 'defias-trapper',
-        name: 'Defias Trapper',
+        name: '迪菲亚捕兽者',
         damageType: 'physical',
         base: { hp: 34, physAtk: 7, spellPower: 0, agility: 8, armor: 1, resistance: 1 },
       },
       {
         id: 'forest-spider',
-        name: 'Forest Spider',
+        name: '森林蜘蛛',
         damageType: 'physical',
         base: { hp: 32, physAtk: 8, spellPower: 0, agility: 9, armor: 1, resistance: 1 },
       },
       {
         id: 'timber-wolf',
-        name: 'Timber Wolf',
+        name: '森林狼',
         damageType: 'physical',
         base: { hp: 38, physAtk: 9, spellPower: 0, agility: 8, armor: 2, resistance: 0 },
       },
@@ -131,21 +131,21 @@ export const MAP_MONSTER_POOLS = {
     elite: [
       {
         id: 'kobold-geomancer',
-        name: 'Kobold Geomancer',
+        name: '狗头人地卜师',
         damageType: 'magic',
         skill: 'stone-shard',
         base: { hp: 45, physAtk: 0, spellPower: 10, agility: 7, armor: 2, resistance: 3 },
       },
       {
         id: 'defias-smuggler',
-        name: 'Defias Smuggler',
+        name: '迪菲亚走私犯',
         damageType: 'mixed',
         skill: 'blackjack',
         base: { hp: 46, physAtk: 9, spellPower: 7, agility: 8, armor: 2, resistance: 2 },
       },
       {
         id: 'defias-cutpurse',
-        name: 'Defias Cutpurse',
+        name: '迪菲亚盗贼',
         damageType: 'physical',
         skill: 'swift-cut',
         base: { hp: 42, physAtk: 10, spellPower: 0, agility: 9, armor: 2, resistance: 1 },
@@ -153,7 +153,7 @@ export const MAP_MONSTER_POOLS = {
     ],
     boss: {
       id: 'hogger',
-      name: 'Hogger',
+      name: '霍格',
       damageType: 'mixed',
         skill: 'rend',
       base: { hp: 90, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },

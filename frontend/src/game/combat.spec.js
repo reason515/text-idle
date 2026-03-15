@@ -513,7 +513,7 @@ describe('combat progression and systems', () => {
     )
     expect(monsterSkillEntry).toBeDefined()
     expect(monsterSkillEntry.skillId).toBe('stone-shard')
-    expect(monsterSkillEntry.skillName).toBe('Stone Shard')
+    expect(monsterSkillEntry.skillName).toBe('石片')
   })
 
   it('Warrior never uses Magic Attack (physical-only class)', () => {

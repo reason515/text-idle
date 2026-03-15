@@ -1,31 +1,31 @@
 <template>
   <div class="login-page">
     <section class="login-card login-hero">
-      <p class="tagline">Deep strategy. Auto combat. Offline idle.</p>
+      <p class="tagline">深度策略。自动战斗。离线放置。</p>
       <ul class="feature-list">
         <li>
           <span class="feature-icon" aria-hidden="true">[5]</span>
-          <span>Build a 5-hero squad: Tank, Healer, DPS. Classic trinity.</span>
+          <span>组建 5 人小队：坦克、治疗、输出。经典铁三角。</span>
         </li>
         <li>
           <span class="feature-icon" aria-hidden="true">[AI]</span>
-          <span>Configure tactics once. Your strategy runs automatically.</span>
+          <span>一次配置战术，策略自动运行。</span>
         </li>
         <li>
           <span class="feature-icon" aria-hidden="true">[Zz]</span>
-          <span>Idle offline. Progress never stops.</span>
+          <span>离线放置，进度永不停歇。</span>
         </li>
         <li>
           <span class="feature-icon" aria-hidden="true">[+]</span>
-          <span>Transparent formulas. Theorycraft like a pro.</span>
+          <span>透明公式，像高手一样理论推演。</span>
         </li>
       </ul>
     </section>
     <div class="login-card auth-panel panel">
-      <h2>Login</h2>
+      <h2>登录</h2>
       <form @submit.prevent="submit">
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">邮箱</label>
           <input
             id="email"
             v-model="email"
@@ -37,7 +37,7 @@
           <p v-if="errors.email" class="error-msg">{{ errors.email }}</p>
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">密码</label>
           <input
             id="password"
             v-model="password"
@@ -49,13 +49,13 @@
           <p v-if="errors.password" class="error-msg">{{ errors.password }}</p>
         </div>
         <p v-if="errors.general" class="error-msg">{{ errors.general }}</p>
-        <p v-if="success" class="success-msg">You are logged in.</p>
+        <p v-if="success" class="success-msg">登录成功。</p>
         <button type="submit" class="btn" :disabled="loading">
-          {{ loading ? 'Logging in...' : 'Login' }}
+          {{ loading ? '登录中...' : '登录' }}
         </button>
       </form>
       <p class="link-msg">
-        Don't have an account? <router-link to="/register">Register</router-link>
+        没有账号？<router-link to="/register">注册</router-link>
       </p>
     </div>
   </div>
@@ -76,6 +76,17 @@ function clearErrors() {
   errors.email = ''
   errors.password = ''
   errors.general = ''
+}
+
+const ERROR_ZH = {
+  'invalid email or password': '邮箱或密码错误',
+  'invalid input': '输入无效',
+  'login failed': '登录失败',
+}
+function mapErrorToZh(msg) {
+  if (!msg || typeof msg !== 'string') return null
+  const key = msg.toLowerCase().trim()
+  return ERROR_ZH[key] ?? null
 }
 
 async function submit() {
@@ -102,24 +113,25 @@ async function submit() {
       router.push(hasTeamName ? '/main' : '/intro')
     } else {
       if (res.status === 401) {
-        errors.general = data.error || 'Invalid email or password'
+        errors.general = mapErrorToZh(data.error) || '邮箱或密码错误'
       } else if (res.status === 400) {
         const msg = data.error || data.errors?.join?.(' ') || 'Invalid input'
+        const zhMsg = mapErrorToZh(msg) || '输入无效'
         if (msg.toLowerCase().includes('email')) {
-          errors.email = msg
+          errors.email = zhMsg
         } else if (msg.toLowerCase().includes('password')) {
-          errors.password = msg
+          errors.password = zhMsg
         } else {
-          errors.general = msg
+          errors.general = zhMsg
         }
       } else if (res.status === 404) {
-        errors.general = 'Login service unavailable. Please restart the backend server.'
+        errors.general = '登录服务不可用，请重启后端服务器。'
       } else {
-        errors.general = data.error || 'Login failed'
+        errors.general = mapErrorToZh(data.error) || '登录失败'
       }
     }
   } catch (e) {
-    errors.general = 'Network error. Is the server running?'
+    errors.general = '网络错误，服务器是否在运行？'
   } finally {
     loading.value = false
   }

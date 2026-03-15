@@ -41,7 +41,7 @@ describe('heroes', () => {
     })
 
     it('returns parsed squad when valid JSON stored', () => {
-      const squad = [{ id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }]
+      const squad = [{ id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }]
       localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
       expect(getSquad()).toEqual(squad)
     })
@@ -54,7 +54,7 @@ describe('heroes', () => {
 
   describe('saveSquad', () => {
     it('stores squad as JSON string', () => {
-      const squad = [{ id: 'jaina', name: 'Jaina Proudmoore' }]
+      const squad = [{ id: 'jaina', name: '吉安娜·普罗德摩尔' }]
       saveSquad(squad)
       expect(getSquad()).toEqual(squad)
     })
@@ -512,11 +512,11 @@ describe('heroes', () => {
 
   describe('createCharacter', () => {
     it('creates character with level 1 and initial attributes', () => {
-      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const hero = { id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }
       const character = createCharacter(hero)
       expect(character).toEqual({
         id: 'varian',
-        name: 'Varian Wrynn',
+        name: '瓦里安·乌瑞恩',
         class: 'Warrior',
         level: 1,
         xp: 0,
@@ -531,7 +531,7 @@ describe('heroes', () => {
     })
 
     it('creates character with correct attributes for Mage', () => {
-      const hero = { id: 'jaina', name: 'Jaina Proudmoore', class: 'Mage' }
+      const hero = { id: 'jaina', name: '吉安娜·普罗德摩尔', class: 'Mage' }
       const character = createCharacter(hero)
       expect(character.level).toBe(1)
       expect(character.intellect).toBe(11)
@@ -559,7 +559,7 @@ describe('heroes', () => {
 
   describe('createExpansionCharacter', () => {
     it('Example27: creates Lv5 Warrior with allocated attrs and initial skill', () => {
-      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const hero = { id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }
       const base = getInitialAttributes('Warrior')
       const allocatedAttrs = {
         strength: base.strength + 15,
@@ -580,7 +580,7 @@ describe('heroes', () => {
     })
 
     it('Example27: creates expansion hero with enhance level choice', () => {
-      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const hero = { id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }
       const character = createExpansionCharacter(hero, {
         level: 5,
         allocatedAttrs: getInitialAttributes('Warrior'),
@@ -591,7 +591,7 @@ describe('heroes', () => {
     })
 
     it('Example27: creates expansion hero with learn level choice', () => {
-      const hero = { id: 'varian', name: 'Varian Wrynn', class: 'Warrior' }
+      const hero = { id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }
       const character = createExpansionCharacter(hero, {
         level: 5,
         allocatedAttrs: getInitialAttributes('Warrior'),

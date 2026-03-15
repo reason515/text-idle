@@ -9,10 +9,10 @@ test.describe('Login E2E', () => {
   test('AC1: correct email and password logs in, returning player goes to main', async ({ page }) => {
     const email = `login-e2e-${Date.now()}@example.com`
     await page.goto('/register')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
     await page.getByRole('button', { name: '下一步' }).click()
@@ -23,9 +23,9 @@ test.describe('Login E2E', () => {
 
     await page.evaluate(() => localStorage.removeItem('token'))
     await page.goto('/login')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码').fill('password123')
+    await page.getByRole('button', { name: '登录' }).click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
     await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 10000 })
@@ -35,25 +35,25 @@ test.describe('Login E2E', () => {
   test('AC2: wrong email or password shows clear error', async ({ page }) => {
     const email = `wrong-e2e-${Date.now()}@example.com`
     await page.goto('/register')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码（至少 8 位）').fill('password123')
+    await page.getByLabel('确认密码').fill('password123')
+    await page.getByRole('button', { name: '注册' }).click()
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
     await page.goto('/login')
-    await page.getByLabel('Email').fill('nonexistent@example.com')
-    await page.getByLabel(/Password/).fill('password123')
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByLabel('邮箱').fill('nonexistent@example.com')
+    await page.getByLabel('密码').fill('password123')
+    await page.getByRole('button', { name: '登录' }).click()
 
-    await expect(page.getByText('Invalid email or password')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('邮箱或密码错误')).toBeVisible({ timeout: 5000 })
     await expect(page).toHaveURL(/\/login/)
 
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('wrongpassword')
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByLabel('邮箱').fill(email)
+    await page.getByLabel('密码').fill('wrongpassword')
+    await page.getByRole('button', { name: '登录' }).click()
 
-    await expect(page.getByText('Invalid email or password')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('邮箱或密码错误')).toBeVisible({ timeout: 5000 })
   })
 
   test('AC3: unauthenticated user accessing protected page is redirected to login', async ({ page }) => {
@@ -61,6 +61,6 @@ test.describe('Login E2E', () => {
     await page.goto('/main')
 
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
-    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
   })
 })

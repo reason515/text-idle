@@ -35,7 +35,7 @@ describe('warriorLevelSkills', () => {
   it('getNewSkillsAtLevel returns 3 skills for Warrior at Lv 5', () => {
     const skills = getNewSkillsAtLevel('Warrior', 5)
     expect(skills).toHaveLength(3)
-    expect(skills.map((s) => s.spec)).toEqual(['Arms', 'Fury', 'Protection'])
+    expect(skills.map((s) => s.spec)).toEqual(['武器', '狂暴', '防护'])
     expect(skills.map((s) => s.id)).toContain('cleave')
     expect(skills.map((s) => s.id)).toContain('whirlwind')
     expect(skills.map((s) => s.id)).toContain('taunt')
@@ -48,8 +48,8 @@ describe('warriorLevelSkills', () => {
   it('getLevelSkillById finds Cleave', () => {
     const s = getLevelSkillById('cleave')
     expect(s).not.toBeNull()
-    expect(s.name).toBe('Cleave')
-    expect(s.spec).toBe('Arms')
+    expect(s.name).toBe('顺劈斩')
+    expect(s.spec).toBe('武器')
     expect(s.targets).toBe(2)
   })
 

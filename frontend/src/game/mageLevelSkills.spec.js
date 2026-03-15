@@ -21,7 +21,7 @@ describe('mageLevelSkills', () => {
   it('getMageNewSkillsAtLevel returns 3 skills for Mage at Lv 5', () => {
     const skills = getMageNewSkillsAtLevel('Mage', 5)
     expect(skills).toHaveLength(3)
-    expect(skills.map((s) => s.spec)).toEqual(['Arcane', 'Frost', 'Fire'])
+    expect(skills.map((s) => s.spec)).toEqual(['奥术', '冰霜', '火焰'])
     expect(skills.map((s) => s.id)).toContain('arcane-missiles')
     expect(skills.map((s) => s.id)).toContain('frost-nova')
     expect(skills.map((s) => s.id)).toContain('flamestrike')
@@ -34,8 +34,8 @@ describe('mageLevelSkills', () => {
   it('getLevelSkillById finds Arcane Missiles', () => {
     const s = getLevelSkillById('arcane-missiles')
     expect(s).not.toBeNull()
-    expect(s.name).toBe('Arcane Missiles')
-    expect(s.spec).toBe('Arcane')
+    expect(s.name).toBe('奥术飞弹')
+    expect(s.spec).toBe('奥术')
     expect(s.manaCost).toBe(18)
   })
 

@@ -8,32 +8,32 @@
 export const MAGE_INITIAL_SKILLS = [
   {
     id: 'arcane-blast',
-    name: 'Arcane Blast',
-    spec: 'Arcane',
+    name: '奥术冲击',
+    spec: '奥术',
     manaCost: 15,
     coefficient: 1.2,
-    effectDesc: '1.2x magic damage to single target',
+    effectDesc: '对单体造成 1.2 倍法术伤害',
   },
   {
     id: 'fireball',
-    name: 'Fireball',
-    spec: 'Fire',
+    name: '火球术',
+    spec: '火焰',
     manaCost: 20,
     coefficient: 1.2,
     burnCoeff: 0.05,
     burnDuration: 3,
-    effectDesc: '1.2x magic damage; Burn: SpellPower*0.05/turn for 3 rounds',
+    effectDesc: '1.2 倍法术伤害；燃烧：每回合 SpellPower*0.05 持续 3 回合',
   },
   {
     id: 'frostbolt',
-    name: 'Frostbolt',
-    spec: 'Frost',
+    name: '寒冰箭',
+    spec: '冰霜',
     manaCost: 15,
     baseCoefficient: 1.0,
     refreshCoefficient: 1.2,
     debuffResistReduction: 6,
     debuffDuration: 3,
-    effectDesc: '1.0x damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage',
+    effectDesc: '1.0 倍伤害，目标抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍伤害',
   },
 ]
 
@@ -80,15 +80,15 @@ export function getMageSkillWithEnhancements(mage, skillId) {
 
   if (skillId === 'arcane-blast') {
     out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
-    out.effectDesc = `${out.coefficient}x magic damage to single target`
+    out.effectDesc = `对单体造成 ${out.coefficient} 倍法术伤害`
   } else if (skillId === 'fireball') {
     out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
     out.burnCoeff = Math.min(0.11, 0.05 + enhanceCount * 0.02)
     out.burnDuration = Math.min(4, (out.burnDuration ?? 3) + Math.min(enhanceCount, 1))
-    out.effectDesc = `${out.coefficient}x magic damage; Burn: SpellPower*${out.burnCoeff}/turn for ${out.burnDuration} rounds`
+    out.effectDesc = `${out.coefficient} 倍法术伤害；燃烧：每回合 SpellPower*${out.burnCoeff} 持续 ${out.burnDuration} 回合`
   } else if (skillId === 'frostbolt') {
     out.frostboltMaxStacks = 1 + enhanceCount
-    out.effectDesc = `1.0x damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage (max ${out.frostboltMaxStacks} stacks)`
+    out.effectDesc = `1.0 倍伤害，目标抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍伤害（最多 ${out.frostboltMaxStacks} 层）`
   }
 
   return out
@@ -114,19 +114,19 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
   if (skillId === 'arcane-blast') {
     const currCoeff = Math.min(1.8, 1.2 + current * 0.2)
     const nextCoeff = Math.min(1.8, 1.2 + next * 0.2)
-    return `${currCoeff}x -> ${nextCoeff}x magic damage to single target`
+    return `${currCoeff} -> ${nextCoeff} 倍法术伤害（单体）`
   }
   if (skillId === 'fireball') {
     const currCoeff = Math.min(1.5, 1.2 + current * 0.1)
     const nextCoeff = Math.min(1.5, 1.2 + next * 0.1)
     const currBurn = Math.min(0.11, 0.05 + current * 0.02)
     const nextBurn = Math.min(0.11, 0.05 + next * 0.02)
-    return `${currCoeff}x -> ${nextCoeff}x magic damage; Burn: SpellPower*${currBurn.toFixed(2)} -> ${nextBurn.toFixed(2)}/turn for 3 rounds`
+    return `${currCoeff} -> ${nextCoeff} 倍法术伤害；燃烧 SpellPower*${currBurn.toFixed(2)} -> ${nextBurn.toFixed(2)}/回合 持续 3 回合`
   }
   if (skillId === 'frostbolt') {
     const currStacks = 1 + current
     const nextStacks = 1 + next
-    return `1.0x damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage (max ${currStacks} -> ${nextStacks} stacks)`
+    return `1.0 倍伤害，抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍（最多 ${currStacks} -> ${nextStacks} 层）`
   }
 
   return base.effectDesc ?? ''
