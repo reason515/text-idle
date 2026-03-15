@@ -689,7 +689,7 @@
               @click="heroDetailTab = 'skills'"
             >SKILLS</button>
             <button
-              v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0"
+              v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0"
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'tactics' }"
@@ -801,7 +801,7 @@
           </div>
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
-            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage') && heroSkillIds(selectedHero).length > 0">
+            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0">
               <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
                   <span class="detail-label">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
@@ -826,7 +826,7 @@
             <div v-else class="detail-empty-hint">No skills learned yet.</div>
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
-            <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage'">
+            <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
               <div class="detail-sep-line">Skill Priority & Per-Skill Config</div>
               <div class="detail-section tactics-priority-hint">First skill tried each turn; if unavailable, next is tried. Basic Attack is used when no skill is available. Each skill can have its own target rule and condition.</div>
               <div class="detail-section">
@@ -837,12 +837,7 @@
                   data-testid="tactics-target-rule"
                   @change="setTacticsTargetRule(selectedHero, $event.target.value)"
                 >
-                  <option value="first">First</option>
-                  <option value="lowest-hp">Lowest HP</option>
-                  <option value="highest-hp">Highest HP</option>
-                  <option value="highest-threat">Highest Threat</option>
-                  <option value="lowest-threat">Lowest Threat (pull aggro)</option>
-                  <option value="random">Random</option>
+                  <option v-for="opt in tacticsDefaultTargetOptions(selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                 </select>
                 <span class="tactics-default-hint">(used when skill has no override)</span>
               </div>
@@ -870,12 +865,7 @@
                         @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
                       >
                         <option value="">Default</option>
-                        <option value="first">First</option>
-                        <option value="lowest-hp">Lowest HP</option>
-                        <option value="highest-hp">Highest HP</option>
-                        <option value="highest-threat">Highest Threat</option>
-                        <option value="lowest-threat">Lowest Threat (pull aggro)</option>
-                        <option value="random">Random</option>
+                        <option v-for="opt in tacticsSkillTargetOptions(skillId, selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                       </select>
                     </div>
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
@@ -1178,6 +1168,7 @@ function getMonsterArmorTooltip(unit) {
   return `Absorbs ${effective} physical damage per hit`
 }
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
+import { getPriestSkillById } from '../game/priestSkills.js'
 import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
@@ -1244,6 +1235,20 @@ const TACTICS_CONDITION_BY_TARGET = {
     { when: 'self-hit-this-round', label: 'Hit this round', valueType: 'none' },
   ],
 }
+
+const TACTICS_TARGET_OPTIONS_ENEMY = [
+  { value: 'first', label: 'First' },
+  { value: 'lowest-hp', label: 'Lowest HP' },
+  { value: 'highest-hp', label: 'Highest HP' },
+  { value: 'highest-threat', label: 'Highest Threat' },
+  { value: 'lowest-threat', label: 'Lowest Threat (pull aggro)' },
+  { value: 'random', label: 'Random' },
+]
+const TACTICS_TARGET_OPTIONS_ALLY = [
+  { value: 'tank', label: 'Tank' },
+  { value: 'lowest-hp-ally', label: 'Lowest HP (ally)' },
+  { value: 'self', label: 'Self' },
+]
 
 function formatAffixStat(stat) {
   if (!stat) return ''
@@ -1763,7 +1768,20 @@ function tacticsDisplaySkillList(hero) {
 }
 
 function tacticsTargetRule(hero) {
-  return hero?.tactics?.targetRule || 'first'
+  const def = hero?.class === 'Priest' ? 'tank' : 'first'
+  return hero?.tactics?.targetRule || def
+}
+
+function tacticsDefaultTargetOptions(hero) {
+  return hero?.class === 'Priest' ? TACTICS_TARGET_OPTIONS_ALLY : TACTICS_TARGET_OPTIONS_ENEMY
+}
+
+function skillTargetsAllies(skillId, hero) {
+  return hero?.class === 'Priest' && getPriestSkillById(skillId) != null
+}
+
+function tacticsSkillTargetOptions(skillId, hero) {
+  return skillTargetsAllies(skillId, hero) ? TACTICS_TARGET_OPTIONS_ALLY : TACTICS_TARGET_OPTIONS_ENEMY
 }
 
 function saveTacticsToSquad(hero, updater) {
@@ -1936,7 +1954,12 @@ function getHeroSkillDisplay(skillId, hero = null) {
     const enhanced = hero ? getMageSkillWithEnhancements(hero, skillId) : null
     return enhanced ?? base
   }
-  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
+  if (heroClass === 'Priest') {
+    const base = getPriestSkillById(skillId)
+    if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
+    return base
+  }
+  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? getPriestSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
 }
 
 function getPrimaryAttrEquipTip(attrKey) {

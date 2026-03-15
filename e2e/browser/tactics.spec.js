@@ -89,4 +89,27 @@ test.describe('Tactics Configuration (Example 28)', () => {
     const rowAfter = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Basic Attack' })
     await expect(rowAfter.locator('[data-testid="tactics-skill-target-basic-attack"]')).toHaveValue('lowest-hp')
   })
+
+  test('Priest detail shows Skills tab and Tactics tab with ally target options', async ({ page }) => {
+    const email = `tactics-priest-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const priestCard = page.locator('.squad-col .hero-card').filter({ hasText: 'Anduin' }).first()
+    await expect(priestCard).toBeVisible({ timeout: 10000 })
+    await priestCard.click()
+    await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
+
+    await page.locator('.detail-modal').getByRole('button', { name: 'SKILLS' }).click()
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Flash Heal' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: 'Power Word: Shield' })).toBeVisible()
+    await expect(page.locator('.detail-modal .skill-mana-cost').first()).toBeVisible()
+
+    await page.locator('.detail-tab').filter({ hasText: 'TACTICS' }).click()
+    await expect(page.locator('.tactics-skill-list')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('tactics-target-rule')).toHaveValue('tank')
+    const flashHealRow = page.locator('.tactics-skill-row-expanded').filter({ hasText: 'Flash Heal' })
+    await expect(flashHealRow.locator('[data-testid="tactics-skill-target-flash-heal"]')).toHaveValue('lowest-hp-ally')
+    await page.getByRole('button', { name: 'Close' }).click()
+  })
 })
