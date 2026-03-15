@@ -50,7 +50,7 @@ Then [expected result/verifiable behavior].
 |---|-------|------|------|
 | AC1 | User is on the registration page | User enters valid email and password and submits | An account is created and user is logged in |
 | AC2 | User is on the registration page | User enters an email that already exists | Registration fails with a clear error message |
-| AC3 | User is on the registration page | User enters invalid email format or weak password | Registration fails with validation feedback |
+| AC3 | User is on the registration page | User enters invalid email format, weak password, or mismatched confirm password | Registration fails with validation feedback |
 
 ---
 

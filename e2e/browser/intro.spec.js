@@ -7,7 +7,8 @@ test.describe('Opening Introduction E2E', () => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
@@ -19,7 +20,8 @@ test.describe('Opening Introduction E2E', () => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
@@ -33,7 +35,8 @@ test.describe('Opening Introduction E2E', () => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
@@ -54,7 +57,8 @@ test.describe('Opening Introduction E2E', () => {
     await setupNewRun(page)
     await page.goto('/register?e2e=1')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })

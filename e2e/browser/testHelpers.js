@@ -13,7 +13,8 @@ async function registerAndGoToMain(page, email, options = {}) {
   const teamName = options.teamName || 'Combat Squad'
   await setupNewRun(page)
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel(/Password/).fill('password123')
+  await page.getByLabel('Password (min 8 chars)').fill('password123')
+  await page.getByLabel('Confirm Password').fill('password123')
   await page.getByRole('button', { name: 'Register' }).click()
   await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
   await page.getByRole('button', { name: '下一步' }).click()

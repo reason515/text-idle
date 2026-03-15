@@ -27,6 +27,18 @@
         />
         <p v-if="errors.password" class="error-msg">{{ errors.password }}</p>
       </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input
+          id="confirmPassword"
+          v-model="confirmPassword"
+          type="password"
+          placeholder="********"
+          required
+          :disabled="loading"
+        />
+        <p v-if="errors.confirmPassword" class="error-msg">{{ errors.confirmPassword }}</p>
+      </div>
       <p v-if="errors.general" class="error-msg">{{ errors.general }}</p>
       <p v-if="success" class="success-msg">Account created! You are logged in.</p>
       <button type="submit" class="btn" :disabled="loading">
@@ -46,19 +58,27 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const loading = ref(false)
 const success = ref(false)
-const errors = reactive({ email: '', password: '', general: '' })
+const errors = reactive({ email: '', password: '', confirmPassword: '', general: '' })
 
 function clearErrors() {
   errors.email = ''
   errors.password = ''
+  errors.confirmPassword = ''
   errors.general = ''
 }
 
 async function submit() {
   clearErrors()
   success.value = false
+
+  if (password.value !== confirmPassword.value) {
+    errors.confirmPassword = 'Passwords do not match'
+    return
+  }
+
   loading.value = true
 
   try {

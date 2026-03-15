@@ -14,7 +14,8 @@ test.describe('Register E2E', () => {
   test('AC1: valid email and password creates account and redirects to intro', async ({ page }) => {
     const email = `e2e-${Date.now()}@example.com`
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
@@ -26,14 +27,16 @@ test.describe('Register E2E', () => {
   test('AC2: duplicate email shows clear error', async ({ page }) => {
     const email = `dup-e2e-${Date.now()}@example.com`
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
 
     await page.goto('/register')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page.getByText(/email already exists/i)).toBeVisible({ timeout: 5000 })
@@ -41,7 +44,8 @@ test.describe('Register E2E', () => {
 
   test('AC3: invalid email shows validation error', async ({ page }) => {
     await page.getByLabel('Email').fill('not-an-email')
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/register/)
@@ -50,11 +54,22 @@ test.describe('Register E2E', () => {
 
   test('AC3: weak password shows validation error', async ({ page }) => {
     await page.getByLabel('Email').fill('valid@example.com')
-    await page.getByLabel(/Password/).fill('short')
+    await page.getByLabel('Password (min 8 chars)').fill('short')
+    await page.getByLabel('Confirm Password').fill('short')
     await page.getByRole('button', { name: 'Register' }).click()
 
     await expect(page).toHaveURL(/\/register/)
     await expect(page.getByRole('button', { name: 'Register' })).toBeVisible()
+  })
+
+  test('AC3: password mismatch shows validation error', async ({ page }) => {
+    await page.getByLabel('Email').fill('valid@example.com')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password456')
+    await page.getByRole('button', { name: 'Register' }).click()
+
+    await expect(page).toHaveURL(/\/register/)
+    await expect(page.getByText(/passwords do not match/i)).toBeVisible()
   })
 
   test('AC4: registration clears old localStorage data and redirects to intro', async ({ page }) => {
@@ -76,7 +91,8 @@ test.describe('Register E2E', () => {
 
     const email = `e2e-clear-${Date.now()}@example.com`
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
+    await page.getByLabel('Password (min 8 chars)').fill('password123')
+    await page.getByLabel('Confirm Password').fill('password123')
     await page.getByRole('button', { name: 'Register' }).click()
 
     // Should redirect to intro page, not main screen
