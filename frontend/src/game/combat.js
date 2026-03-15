@@ -471,7 +471,7 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   }
   const rule = targetRule === 'sunder-first' ? 'lowest-hp' : targetRule
   const pickOpts =
-    rule === 'highest-threat' && threat
+    (rule === 'highest-threat' || rule === 'lowest-threat') && threat
       ? { threat, actor, heroes }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank }

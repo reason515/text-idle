@@ -840,6 +840,8 @@
                   <option value="first">First</option>
                   <option value="lowest-hp">Lowest HP</option>
                   <option value="highest-hp">Highest HP</option>
+                  <option value="highest-threat">Highest Threat</option>
+                  <option value="lowest-threat">Lowest Threat (pull aggro)</option>
                   <option value="random">Random</option>
                 </select>
                 <span class="tactics-default-hint">(used when skill has no override)</span>
@@ -871,6 +873,8 @@
                         <option value="first">First</option>
                         <option value="lowest-hp">Lowest HP</option>
                         <option value="highest-hp">Highest HP</option>
+                        <option value="highest-threat">Highest Threat</option>
+                        <option value="lowest-threat">Lowest Threat (pull aggro)</option>
                         <option value="random">Random</option>
                       </select>
                     </div>
@@ -1232,6 +1236,7 @@ const TACTICS_CONDITION_BY_TARGET = {
   ally: [
     { when: '', label: 'None' },
     { when: 'ally-hp-below', label: 'HP below %', valueDefault: 0.4, valueType: 'number' },
+    { when: 'ally-ot', label: 'Ally OT (pull aggro)', valueType: 'none' },
   ],
   self: [
     { when: '', label: 'None' },

@@ -53,7 +53,8 @@
 |---------|------|
 | lowest-hp | 敌方当前 HP 最低 |
 | highest-hp | 敌方当前 HP 最高 |
-| highest-threat | 仇恨最高（占位，仇恨系统实现后接入） |
+| highest-threat | 对己方仇恨最高（优先拉稳可能 OT 的目标） |
+| lowest-threat | 对自己仇恨最低（优先攻击未关注自己的怪，用于拉仇恨） |
 | random | 随机存活目标 |
 | first | 列表第一个（默认） |
 

@@ -159,11 +159,11 @@ export function filterTargetsByCondition(targets, condition, actor, ctx) {
 
 /**
  * Pick a target from candidates using the target rule.
- * For highest-threat (enemy), requires opts.threat, opts.actor, opts.heroes.
+ * For highest-threat / lowest-threat (enemy), requires opts.threat, opts.actor, opts.heroes.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
- * @param {string} targetRule - lowest-hp, highest-hp, highest-threat, first, random
+ * @param {string} targetRule - lowest-hp, highest-hp, highest-threat, lowest-threat, first, random
  * @param {Function} rng - Random function for random rule
- * @param {Object} opts - { threat, actor, heroes } for highest-threat
+ * @param {Object} opts - { threat, actor, heroes } for highest-threat / lowest-threat
  * @returns {Object|null}
  */
 export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts = {}) {
@@ -199,6 +199,22 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
       const table = threat[m.id] ?? {}
       const sum = aliveHeroes.reduce((s, h) => s + (table[h.id] ?? 0), 0)
       if (sum > bestSum) { bestSum = sum; best = m }
+    }
+    return best ?? alive[0]
+  }
+
+  if (targetRule === 'lowest-threat') {
+    const { threat, actor } = opts
+    if (!threat || !actor) return alive[0]
+    let best = null
+    let bestT = Infinity
+    for (const m of alive) {
+      const table = threat[m.id] ?? {}
+      const t = table[actor.id] ?? 0
+      if (t < bestT) {
+        bestT = t
+        best = m
+      }
     }
     return best ?? alive[0]
   }

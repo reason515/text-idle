@@ -176,5 +176,26 @@ describe('tactics', () => {
     it('returns null when candidates empty', () => {
       expect(pickTargetByRule([], 'lowest-hp')).toBeNull()
     })
+
+    it('lowest-threat picks monster with lowest threat on actor', () => {
+      const actor = { id: 'warrior' }
+      const threat = {
+        m1: { warrior: 50, mage: 10 },
+        m2: { warrior: 5, mage: 80 },
+        m3: { warrior: 30, mage: 20 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+        { id: 'm3', currentHP: 100 },
+      ]
+      const result = pickTargetByRule(monsters, 'lowest-threat', Math.random, { threat, actor })
+      expect(result.id).toBe('m2')
+    })
+
+    it('lowest-threat falls back to first when no threat opts', () => {
+      const monsters = [{ id: 'm1', currentHP: 100 }, { id: 'm2', currentHP: 100 }]
+      expect(pickTargetByRule(monsters, 'lowest-threat').id).toBe('m1')
+    })
   })
 })
