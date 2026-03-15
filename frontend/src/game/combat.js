@@ -61,31 +61,36 @@ export const MAPS = [
     id: 'elwynn-forest',
     name: 'Elwynn Forest',
     bossName: 'Hogger',
-    description: 'A peaceful woodland where young adventurers begin their journey. Wolves and kobolds lurk among the ancient oaks.',
+    description:
+      'Sunlight filters through the canopy of ancient oaks. Birdsong fades as you tread deeper—beneath the rustling leaves, young wolves prowl and kobold miners scurry in the shadows. This is where every adventurer\'s tale begins.',
   },
   {
     id: 'westfall',
     name: 'Westfall',
     bossName: 'Edwin VanCleef',
-    description: 'Golden wheat fields stretch to the horizon. The Defias Brotherhood has turned this once-prosperous land into a bandit stronghold.',
+    description:
+      'Golden wheat sways in the wind as far as the eye can see. Once a breadbasket of the realm, now the Defias Brotherhood rules from abandoned farms. Bandits lurk behind every haystack; the harvest moon has turned blood-red.',
   },
   {
     id: 'duskwood',
     name: 'Duskwood',
     bossName: 'Stitches',
-    description: 'A cursed forest shrouded in eternal twilight. Undead and worgen roam the twisted paths.',
+    description:
+      'Twilight never lifts here. Gnarled branches claw at a sky that never brightens. The air tastes of decay. Undead shamble through the mist; worgen howls echo from the depths. You feel watched by things that no longer sleep.',
   },
   {
     id: 'redridge-mountains',
     name: 'Redridge Mountains',
     bossName: 'Kazon',
-    description: 'Rugged peaks and deep valleys. Blackrock orcs and giant spiders guard the mountain passes.',
+    description:
+      'Sheer cliffs rise into clouds. The wind howls through narrow passes where Blackrock orcs have dug in. Giant spiders spin webs across the trails. One misstep could send you tumbling—or into the jaws of something worse.',
   },
   {
     id: 'stranglethorn-vale',
     name: 'Stranglethorn Vale',
     bossName: 'King Bangalash',
-    description: 'A dense jungle teeming with predators. The Bloodscalp tribe and shadowmaw panthers await the unwary.',
+    description:
+      'The jungle breathes—humid, suffocating. Vines strangle ancient ruins; the Bloodscalp tribe drums in the distance. Shadowmaw panthers stalk from the canopy. Every step crunches underfoot; every shadow could be your last.',
   },
 ]
 

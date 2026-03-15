@@ -3098,22 +3098,25 @@ onUnmounted(() => {
 
 .log-map-entry {
   font-size: var(--font-base);
-  padding: 0.4rem 0.5rem;
-  margin: 0.25rem 0;
-  background: rgba(68, 102, 136, 0.12);
-  border-left: 3px solid var(--color-mp);
+  padding: 0.5rem 0.6rem;
+  margin: 0.35rem 0;
+  background: var(--bg-darker);
+  border-left: 4px solid var(--color-exp);
   border-radius: 0 4px 4px 0;
-  color: var(--text-muted);
+  color: var(--text-value);
 }
 .log-map-entry-label {
-  color: var(--accent);
+  color: var(--color-exp);
   font-weight: bold;
+  font-size: var(--font-md);
   display: block;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.02em;
 }
 .log-map-entry-desc {
   font-style: italic;
-  color: var(--text);
+  color: var(--text-value);
+  line-height: 1.5;
 }
 
 .log-encounter {

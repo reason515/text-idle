@@ -29,7 +29,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const mapEntry = page.locator('.log-map-entry')
     await expect(mapEntry).toBeVisible({ timeout: 5000 })
     await expect(mapEntry).toContainText('Arriving at Elwynn Forest')
-    await expect(mapEntry).toContainText('peaceful woodland')
+    await expect(mapEntry).toContainText('ancient oaks')
   })
 
   test('hero card shows name, class, level and resource bars', async ({ page }) => {
