@@ -934,19 +934,22 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.side === 'monster') {
         const lastTargetId = monsterLastTarget[actor.id]
         if (lastTargetId != null && lastTargetId !== target.id) {
-          const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
-          const lastTargetName = lastTarget?.name ?? 'Unknown'
-          log.push({
-            round,
-            type: 'ot',
-            monsterId: actor.id,
-            monsterName: actor.name,
-            monsterTier: actor.tier ?? null,
-            previousTargetName: lastTargetName,
-            newTargetId: target.id,
-            newTargetName: target.name,
-            newTargetClass: target.class || null,
-          })
+          const tank = getTank(heroUnits, monsterUnits, threat)
+          if (tank && target.id !== tank.id) {
+            const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
+            const lastTargetName = lastTarget?.name ?? 'Unknown'
+            log.push({
+              round,
+              type: 'ot',
+              monsterId: actor.id,
+              monsterName: actor.name,
+              monsterTier: actor.tier ?? null,
+              previousTargetName: lastTargetName,
+              newTargetId: target.id,
+              newTargetName: target.name,
+              newTargetClass: target.class || null,
+            })
+          }
         }
         monsterLastTarget[actor.id] = target.id
         decrementTauntActions(tauntState, actor.id)

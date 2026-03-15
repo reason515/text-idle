@@ -1116,6 +1116,18 @@ describe('combat progression and systems', () => {
       }
     })
 
+    it('AC1b: no OT when monster switches target to tank (warrior)', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 200, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(20).fill(0.5))
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
+      const otEntries = result.log.filter((e) => e.type === 'ot')
+      expect(otEntries.length).toBe(0)
+    })
+
     it('AC2: monster attack has targetReason highest-threat when not taunted', () => {
       const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
       const monster = createMonster(
