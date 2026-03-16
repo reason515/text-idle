@@ -224,7 +224,7 @@
                 class="log-target"
                 :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
               >{{ entry.newTargetName }}</span>
-              <span class="log-ot-mark">（抢仇恨！）</span>
+              <span class="log-ot-mark">(OT!)</span>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
