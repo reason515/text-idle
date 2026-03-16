@@ -42,7 +42,7 @@
             </div>
             <div v-if="(hero.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
-              <span class="hero-name">{{ hero.name }}</span>
+              <span class="hero-name" :style="{ color: classColor(hero.class) }">{{ hero.name }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
             <span class="card-level">Lv.{{ hero.level || 1 }}</span>
@@ -106,10 +106,24 @@
             <div v-if="(m.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
               <span class="monster-name">{{ m.name }}</span>
-              <span v-if="monsterTargets[m.id]" class="monster-target"> &rarr; {{ monsterTargets[m.id].targetName }}</span>
               <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
             </div>
             <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
+            <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip">
+              <span class="monster-target">
+                &rarr;
+                <span
+                  :style="{
+                    color: monsterTargets[m.id].targetClass
+                      ? classColor(monsterTargets[m.id].targetClass)
+                      : monsterTargets[m.id].targetTier
+                        ? monsterTierColor(monsterTargets[m.id].targetTier)
+                        : 'var(--text-muted)',
+                  }"
+                >{{ monsterTargets[m.id].targetName }}</span>
+              </span>
+              <span class="tooltip-text">{{ monsterTargets[m.id].targetName }}</span>
+            </div>
             <div class="bar-row">
               <span class="bar-label">HP</span>
               <div class="bar-track">
@@ -2096,10 +2110,24 @@ function applyOneCombatEntry(entry) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
   if (entry.actorTier != null && entry.targetId && entry.targetName) {
-    monsterTargets.value = { ...monsterTargets.value, [entry.actorId]: { targetName: entry.targetName } }
+    monsterTargets.value = {
+      ...monsterTargets.value,
+      [entry.actorId]: {
+        targetName: entry.targetName,
+        targetClass: entry.targetClass ?? null,
+        targetTier: entry.targetTier ?? null,
+      },
+    }
   }
   if (entry.type === 'ot' && entry.monsterId && entry.newTargetName) {
-    monsterTargets.value = { ...monsterTargets.value, [entry.monsterId]: { targetName: entry.newTargetName } }
+    monsterTargets.value = {
+      ...monsterTargets.value,
+      [entry.monsterId]: {
+        targetName: entry.newTargetName,
+        targetClass: entry.newTargetClass ?? null,
+        targetTier: null,
+      },
+    }
   }
   addLogEntry(entry)
 
@@ -3363,10 +3391,18 @@ onUnmounted(() => {
   color: var(--text-muted);
   font-size: var(--font-sm);
 }
+.monster-target-row {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin-top: 0.05rem;
+  margin-bottom: 0.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .monster-target {
   color: var(--text-muted);
   font-size: var(--font-sm);
-  font-size: var(--font-s);
 }
 .log-dtype {
   color: var(--color-log-detail);
@@ -3457,6 +3493,7 @@ onUnmounted(() => {
 .tier-elite { color: var(--color-elite); }
 .tier-boss { color: var(--color-boss); font-weight: bold; }
 .monster-level {
+  display: block;
   font-size: var(--font-sm);
   color: var(--text-muted);
   margin-bottom: 0.15rem;
