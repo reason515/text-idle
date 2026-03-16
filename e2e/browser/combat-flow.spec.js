@@ -427,6 +427,58 @@ test.describe('Experience and Leveling (Example 11)', () => {
     expect(summaryText).toMatch(/EXP \+/)
   })
 
+  test('defeated unit shows highlighted DEFEATED line in combat log', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = `defeated-log-e2e-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].strength = 80
+        squad[0].maxHP = 500
+        squad[0].currentHP = 500
+        squad[0].resistance = 50
+        squad[0].armor = 40
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 45000 })
+    await expect(page.locator('.log-defeated').filter({ hasText: 'DEFEATED!' }).first()).toBeVisible({ timeout: 5000 })
+  })
+
+  test('defeated hero card shows DEFEATED badge and defeated styling', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `defeated-card-e2e-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      if (squad.length > 0) {
+        squad[0].strength = 1
+        squad[0].maxHP = 5
+        squad[0].currentHP = 5
+        squad[0].stamina = 10
+        squad[0].armor = 0
+        squad[0].resistance = 0
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+    await page.reload()
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.defeated-badge').filter({ hasText: 'DEFEATED' }).first()).toBeVisible({ timeout: 5000 })
+  })
+
   test('hero detail modal shows XP progress when level < 60', async ({ page }) => {
     const email = `xp-modal-e2e-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)

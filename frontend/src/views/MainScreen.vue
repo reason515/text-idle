@@ -27,7 +27,7 @@
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
             class="hero-card card-with-float"
-            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId }"
+            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0 }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
@@ -40,6 +40,7 @@
               <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
               <span class="float-value">{{ fn.text }}</span>
             </div>
+            <div v-if="(hero.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
               <span class="hero-name">{{ hero.name }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
@@ -90,7 +91,7 @@
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
             class="monster-card card-with-float"
-            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId }"
+            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0 }"
             @click="selectedMonster = m"
           >
             <div
@@ -102,6 +103,7 @@
               <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
               <span class="float-value">{{ fn.text }}</span>
             </div>
+            <div v-if="(m.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
               <span class="monster-name">{{ m.name }}</span>
               <span v-if="monsterTargets[m.id]" class="monster-target"> &rarr; {{ monsterTargets[m.id].targetName }}</span>
@@ -215,6 +217,14 @@
                 <span class="log-sep">-></span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
               </div>
+            </div>
+            <div v-else-if="entry.type === 'unitDefeated'" class="log-defeated">
+              <span class="log-defeated-icon">&#10005;</span>
+              <span
+                class="log-defeated-name"
+                :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+              >{{ entry.targetName }}</span>
+              <span class="log-defeated-text">DEFEATED!</span>
             </div>
             <div v-else-if="entry.type === 'ot'" class="log-entry log-ot">
               <span class="log-round">[R{{ entry.round }}]</span>
@@ -2093,6 +2103,20 @@ function applyOneCombatEntry(entry) {
   }
   addLogEntry(entry)
 
+  const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
+  if (
+    (targetHpAfter != null && targetHpAfter <= 0) &&
+    entry.targetId &&
+    entry.targetName
+  ) {
+    addLogEntry({
+      type: 'unitDefeated',
+      targetName: entry.targetName,
+      targetClass: entry.targetClass,
+      targetTier: entry.targetTier,
+    })
+  }
+
   if (entry.type === 'dot') {
     pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
   } else if (entry.targetId && entry.finalDamage > 0) {
@@ -2104,7 +2128,6 @@ function applyOneCombatEntry(entry) {
     pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
   }
 
-  const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
   const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
   if (mi >= 0) {
     const updated = [...currentMonsters.value]
@@ -3013,6 +3036,23 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
   animation: damage-flash 0.4s ease-out;
 }
+.hero-card.defeated {
+  opacity: 0.65;
+  border-color: var(--color-defeat) !important;
+  background: rgba(255, 68, 68, 0.06);
+}
+.defeated-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.35rem;
+  font-size: var(--font-xs);
+  font-weight: bold;
+  color: var(--color-defeat);
+  background: rgba(255, 68, 68, 0.2);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid var(--color-defeat);
+}
 .card-top {
   display: flex;
   justify-content: space-between;
@@ -3233,6 +3273,28 @@ onUnmounted(() => {
 }
 .defeat-text { color: var(--color-defeat); }
 
+.log-defeated {
+  font-size: var(--font-base);
+  font-weight: bold;
+  padding: 0.35rem 0.5rem;
+  margin: 0.2rem 0;
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid var(--color-defeat);
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-defeat);
+  text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+}
+.log-defeated-icon {
+  font-size: 1rem;
+  color: var(--color-defeat);
+}
+.log-defeated-name { font-weight: bold; }
+.log-defeated-text { font-weight: bold; }
+
 .log-rest {
   font-size: var(--font-s);
   color: var(--text-muted);
@@ -3377,6 +3439,11 @@ onUnmounted(() => {
 .monster-card.targetHit {
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
   animation: damage-flash 0.4s ease-out;
+}
+.monster-card.defeated {
+  opacity: 0.65;
+  border-color: var(--color-defeat) !important;
+  background: rgba(255, 68, 68, 0.06);
 }
 .monster-name { font-size: var(--font-base); color: var(--text); }
 .monster-tier {
