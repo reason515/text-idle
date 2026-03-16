@@ -539,7 +539,7 @@ describe('combat progression and systems', () => {
     ]
     const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 5 })
-    const magicAttackEntry = result.log.find((e) => e.actorName === 'Hero One' && e.skillName === 'Magic Attack')
+    const magicAttackEntry = result.log.find((e) => e.actorName === 'Hero One' && e.skillName === '魔法攻击')
     expect(magicAttackEntry).toBeUndefined()
     const basicEntries = result.log.filter((e) => e.actorName === 'Hero One' && e.action === 'basic')
     expect(basicEntries.length).toBeGreaterThan(0)
@@ -569,7 +569,7 @@ describe('combat progression and systems', () => {
     const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     const result = runAutoCombat({ heroes: [mage], monsters, rng, maxRounds: 3 })
     const magicAttackEntry = result.log.find(
-      (e) => e.actorName === 'Hero One' && e.action === 'skill' && e.skillName === 'Magic Attack'
+      (e) => e.actorName === 'Hero One' && e.action === 'skill' && e.skillName === '魔法攻击'
     )
     expect(magicAttackEntry).toBeDefined()
     expect(magicAttackEntry.damageType).toBe('magic')
@@ -1180,7 +1180,7 @@ describe('combat progression and systems', () => {
       expect(tauntEntry).toBeDefined()
       expect(tauntEntry.tauntEffectText).toContain('Wolf')
       expect(tauntEntry.tauntEffectText).toContain('Tank')
-      expect(tauntEntry.tauntEffectText).toContain('2 actions')
+      expect(tauntEntry.tauntEffectText).toContain('2 次行动')
     })
 
     it('AC5: damage entry has threatAmount and threatTargetName', () => {

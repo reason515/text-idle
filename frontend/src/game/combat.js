@@ -491,7 +491,7 @@ function actorDamage(actor, rng, round) {
     const effSpell = getEffectiveSpellPower(actor, rng)
     const hasSpellPower = CLASS_COEFFICIENTS[actor.class]?.k_SpellPower != null
     if (hasSpellPower && effSpell > effPhys && rng() < 0.5) {
-      return { action: 'skill', skillName: 'Magic Attack', damageType: 'magic', rawDamage: effSpell }
+      return { action: 'skill', skillName: '魔法攻击', damageType: 'magic', rawDamage: effSpell }
     }
     return { action: 'basic', damageType: 'physical', rawDamage: effPhys }
   }
@@ -518,7 +518,7 @@ function actorDamage(actor, rng, round) {
   }
 
   const skillId = skillDef?.id ?? actor.skill
-  const skillName = skillDef?.name ?? 'Skill'
+  const skillName = skillDef?.name ?? '技能'
   const coeff = skillDef?.coefficient ?? 1.25
   if (actor.damageType === 'magic') {
     return { action: 'skill', skillId, skillName, damageType: 'magic', rawDamage: Math.round(effSpell * coeff) }
@@ -611,14 +611,14 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               actorTier: null,
               action: 'skill',
               skillId: 'taunt',
-              skillName: 'Taunt',
+              skillName: '嘲讽',
               skillSpec: 'Protection',
               targetId: target.id,
               targetName: target.name,
               targetClass: target.class || null,
               targetTier: target.tier || null,
               tauntApplied: true,
-              tauntEffectText: `${target.name} will attack ${actor.name} for 2 actions`,
+              tauntEffectText: `${target.name} 将在 2 次行动内攻击 ${actor.name}`,
             })
             usedSkill = true
             break

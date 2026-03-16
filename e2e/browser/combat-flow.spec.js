@@ -355,9 +355,9 @@ test.describe('Threat Display (Example 32)', () => {
     })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
-    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Taunt' }).first()).toBeVisible({ timeout: 60000 })
-    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: 'will attack' }).first()).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: '2 actions' }).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '嘲讽' }).first()).toBeVisible({ timeout: 60000 })
+    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: '攻击' }).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-taunt-effect, .log-entry').filter({ hasText: '2 次行动' }).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('AC2: monster attack log detail shows target reason (highest threat or taunted)', async ({ page }) => {
@@ -369,7 +369,7 @@ test.describe('Threat Display (Example 32)', () => {
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
     const logOrDetail = page.locator('.log-entry, .log-detail-box')
-    await expect(logOrDetail.filter({ hasText: /highest threat|taunted/ }).first()).toBeVisible({ timeout: 60000 })
+    await expect(logOrDetail.filter({ hasText: /最高仇恨|嘲讽/ }).first()).toBeVisible({ timeout: 60000 })
   })
 
 
@@ -381,7 +381,7 @@ test.describe('Threat Display (Example 32)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
-    await expect(page.locator('.log-threat').filter({ hasText: 'Threat +' }).first()).toBeVisible({ timeout: 60000 })
+    await expect(page.locator('.log-threat').filter({ hasText: '仇恨 +' }).first()).toBeVisible({ timeout: 60000 })
   })
 })
 

@@ -210,7 +210,7 @@
                 <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
                 <span class="log-sep">造成</span>
                 <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
-                <span class="log-sep">HP:</span>
+                <span class="log-sep">生命:</span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
                 <span class="log-sep">-></span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
@@ -224,7 +224,7 @@
                 class="log-target"
                 :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
               >{{ entry.newTargetName }}</span>
-              <span class="log-ot-mark">(OT!)</span>
+              <span class="log-ot-mark">（抢仇恨！）</span>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
@@ -232,7 +232,7 @@
                 <template v-for="(h, i) in entry.heroes" :key="h.id">
                   <span v-if="i > 0" class="log-rest-sep"> | </span>
                   <span :style="{ color: classColor(h.class) }">{{ h.name }}</span>
-                  : <span :style="{ color: hpBarColor(hpPct(h)) }">{{ h.currentHP }}/{{ h.maxHP }}</span> HP
+                  : <span :style="{ color: hpBarColor(hpPct(h)) }">{{ h.currentHP }}/{{ h.maxHP }}</span> 生命
                 </template>
               </template>
               <template v-else>{{ entry.message }}</template>
@@ -243,22 +243,22 @@
                 class="log-actor"
                 :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
               >{{ entry.actorName }}</span>
-              <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">(AGI {{ entry.actorAgility }})
+              <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">（敏捷 {{ entry.actorAgility }}）
                 <span class="tooltip-text">敏捷越高先出手</span>
               </span>
               <span class="log-sep">使用</span>
-              <span class="log-action" :class="entry.action === 'basic' ? 'log-basic' : (entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ entry.skillName ?? entry.action }}</span>
-              <span class="log-sep">on</span>
+              <span class="log-action" :class="entry.action === 'basic' ? 'log-basic' : (entry.skillId || entry.action === 'skill') ? 'log-skill' : ''">{{ formatLogActionName(entry) }}</span>
+              <span class="log-sep">对</span>
               <span
                 class="log-target"
                 :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
-              >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? ' (+' + (entry.cleaveTargets - 1) + ' more)' : '' }}</span>
+              >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? '（+' + (entry.cleaveTargets - 1) + ' 个目标）' : '' }}</span>
               <template v-if="entry.tauntApplied">
                 <span class="log-sep">-</span>
                 <span class="log-taunt-effect">{{ entry.tauntEffectText }}</span>
               </template>
               <template v-else-if="entry.finalDamage != null">
-                <span class="log-sep">for</span>
+                <span class="log-sep">造成</span>
                 <span
                   class="log-dmg"
                   :class="[
@@ -266,15 +266,15 @@
                     entry.isCrit ? 'log-crit' : ''
                   ]"
                 >{{ entry.finalDamage }}</span>
-                <span v-if="entry.isCrit" class="log-crit-mark">CRIT!</span>
-                <span class="log-dtype">({{ entry.damageType }})</span>
+                <span v-if="entry.isCrit" class="log-crit-mark">暴击！</span>
+                <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
                 v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null || entry.heal > 0 || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
-                  Attacking {{ entry.targetName }} ({{ entry.targetReason === 'taunted' ? 'taunted' : 'highest threat' }})
+                  攻击 {{ entry.targetName }}（{{ entry.targetReason === 'taunted' ? '嘲讽' : '最高仇恨' }}）
                 </div>
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
@@ -283,11 +283,11 @@
                   <span
                     :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
                   >{{ entry.targetName }}</span>
-                  HP: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+                  生命: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
                 </div>
                 <div v-if="entry.heal > 0" class="log-heal">
                   <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
-                  healed <span class="log-heal-val">+{{ entry.heal }}</span> HP
+                  治疗 <span class="log-heal-val">+{{ entry.heal }}</span> 生命
                   <template v-if="entry.actorHPAfter != null">
                     ({{ entry.actorHPAfter }}/{{ entry.actorMaxHP }})
                   </template>
@@ -1273,21 +1273,27 @@ function resourceLabel(heroClass) {
 function resourceFillClass(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).fillClass
 }
+function formatLogActionName(entry) {
+  if (entry.skillName) return entry.skillName
+  if (entry.action === 'basic') return '普通攻击'
+  return entry.action ?? '技能'
+}
+
 function damageFormulaEquation(entry) {
   const final = entry.finalDamage
-  const defLabel = entry.damageType === 'magic' ? 'Resist' : 'Armor'
+  const defLabel = entry.damageType === 'magic' ? '抗性' : '护甲'
   const defVal = Math.max(0, entry.targetDefense ?? 0)
   if (entry.skillId && entry.skillCoefficient != null) {
     const coeff = entry.skillCoefficient
     if (entry.isCrit) {
-      return `ATK(${entry.rawDamage}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${final}`
+      return `攻击(${entry.rawDamage}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${final}`
     }
-    return `ATK(${entry.rawDamage}) x ${coeff} - ${defLabel}(${defVal}) = ${final}`
+    return `攻击(${entry.rawDamage}) x ${coeff} - ${defLabel}(${defVal}) = ${final}`
   }
   if (entry.isCrit) {
-    return `ATK(${entry.rawDamage}) x 1.5 - ${defLabel}(${defVal}) = ${final}`
+    return `攻击(${entry.rawDamage}) x 1.5 - ${defLabel}(${defVal}) = ${final}`
   }
-  return `ATK(${entry.rawDamage}) - ${defLabel}(${defVal}) = ${final}`
+  return `攻击(${entry.rawDamage}) - ${defLabel}(${defVal}) = ${final}`
 }
 
 const router = useRouter()
@@ -1942,7 +1948,7 @@ function conditionValueAsPercent(val) {
 
 function getHeroSkillDisplay(skillId, hero = null) {
   if (skillId === 'basic-attack') {
-    return { name: 'Basic Attack', spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
+    return { name: '普通攻击', spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
   }
   const heroClass = hero?.class
   if (heroClass === 'Warrior') {
@@ -2090,7 +2096,7 @@ function applyOneCombatEntry(entry) {
   if (entry.type === 'dot') {
     pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
   } else if (entry.targetId && entry.finalDamage > 0) {
-    const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : 'Skill') : null)
+    const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : '技能') : null)
     pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, { skillName: skillName ?? null, type: 'damage' })
   }
   if (entry.heal > 0 && entry.actorId) {
@@ -2196,7 +2202,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   if (deathCount > 0) {
     addLogEntry({
       type: 'rest',
-      message: `Death penalty: ${deathCount} hero(s) died, recovery slowed`,
+      message: `死亡惩罚：${deathCount} 名英雄阵亡，恢复速度降低`,
       complete: false,
     })
   }
@@ -2219,7 +2225,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   }
 
   const endMsg = isDefeat
-    ? 'Recovery complete. Heroes ready for battle.'
+    ? '恢复完成，英雄已准备好战斗。'
     : '休息完成，全员已恢复。'
   addLogEntry({ type: 'rest', message: endMsg, complete: true })
   await scrollLog()
