@@ -3042,16 +3042,18 @@ onUnmounted(() => {
   background: rgba(255, 68, 68, 0.06);
 }
 .defeated-badge {
-  position: absolute;
-  top: 0.25rem;
-  right: 0.35rem;
+  display: block;
+  width: 100%;
   font-size: var(--font-xs);
   font-weight: bold;
   color: var(--color-defeat);
-  background: rgba(255, 68, 68, 0.2);
-  padding: 0.1rem 0.3rem;
+  background: rgba(255, 68, 68, 0.15);
+  padding: 0.15rem 0.35rem;
   border-radius: 3px;
   border: 1px solid var(--color-defeat);
+  text-align: center;
+  margin-bottom: 0.25rem;
+  box-sizing: border-box;
 }
 .card-top {
   display: flex;
