@@ -696,7 +696,7 @@
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">
         <div class="modal-box detail-modal">
           <div class="modal-title">
-            <span class="modal-hero-name">{{ selectedHero.name }}</span>
+            <span class="modal-hero-name" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span>
             <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ classDisplayName(selectedHero.class) }}</span>
           </div>
           <div class="detail-tabs">
