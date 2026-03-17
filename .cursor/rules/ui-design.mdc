@@ -43,8 +43,24 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 - Focus: `border-color: var(--accent)`, `box-shadow: 0 0 6px var(--focus-glow)`.
 - Match adjacent selects/buttons in font-size and padding.
 
+## Semantic Color Consistency (MANDATORY)
+
+Same semantic content MUST use the same color token across all UI contexts. When adding or modifying UI, check existing usages and match them.
+
+| Semantic content | Token | Contexts to keep consistent |
+|------------------|-------|-----------------------------|
+| Skill name | `--color-skill` + italic | Battle log, tactics panel, skill tooltip, skill choice modal |
+| Basic attack (普通攻击) | `--color-log-basic` | Battle log, tactics panel |
+| Hero name | `classColor(hero.class)` | Hero card, detail modal |
+| Hero class tag | `classColor(hero.class)` | Hero card, detail modal |
+| Target hero name | `classColor(targetClass)` | Monster target display, battle log |
+| Monster tier | `monsterTierColor(tier)` | Monster card, battle log |
+
+Before adding a new place that shows skill names, hero names, or basic attack: search for existing usages and reuse the same token/helper.
+
 ## Prohibited
 
 - `--color-green` (does not exist; use `--accent`).
 - New color variables without adding to `style.css` and `11-ui-tokens.md`.
 - Same background for nested blocks (causes flat, monotonous look).
+- Different colors for the same semantic content in different panels (e.g. skill name in log vs tactics).

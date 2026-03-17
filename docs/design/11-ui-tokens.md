@@ -92,6 +92,20 @@
 | `var(--color-formula-equip)` | 公式中的装备标签 |
 | `var(--color-heal)` | 治疗数字（与 HP 区分时） |
 | `var(--color-debuff)` | Debuff 名称 |
+| `var(--color-log-basic)` | 普通攻击（战斗日志、战术面板等） |
+| `var(--color-log-connector)` | 日志连接词（对、至、造成等） |
+| `var(--color-log-detail)` | 日志详情、次要信息 |
+
+### 1.3.1 跨上下文颜色一致性
+
+同一语义内容在不同界面中必须使用相同 token，避免用户困惑：
+
+| 语义内容 | Token | 需保持一致的位置 |
+|----------|-------|------------------|
+| 技能名 | `--color-skill`（斜体） | 战斗日志、战术面板、技能说明、技能选择 |
+| 普通攻击 | `--color-log-basic` | 战斗日志、战术面板 |
+| 英雄名 | `classColor(hero.class)` | 英雄卡片、角色详情 |
+| 目标英雄名 | `classColor(targetClass)` | 怪物目标、战斗日志 |
 
 ### 1.4 禁止
 

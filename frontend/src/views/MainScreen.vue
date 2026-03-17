@@ -873,7 +873,10 @@
                 >
                   <div class="tactics-skill-header">
                     <span class="tactics-skill-order">{{ idx + 1 }}.</span>
-                    <span class="tactics-skill-name">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
+                    <span
+                      class="tactics-skill-name"
+                      :class="skillId === 'basic-attack' ? 'tactics-skill-name-basic' : 'tactics-skill-name-skill'"
+                    >{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-btns">
                       <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
                       <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx >= tacticsDisplaySkillList(selectedHero).length - 2" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
@@ -3670,6 +3673,13 @@ onUnmounted(() => {
 .tactics-skill-name {
   flex: 1;
   font-size: var(--font-base);
+}
+.tactics-skill-name-basic {
+  color: var(--color-log-basic);
+}
+.tactics-skill-name-skill {
+  color: var(--color-skill);
+  font-style: italic;
 }
 .tactics-skill-btns {
   display: flex;
