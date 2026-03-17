@@ -38,10 +38,11 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 
 ## Form Inputs (MANDATORY)
 
-- **input / select / textarea** MUST use game tokens: `var(--bg-dark)`, `var(--border)`, `var(--text)`.
-- NEVER leave inputs with native browser defaults (white bg, system font, etc.).
+- **input / select / textarea / checkbox** MUST use game tokens: `var(--bg-dark)`, `var(--border)`, `var(--text)`.
+- NEVER leave inputs with native browser defaults (white bg, system font, default checkbox/radio look, etc.).
 - Focus: `border-color: var(--accent)`, `box-shadow: 0 0 6px var(--focus-glow)`.
 - Match adjacent selects/buttons in font-size and padding.
+- **Checkbox/radio**: Use `appearance: none` and custom styles (bg, border, accent when checked). Do NOT use native checkbox/radio appearance.
 
 ## Semantic Color Consistency (MANDATORY)
 
@@ -64,3 +65,4 @@ Before adding a new place that shows skill names, hero names, or basic attack: s
 - New color variables without adding to `style.css` and `11-ui-tokens.md`.
 - Same background for nested blocks (causes flat, monotonous look).
 - Different colors for the same semantic content in different panels (e.g. skill name in log vs tactics).
+- **Native checkbox/radio appearance** (white box, system checkmark). Use `appearance: none` + game tokens.

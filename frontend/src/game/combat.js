@@ -52,6 +52,7 @@ import {
   getThreatMultiplier,
   isAllyOT,
   getTank,
+  getDesignatedTank,
 } from './threat.js'
 
 export const CRIT_MULTIPLIER = 1.5
@@ -458,7 +459,7 @@ function buildRoundOrder(heroes, monsters, rng) {
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
 
 function pickTarget(actor, heroes, monsters, opts = {}) {
-  const { threat, tauntState, skillId, conditions, rng } = opts
+  const { threat, tauntState, skillId, conditions, rng, designatedTank } = opts
   if (actor.side === 'monster') {
     return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng)
   }
@@ -475,11 +476,15 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
     if (sunderPool.length > 0) filtered = sunderPool
   }
   const rule = targetRule === 'sunder-first' ? 'lowest-hp' : targetRule
+  const getTankFn =
+    designatedTank != null
+      ? (h, m, t) => getTank(h, m, t, designatedTank)
+      : getTank
   const pickOpts =
     (rule === 'highest-threat' || rule === 'lowest-threat') && threat
       ? { threat, actor, heroes }
       : rule === 'tank' && threat
-        ? { threat, heroes, monsters, getTank }
+        ? { threat, heroes, monsters, getTank: getTankFn }
         : {}
   const chosen = pickTargetByRule(filtered, rule, rng, pickOpts)
   return chosen ?? (filtered.length === 0 ? null : filtered[0])
@@ -549,6 +554,8 @@ function rewardForVictory(monsters, rng) {
 export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds = 40 }) {
   const heroUnits = heroes.map((h) => heroCombatStats(h))
   const monsterUnits = deepCopy(monsters).map((m) => ({ ...m, side: 'monster', debuffs: [] }))
+  const designatedTank = getDesignatedTank(heroes)
+  const designatedTankUnit = designatedTank ? heroUnits.find((h) => h.id === designatedTank.id) ?? null : null
   const threat = createThreatTables(heroUnits, monsterUnits)
   const tauntState = {}
   const monsterLastTarget = {}
@@ -566,12 +573,17 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     turnActedByRound[round] = []
     for (const actor of roundOrder) {
       if (actor.currentHP <= 0) continue
-      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng, threat, tauntState })
+      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng, threat, tauntState, designatedTank: designatedTankUnit })
       if (!defaultTarget) break
 
       turnActedByRound[round].push(actor.id)
 
-      const ctx = { round, rng, threat, isAllyOT }
+      const ctx = {
+        round,
+        rng,
+        threat,
+        isAllyOT: (h, m, t) => isAllyOT(h, m, t, designatedTankUnit),
+      }
       const conditions = getConditions(actor)
       const skillPriority = getSkillPriority(actor)
 
@@ -594,6 +606,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             round,
             threat,
             tauntState,
+            designatedTank: designatedTankUnit,
           })
           if (!target) continue
 
@@ -756,6 +769,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             round,
             threat,
             tauntState,
+            designatedTank: designatedTankUnit,
           })
           if (!mageTarget) continue
 
@@ -831,6 +845,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             round,
             threat,
             tauntState,
+            designatedTank: designatedTankUnit,
           })
           if (!priestTarget) continue
 
@@ -904,6 +919,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               rng,
               threat,
               tauntState,
+              designatedTank: designatedTankUnit,
             }) ?? defaultTarget
           : defaultTarget
       const action = actorDamage(actor, rng, round)
@@ -934,7 +950,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.side === 'monster') {
         const lastTargetId = monsterLastTarget[actor.id]
         if (lastTargetId != null && lastTargetId !== target.id) {
-          const tank = getTank(heroUnits, monsterUnits, threat)
+          const tank = getTank(heroUnits, monsterUnits, threat, designatedTankUnit)
           if (tank && target.id !== tank.id) {
             const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
             const lastTargetName = lastTarget?.name ?? 'Unknown'

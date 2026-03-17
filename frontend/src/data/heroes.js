@@ -572,6 +572,7 @@ export function createFixedTrioSquad() {
   const priest = HEROES.find((h) => h.id === 'anduin')
   if (!warrior || !mage || !priest) return []
   const w = createCharacter(warrior, { skills: ['sunder-armor', 'taunt'] })
+  w.isTank = true
   w.tactics = { skillPriority: ['taunt', 'sunder-armor'], targetRule: 'lowest-hp', conditions: [{ skillId: 'taunt', when: 'ally-ot', targetRule: 'highest-threat' }] }
   const m = createCharacter(mage, { skills: ['fireball', 'arcane-blast'] })
   m.tactics = { skillPriority: ['fireball', 'arcane-blast'], targetRule: 'lowest-hp' }

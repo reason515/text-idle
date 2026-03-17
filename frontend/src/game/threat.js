@@ -176,16 +176,31 @@ export function decrementTauntActions(tauntState, monsterId) {
 }
 
 /**
- * Get tank: hero with highest threat on the most monsters; tie-break by total threat sum.
+ * Get designated tank from squad (hero with isTank: true).
+ * @param {Object[]} heroes - Squad/hero units
+ * @returns {Object|null}
+ */
+export function getDesignatedTank(heroes) {
+  if (!heroes || heroes.length === 0) return null
+  return heroes.find((h) => h.isTank === true) ?? null
+}
+
+/**
+ * Get tank: uses designated tank if provided and alive; else hero with highest threat on the most monsters.
  * @param {Object[]} heroes - Alive heroes
  * @param {Object[]} monsters - Alive monsters
  * @param {Object} threat - Threat tables
+ * @param {Object|null} designatedTank - Optional designated tank (from getDesignatedTank)
  * @returns {Object|null}
  */
-export function getTank(heroes, monsters, threat) {
+export function getTank(heroes, monsters, threat, designatedTank = null) {
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-  const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
   if (aliveHeroes.length === 0) return null
+  if (designatedTank && aliveHeroes.some((h) => h.id === designatedTank.id)) {
+    return designatedTank
+  }
+
+  const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
   if (aliveMonsters.length === 0) return aliveHeroes[0]
 
   let best = null
@@ -215,10 +230,11 @@ export function getTank(heroes, monsters, threat) {
  * @param {Object[]} heroes
  * @param {Object[]} monsters
  * @param {Object} threat
+ * @param {Object|null} designatedTank - Optional designated tank (from getDesignatedTank)
  * @returns {boolean}
  */
-export function isAllyOT(heroes, monsters, threat) {
-  const tank = getTank(heroes, monsters, threat)
+export function isAllyOT(heroes, monsters, threat, designatedTank = null) {
+  const tank = getTank(heroes, monsters, threat, designatedTank)
   if (!tank) return false
   const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
   for (const m of aliveMonsters) {

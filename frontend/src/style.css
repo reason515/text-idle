@@ -65,6 +65,7 @@
   --bg-selected: rgba(0, 255, 136, 0.1);
   --bg-gold-hover: rgba(255, 204, 68, 0.1);
   --bg-skill-tint: rgba(255, 238, 102, 0.07);
+  --bg-phys-tint: rgba(255, 170, 68, 0.12);
   --bg-error-hover: rgba(255, 102, 102, 0.08);
   --bg-darker: #0a0a0a;
   --bg-elevated: #111111;
@@ -84,6 +85,7 @@
   --border-darkest: #0d0d0d;
   --font-s: 0.8rem;
   --focus-glow: rgba(0, 255, 136, 0.4);
+  --focus-glow-phys: rgba(255, 170, 68, 0.4);
 
   font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 }

@@ -9,6 +9,7 @@ import {
   getMonsterTarget,
   decrementTauntActions,
   getTank,
+  getDesignatedTank,
   isAllyOT,
   getThreatMultiplier,
 } from './threat.js'
@@ -111,14 +112,30 @@ describe('threat', () => {
     })
   })
 
+  describe('getDesignatedTank', () => {
+    it('returns hero with isTank true', () => {
+      const h1 = { ...heroA, isTank: true }
+      const h2 = { ...heroB }
+      expect(getDesignatedTank([h1, h2])?.id).toBe('h1')
+    })
+    it('returns null when no tank designated', () => {
+      expect(getDesignatedTank([heroA, heroB])).toBeNull()
+    })
+  })
+
   describe('getTank', () => {
-    it('returns hero with highest threat on most monsters', () => {
+    it('returns hero with highest threat on most monsters when no designated tank', () => {
       const threat = {
         m1: { h1: 50, h2: 10 },
         m2: { h1: 40, h2: 45 },
       }
       const tank = getTank([heroA, heroB], [monsterA, monsterB], threat)
       expect(tank.id).toBe('h1')
+    })
+    it('returns designated tank when provided and alive', () => {
+      const threat = { m1: { h1: 10, h2: 50 }, m2: { h1: 5, h2: 60 } }
+      const tank = getTank([heroA, heroB], [monsterA, monsterB], threat, heroB)
+      expect(tank.id).toBe('h2')
     })
   })
 

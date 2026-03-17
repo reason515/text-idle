@@ -90,6 +90,32 @@ test.describe('Tactics Configuration (Example 28)', () => {
     await expect(rowAfter.locator('[data-testid="tactics-skill-target-basic-attack"]')).toHaveValue('lowest-hp')
   })
 
+  test('Tank checkbox: designate tank in squad, threat/tank options require tank', async ({ page }) => {
+    const email = `tactics-tank-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const warriorCard = page.locator('.squad-col .hero-card').first()
+    await expect(warriorCard).toBeVisible({ timeout: 5000 })
+    const tankCheck = warriorCard.locator('[data-testid^="hero-tank-check-"]')
+    await expect(tankCheck).toBeVisible()
+    await expect(tankCheck).toBeChecked()
+
+    await tankCheck.uncheck()
+    const priestCard = page.locator('.squad-col .hero-card').filter({ hasText: 'Anduin' }).first()
+    await priestCard.click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
+    await expect(page.locator('.tactics-tank-hint')).toBeVisible()
+    await expect(page.locator('.tactics-tank-hint-text')).toContainText('指定一名坦克')
+
+    await page.getByRole('button', { name: '关闭' }).click()
+    await tankCheck.check()
+    await priestCard.click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
+    await expect(page.locator('.tactics-tank-hint')).not.toBeVisible()
+    await expect(page.getByTestId('tactics-target-rule')).toHaveValue('tank')
+  })
+
   test('Priest detail shows Skills tab and Tactics tab with ally target options', async ({ page }) => {
     const email = `tactics-priest-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)

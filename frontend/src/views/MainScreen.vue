@@ -78,6 +78,16 @@
                 <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
               </span>
             </div>
+            <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
+              <input
+                type="checkbox"
+                :checked="hero.isTank === true"
+                :data-testid="'hero-tank-check-' + hero.id"
+                @change="setHeroAsTank(hero, $event.target.checked)"
+              />
+              <span class="tank-check-label">坦克</span>
+              <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
+            </label>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">暂无英雄，招募开始冒险。</div>
         </div>
@@ -853,6 +863,9 @@
             <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
               <div class="detail-sep-line">技能优先级与单技能配置</div>
               <div class="detail-section tactics-priority-hint">每回合按顺序尝试技能；若不可用则尝试下一个。无可用技能时使用普通攻击。每个技能可单独设置目标和条件。</div>
+              <div v-if="!hasDesignatedTank" class="detail-section tactics-tank-hint">
+                <span class="tactics-tank-hint-text">请先在小队中指定一名坦克，方可使用仇恨/坦克相关选项。</span>
+              </div>
               <div class="detail-section">
                 <span class="detail-label tactics-default-label">默认目标</span>
                 <select
@@ -861,7 +874,12 @@
                   data-testid="tactics-target-rule"
                   @change="setTacticsTargetRule(selectedHero, $event.target.value)"
                 >
-                  <option v-for="opt in tacticsDefaultTargetOptions(selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  <option
+                    v-for="opt in tacticsDefaultTargetOptions(selectedHero)"
+                    :key="opt.value"
+                    :value="opt.value"
+                    :disabled="opt.requiresTank && !hasDesignatedTank"
+                  >{{ opt.label }}</option>
                 </select>
                 <span class="tactics-default-hint">（技能未单独设置时使用）</span>
               </div>
@@ -892,7 +910,12 @@
                         @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
                       >
                         <option value="">默认</option>
-                        <option v-for="opt in tacticsSkillTargetOptions(skillId, selectedHero)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        <option
+                          v-for="opt in tacticsSkillTargetOptions(skillId, selectedHero)"
+                          :key="opt.value"
+                          :value="opt.value"
+                          :disabled="opt.requiresTank && !hasDesignatedTank"
+                        >{{ opt.label }}</option>
                       </select>
                     </div>
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
@@ -911,9 +934,12 @@
                         :data-testid="'tactics-skill-condition-' + skillId"
                         @change="setSkillConditionWhen(selectedHero, skillId, $event.target.value)"
                       >
-                        <option v-for="opt in conditionOptionsForTarget(getSkillConditionTargetType(selectedHero, skillId))" :key="opt.when" :value="opt.when">
-                          {{ opt.label }}
-                        </option>
+                        <option
+                          v-for="opt in conditionOptionsForTarget(getSkillConditionTargetType(selectedHero, skillId))"
+                          :key="opt.when"
+                          :value="opt.when"
+                          :disabled="opt.requiresTank && !hasDesignatedTank"
+                        >{{ opt.label }}</option>
                       </select>
                       <template v-if="conditionNeedsValue(getSkillConditionWhen(selectedHero, skillId))">
                         <input
@@ -1254,7 +1280,7 @@ const TACTICS_CONDITION_BY_TARGET = {
   ally: [
     { when: '', label: '无' },
     { when: 'ally-hp-below', label: 'HP 低于 %', valueDefault: 0.4, valueType: 'number' },
-    { when: 'ally-ot', label: '友方 OT（拉仇恨）', valueType: 'none' },
+    { when: 'ally-ot', label: '友方 OT（拉仇恨）', valueType: 'none', requiresTank: true },
   ],
   self: [
     { when: '', label: '无' },
@@ -1267,12 +1293,12 @@ const TACTICS_TARGET_OPTIONS_ENEMY = [
   { value: 'first', label: '首个' },
   { value: 'lowest-hp', label: 'HP 最低' },
   { value: 'highest-hp', label: 'HP 最高' },
-  { value: 'highest-threat', label: '仇恨最高' },
-  { value: 'lowest-threat', label: '仇恨最低（拉仇恨）' },
+  { value: 'highest-threat', label: '可能 OT 的怪（拉稳）', requiresTank: true },
+  { value: 'lowest-threat', label: '未关注自己的怪（拉怪）', requiresTank: true },
   { value: 'random', label: '随机' },
 ]
 const TACTICS_TARGET_OPTIONS_ALLY = [
-  { value: 'tank', label: '坦克' },
+  { value: 'tank', label: '坦克', requiresTank: true },
   { value: 'lowest-hp-ally', label: 'HP 最低（友方）' },
   { value: 'self', label: '自身' },
 ]
@@ -1735,6 +1761,20 @@ function loadSquad() {
     xp: h.xp ?? 0,
     unassignedPoints: h.unassignedPoints ?? 0,
   }))
+  displayHeroes.value = squad.value.map(computeHeroDisplay)
+}
+
+const hasDesignatedTank = computed(() => squad.value.some((h) => h.isTank === true))
+
+function setHeroAsTank(hero, checked) {
+  const sh = squad.value.find((h) => h.id === hero?.id)
+  if (!sh) return
+  if (checked) {
+    for (const h of squad.value) h.isTank = h.id === sh.id
+  } else {
+    sh.isTank = false
+  }
+  saveSquad(squad.value)
   displayHeroes.value = squad.value.map(computeHeroDisplay)
 }
 function loadProgress() {
@@ -3631,6 +3671,17 @@ onUnmounted(() => {
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
+.tactics-tank-hint {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.tactics-tank-hint-text {
+  font-size: var(--font-s);
+  color: var(--warning);
+}
 .tactics-skill-list {
   display: flex;
   flex-direction: column;
@@ -3946,6 +3997,51 @@ input.tactics-condition-value[type="number"] {
   flex-wrap: wrap;
   gap: 0.2rem;
   margin-top: 0.25rem;
+}
+.hero-tank-check {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: var(--font-xs);
+  color: var(--color-phys);
+  cursor: pointer;
+}
+.hero-tank-check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  min-width: 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: grid;
+  place-content: center;
+  font-family: inherit;
+}
+.hero-tank-check input[type="checkbox"]:hover {
+  border-color: var(--color-phys);
+  background: var(--bg-phys-tint);
+}
+.hero-tank-check input[type="checkbox"]:checked {
+  border-color: var(--color-phys);
+  background: var(--bg-phys-tint);
+  box-shadow: 0 0 3px var(--focus-glow-phys);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23ffaa44' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2 6l3 3 5-6'/%3E%3C/svg%3E");
+  background-size: 65% 65%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.hero-tank-check input[type="checkbox"]:focus {
+  outline: none;
+  border-color: var(--color-phys);
+  box-shadow: 0 0 4px var(--focus-glow-phys);
+}
+.tank-check-label {
+  user-select: none;
 }
 .status-badge {
   font-size: var(--font-xs);
