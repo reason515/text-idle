@@ -47,24 +47,30 @@
 
 ### 3.2 目标选择规则 (targetRule)
 
+**战术 UI（敌方）**：两级联动。第一级为 **参数**（`HP` / `仇恨` / `顺序`），第二级为该参数下的具体规则（如 HP 的「最高」「最低」）。持久化仍存为单个 `targetRule` 字符串（见下表）。`frontend/src/game/tacticsTargetUi.js` 维护映射与文案。
+
 **敌方目标**
 
 | 规则 ID | 说明 |
 |---------|------|
-| lowest-hp | 敌方当前 HP 最低 |
-| highest-hp | 敌方当前 HP 最高 |
-| highest-threat | 可能 OT 的怪（拉稳）：选正在打队友的怪中总仇恨最高的 |
-| lowest-threat | 未关注自己的怪（拉怪）：选对自己仇恨最低的怪 |
-| random | 随机存活目标 |
-| first | 列表第一个（默认） |
+| first | 列表第一个（默认）（UI：**顺序 → 首个**） |
+| random | 随机存活目标（UI：**顺序 → 随机**） |
+| lowest-hp | 敌方当前 HP 最低（UI：**HP → 最低**） |
+| highest-hp | 敌方当前 HP 最高（UI：**HP → 最高**） |
+| threat-not-tank-random | 在「仇恨表第一名**不是**指定坦克」的存活怪中**随机**一只（需指定坦克） |
+| threat-tank-top-random | 在「仇恨表第一名**是**指定坦克」的存活怪中**随机**一只（需指定坦克） |
+| threat-tank-top-lowest-on-tank | 在「仇恨表第一名是指定坦克」的存活怪中，对坦克仇恨**最低**的一只（需指定坦克） |
+| threat-tank-top-highest-on-tank | 在「仇恨表第一名是指定坦克」的存活怪中，对坦克仇恨**最高**的一只（需指定坦克） |
+
+**兼容（旧存档 / 旧字符串，战斗逻辑仍解析）**：`highest-threat-on-actor`、`lowest-threat`、`first-top-threat-not-self`、`highest-threat` 等旧 ID 仍可在 `pickTargetByRule` 中生效；UI 映射会将部分旧 ID 显示到新的仇恨二级项（语义可能与旧版略有差异，新配置请用上表四项）。
 
 **友方目标**（治疗、Buff 等）
 
 | 规则 ID | 说明 |
 |---------|------|
-| lowest-hp-ally | 己方 HP 最低 |
+| lowest-hp-ally | 己方 HP 最低（战术 UI：**HP 最低**，与敌方规则同名不同用） |
 | self | 仅自己 |
-| tank | 坦克（玩家在小队中指定的坦克） |
+| tank | 指定坦克（战术 UI：**坦克**） |
 
 技能若有目标类型（单体伤害 / 治疗 / 己方 Buff），目标规则仅在该类型内生效。技能级可覆盖 `targetRule`（如治疗用 `lowest-hp-ally`）。
 
@@ -80,7 +86,7 @@
 | ally-hp-below | 任意友方 HP 比例低于 X | 治疗技能 |
 | self-hit-this-round | 本回合受到过攻击 | 复仇 |
 | target-has-debuff | 目标有指定 debuff；同时过滤目标池 | 盾牌猛击（破甲）、深度冻结（冰霜 debuff） |
-| ally-ot | 存在至少一个怪物，其仇恨最高目标不是指定坦克 | 嘲讽 |
+| ally-ot | 存在至少一个怪物，其仇恨最高目标不是指定坦克（战术 UI：条件类别 **敌方**，条目 **OT**） | 嘲讽 |
 | resource-above | 资源高于 X | 爆发技 |
 | resource-below | 资源低于 X | 填充技 |
 | round-gte | 回合数 ≥ X | 起手 Buff |
@@ -153,9 +159,11 @@
 
 **UI 入口**：布局/策略界面 → 选择角色 → 配置技能优先级、目标规则、条件。
 
-**指定坦克**：小队面板中每位英雄有「坦克」勾选；仅可指定一名坦克。未指定坦克时，战术面板中仇恨/坦克相关选项（highest-threat、lowest-threat、tank、ally-ot）置灰不可选，并提示「请先在小队中指定一名坦克」。
+**指定坦克**：小队面板中每位英雄有「坦克」勾选；仅可指定一名坦克。未指定坦克时，仇恨相关目标与 OT 条件置灰，并提示需先指定坦克。
 
 **UI 结构（每技能独立配置）**：每个技能行展示该技能的 Target（目标选择，可覆盖默认）、Condition（使用条件）。默认 Target 用于未单独配置的技能。
+
+**UI 条件类别下拉**：`敌方`（含 OT 与 HP、减益）、`友方`（队友 HP）、`自身`（self-\*）。ally-ot 虽内部 ID 含 `ally-`，语义为怪物仇恨表 OT 判定，故列在「敌方」。
 
 ---
 

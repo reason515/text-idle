@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   getSkillPriority,
   getTargetRule,
+  getTargetRuleChain,
+  TACTICS_TARGET_RULE_INHERIT,
   getConditions,
   checkCondition,
   filterTargetsByCondition,
@@ -65,6 +67,33 @@ describe('tactics', () => {
         },
       }
       expect(getTargetRule(actor, 'basic-attack', actor.tactics.conditions)).toBe('lowest-hp')
+    })
+  })
+
+  describe('getTargetRuleChain', () => {
+    it('returns [default] when no skill condition', () => {
+      const actor = { tactics: { targetRule: 'lowest-hp' } }
+      expect(getTargetRuleChain(actor, 'sunder-armor', [])).toEqual([TACTICS_TARGET_RULE_INHERIT])
+    })
+
+    it('uses targetRules when present', () => {
+      const actor = {
+        tactics: {
+          targetRule: 'first',
+          conditions: [{ skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] }],
+        },
+      }
+      expect(getTargetRuleChain(actor, 'sunder-armor', actor.tactics.conditions)).toEqual([
+        'default',
+        'threat-tank-top-lowest-on-tank',
+      ])
+    })
+
+    it('uses legacy targetRule as single step', () => {
+      const actor = {
+        tactics: { conditions: [{ skillId: 'taunt', targetRule: 'highest-threat' }] },
+      }
+      expect(getTargetRuleChain(actor, 'taunt', actor.tactics.conditions)).toEqual(['highest-threat'])
     })
   })
 
@@ -196,6 +225,136 @@ describe('tactics', () => {
     it('lowest-threat falls back to first when no threat opts', () => {
       const monsters = [{ id: 'm1', currentHP: 100 }, { id: 'm2', currentHP: 100 }]
       expect(pickTargetByRule(monsters, 'lowest-threat').id).toBe('m1')
+    })
+
+    it('first-top-threat-not-self picks first monster whose top threat is not actor', () => {
+      const actor = { id: 'warrior' }
+      const heroes = [
+        { id: 'warrior', currentHP: 100 },
+        { id: 'mage', currentHP: 80 },
+      ]
+      const threatM1 = { warrior: 50, mage: 60 }
+      const threatM2 = { warrior: 80, mage: 10 }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const threat = { m1: threatM1, m2: threatM2 }
+      const r = pickTargetByRule(monsters, 'first-top-threat-not-self', Math.random, { threat, actor, heroes })
+      expect(r.id).toBe('m1')
+    })
+
+    it('first-top-threat-not-self returns null when all top threats are actor', () => {
+      const actor = { id: 'warrior' }
+      const heroes = [{ id: 'warrior', currentHP: 100 }, { id: 'mage', currentHP: 80 }]
+      const threat = { m1: { warrior: 100, mage: 20 } }
+      const monsters = [{ id: 'm1', currentHP: 100 }]
+      expect(
+        pickTargetByRule(monsters, 'first-top-threat-not-self', Math.random, { threat, actor, heroes })
+      ).toBeNull()
+    })
+
+    it('highest-threat-on-actor picks monster with max threat on actor', () => {
+      const actor = { id: 'warrior' }
+      const threat = {
+        m1: { warrior: 10 },
+        m2: { warrior: 50 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'highest-threat-on-actor', Math.random, { threat, actor })
+      expect(r.id).toBe('m2')
+    })
+
+    it('threat-not-tank-random picks random among monsters whose top threat is not tank', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 10, mage: 80 },
+        m2: { tank: 90, mage: 5 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-not-tank-random', () => 0, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r.id).toBe('m1')
+    })
+
+    it('threat-tank-top-random picks random among monsters whose top threat is tank', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 80, mage: 10 },
+        m2: { tank: 50, mage: 40 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-tank-top-random', () => 0, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r.id).toBe('m1')
+    })
+
+    it('threat-tank-top-lowest-on-tank picks min threat on tank among tank-top pool', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 30, mage: 5 },
+        m2: { tank: 10, mage: 5 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-tank-top-lowest-on-tank', Math.random, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r.id).toBe('m2')
+    })
+
+    it('threat-tank-top-highest-on-tank picks max threat on tank among tank-top pool', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 30, mage: 5 },
+        m2: { tank: 60, mage: 5 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-tank-top-highest-on-tank', Math.random, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r.id).toBe('m2')
+    })
+
+    it('threat-not-tank-random returns null without tankId', () => {
+      const monsters = [{ id: 'm1', currentHP: 100 }]
+      expect(pickTargetByRule(monsters, 'threat-not-tank-random', Math.random, { threat: {}, heroes: [] })).toBeNull()
     })
   })
 })

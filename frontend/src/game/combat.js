@@ -35,7 +35,8 @@ import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
 import {
   getSkillPriority,
-  getTargetRule,
+  getTargetRuleChain,
+  TACTICS_TARGET_RULE_INHERIT,
   getConditions,
   checkCondition,
   filterTargetsByCondition,
@@ -465,29 +466,54 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   }
   const conditionsList = conditions ?? getConditions(actor)
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
-  const targetRule = getTargetRule(actor, skillId || '', conditionsList)
+  const chain = getTargetRuleChain(actor, skillId || '', conditionsList)
   const targetAllies = skillId && ALLY_TARGET_SKILLS.includes(skillId)
   const candidates = targetAllies ? alive(heroes) : alive(monsters)
   let filtered = cond
     ? filterTargetsByCondition(candidates, cond, actor, opts)
     : candidates
-  if (!targetAllies && targetRule === 'sunder-first' && filtered.length > 0) {
-    const sunderPool = filtered.filter((t) => getSunderDebuff(t))
-    if (sunderPool.length > 0) filtered = sunderPool
-  }
-  const rule = targetRule === 'sunder-first' ? 'lowest-hp' : targetRule
   const getTankFn =
     designatedTank != null
       ? (h, m, t) => getTank(h, m, t, designatedTank)
       : getTank
-  const pickOpts =
-    (rule === 'highest-threat' || rule === 'lowest-threat') && threat
-      ? { threat, actor, heroes }
+
+  const globalDefault = actor.tactics?.targetRule || 'first'
+
+  for (const step of chain) {
+    const resolved = step === TACTICS_TARGET_RULE_INHERIT ? globalDefault : step
+    let pool = filtered
+    let rule = resolved
+    if (!targetAllies && resolved === 'sunder-first' && pool.length > 0) {
+      const sunderPool = pool.filter((t) => getSunderDebuff(t))
+      if (sunderPool.length > 0) pool = sunderPool
+      rule = 'lowest-hp'
+    } else if (resolved === 'sunder-first') {
+      rule = 'lowest-hp'
+    }
+    const needsThreatOpts =
+      threat &&
+      (rule === 'highest-threat' ||
+        rule === 'highest-threat-on-actor' ||
+        rule === 'lowest-threat' ||
+        rule === 'first-top-threat-not-self' ||
+        rule === 'threat-not-tank-random' ||
+        rule === 'threat-tank-top-random' ||
+        rule === 'threat-tank-top-lowest-on-tank' ||
+        rule === 'threat-tank-top-highest-on-tank')
+    const pickOpts = needsThreatOpts
+      ? { threat, actor, heroes, tankId: designatedTank?.id }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank: getTankFn }
         : {}
-  const chosen = pickTargetByRule(filtered, rule, rng, pickOpts)
-  return chosen ?? (filtered.length === 0 ? null : filtered[0])
+    const chosen = pickTargetByRule(pool, rule, rng, pickOpts)
+    if (chosen) return chosen
+  }
+
+  const aliveFiltered = filtered.filter((u) => (u.currentHP ?? 0) > 0)
+  if (!skillId && aliveFiltered.length > 0) {
+    return pickTargetByRule(aliveFiltered, 'first', rng, {})
+  }
+  return null
 }
 
 function actorDamage(actor, rng, round) {

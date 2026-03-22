@@ -1130,7 +1130,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 - **Tactics structure**: Each hero has `tactics` with `skillPriority`, `targetRule`, and optional `conditions`. See [10-tactics.md](design/10-tactics.md).
 - **Skill priority**: Ordered list of skill IDs; the first skill that passes resource, cooldown, and conditions is used; if none, basic attack.
-- **Target rules (enemy)**: lowest-hp, highest-hp, highest-threat, lowest-threat (pull aggro), random, first.
+- **Target rules (enemy)**: lowest-hp, highest-hp, order (first/random), and threat presets (`threat-not-tank-random`, `threat-tank-top-random`, `threat-tank-top-lowest-on-tank`, `threat-tank-top-highest-on-tank`; require designated tank). Legacy IDs may still load. See [10-tactics.md](design/10-tactics.md).
 - **Target rules (ally)**: lowest-hp-ally, self, tank — for heals and buffs.
 - **Conditions**: Per-skill triggers (target-hp-below, target-has-debuff, ally-ot, etc.); `target-has-debuff` filters target pool; `ally-ot` is placeholder until threat system exists.
 - **Default**: When no tactics configured, use hero's skill list order and first alive target.

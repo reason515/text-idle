@@ -5,7 +5,29 @@
 
 import { getSunderDebuff } from './warriorSkills.js'
 
-/** @typedef {{ skillId: string, when: string, value?: number|string, targetRule?: string }} TacticsCondition */
+/** @typedef {{ skillId: string, when?: string, value?: number|string, targetRule?: string, targetRules?: string[] }} TacticsCondition */
+
+/** Sentinel: use tactics.targetRule for this chain step */
+export const TACTICS_TARGET_RULE_INHERIT = 'default'
+
+/**
+ * Ordered target rules for a skill; 'default' means inherit global tactics.targetRule.
+ * @param {Object} actor
+ * @param {string} skillId
+ * @param {TacticsCondition[]|undefined} conditions
+ * @returns {string[]}
+ */
+export function getTargetRuleChain(actor, skillId, conditions) {
+  const list = conditions ?? []
+  const cond = list.find((c) => c.skillId === skillId)
+  if (cond?.targetRules?.length) {
+    return cond.targetRules.filter((r) => typeof r === 'string' && r.length > 0)
+  }
+  if (cond?.targetRule) {
+    return [cond.targetRule]
+  }
+  return [TACTICS_TARGET_RULE_INHERIT]
+}
 
 /**
  * Get skill priority for actor. Uses tactics.skillPriority or falls back to actor.skills.
@@ -29,9 +51,10 @@ export function getSkillPriority(actor) {
  * @returns {string}
  */
 export function getTargetRule(actor, skillId, conditions) {
-  const cond = conditions?.find((c) => c.skillId === skillId && c.targetRule)
-  if (cond?.targetRule) return cond.targetRule
-  return actor.tactics?.targetRule || 'first'
+  const chain = getTargetRuleChain(actor, skillId, conditions)
+  const first = chain[0]
+  if (first === TACTICS_TARGET_RULE_INHERIT) return actor.tactics?.targetRule || 'first'
+  return first
 }
 
 /**
@@ -158,12 +181,32 @@ export function filterTargetsByCondition(targets, condition, actor, ctx) {
 }
 
 /**
+ * @param {Object} monster
+ * @param {Record<string, Record<string, number>>} threat
+ * @param {{ id: string }[]} aliveHeroes
+ * @returns {string|null}
+ */
+function getTopThreatHeroId(monster, threat, aliveHeroes) {
+  const table = threat[monster.id] ?? {}
+  let maxT = -1
+  let topId = null
+  for (const h of aliveHeroes) {
+    const t = table[h.id] ?? 0
+    if (t > maxT) {
+      maxT = t
+      topId = h.id
+    }
+  }
+  return topId
+}
+
+/**
  * Pick a target from candidates using the target rule.
- * For highest-threat / lowest-threat (enemy), requires opts.threat, opts.actor, opts.heroes.
+ * Threat rules against designated tank need opts.threat, opts.heroes, opts.tankId.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
- * @param {string} targetRule - lowest-hp, highest-hp, highest-threat, lowest-threat, first, random
+ * @param {string} targetRule - rule id
  * @param {Function} rng - Random function for random rule
- * @param {Object} opts - { threat, actor, heroes } for highest-threat / lowest-threat
+ * @param {Object} opts - { threat, actor, heroes, tankId }
  * @returns {Object|null}
  */
 export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts = {}) {
@@ -176,6 +219,95 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'highest-hp') {
     return alive.reduce((a, b) => ((a.currentHP ?? 0) > (b.currentHP ?? 0) ? a : b))
+  }
+
+  if (targetRule === 'threat-not-tank-random') {
+    const { threat, heroes, tankId } = opts
+    if (!threat || !heroes || !tankId) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
+    if (pool.length === 0) return null
+    return pool[Math.floor(rng() * pool.length)]
+  }
+
+  if (targetRule === 'threat-tank-top-random') {
+    const { threat, heroes, tankId } = opts
+    if (!threat || !heroes || !tankId) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) return null
+    return pool[Math.floor(rng() * pool.length)]
+  }
+
+  if (targetRule === 'threat-tank-top-lowest-on-tank') {
+    const { threat, heroes, tankId } = opts
+    if (!threat || !heroes || !tankId) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) return null
+    let best = null
+    let bestT = Infinity
+    for (const m of pool) {
+      const t = (threat[m.id] ?? {})[tankId] ?? 0
+      if (t < bestT) {
+        bestT = t
+        best = m
+      }
+    }
+    return best
+  }
+
+  if (targetRule === 'threat-tank-top-highest-on-tank') {
+    const { threat, heroes, tankId } = opts
+    if (!threat || !heroes || !tankId) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) return null
+    let best = null
+    let bestT = -1
+    for (const m of pool) {
+      const t = (threat[m.id] ?? {})[tankId] ?? 0
+      if (t > bestT) {
+        bestT = t
+        best = m
+      }
+    }
+    return best
+  }
+
+  if (targetRule === 'first-top-threat-not-self') {
+    const { threat, actor, heroes } = opts
+    if (!threat || !actor || !heroes) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    for (const m of alive) {
+      const table = threat[m.id] ?? {}
+      let maxT = -1
+      let topId = null
+      for (const h of aliveHeroes) {
+        const t = table[h.id] ?? 0
+        if (t > maxT) {
+          maxT = t
+          topId = h.id
+        }
+      }
+      if (topId != null && topId !== actor.id) return m
+    }
+    return null
+  }
+
+  if (targetRule === 'highest-threat-on-actor') {
+    const { threat, actor } = opts
+    if (!threat || !actor) return alive[0]
+    let best = null
+    let bestT = -1
+    for (const m of alive) {
+      const t = (threat[m.id] ?? {})[actor.id] ?? 0
+      if (t > bestT) {
+        bestT = t
+        best = m
+      }
+    }
+    return best ?? alive[0]
   }
 
   if (targetRule === 'highest-threat') {

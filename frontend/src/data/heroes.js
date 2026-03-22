@@ -573,7 +573,14 @@ export function createFixedTrioSquad() {
   if (!warrior || !mage || !priest) return []
   const w = createCharacter(warrior, { skills: ['sunder-armor', 'taunt'] })
   w.isTank = true
-  w.tactics = { skillPriority: ['taunt', 'sunder-armor'], targetRule: 'lowest-hp', conditions: [{ skillId: 'taunt', when: 'ally-ot', targetRule: 'highest-threat' }] }
+  w.tactics = {
+    skillPriority: ['taunt', 'sunder-armor'],
+    targetRule: 'threat-not-tank-random',
+    conditions: [
+      { skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] },
+      { skillId: 'basic-attack', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] },
+    ],
+  }
   const m = createCharacter(mage, { skills: ['fireball', 'arcane-blast'] })
   m.tactics = { skillPriority: ['fireball', 'arcane-blast'], targetRule: 'lowest-hp' }
   const p = createCharacter(priest, { skills: ['flash-heal', 'power-word-shield'] })

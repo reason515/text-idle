@@ -1022,6 +1022,51 @@ describe('combat progression and systems', () => {
     expect(lowHpTargets.length).toBeGreaterThan(0)
   })
 
+  it('tactics targetRules chain uses second rule when first yields no target', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 20,
+      strength: 20,
+      isTank: true,
+      skills: ['sunder-armor'],
+      tactics: {
+        skillPriority: ['sunder-armor'],
+        targetRule: 'threat-not-tank-random',
+        conditions: [{ skillId: 'sunder-armor', targetRules: ['default', 'lowest-hp'] }],
+      },
+    })
+    const m1 = createMonster(
+      {
+        id: 'm1',
+        name: 'Higher HP',
+        damageType: 'physical',
+        base: { hp: 400, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const m2 = createMonster(
+      {
+        id: 'm2',
+        name: 'Weaker',
+        damageType: 'physical',
+        base: { hp: 400, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    m1.currentHP = 300
+    m2.currentHP = 100
+    const monsters = [m1, m2]
+    const rng = fixedRng(Array(80).fill(0.5))
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 30 })
+    const sunderHits = result.log.filter(
+      (e) => e.actorName === 'Tank' && e.skillId === 'sunder-armor' && e.targetName
+    )
+    expect(sunderHits.length).toBeGreaterThan(0)
+    expect(sunderHits[0].targetName).toBe('Weaker')
+  })
+
   it('Warrior rage: resets to 0 when entering rest, does not recover during rest', () => {
     const warrior = {
       ...sampleHero({ id: 'w-rest', class: 'Warrior', spirit: 5 }),

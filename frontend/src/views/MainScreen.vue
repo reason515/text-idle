@@ -862,26 +862,52 @@
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
             <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
               <div class="detail-sep-line">技能优先级与单技能配置</div>
-              <div class="detail-section tactics-priority-hint">每回合按顺序尝试技能；若不可用则尝试下一个。无可用技能时使用普通攻击。每个技能可单独设置目标和条件。</div>
+              <div class="detail-section tactics-priority-hint">按序尝试技能；均不可用时普攻。指定坦克的战士可为破甲、普攻设目标 1、2（1 无效时用 2）。</div>
+              <div class="detail-section tactics-condition-category-hint">「敌方」含按怪与仇恨的条件；「友方」看队友血量。与上方选怪规则不同。</div>
               <div v-if="!hasDesignatedTank" class="detail-section tactics-tank-hint">
-                <span class="tactics-tank-hint-text">请先在小队中指定一名坦克，方可使用仇恨/坦克相关选项。</span>
+                <span class="tactics-tank-hint-text">需先在小队指定一名坦克，方可选仇恨相关规则。</span>
               </div>
-              <div class="detail-section">
+              <div class="detail-section tactics-default-target-row">
                 <span class="detail-label tactics-default-label">默认目标</span>
-                <select
-                  :value="tacticsTargetRule(selectedHero)"
-                  class="tactics-select tactics-default-target"
-                  data-testid="tactics-target-rule"
-                  @change="setTacticsTargetRule(selectedHero, $event.target.value)"
-                >
-                  <option
-                    v-for="opt in tacticsDefaultTargetOptions(selectedHero)"
-                    :key="opt.value"
-                    :value="opt.value"
-                    :disabled="opt.requiresTank && !hasDesignatedTank"
-                  >{{ opt.label }}</option>
-                </select>
-                <span class="tactics-default-hint">（技能未单独设置时使用）</span>
+                <template v-if="selectedHero.class === 'Priest'">
+                  <select
+                    :value="tacticsTargetRule(selectedHero)"
+                    class="tactics-select tactics-default-target"
+                    data-testid="tactics-target-rule"
+                    @change="setTacticsTargetRule(selectedHero, $event.target.value)"
+                  >
+                    <option
+                      v-for="opt in tacticsDefaultTargetOptions(selectedHero)"
+                      :key="opt.value"
+                      :value="opt.value"
+                      :disabled="opt.requiresTank && !hasDesignatedTank"
+                    >{{ opt.label }}</option>
+                  </select>
+                </template>
+                <template v-else>
+                  <select
+                    :value="getGlobalEnemyTargetL1(selectedHero)"
+                    class="tactics-select tactics-default-target tactics-enemy-l1"
+                    data-testid="tactics-target-rule-l1"
+                    @change="onGlobalEnemyTargetL1(selectedHero, $event.target.value)"
+                  >
+                    <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
+                  </select>
+                  <select
+                    :value="getGlobalEnemyTargetL2(selectedHero)"
+                    class="tactics-select tactics-default-target tactics-enemy-l2"
+                    data-testid="tactics-target-rule-l2"
+                    @change="onGlobalEnemyTargetL2(selectedHero, getGlobalEnemyTargetL1(selectedHero), $event.target.value)"
+                  >
+                    <option
+                      v-for="opt in enemyL2OptionsForL1(getGlobalEnemyTargetL1(selectedHero))"
+                      :key="opt.id"
+                      :value="opt.id"
+                      :disabled="opt.requiresTank && !hasDesignatedTank"
+                    >{{ opt.label }}</option>
+                  </select>
+                </template>
+                <span class="tactics-default-hint">（未单独设时用）</span>
               </div>
               <div class="tactics-skill-list">
                 <div
@@ -901,22 +927,106 @@
                     </div>
                   </div>
                   <div class="tactics-skill-config">
-                    <div class="tactics-skill-config-row">
+                    <template v-if="showWarriorTankTargetFallback(selectedHero, skillId)">
+                      <div class="tactics-skill-config-row tactics-target-fallback-row tactics-enemy-target-cascade">
+                        <span class="tactics-skill-config-label">目标 1</span>
+                        <select
+                          :value="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l1"
+                          :data-testid="'tactics-skill-target-' + skillId + '-0-l1'"
+                          @change="onSkillEnemyTargetL1ForStep(selectedHero, skillId, 0, $event.target.value)"
+                        >
+                          <option :value="ENEMY_TARGET_L1_INHERIT">{{ tacticsInheritDefaultLabel() }}</option>
+                          <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
+                        </select>
+                        <select
+                          v-if="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0) !== ENEMY_TARGET_L1_INHERIT"
+                          :value="getSkillEnemyTargetL2ForStep(selectedHero, skillId, 0)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l2"
+                          :data-testid="'tactics-skill-target-' + skillId + '-0-l2'"
+                          @change="onSkillEnemyTargetL2ForStep(selectedHero, skillId, 0, getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0), $event.target.value)"
+                        >
+                          <option
+                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0))"
+                            :key="opt.id"
+                            :value="opt.id"
+                            :disabled="opt.requiresTank && !hasDesignatedTank"
+                          >{{ opt.label }}</option>
+                        </select>
+                      </div>
+                      <div class="tactics-skill-config-row tactics-target-fallback-row tactics-enemy-target-cascade">
+                        <span class="tactics-skill-config-label">目标 2</span>
+                        <select
+                          :value="getSkillEnemyRow2L1(selectedHero, skillId)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l1"
+                          :data-testid="'tactics-skill-target-' + skillId + '-1-l1'"
+                          @change="onSkillEnemyRow2L1(selectedHero, skillId, $event.target.value)"
+                        >
+                          <option value="">{{ row2NoneLabel() }}</option>
+                          <option v-for="l1 in ENEMY_TARGET_L1" :key="'r2-' + l1.id" :value="l1.id">{{ l1.label }}</option>
+                        </select>
+                        <select
+                          v-if="getSkillEnemyRow2L1(selectedHero, skillId)"
+                          :value="getSkillEnemyRow2L2(selectedHero, skillId)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l2"
+                          :data-testid="'tactics-skill-target-' + skillId + '-1-l2'"
+                          @change="onSkillEnemyRow2L2(selectedHero, skillId, getSkillEnemyRow2L1(selectedHero, skillId), $event.target.value)"
+                        >
+                          <option
+                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyRow2L1(selectedHero, skillId))"
+                            :key="opt.id"
+                            :value="opt.id"
+                            :disabled="opt.requiresTank && !hasDesignatedTank"
+                          >{{ opt.label }}</option>
+                        </select>
+                      </div>
+                    </template>
+                    <div
+                      v-else
+                      class="tactics-skill-config-row tactics-enemy-target-cascade"
+                    >
                       <span class="tactics-skill-config-label">目标</span>
-                      <select
-                        :value="getSkillTargetRule(selectedHero, skillId)"
-                        class="tactics-select tactics-skill-target"
-                        :data-testid="'tactics-skill-target-' + skillId"
-                        @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
-                      >
-                        <option value="">默认</option>
-                        <option
-                          v-for="opt in tacticsSkillTargetOptions(skillId, selectedHero)"
-                          :key="opt.value"
-                          :value="opt.value"
-                          :disabled="opt.requiresTank && !hasDesignatedTank"
-                        >{{ opt.label }}</option>
-                      </select>
+                      <template v-if="skillTargetsAllies(skillId, selectedHero)">
+                        <select
+                          :value="getSkillTargetRule(selectedHero, skillId)"
+                          class="tactics-select tactics-skill-target"
+                          :data-testid="'tactics-skill-target-' + skillId"
+                          @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
+                        >
+                          <option value="">{{ tacticsInheritDefaultLabel() }}</option>
+                          <option
+                            v-for="opt in TACTICS_TARGET_OPTIONS_ALLY"
+                            :key="opt.value"
+                            :value="opt.value"
+                            :disabled="opt.requiresTank && !hasDesignatedTank"
+                          >{{ opt.label }}</option>
+                        </select>
+                      </template>
+                      <template v-else>
+                        <select
+                          :value="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l1"
+                          :data-testid="'tactics-skill-target-' + skillId + '-l1'"
+                          @change="onSkillEnemyTargetL1ForStep(selectedHero, skillId, 0, $event.target.value)"
+                        >
+                          <option :value="ENEMY_TARGET_L1_INHERIT">{{ tacticsInheritDefaultLabel() }}</option>
+                          <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
+                        </select>
+                        <select
+                          v-if="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0) !== ENEMY_TARGET_L1_INHERIT"
+                          :value="getSkillEnemyTargetL2ForStep(selectedHero, skillId, 0)"
+                          class="tactics-select tactics-skill-target tactics-enemy-l2"
+                          :data-testid="'tactics-skill-target-' + skillId + '-l2'"
+                          @change="onSkillEnemyTargetL2ForStep(selectedHero, skillId, 0, getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0), $event.target.value)"
+                        >
+                          <option
+                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0))"
+                            :key="opt.id"
+                            :value="opt.id"
+                            :disabled="opt.requiresTank && !hasDesignatedTank"
+                          >{{ opt.label }}</option>
+                        </select>
+                      </template>
                     </div>
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
                       <span class="tactics-skill-config-label">条件</span>
@@ -1204,6 +1314,15 @@ import {
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { TACTICS_TARGET_RULE_INHERIT } from '../game/tactics.js'
+import {
+  ENEMY_TARGET_L1,
+  ENEMY_TARGET_L1_INHERIT,
+  ENEMY_TARGET_L2_BY_L1,
+  enemyTargetRuleToParts,
+  enemyPartsToTargetRule,
+  enemyL2OptionsForL1,
+} from '../game/tacticsTargetUi.js'
 
 function getMonsterDisplayArmor(unit) {
   return Math.max(0, getEffectiveArmor(unit))
@@ -1265,7 +1384,7 @@ const MONSTER_TIER_COLORS = {
 }
 
 const TACTICS_CONDITION_TARGETS = [
-  { id: 'enemy', label: '敌人' },
+  { id: 'enemy', label: '敌方' },
   { id: 'ally', label: '友方' },
   { id: 'self', label: '自身' },
 ]
@@ -1273,14 +1392,19 @@ const TACTICS_CONDITION_TARGETS = [
 const TACTICS_CONDITION_BY_TARGET = {
   enemy: [
     { when: '', label: '无' },
+    {
+      when: 'ally-ot',
+      label: 'OT',
+      valueType: 'none',
+      requiresTank: true,
+    },
     { when: 'target-hp-below', label: 'HP 低于 %', valueDefault: 0.3, valueType: 'number' },
     { when: 'target-hp-above', label: 'HP 高于 %', valueDefault: 0.5, valueType: 'number' },
     { when: 'target-has-debuff', label: '有减益', valueDefault: 'sunder', valueType: 'debuff' },
   ],
   ally: [
     { when: '', label: '无' },
-    { when: 'ally-hp-below', label: 'HP 低于 %', valueDefault: 0.4, valueType: 'number' },
-    { when: 'ally-ot', label: '友方 OT（拉仇恨）', valueType: 'none', requiresTank: true },
+    { when: 'ally-hp-below', label: '队友 HP 低于 %', valueDefault: 0.4, valueType: 'number' },
   ],
   self: [
     { when: '', label: '无' },
@@ -1289,17 +1413,9 @@ const TACTICS_CONDITION_BY_TARGET = {
   ],
 }
 
-const TACTICS_TARGET_OPTIONS_ENEMY = [
-  { value: 'first', label: '首个' },
-  { value: 'lowest-hp', label: 'HP 最低' },
-  { value: 'highest-hp', label: 'HP 最高' },
-  { value: 'highest-threat', label: '可能 OT 的怪（拉稳）', requiresTank: true },
-  { value: 'lowest-threat', label: '未关注自己的怪（拉怪）', requiresTank: true },
-  { value: 'random', label: '随机' },
-]
 const TACTICS_TARGET_OPTIONS_ALLY = [
   { value: 'tank', label: '坦克', requiresTank: true },
-  { value: 'lowest-hp-ally', label: 'HP 最低（友方）' },
+  { value: 'lowest-hp-ally', label: 'HP 最低' },
   { value: 'self', label: '自身' },
 ]
 
@@ -1848,16 +1964,168 @@ function tacticsTargetRule(hero) {
   return hero?.tactics?.targetRule || def
 }
 
-function tacticsDefaultTargetOptions(hero) {
-  return hero?.class === 'Priest' ? TACTICS_TARGET_OPTIONS_ALLY : TACTICS_TARGET_OPTIONS_ENEMY
+function tacticsDefaultTargetOptions() {
+  return TACTICS_TARGET_OPTIONS_ALLY
 }
 
 function skillTargetsAllies(skillId, hero) {
   return hero?.class === 'Priest' && getPriestSkillById(skillId) != null
 }
 
-function tacticsSkillTargetOptions(skillId, hero) {
-  return skillTargetsAllies(skillId, hero) ? TACTICS_TARGET_OPTIONS_ALLY : TACTICS_TARGET_OPTIONS_ENEMY
+function showWarriorTankTargetFallback(hero, skillId) {
+  return hero?.class === 'Warrior' && hero?.isTank === true && (skillId === 'sunder-armor' || skillId === 'basic-attack')
+}
+
+function getSkillTargetRulesResolved(hero, skillId) {
+  const c = getSkillCondition(hero, skillId)
+  if (c?.targetRules?.length) return c.targetRules.slice()
+  if (c?.targetRule) return [c.targetRule]
+  return [TACTICS_TARGET_RULE_INHERIT]
+}
+
+function getSkillTargetRuleStepRaw(hero, skillId, index) {
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  return rules[index] ?? ''
+}
+
+function tacticsInheritDefaultLabel() {
+  return '默认'
+}
+
+function row2NoneLabel() {
+  return '无'
+}
+
+function getGlobalEnemyTargetL1(hero) {
+  const tr = tacticsTargetRule(hero)
+  if (hero?.class === 'Priest') return ''
+  const p = enemyTargetRuleToParts(tr)
+  return p?.l1 ?? 'hp'
+}
+
+function getGlobalEnemyTargetL2(hero) {
+  const tr = tacticsTargetRule(hero)
+  if (hero?.class === 'Priest') return ''
+  const p = enemyTargetRuleToParts(tr)
+  return p?.l2 ?? 'low'
+}
+
+function onGlobalEnemyTargetL1(hero, l1) {
+  const first = enemyL2OptionsForL1(l1)[0]
+  if (first) {
+    const rule = enemyPartsToTargetRule(l1, first.id)
+    if (rule) setTacticsTargetRule(hero, rule)
+  }
+}
+
+function onGlobalEnemyTargetL2(hero, l1, l2) {
+  const rule = enemyPartsToTargetRule(l1, l2)
+  if (rule) setTacticsTargetRule(hero, rule)
+}
+
+function getSkillEnemyTargetL1ForStep(hero, skillId, stepIndex) {
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  const r = rules[stepIndex]
+  if (!r || r === TACTICS_TARGET_RULE_INHERIT) return ENEMY_TARGET_L1_INHERIT
+  const p = enemyTargetRuleToParts(r)
+  return p?.l1 ?? 'hp'
+}
+
+function getSkillEnemyTargetL2ForStep(hero, skillId, stepIndex) {
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  const r = rules[stepIndex]
+  if (!r || r === TACTICS_TARGET_RULE_INHERIT) return 'low'
+  const p = enemyTargetRuleToParts(r)
+  return p?.l2 ?? 'low'
+}
+
+function setSkillTargetRule(hero, skillId, value) {
+  persistSkillTargetChain(hero, skillId, value || '', undefined)
+}
+
+function onSkillEnemyTargetL1ForStep(hero, skillId, stepIndex, l1) {
+  if (l1 === ENEMY_TARGET_L1_INHERIT) {
+    if (stepIndex === 0) persistSkillTargetChain(hero, skillId, '', undefined)
+    else {
+      const r0 = getSkillTargetRuleStepRaw(hero, skillId, 0)
+      persistSkillTargetChain(hero, skillId, r0 === TACTICS_TARGET_RULE_INHERIT ? '' : r0, undefined)
+    }
+    return
+  }
+  const first = enemyL2OptionsForL1(l1)[0]
+  if (!first) return
+  const rule = enemyPartsToTargetRule(l1, first.id)
+  if (!rule) return
+  if (stepIndex === 0) persistSkillTargetChain(hero, skillId, rule, getSkillTargetRuleStepRaw(hero, skillId, 1))
+  else persistSkillTargetChain(hero, skillId, getSkillTargetRuleStepRaw(hero, skillId, 0), rule)
+}
+
+function onSkillEnemyTargetL2ForStep(hero, skillId, stepIndex, l1, l2) {
+  const rule = enemyPartsToTargetRule(l1, l2)
+  if (!rule) return
+  if (stepIndex === 0) persistSkillTargetChain(hero, skillId, rule, getSkillTargetRuleStepRaw(hero, skillId, 1))
+  else persistSkillTargetChain(hero, skillId, getSkillTargetRuleStepRaw(hero, skillId, 0), rule)
+}
+
+function getSkillEnemyRow2L1(hero, skillId) {
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  if (rules.length < 2) return ''
+  const p = enemyTargetRuleToParts(rules[1])
+  return p?.l1 ?? ''
+}
+
+function getSkillEnemyRow2L2(hero, skillId) {
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  if (rules.length < 2) return ''
+  const p = enemyTargetRuleToParts(rules[1])
+  return p?.l2 ?? ''
+}
+
+function onSkillEnemyRow2L1(hero, skillId, l1) {
+  const r0raw = getSkillTargetRuleStepRaw(hero, skillId, 0)
+  if (!l1) {
+    persistSkillTargetChain(hero, skillId, r0raw === TACTICS_TARGET_RULE_INHERIT ? '' : r0raw, undefined)
+    return
+  }
+  const first = enemyL2OptionsForL1(l1)[0]
+  if (!first) return
+  const rule = enemyPartsToTargetRule(l1, first.id)
+  if (!rule) return
+  persistSkillTargetChain(hero, skillId, r0raw === TACTICS_TARGET_RULE_INHERIT ? '' : r0raw, rule)
+}
+
+function onSkillEnemyRow2L2(hero, skillId, l1, l2) {
+  const rule = enemyPartsToTargetRule(l1, l2)
+  if (!rule) return
+  const r0raw = getSkillTargetRuleStepRaw(hero, skillId, 0)
+  persistSkillTargetChain(hero, skillId, r0raw === TACTICS_TARGET_RULE_INHERIT ? '' : r0raw, rule)
+}
+
+function persistSkillTargetChain(hero, skillId, rawStep0, rawStep1) {
+  const s0 = !rawStep0 || rawStep0 === '' ? TACTICS_TARGET_RULE_INHERIT : rawStep0
+  const rules = [s0]
+  if (rawStep1 !== undefined && rawStep1 !== '') rules.push(rawStep1)
+  saveTacticsToSquad(hero, (t) => {
+    if (!t.conditions) t.conditions = []
+    let c = t.conditions.find((x) => x.skillId === skillId)
+    const onlyInherit = rules.length === 1 && rules[0] === TACTICS_TARGET_RULE_INHERIT
+    if (onlyInherit) {
+      if (c) {
+        delete c.targetRules
+        delete c.targetRule
+        if (!c.when && c.value === undefined) {
+          t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
+        }
+      }
+      return
+    }
+    if (!c) {
+      c = { skillId }
+      t.conditions.push(c)
+    }
+    delete c.targetRule
+    c.targetRules = rules
+  })
 }
 
 function saveTacticsToSquad(hero, updater) {
@@ -1888,12 +2156,15 @@ function getSkillCondition(hero, skillId) {
 }
 
 function getSkillTargetRule(hero, skillId) {
-  const cond = getSkillCondition(hero, skillId)
-  return cond?.targetRule ?? ''
+  const rules = getSkillTargetRulesResolved(hero, skillId)
+  const r = rules[0]
+  if (!r || r === TACTICS_TARGET_RULE_INHERIT) return ''
+  return r
 }
 
 function whenToTargetType(when) {
   if (!when) return 'enemy'
+  if (when === 'ally-ot') return 'enemy'
   if (when.startsWith('target-') || when === 'target-has-debuff') return 'enemy'
   if (when.startsWith('ally-')) return 'ally'
   if (when.startsWith('self-')) return 'self'
@@ -1936,24 +2207,13 @@ function upsertSkillCondition(hero, skillId, updater) {
       t.conditions.push(c)
     }
     updater(c)
-    if (!c.when && !c.targetRule && c.value === undefined) {
+    const hasTargets =
+      (c.targetRules?.length > 0) ||
+      !!c.targetRule
+    if (!c.when && !hasTargets && c.value === undefined) {
       t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
     }
   })
-}
-
-function setSkillTargetRule(hero, skillId, value) {
-  if (!value) {
-    saveTacticsToSquad(hero, (t) => {
-      const c = (t.conditions ?? []).find((x) => x.skillId === skillId)
-      if (c) {
-        delete c.targetRule
-        if (!c.when && c.value === undefined) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
-      }
-    })
-    return
-  }
-  upsertSkillCondition(hero, skillId, (c) => { c.targetRule = value })
 }
 
 function setSkillConditionTargetType(hero, skillId, targetType) {
@@ -1962,7 +2222,8 @@ function setSkillConditionTargetType(hero, skillId, targetType) {
     if (c) {
       delete c.when
       delete c.value
-      if (!c.targetRule) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
+      const hasTargets = (c.targetRules?.length > 0) || !!c.targetRule
+      if (!hasTargets) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
     }
   })
 }
@@ -1974,7 +2235,8 @@ function setSkillConditionWhen(hero, skillId, value) {
       if (c) {
         delete c.when
         delete c.value
-        if (!c.targetRule) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
+        const hasTargets = (c.targetRules?.length > 0) || !!c.targetRule
+        if (!hasTargets) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
       }
     })
     return
@@ -3671,6 +3933,12 @@ onUnmounted(() => {
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
+.tactics-condition-category-hint {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
 .tactics-tank-hint {
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
@@ -3687,6 +3955,18 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   margin-bottom: 1rem;
+}
+.tactics-default-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+.tactics-enemy-target-cascade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
 }
 .tactics-default-label {
   margin-right: 0.5rem;
@@ -3750,6 +4030,9 @@ onUnmounted(() => {
   gap: 0.25rem;
   padding-left: 1.5rem;
   font-size: var(--font-base-sm);
+}
+.tactics-target-fallback-row + .tactics-target-fallback-row {
+  margin-top: 0.2rem;
 }
 .tactics-skill-config-row {
   display: flex;
