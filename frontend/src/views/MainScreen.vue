@@ -272,6 +272,16 @@
               >{{ entry.newTargetName }}</span>
               <span class="log-ot-mark">(OT!)</span>
             </div>
+            <div v-else-if="entry.type === 'monsterTargetIntent'" class="log-entry log-target-intent">
+              <span class="log-round">[R{{ entry.round }}]</span>
+              <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
+              <span class="log-sep">切换目标至</span>
+              <span
+                class="log-target"
+                :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
+              >{{ entry.newTargetName }}</span>
+              <span class="log-intent-mark">({{ entry.intentReason === 'taunt' ? '嘲讽' : '仇恨' }})</span>
+            </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
               <template v-if="entry.heroes">
                 恢复中...
@@ -1398,6 +1408,7 @@ import {
   getTauntDetailText,
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
+import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
@@ -2478,6 +2489,14 @@ function applyOneCombatEntry(entry) {
         targetTier: entry.targetTier ?? null,
       },
     }
+  }
+  const tauntTargetPatch = monsterTargetPatchForTauntEntry(entry)
+  if (tauntTargetPatch) {
+    monsterTargets.value = { ...monsterTargets.value, ...tauntTargetPatch }
+  }
+  const intentTargetPatch = monsterTargetPatchForIntentEntry(entry)
+  if (intentTargetPatch) {
+    monsterTargets.value = { ...monsterTargets.value, ...intentTargetPatch }
   }
   if (entry.type === 'ot' && entry.monsterId && entry.newTargetName) {
     monsterTargets.value = {
@@ -3792,6 +3811,11 @@ onUnmounted(() => {
 .log-ot .log-ot-mark {
   color: var(--warning);
   font-weight: bold;
+  margin-left: 0.25rem;
+}
+.log-target-intent .log-intent-mark {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
   margin-left: 0.25rem;
 }
 .log-target-reason,

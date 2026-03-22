@@ -1186,6 +1186,22 @@ describe('combat progression and systems', () => {
       expect(highestThreat).toBeDefined()
     })
 
+    it('emits monsterTargetIntent when stable threat intent changes', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 25, strength: 25 })
+      const mage = sampleHero({ id: 'm2', name: 'Mage', class: 'Mage', agility: 5, intellect: 20 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 500, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(40).fill(0.5))
+      const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 8 })
+      const intents = result.log.filter((e) => e.type === 'monsterTargetIntent')
+      expect(intents.length).toBeGreaterThan(0)
+      const threatIntent = intents.find((e) => e.intentReason === 'threat')
+      expect(threatIntent).toBeDefined()
+      expect(threatIntent.newTargetName).toBe('Tank')
+    })
+
     it('AC3: monster attack has targetReason taunted when under Taunt', () => {
       const warrior = sampleHero({
         id: 'w1',

@@ -141,6 +141,33 @@ export function getHighestThreatHero(threatTable, heroes, rng = Math.random) {
 }
 
 /**
+ * Same as getHighestThreatHero but deterministic tie-break (lowest hero id).
+ * Use for UI intent lines without consuming combat RNG.
+ * @param {Object} threatTable
+ * @param {Object[]} heroes
+ * @returns {Object|null}
+ */
+export function getHighestThreatHeroStable(threatTable, heroes) {
+  const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+  if (alive.length === 0) return null
+  let maxThreat = -1
+  const candidates = []
+  for (const h of alive) {
+    const t = threatTable?.[h.id] ?? 0
+    if (t > maxThreat) {
+      maxThreat = t
+      candidates.length = 0
+      candidates.push(h)
+    } else if (t === maxThreat) {
+      candidates.push(h)
+    }
+  }
+  if (candidates.length === 0) return alive[0]
+  candidates.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  return candidates[0]
+}
+
+/**
  * Get monster's attack target: Taunt override > highest threat > random.
  * @param {Object} monster
  * @param {Object[]} heroes - Alive heroes
@@ -161,6 +188,28 @@ export function getMonsterTarget(monster, heroes, threat, tauntState, rng = Math
 
   const table = threat[monster.id] ?? {}
   return getHighestThreatHero(table, heroes, rng)
+}
+
+/**
+ * Same as getMonsterTarget but uses stable threat tie-break (no RNG).
+ * @param {Object} monster
+ * @param {Object[]} heroes
+ * @param {Object} threat
+ * @param {Object} tauntState
+ * @returns {Object|null}
+ */
+export function getMonsterTargetStable(monster, heroes, threat, tauntState) {
+  const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+  if (alive.length === 0) return null
+
+  const taunt = tauntState[monster.id]
+  if (taunt && taunt.actionsRemaining > 0) {
+    const caster = alive.find((h) => h.id === taunt.casterId)
+    if (caster) return caster
+  }
+
+  const table = threat[monster.id] ?? {}
+  return getHighestThreatHeroStable(table, heroes)
 }
 
 /**

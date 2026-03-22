@@ -49,6 +49,7 @@ import {
   addThreatFromShield,
   applyTauntThreatBoost,
   getMonsterTarget,
+  getMonsterTargetStable,
   decrementTauntActions,
   getThreatMultiplier,
   isAllyOT,
@@ -586,6 +587,45 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   const threat = createThreatTables(heroUnits, monsterUnits)
   const tauntState = {}
   const monsterLastTarget = {}
+  const monsterIntendedTargetIds = {}
+  for (const m of alive(monsterUnits)) {
+    const next = getMonsterTargetStable(m, alive(heroUnits), threat, tauntState)
+    monsterIntendedTargetIds[m.id] = next?.id
+  }
+
+  function emitMonsterIntentChangesIfNeeded() {
+    const heroes = alive(heroUnits)
+    for (const m of alive(monsterUnits)) {
+      const next = getMonsterTargetStable(m, heroes, threat, tauntState)
+      const nextId = next?.id ?? null
+      const prevId = monsterIntendedTargetIds[m.id]
+      if (prevId === undefined) {
+        monsterIntendedTargetIds[m.id] = nextId ?? undefined
+        continue
+      }
+      if (prevId === nextId) continue
+      if (nextId == null) continue
+      const reason = tauntState[m.id]?.actionsRemaining > 0 ? 'taunt' : 'threat'
+      monsterIntendedTargetIds[m.id] = nextId
+      const prevHero = heroes.find((h) => h.id === prevId)
+      const newHero = heroes.find((h) => h.id === nextId)
+      log.push({
+        round,
+        type: 'monsterTargetIntent',
+        monsterId: m.id,
+        monsterName: m.name,
+        monsterTier: m.tier ?? null,
+        previousTargetId: prevId,
+        previousTargetName: prevHero?.name ?? null,
+        previousTargetClass: prevHero?.class ?? null,
+        newTargetId: nextId,
+        newTargetName: newHero?.name ?? '',
+        newTargetClass: newHero?.class ?? null,
+        intentReason: reason,
+      })
+    }
+  }
+
   const log = []
   const turnActedByRound = {}
   let round = 1
@@ -772,7 +812,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             break
           }
         }
-        if (usedSkill) continue
+        if (usedSkill) {
+          emitMonsterIntentChangesIfNeeded()
+          continue
+        }
       }
 
       // Mage skill path: use first affordable skill from priority (tactics or skills)
@@ -851,7 +894,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           usedSkill = true
           break
         }
-        if (usedSkill) continue
+        if (usedSkill) {
+          emitMonsterIntentChangesIfNeeded()
+          continue
+        }
       }
 
       // Priest skill path: Flash Heal, Power Word: Shield (ally targets)
@@ -934,7 +980,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             break
           }
         }
-        if (usedSkill) continue
+        if (usedSkill) {
+          emitMonsterIntentChangesIfNeeded()
+          continue
+        }
       }
 
       // Basic attack / monster skill path
@@ -1065,6 +1114,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
       }
       log.push(logEntry)
+      emitMonsterIntentChangesIfNeeded()
     }
 
     // Process DOT (bleed, burn, etc) at end of round

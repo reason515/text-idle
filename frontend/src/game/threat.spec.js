@@ -6,7 +6,9 @@ import {
   addThreatFromShield,
   applyTauntThreatBoost,
   getHighestThreatHero,
+  getHighestThreatHeroStable,
   getMonsterTarget,
+  getMonsterTargetStable,
   decrementTauntActions,
   getTank,
   getDesignatedTank,
@@ -100,6 +102,24 @@ describe('threat', () => {
       threat.m1.h1 = 10
       threat.m1.h2 = 30
       const t = getMonsterTarget(monsterA, [heroA, heroB], threat, {})
+      expect(t.id).toBe('h2')
+    })
+  })
+
+  describe('getHighestThreatHeroStable', () => {
+    it('breaks ties by lowest hero id', () => {
+      const table = { h1: 50, h2: 50 }
+      const r = getHighestThreatHeroStable(table, [heroA, heroB])
+      expect(r.id).toBe('h1')
+    })
+  })
+
+  describe('getMonsterTargetStable', () => {
+    it('matches getMonsterTarget when no rng tie (single max)', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA])
+      threat.m1.h1 = 10
+      threat.m1.h2 = 30
+      const t = getMonsterTargetStable(monsterA, [heroA, heroB], threat, {})
       expect(t.id).toBe('h2')
     })
   })
