@@ -8,6 +8,7 @@ import {
   checkCondition,
   filterTargetsByCondition,
   pickTargetByRule,
+  isTacticsConditionInactive,
 } from './tactics.js'
 import { isAllyOT } from './threat.js'
 
@@ -36,6 +37,14 @@ describe('tactics', () => {
 
     it('returns empty when no skills', () => {
       expect(getSkillPriority({})).toEqual([])
+    })
+
+    it('falls back to actor.skills when tactics.skillPriority filters to nothing (stale ids)', () => {
+      const actor = {
+        skills: ['taunt', 'heroic-strike'],
+        tactics: { skillPriority: ['not-a-real-skill', 'also-invalid'] },
+      }
+      expect(getSkillPriority(actor)).toEqual(['taunt', 'heroic-strike'])
     })
   })
 
@@ -98,6 +107,12 @@ describe('tactics', () => {
   })
 
   describe('checkCondition', () => {
+    it('when is whitespace-only is treated as no condition (passes)', () => {
+      const cond = { skillId: 'taunt', when: '   ' }
+      expect(isTacticsConditionInactive(cond)).toBe(true)
+      expect(checkCondition(cond, {}, null, [], [], {})).toBe(true)
+    })
+
     it('target-hp-below passes when target HP ratio below threshold', () => {
       const target = { currentHP: 10, maxHP: 50 }
       const cond = { when: 'target-hp-below', value: 0.3 }
@@ -244,14 +259,14 @@ describe('tactics', () => {
       expect(r.id).toBe('m1')
     })
 
-    it('first-top-threat-not-self returns null when all top threats are actor', () => {
+    it('first-top-threat-not-self falls back to random alive when all top threats are actor (compat with threat-not-tank-random)', () => {
       const actor = { id: 'warrior' }
       const heroes = [{ id: 'warrior', currentHP: 100 }, { id: 'mage', currentHP: 80 }]
       const threat = { m1: { warrior: 100, mage: 20 } }
       const monsters = [{ id: 'm1', currentHP: 100 }]
-      expect(
-        pickTargetByRule(monsters, 'first-top-threat-not-self', Math.random, { threat, actor, heroes })
-      ).toBeNull()
+      const r = pickTargetByRule(monsters, 'first-top-threat-not-self', Math.random, { threat, actor, heroes })
+      expect(r).not.toBeNull()
+      expect(r.id).toBe('m1')
     })
 
     it('highest-threat-on-actor picks monster with max threat on actor', () => {

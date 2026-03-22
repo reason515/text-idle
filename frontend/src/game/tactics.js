@@ -11,6 +11,20 @@ import { getSunderDebuff } from './warriorSkills.js'
 export const TACTICS_TARGET_RULE_INHERIT = 'default'
 
 /**
+ * True when tactics condition is absent or "no condition" (UI: 无 / empty when).
+ * Treats whitespace-only when as disabled so stale spaces do not block skills.
+ * @param {TacticsCondition|null|undefined} condition
+ * @returns {boolean}
+ */
+export function isTacticsConditionInactive(condition) {
+  if (!condition) return true
+  const w = condition.when
+  if (w == null || w === '') return true
+  if (typeof w === 'string' && w.trim() === '') return true
+  return false
+}
+
+/**
  * Ordered target rules for a skill; 'default' means inherit global tactics.targetRule.
  * @param {Object} actor
  * @param {string} skillId
@@ -38,7 +52,8 @@ export function getSkillPriority(actor) {
   const tactics = actor.tactics
   if (tactics?.skillPriority && Array.isArray(tactics.skillPriority) && tactics.skillPriority.length > 0) {
     const available = new Set(actor.skills || [])
-    return tactics.skillPriority.filter((id) => available.has(id))
+    const filtered = tactics.skillPriority.filter((id) => available.has(id))
+    if (filtered.length > 0) return filtered
   }
   return actor.skills || []
 }
@@ -77,7 +92,7 @@ export function getConditions(actor) {
  * @returns {boolean}
  */
 export function checkCondition(condition, actor, target, heroes, monsters, ctx) {
-  if (!condition || !condition.when) return true
+  if (isTacticsConditionInactive(condition)) return true
 
   const { when, value } = condition
 
@@ -151,7 +166,7 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
  * @returns {Object[]}
  */
 export function filterTargetsByCondition(targets, condition, actor, ctx) {
-  if (!condition || !condition.when) return targets
+  if (isTacticsConditionInactive(condition)) return targets
 
   if (condition.when === 'target-has-debuff') {
     const debuffType = condition.value === 'sunder' || condition.value === 'sunder-armor' ? 'sunder' : (condition.value || 'sunder')
@@ -309,7 +324,7 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'first-top-threat-not-self') {
     const { threat, actor, heroes } = opts
-    if (!threat || !actor || !heroes) return null
+    if (!threat || !actor || !heroes) return pickRandomAlive(alive, rng)
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
     for (const m of alive) {
       const table = threat[m.id] ?? {}
@@ -324,7 +339,8 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
       }
       if (topId != null && topId !== actor.id) return m
     }
-    return null
+    // Legacy ID shares UI slot with threat-not-tank-random; when all ties point at actor (e.g. 0 threat), still pick a monster.
+    return pickRandomAlive(alive, rng)
   }
 
   if (targetRule === 'highest-threat-on-actor') {

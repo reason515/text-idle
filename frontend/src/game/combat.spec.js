@@ -308,6 +308,60 @@ describe('combat progression and systems', () => {
     expect(result.absorbed).toBe(29)
   })
 
+  it('Warrior at 0 rage uses taunt when listed after heroic-strike in skill priority', () => {
+    const warrior = sampleHero({
+      id: 'w-open-taunt',
+      class: 'Warrior',
+      agility: 20,
+      isTank: true,
+      skills: ['heroic-strike', 'taunt'],
+      tactics: {
+        skillPriority: ['heroic-strike', 'taunt'],
+        targetRule: 'first',
+      },
+    })
+    const monster = createMonster(
+      {
+        id: 'young-wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 3, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const warriorAction = result.log.find((e) => e.actorId === warrior.id && e.round === 1)
+    expect(warriorAction).toBeDefined()
+    expect(warriorAction.skillId).toBe('taunt')
+  })
+
+  it('Warrior opens with taunt when global target is legacy first-top-threat-not-self (same UI slot as threat-not-tank-random)', () => {
+    const warrior = sampleHero({
+      id: 'w-legacy-target',
+      agility: 25,
+      isTank: true,
+      skills: ['taunt', 'heroic-strike'],
+      tactics: {
+        skillPriority: ['taunt', 'heroic-strike'],
+        targetRule: 'first-top-threat-not-self',
+      },
+    })
+    const monster = createMonster(
+      {
+        id: 'young-wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 3, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const warriorFirst = result.log.find((e) => e.actorId === warrior.id && e.round === 1)
+    expect(warriorFirst).toBeDefined()
+    expect(warriorFirst.action).toBe('skill')
+    expect(warriorFirst.skillId).toBe('taunt')
+  })
+
   it('fixed trio tank warrior opens with taunt when global target is threat-not-tank-random', () => {
     const squad = createFixedTrioSquad()
     const warrior = squad[0]

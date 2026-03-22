@@ -1073,25 +1073,20 @@
                     <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
                       <span class="tactics-skill-config-label">条件</span>
                       <select
-                        :value="getSkillConditionTargetType(selectedHero, skillId)"
-                        class="tactics-select tactics-condition-target"
-                        :data-testid="'tactics-condition-target-' + skillId"
-                        @change="setSkillConditionTargetType(selectedHero, skillId, $event.target.value)"
-                      >
-                        <option v-for="t in TACTICS_CONDITION_TARGETS" :key="t.id" :value="t.id">{{ t.label }}</option>
-                      </select>
-                      <select
                         :value="getSkillConditionWhen(selectedHero, skillId)"
-                        class="tactics-select tactics-skill-condition"
+                        class="tactics-select tactics-skill-condition tactics-skill-condition-combined"
                         :data-testid="'tactics-skill-condition-' + skillId"
                         @change="setSkillConditionWhen(selectedHero, skillId, $event.target.value)"
                       >
-                        <option
-                          v-for="opt in conditionOptionsForTarget(getSkillConditionTargetType(selectedHero, skillId))"
-                          :key="opt.when"
-                          :value="opt.when"
-                          :disabled="opt.requiresTank && !hasDesignatedTank"
-                        >{{ opt.label }}</option>
+                        <option value="">{{ TACTICS_CONDITION_BY_TARGET.enemy[0].label }}</option>
+                        <optgroup v-for="group in TACTICS_CONDITION_OPTGROUPS" :key="group.id" :label="group.label">
+                          <option
+                            v-for="opt in group.options"
+                            :key="group.id + '-' + opt.when"
+                            :value="opt.when"
+                            :disabled="opt.requiresTank && !hasDesignatedTank"
+                          >{{ opt.label }}</option>
+                        </optgroup>
                       </select>
                       <template v-if="conditionNeedsValue(getSkillConditionWhen(selectedHero, skillId))">
                         <input
@@ -1478,6 +1473,13 @@ const TACTICS_CONDITION_BY_TARGET = {
     { when: 'self-hit-this-round', label: '本回合受击', valueType: 'none' },
   ],
 }
+
+/** Single condition dropdown: top option is 无; groups mirror TACTICS_CONDITION_TARGETS (no duplicate 无 per group). */
+const TACTICS_CONDITION_OPTGROUPS = TACTICS_CONDITION_TARGETS.map((t) => ({
+  id: t.id,
+  label: t.label,
+  options: (TACTICS_CONDITION_BY_TARGET[t.id] ?? []).filter((o) => o.when),
+}))
 
 const TACTICS_TARGET_OPTIONS_ALLY = [
   { value: 'tank', label: '坦克', requiresTank: true },
@@ -2217,20 +2219,6 @@ function getSkillTargetRule(hero, skillId) {
   return r
 }
 
-function whenToTargetType(when) {
-  if (!when) return 'enemy'
-  if (when === 'ally-ot') return 'enemy'
-  if (when.startsWith('target-') || when === 'target-has-debuff') return 'enemy'
-  if (when.startsWith('ally-')) return 'ally'
-  if (when.startsWith('self-')) return 'self'
-  return 'enemy'
-}
-
-function getSkillConditionTargetType(hero, skillId) {
-  const when = getSkillConditionWhen(hero, skillId)
-  return whenToTargetType(when)
-}
-
 function getSkillConditionWhen(hero, skillId) {
   const cond = getSkillCondition(hero, skillId)
   return cond?.when ?? ''
@@ -2239,10 +2227,6 @@ function getSkillConditionWhen(hero, skillId) {
 function getSkillConditionValue(hero, skillId) {
   const cond = getSkillCondition(hero, skillId)
   return cond?.value
-}
-
-function conditionOptionsForTarget(targetType) {
-  return TACTICS_CONDITION_BY_TARGET[targetType] ?? TACTICS_CONDITION_BY_TARGET.enemy
 }
 
 function findConditionOption(when) {
@@ -2267,18 +2251,6 @@ function upsertSkillCondition(hero, skillId, updater) {
       !!c.targetRule
     if (!c.when && !hasTargets && c.value === undefined) {
       t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
-    }
-  })
-}
-
-function setSkillConditionTargetType(hero, skillId, targetType) {
-  saveTacticsToSquad(hero, (t) => {
-    const c = (t.conditions ?? []).find((x) => x.skillId === skillId)
-    if (c) {
-      delete c.when
-      delete c.value
-      const hasTargets = (c.targetRules?.length > 0) || !!c.targetRule
-      if (!hasTargets) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
     }
   })
 }
@@ -4169,12 +4141,12 @@ onUnmounted(() => {
   color: var(--text-muted);
   min-width: 4.5rem;
 }
-.tactics-condition-target {
-  min-width: 5rem;
-}
 .tactics-skill-target,
 .tactics-skill-condition {
   min-width: 10rem;
+}
+.tactics-skill-condition-combined {
+  min-width: 14rem;
 }
 .tactics-condition-debuff {
   min-width: 7rem;
