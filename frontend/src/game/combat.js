@@ -55,6 +55,7 @@ import {
   getTank,
   getDesignatedTank,
 } from './threat.js'
+import { heroDisplayName } from './heroDisplayName.js'
 
 export const CRIT_MULTIPLIER = 1.5
 
@@ -392,7 +393,7 @@ function heroCombatStats(hero) {
   const spellMultiplier = 1 + spellBaseAttr * SPELL_MULTIPLIER_K
   return {
     id: hero.id,
-    name: hero.name,
+    name: heroDisplayName(hero.name),
     side: 'hero',
     class: hero.class,
     agility: hero.agility,

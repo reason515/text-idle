@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('skip')">
     <div class="modal-box skill-choice-modal" data-testid="skill-choice-modal">
       <div class="modal-title">
-        <span :style="{ color: classColor(hero?.class) }">{{ hero?.name }}</span>
+        <span :style="{ color: classColor(hero?.class) }">{{ heroDisplayName(hero?.name) }}</span>
         <span> 达到 {{ level }} 级 — 技能选择</span>
       </div>
       <p class="skill-choice-subtitle">强化已有技能或学习新技能。可跳过，游戏继续。</p>
@@ -73,6 +73,7 @@ import { CLASS_COLORS } from '../data/heroes.js'
 import { getAnyWarriorSkillById, getEnhancementPreviewEffectDesc } from '../game/warriorSkills.js'
 import { getAnyMageSkillById, getMageEnhancementPreviewEffectDesc } from '../game/mageSkills.js'
 import { getSkillChoiceOptions } from '../game/skillChoice.js'
+import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const props = defineProps({
   hero: { type: Object, default: null },

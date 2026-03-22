@@ -66,7 +66,7 @@
             @click="selectedHeroDetail = hero"
           >
             <div class="hero-card-header">
-              <span class="hero-name">{{ hero.name }}</span>
+              <span class="hero-name">{{ heroDisplayName(hero.name) }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
             <span class="hero-role">{{ getClassInfo(hero.class)?.role }}</span>
@@ -104,7 +104,7 @@
       >
         <div class="modal-box intro-hero-detail-modal" :style="{ borderColor: classColor(selectedHeroDetail.class) }">
           <div class="intro-hero-modal-header">
-            <span class="modal-hero-name">{{ selectedHeroDetail.name }}</span>
+            <span class="modal-hero-name">{{ heroDisplayName(selectedHeroDetail.name) }}</span>
             <span class="modal-class-tag" :style="{ color: classColor(selectedHeroDetail.class) }">{{ classDisplayName(selectedHeroDetail.class) }}</span>
           </div>
           <span class="intro-hero-role">{{ getClassInfo(selectedHeroDetail.class)?.role }}</span>
@@ -159,6 +159,7 @@ import { getWarriorSkillById } from '../game/warriorSkills.js'
 import { getMageSkillById } from '../game/mageSkills.js'
 import { getPriestSkillById } from '../game/priestSkills.js'
 import { getLevelSkillById } from '../game/warriorLevelSkills.js'
+import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const PRIMARY_ATTR_LABELS = {
   strength: 'Strength',

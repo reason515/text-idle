@@ -2,15 +2,15 @@
   <div class="panel character-select-panel">
     <template v-if="showAttrAllocStep">
       <h2>分配属性点</h2>
-      <p class="subtitle">将 {{ expansionAttrPoints }} 点分配给 <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span>。必须全部分配完毕。</p>
+      <p class="subtitle">将 {{ expansionAttrPoints }} 点分配给 <span :style="{ color: classColor(selectedHero?.class) }">{{ heroDisplayName(selectedHero?.name) }}</span>。必须全部分配完毕。</p>
     </template>
     <template v-else-if="selectedHero && needsInitialSkill(selectedHero) && !selectedSkillId">
       <h2>选择初始技能</h2>
-      <p class="subtitle">每个专精提供独特战斗风格。在 <span :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span> 加入小队前必须选择其一。</p>
+      <p class="subtitle">每个专精提供独特战斗风格。在 <span :style="{ color: classColor(selectedHero.class) }">{{ heroDisplayName(selectedHero.name) }}</span> 加入小队前必须选择其一。</p>
     </template>
     <template v-else-if="showLevelChoiceStep">
       <h2>{{ expansionLevel }} 级技能选择</h2>
-      <p class="subtitle">为 <span :style="{ color: classColor(selectedHero?.class) }">{{ selectedHero?.name }}</span> 强化已有技能或学习新技能。</p>
+      <p class="subtitle">为 <span :style="{ color: classColor(selectedHero?.class) }">{{ heroDisplayName(selectedHero?.name) }}</span> 强化已有技能或学习新技能。</p>
     </template>
     <template v-else>
       <h2>选择英雄</h2>
@@ -31,7 +31,7 @@
           :style="heroCardStyle(hero)"
           @click="selectHero(hero)"
         >
-          <span class="hero-name">{{ hero.name }}</span>
+          <span class="hero-name">{{ heroDisplayName(hero.name) }}</span>
           <div class="hero-meta">
             <span class="hero-class-level" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }} (Lv{{ isExpansion ? expansionLevel : 1 }})</span>
             <span v-if="getClassInfo(hero.class)" class="hero-role">{{ getClassInfo(hero.class).role }}</span>
@@ -121,9 +121,9 @@
     <!-- Confirmation step -->
     <template v-else-if="selectedHero">
       <div class="confirmation-step" data-testid="confirm-recruit-step">
-        <p>将 <strong>{{ selectedHero.name }}</strong> 加入小队？</p>
+        <p>将 <strong>{{ heroDisplayName(selectedHero.name) }}</strong> 加入小队？</p>
         <div class="hero-preview" :style="heroPreviewStyle(selectedHero)">
-          <span class="hero-name">{{ selectedHero.name }}</span>
+          <span class="hero-name">{{ heroDisplayName(selectedHero.name) }}</span>
           <div class="hero-meta">
             <span class="hero-class-level" :style="{ color: classColor(selectedHero.class) }">{{ classDisplayName(selectedHero.class) }} ({{ displayLevel }} 级)</span>
             <span v-if="getClassInfo(selectedHero.class)" class="hero-role">{{ getClassInfo(selectedHero.class).role }}</span>
@@ -226,6 +226,7 @@ import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
 import { hasSkillChoiceAtLevel } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
+import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const PRIMARY_ATTRS = [
   { key: 'strength', label: '力量' },

@@ -29,7 +29,7 @@ async function registerToCharacterSelect(page, email, options = {}) {
   return registerAndGoToMain(page, email, options)
 }
 
-async function recruitWarrior(page, heroName = '瓦里安·乌瑞恩', skillId = null) {
+async function recruitWarrior(page, heroName = '\u74e6\u91cc\u5b89', skillId = null) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).first().click()
   if (skillId) {
     await page.locator('.skill-option').filter({ hasText: skillId }).click()

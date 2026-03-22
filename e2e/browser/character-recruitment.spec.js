@@ -21,7 +21,7 @@ async function registerAndCompleteIntro(page, email) {
 }
 
 /** Recruit a Warrior through skill selection + confirmation (initial hero, Lv1). */
-async function recruitWarrior(page, heroName = '瓦里安·乌瑞恩', skillId = null) {
+async function recruitWarrior(page, heroName = '\u74e6\u91cc\u5b89', skillId = null) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   if (skillId) {
     await page.locator('.skill-option').filter({ hasText: skillId }).click()
@@ -76,7 +76,7 @@ async function allocateAttrPoints(page, n) {
 }
 
 /** Recruit an expansion Warrior (Lv5): attr alloc -> initial skill -> level choice -> confirm. */
-async function recruitExpansionWarrior(page, heroName = '瓦里安·乌瑞恩', attrPoints = 20) {
+async function recruitExpansionWarrior(page, heroName = '\u74e6\u91cc\u5b89', attrPoints = 20) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
@@ -110,7 +110,7 @@ async function recruitExpansionOther(page, heroName, attrPoints = 20) {
 }
 
 /** Recruit an expansion Mage: same as Warrior but Mage skill options. */
-async function recruitExpansionMage(page, heroName = '吉安娜·普罗德摩尔', attrPoints = 20) {
+async function recruitExpansionMage(page, heroName = '\u5409\u5b89\u5a1c', attrPoints = 20) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}\\b`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
@@ -177,7 +177,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     const card = page.locator('.hero-card').filter({ hasText: '吉安娜' }).first()
     await expect(card).toBeVisible()
-    await expect(card.locator('.hero-name')).toContainText('吉安娜·普罗德摩尔')
+    await expect(card.locator('.hero-name')).toContainText('\u5409\u5b89\u5a1c')
     await expect(card.locator('.hero-class')).toContainText('Mage')
     await expect(card.locator('.card-level')).toContainText('Lv.')
 

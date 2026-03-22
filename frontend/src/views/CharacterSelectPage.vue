@@ -6,7 +6,7 @@
     <!-- Confirmation step -->
     <template v-if="confirming">
       <div class="confirm-card">
-        <h3>{{ selectedHero?.name }}</h3>
+        <h3>{{ heroDisplayName(selectedHero?.name) }}</h3>
         <p class="hero-class">{{ selectedHero?.class }}</p>
         <div class="hero-stats">
           <div class="stat-row">
@@ -34,7 +34,7 @@
             <span class="stat-value">{{ selectedHero ? getInitialAttributes(selectedHero.class).spirit : 0 }}</span>
           </div>
         </div>
-        <p>Add {{ selectedHero?.name }} to your squad?</p>
+        <p>Add {{ heroDisplayName(selectedHero?.name) }} to your squad?</p>
         <div class="confirm-actions">
           <button type="button" class="btn btn-secondary" @click="confirming = false">
             Cancel
@@ -57,7 +57,7 @@
           :disabled="isInSquad(hero.id)"
           @click="selectHero(hero)"
         >
-          <span class="hero-name">{{ hero.name }}</span>
+          <span class="hero-name">{{ heroDisplayName(hero.name) }}</span>
           <span class="hero-class">{{ hero.class }}</span>
           <span class="hero-stats-mini">Lv1 | Str {{ getInitialAttributes(hero.class).strength }} | Agi {{ getInitialAttributes(hero.class).agility }} | Int {{ getInitialAttributes(hero.class).intellect }}</span>
           <span v-if="isInSquad(hero.id)" class="in-squad-badge">In Squad</span>
@@ -71,6 +71,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { HEROES, getSquad, addHeroToSquad, getInitialAttributes } from '../data/heroes.js'
+import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const router = useRouter()
 const confirming = ref(false)

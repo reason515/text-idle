@@ -42,7 +42,7 @@
             </div>
             <div v-if="(hero.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
-              <span class="hero-name" :style="{ color: classColor(hero.class) }">{{ hero.name }}</span>
+              <span class="hero-name" :style="{ color: classColor(hero.class) }">{{ heroDisplayName(hero.name) }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
             <span class="card-level">Lv.{{ hero.level || 1 }}</span>
@@ -265,7 +265,7 @@
                 恢复中...
                 <template v-for="(h, i) in entry.heroes" :key="h.id">
                   <span v-if="i > 0" class="log-rest-sep"> | </span>
-                  <span :style="{ color: classColor(h.class) }">{{ h.name }}</span>
+                  <span :style="{ color: classColor(h.class) }">{{ heroDisplayName(h.name) }}</span>
                   : <span :style="{ color: hpBarColor(hpPct(h)) }">{{ h.currentHP }}/{{ h.maxHP }}</span> 生命
                 </template>
               </template>
@@ -656,7 +656,7 @@
           </div>
           <div v-else class="item-detail-actions">
             <div v-if="equipReplacePending?.mode === 'ring_choice'" class="equip-replace-section">
-              <span class="equip-to-label">为 {{ equipReplacePending.hero.name }} 替换哪个戒指？</span>
+              <span class="equip-to-label">为 {{ heroDisplayName(equipReplacePending.hero.name) }} 替换哪个戒指？</span>
               <div class="equip-replace-choices">
                 <button
                   v-for="s in ['Ring1','Ring2']"
@@ -679,12 +679,12 @@
                   v-if="canEquip(h, selectedItem)"
                   class="btn btn-sm"
                   @click="handleEquipToHero(selectedItem, h)"
-                >{{ h.name }}</button>
+                >{{ heroDisplayName(h.name) }}</button>
                 <span
                   v-else
                   class="equip-to-unmet tooltip-wrap has-tip"
                 >
-                  {{ h.name }}
+                  {{ heroDisplayName(h.name) }}
                   <span class="tooltip-text">
                     <template v-for="(r, i) in getEquipReasonsStructured(h, selectedItem)" :key="r.key">
                       <span v-if="i > 0">；</span>{{ r.label }} 需 {{ r.required }}（当前：<span class="equip-unmet-val">{{ r.current }}</span>）
@@ -706,7 +706,7 @@
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">
         <div class="modal-box detail-modal">
           <div class="modal-title">
-            <span class="modal-hero-name" :style="{ color: classColor(selectedHero.class) }">{{ selectedHero.name }}</span>
+            <span class="modal-hero-name" :style="{ color: classColor(selectedHero.class) }">{{ heroDisplayName(selectedHero.name) }}</span>
             <span class="modal-class-tag" :style="{ color: classColor(selectedHero.class) }">{{ classDisplayName(selectedHero.class) }}</span>
           </div>
           <div class="detail-tabs">
@@ -1359,6 +1359,7 @@ import {
   getEquipmentBonuses,
   itemMatchesSlot,
 } from '../game/equipment.js'
+import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -1613,7 +1614,7 @@ function equipItem(item, targetHero, targetSlot) {
   inventoryVersion.value++
   saveSquad(squad.value)
   displayHeroes.value = squad.value.map(computeHeroDisplay)
-  showToast({ type: 'equip', itemName: formatItemDisplayName(item), heroName: hero.name, quality: item.quality })
+  showToast({ type: 'equip', itemName: formatItemDisplayName(item), heroName: heroDisplayName(hero.name), quality: item.quality })
 }
 
 function confirmSellItem(item) {
@@ -2572,7 +2573,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     })
     addLogEntry({
       type: 'rest',
-      heroes: rest.heroes.map((h) => ({ id: h.id, name: h.name, class: h.class, currentHP: h.currentHP, maxHP: h.maxHP })),
+      heroes: rest.heroes.map((h) => ({ id: h.id, name: heroDisplayName(h.name), class: h.class, currentHP: h.currentHP, maxHP: h.maxHP })),
       complete: false,
     })
     await scrollLog()
@@ -2683,7 +2684,7 @@ async function runCombatLoop() {
           const oldLevel = (hero.level ?? 1) - r.levelsGained
           addLogEntry({
             type: 'levelUp',
-            heroName: hero.name,
+            heroName: heroDisplayName(hero.name),
             heroClass: hero.class,
             newLevel: hero.level,
             pointsGained: r.levelsGained * 5,
