@@ -437,8 +437,14 @@ function shuffleTiesByRng(units, rng) {
     .map((entry) => entry.value)
 }
 
-function buildRoundOrder(heroes, monsters, rng) {
-  const all = [...alive(heroes), ...alive(monsters)]
+/**
+ * Sort units by agility (high first), random shuffle within same agility.
+ * @param {Object[]} units
+ * @param {Function} rng
+ * @returns {Object[]}
+ */
+function orderUnitsByAgility(units, rng) {
+  const all = [...units]
   all.sort((a, b) => b.agility - a.agility)
 
   const grouped = []
@@ -457,6 +463,37 @@ function buildRoundOrder(heroes, monsters, rng) {
     ordered.push(...tieOrdered)
   }
   return ordered
+}
+
+/**
+ * Build per-round action order. Round 1 only: first actor is "pull" opener (designated tank if alive,
+ * else random hero); remaining units follow agility order as usual. Round 2+ unchanged (mixed agility).
+ * @param {Object[]} heroes
+ * @param {Object[]} monsters
+ * @param {Function} rng
+ * @param {{ round?: number, designatedTank?: Object|null }} [options]
+ * @returns {Object[]}
+ */
+export function buildRoundOrder(heroes, monsters, rng, options = {}) {
+  const { round = 1, designatedTank = null } = options
+  const all = [...alive(heroes), ...alive(monsters)]
+  if (all.length === 0) return []
+
+  if (round === 1) {
+    const heroAlive = alive(heroes)
+    if (heroAlive.length > 0) {
+      let opener = null
+      if (designatedTank && heroAlive.some((h) => h.id === designatedTank.id)) {
+        opener = heroAlive.find((h) => h.id === designatedTank.id)
+      } else {
+        opener = pickRandom(heroAlive, rng)
+      }
+      const rest = all.filter((u) => u.id !== opener.id)
+      return [opener, ...orderUnitsByAgility(rest, rng)]
+    }
+  }
+
+  return orderUnitsByAgility(all, rng)
 }
 
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
@@ -633,7 +670,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
   while (round <= maxRounds && alive(heroUnits).length > 0 && alive(monsterUnits).length > 0) {
     for (const h of heroUnits) h.hitThisRound = false
-    const roundOrder = buildRoundOrder(heroUnits, monsterUnits, rng)
+    const roundOrder = buildRoundOrder(heroUnits, monsterUnits, rng, {
+      round,
+      designatedTank: designatedTankUnit,
+    })
     if (round === 1) {
       initialOrder = roundOrder.map((u) => u.name)
     }

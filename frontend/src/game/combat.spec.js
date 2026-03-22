@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getSquadMaxLevel } from '../data/heroes.js'
+import { getSquadMaxLevel, createFixedTrioSquad } from '../data/heroes.js'
 import { getEffectivePhysAtk } from './damageUtils.js'
 import {
   MAPS,
@@ -17,6 +17,7 @@ import {
   buildEncounterMonsters,
   applyDamage,
   runAutoCombat,
+  buildRoundOrder,
   startRestPhase,
   applyRestStep,
   canStartNextCombat,
@@ -305,6 +306,26 @@ describe('combat progression and systems', () => {
     const result = applyDamage(30, 'physical', target)
     expect(result.finalDamage).toBe(1)
     expect(result.absorbed).toBe(29)
+  })
+
+  it('fixed trio tank warrior opens with taunt when global target is threat-not-tank-random', () => {
+    const squad = createFixedTrioSquad()
+    const warrior = squad[0]
+    warrior.agility = 25
+    const monster = createMonster(
+      {
+        id: 'young-wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 3, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const result = runAutoCombat({ heroes: squad, monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const warriorFirst = result.log.find((e) => e.actorId === warrior.id && e.round === 1)
+    expect(warriorFirst).toBeDefined()
+    expect(warriorFirst.action).toBe('skill')
+    expect(warriorFirst.skillId).toBe('taunt')
   })
 
   it('Example6/7: turn order uses agility and battle returns victory with rewards', () => {
@@ -708,7 +729,9 @@ describe('combat progression and systems', () => {
     let callCount = 0
     const noCritRng = () => {
       callCount += 1
-      return callCount === 1 ? 0.5 : 0.99
+      // R1 opener pickRandom (1) + phys rolls (2-3) + crit check (4)
+      if (callCount === 4) return 0.99
+      return 0.5
     }
     const noCritResult = runAutoCombat({ heroes, monsters, rng: noCritRng })
     const noCritEntry = noCritResult.log.find((e) => e.actorName === 'Hero One')
@@ -717,7 +740,8 @@ describe('combat progression and systems', () => {
     callCount = 0
     const critRng = () => {
       callCount += 1
-      return callCount === 1 ? 0.5 : 0.01
+      if (callCount === 4) return 0.01
+      return 0.5
     }
     const alwaysCritResult = runAutoCombat({ heroes, monsters, rng: critRng })
     const critEntry = alwaysCritResult.log.find((e) => e.actorName === 'Hero One')
@@ -751,6 +775,33 @@ describe('combat progression and systems', () => {
     expect(heroEntry.targetHPAfter).toBe(Math.max(0, heroEntry.targetHPBefore - heroEntry.finalDamage))
   })
 
+  it('round 1 first actor is designated tank when tank has lower agility than others', () => {
+    const tank = { id: 'tank', side: 'hero', agility: 3, currentHP: 10, name: 'Tank' }
+    const mage = { id: 'mage', side: 'hero', agility: 20, currentHP: 10, name: 'Mage' }
+    const mob = { id: 'mob', side: 'monster', agility: 15, currentHP: 10, name: 'Mob' }
+    const order = buildRoundOrder([tank, mage], [mob], () => 0.5, { round: 1, designatedTank: tank })
+    expect(order[0].id).toBe('tank')
+    expect(order.map((u) => u.id)).toEqual(['tank', 'mage', 'mob'])
+  })
+
+  it('round 1 first actor is random hero when no designated tank (rng picks second hero)', () => {
+    const h1 = { id: 'h1', side: 'hero', agility: 20, currentHP: 10, name: 'Fast' }
+    const h2 = { id: 'h2', side: 'hero', agility: 5, currentHP: 10, name: 'Slow' }
+    const mob = { id: 'mob', side: 'monster', agility: 1, currentHP: 10, name: 'Mob' }
+    const rngPickSecond = () => 0.99
+    const order = buildRoundOrder([h1, h2], [mob], rngPickSecond, { round: 1, designatedTank: null })
+    expect(order[0].id).toBe('h2')
+    expect(order.map((u) => u.id)).toEqual(['h2', 'h1', 'mob'])
+  })
+
+  it('round 2 uses agility only (no opener), tank does not jump ahead', () => {
+    const tank = { id: 'tank', side: 'hero', agility: 3, currentHP: 10, name: 'Tank' }
+    const mage = { id: 'mage', side: 'hero', agility: 20, currentHP: 10, name: 'Mage' }
+    const mob = { id: 'mob', side: 'monster', agility: 15, currentHP: 10, name: 'Mob' }
+    const order = buildRoundOrder([tank, mage], [mob], () => 0.5, { round: 2, designatedTank: tank })
+    expect(order[0].id).toBe('mage')
+  })
+
   it('Example6: same agility tie order is randomized by rng', () => {
     const heroes = [sampleHero({ id: 'ha', name: 'A', agility: 10 })]
     const monsters = [
@@ -773,8 +824,8 @@ describe('combat progression and systems', () => {
         { tier: 'normal', level: 1 }
       ),
     ]
-    const first = runAutoCombat({ heroes, monsters, rng: fixedRng([0.95, 0.1, 0.2, 0.2]) })
-    const second = runAutoCombat({ heroes, monsters, rng: fixedRng([0.05, 0.8, 0.9, 0.8]) })
+    const first = runAutoCombat({ heroes, monsters, rng: fixedRng([0.95, 0.5, 0.1, 0.2, 0.2]) })
+    const second = runAutoCombat({ heroes, monsters, rng: fixedRng([0.05, 0.1, 0.5, 0.8, 0.9]) })
     expect(first.initialOrder.join(',')).not.toBe(second.initialOrder.join(','))
   })
 

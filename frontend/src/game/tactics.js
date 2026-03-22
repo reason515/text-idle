@@ -201,6 +201,18 @@ function getTopThreatHeroId(monster, threat, aliveHeroes) {
 }
 
 /**
+ * Random pick from alive units in list (combat HP check).
+ * @param {Object[]} units
+ * @param {Function} rng
+ * @returns {Object|null}
+ */
+function pickRandomAlive(units, rng) {
+  const alive = units.filter((u) => (u.currentHP ?? 0) > 0)
+  if (alive.length === 0) return null
+  return alive[Math.floor(rng() * alive.length)]
+}
+
+/**
  * Pick a target from candidates using the target rule.
  * Threat rules against designated tank need opts.threat, opts.heroes, opts.tankId.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
@@ -223,28 +235,43 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'threat-not-tank-random') {
     const { threat, heroes, tankId } = opts
-    if (!threat || !heroes || !tankId) return null
+    if (!threat || !heroes) return null
+    if (!tankId) {
+      return pickRandomAlive(alive, rng)
+    }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
-    if (pool.length === 0) return null
-    return pool[Math.floor(rng() * pool.length)]
+    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
+    if (pool.length === 0) {
+      pool = alive
+    }
+    return pickRandomAlive(pool, rng)
   }
 
   if (targetRule === 'threat-tank-top-random') {
     const { threat, heroes, tankId } = opts
-    if (!threat || !heroes || !tankId) return null
+    if (!threat || !heroes) return null
+    if (!tankId) {
+      return pickRandomAlive(alive, rng)
+    }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
-    if (pool.length === 0) return null
-    return pool[Math.floor(rng() * pool.length)]
+    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) {
+      pool = alive
+    }
+    return pickRandomAlive(pool, rng)
   }
 
   if (targetRule === 'threat-tank-top-lowest-on-tank') {
     const { threat, heroes, tankId } = opts
-    if (!threat || !heroes || !tankId) return null
+    if (!threat || !heroes) return null
+    if (!tankId) {
+      return pickRandomAlive(alive, rng)
+    }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
-    if (pool.length === 0) return null
+    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) {
+      pool = alive
+    }
     let best = null
     let bestT = Infinity
     for (const m of pool) {
@@ -259,10 +286,15 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'threat-tank-top-highest-on-tank') {
     const { threat, heroes, tankId } = opts
-    if (!threat || !heroes || !tankId) return null
+    if (!threat || !heroes) return null
+    if (!tankId) {
+      return pickRandomAlive(alive, rng)
+    }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    const pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
-    if (pool.length === 0) return null
+    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    if (pool.length === 0) {
+      pool = alive
+    }
     let best = null
     let bestT = -1
     for (const m of pool) {
