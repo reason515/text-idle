@@ -3654,7 +3654,7 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-darkest);
 }
 .log-round {
-  color: var(--color-normal);
+  color: var(--color-log-detail);
   background: rgba(34, 68, 51, 0.6);
   padding: 0.05rem 0.25rem;
   border-radius: 2px;
