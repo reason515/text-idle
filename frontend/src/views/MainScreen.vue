@@ -308,7 +308,10 @@
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
-                  攻击 {{ entry.targetName }}（{{ entry.targetReason === 'taunted' ? '嘲讽' : '最高仇恨' }}）
+                  攻击
+                  <span
+                    :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+                  >{{ entry.targetName }}</span>（{{ entry.targetReason === 'taunted' ? '嘲讽' : '最高仇恨' }}）
                 </div>
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
