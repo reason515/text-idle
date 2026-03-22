@@ -137,10 +137,22 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
-    await expect(page.locator('.log-calc').first()).toBeVisible()
-    const calcText = await page.locator('.log-calc').first().textContent()
+    const dmgCalc = page.locator('.log-calc').filter({ hasText: '=' }).first()
+    await expect(dmgCalc).toBeVisible()
+    const calcText = await dmgCalc.textContent()
     expect(calcText).toMatch(/-.*=.*\d+/)
     expect(calcText).toContain('=')
+  })
+
+  test('combat log shows shield or heal effect line in detail', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = `support-fx-e2e-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const supportLine = page.locator('.log-detail-box .log-calc').filter({ hasText: /护盾最多可吸收|回复目标|回复自身/ })
+    await expect(supportLine.first()).toBeVisible({ timeout: 90000 })
   })
 
   test('combat log shows actor agility when character or monster acts', async ({ page }) => {

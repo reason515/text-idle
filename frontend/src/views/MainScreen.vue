@@ -304,7 +304,7 @@
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
-                v-if="damageFormulaEquation(entry) || entry.targetHPBefore != null || entry.heal > 0 || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
+                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
@@ -313,18 +313,18 @@
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
                 </div>
+                <div v-if="supportSkillEffectLine(entry)" class="log-calc">
+                  {{ supportSkillEffectLine(entry) }}
+                </div>
                 <div v-if="entry.targetHPBefore != null" class="log-target-hp">
                   <span
                     :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
                   >{{ entry.targetName }}</span>
                   生命: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
                 </div>
-                <div v-if="entry.heal > 0" class="log-heal">
+                <div v-if="entry.heal > 0 && entry.actorHPAfter != null" class="log-target-hp">
                   <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
-                  治疗 <span class="log-heal-val">+{{ entry.heal }}</span> 生命
-                  <template v-if="entry.actorHPAfter != null">
-                    ({{ entry.actorHPAfter }}/{{ entry.actorMaxHP }})
-                  </template>
+                  生命: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.actorHPAfter, maxHP: entry.actorMaxHP })) }">{{ entry.actorHPAfter }}/{{ entry.actorMaxHP }}</span>
                 </div>
                 <div v-if="entry.debuffApplied" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
@@ -1360,6 +1360,7 @@ import {
   itemMatchesSlot,
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
+import { damageFormulaEquation, supportSkillEffectLine } from '../game/battleLogFormat.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -1447,23 +1448,6 @@ function formatLogActionName(entry) {
   if (entry.skillName) return entry.skillName
   if (entry.action === 'basic') return '普通攻击'
   return entry.action ?? '技能'
-}
-
-function damageFormulaEquation(entry) {
-  const final = entry.finalDamage
-  const defLabel = entry.damageType === 'magic' ? '抗性' : '护甲'
-  const defVal = Math.max(0, entry.targetDefense ?? 0)
-  if (entry.skillId && entry.skillCoefficient != null) {
-    const coeff = entry.skillCoefficient
-    if (entry.isCrit) {
-      return `攻击(${entry.rawDamage}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${final}`
-    }
-    return `攻击(${entry.rawDamage}) x ${coeff} - ${defLabel}(${defVal}) = ${final}`
-  }
-  if (entry.isCrit) {
-    return `攻击(${entry.rawDamage}) x 1.5 - ${defLabel}(${defVal}) = ${final}`
-  }
-  return `攻击(${entry.rawDamage}) - ${defLabel}(${defVal}) = ${final}`
 }
 
 const router = useRouter()
@@ -3730,7 +3714,6 @@ onUnmounted(() => {
 .log-entry.log-dot .log-detail-box { margin-left: 0; }
 .log-detail-box .log-calc,
 .log-detail-box .log-target-hp,
-.log-detail-box .log-heal,
 .log-detail-box .log-debuff {
   width: 100%;
   font-size: var(--font-sm);
@@ -3748,7 +3731,6 @@ onUnmounted(() => {
   color: var(--color-log-detail-alt);
   padding-left: 0;
 }
-.log-detail-box .log-heal { color: var(--text-muted); }
 .log-detail-box .log-debuff { color: var(--text-muted); }
 
 /* Keep old class names for compatibility */
@@ -4260,13 +4242,6 @@ input.tactics-condition-value[type="number"] {
 }
 
 /* Warrior skill log entries */
-.log-heal {
-  font-size: var(--font-s);
-  color: var(--text-muted);
-  padding-left: 0.5rem;
-  margin-top: 0.1rem;
-}
-.log-heal-val { color: var(--color-heal); font-weight: bold; }
 .log-debuff {
   font-size: var(--font-s);
   color: var(--text-muted);
