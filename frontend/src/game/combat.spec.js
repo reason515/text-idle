@@ -1206,7 +1206,7 @@ describe('combat progression and systems', () => {
       expect(tauntedHits.length).toBeGreaterThan(0)
     })
 
-    it('AC4: Taunt entry has tauntEffectText', () => {
+    it('AC4: Taunt entry has tauntActionsRemaining and effect line', () => {
       const warrior = sampleHero({
         id: 'w1',
         name: 'Tank',
@@ -1223,9 +1223,9 @@ describe('combat progression and systems', () => {
       const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
       const tauntEntry = result.log.find((e) => e.skillId === 'taunt' && e.tauntApplied)
       expect(tauntEntry).toBeDefined()
-      expect(tauntEntry.tauntEffectText).toContain('Wolf')
-      expect(tauntEntry.tauntEffectText).toContain('Tank')
-      expect(tauntEntry.tauntEffectText).toContain('2 次行动')
+      expect(tauntEntry.tauntActionsRemaining).toBe(2)
+      expect(tauntEntry.targetName).toBe('Wolf')
+      expect(tauntEntry.actorName).toBe('Tank')
     })
 
     it('AC5: damage entry has threatAmount and threatTargetName', () => {

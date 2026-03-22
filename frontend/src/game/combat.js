@@ -658,7 +658,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               targetClass: target.class || null,
               targetTier: target.tier || null,
               tauntApplied: true,
-              tauntEffectText: `${target.name} 将在 2 次行动内攻击 ${actor.name}`,
+              tauntActionsRemaining: 2,
             })
             usedSkill = true
             break

@@ -287,11 +287,7 @@
                 class="log-target"
                 :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
               >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? '（+' + (entry.cleaveTargets - 1) + ' 个目标）' : '' }}</span>
-              <template v-if="entry.tauntApplied">
-                <span class="log-sep">-</span>
-                <span class="log-taunt-effect">{{ entry.tauntEffectText }}</span>
-              </template>
-              <template v-else-if="entry.finalDamage != null">
+              <template v-if="entry.finalDamage != null">
                 <span class="log-sep">造成</span>
                 <span
                   class="log-dmg"
@@ -304,7 +300,7 @@
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
-                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
+                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
@@ -318,6 +314,16 @@
                 </div>
                 <div v-if="supportSkillEffectLine(entry)" class="log-calc">
                   {{ supportSkillEffectLine(entry) }}
+                </div>
+                <div v-if="entry.tauntApplied" class="log-calc">
+                  持续({{ entry.tauntActionsRemaining ?? 2 }} 次行动):
+                  <span
+                    :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
+                  >{{ entry.targetName }}</span>
+                  -&gt;
+                  <span
+                    :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
+                  >{{ entry.actorName }}</span>
                 </div>
                 <div v-if="entry.targetHPBefore != null" class="log-target-hp">
                   <span
@@ -3674,10 +3680,6 @@ onUnmounted(() => {
   color: var(--warning);
   font-weight: bold;
   margin-left: 0.25rem;
-}
-.log-taunt-effect {
-  color: var(--color-skill);
-  font-style: italic;
 }
 .log-target-reason,
 .log-threat {

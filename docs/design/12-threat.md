@@ -179,7 +179,7 @@
 |--------|------|-----------|
 | **OT 事件** | 战斗日志 | 怪物切换目标时新增一条：`[R4] Wolf switched target to Mage (OT!)`；仅当目标切换到**非坦克**英雄时触发；怪物攻击坦克（战士）不显示 OT |
 | **怪物攻击目标原因** | 战斗日志详情（log-detail-box） | 怪物攻击时在详情中显示：`Attacking Tank (highest threat)` 或 `Attacking Tank (taunted)` |
-| **嘲讽效果说明** | 战斗日志 | Taunt 条目明确效果：`Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions` |
+| **嘲讽效果说明** | 战斗日志详情（log-calc，与伤害公式同级） | Taunt 施放条目在详情中显示：`持续(2 次行动): 目标名 -> 施放者名`；名称着色与主行一致（目标 `monsterTierColor` / `classColor(targetClass)`，施放者 `classColor(actorClass)`） |
 
 #### 6.2.2 第二层：仇恨数值与卡片指示
 

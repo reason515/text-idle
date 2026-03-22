@@ -57,6 +57,12 @@ Same semantic content MUST use the same color token across all UI contexts. When
 | Target hero name | `classColor(targetClass)` | Monster target display, battle log |
 | Monster tier | `monsterTierColor(tier)` | Monster card, battle log |
 
+### Battle log: names inside detail / formula lines (MANDATORY)
+
+- Do **not** build a **single UI string** in JS (`battleLogFormat.js` or elsewhere) when the line shows **hero and/or monster names** in `.log-detail-box` / `.log-calc`. Plain text drops semantic colors; the browser cannot color substrings from one `{{ }}` binding.
+- Render those names in **Vue** with `<span :style="{ color: ... }">` using the **same** rules as the main log row (`log-actor` / `log-target`): target `entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier)`; actor `entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier)`.
+- **Allowed** in JS: lines that are **numbers and labels only** (e.g. damage formula `攻击(x) - 护甲(y) = z`, shield absorb amounts) with no colored names.
+
 Before adding a new place that shows skill names, hero names, or basic attack: search for existing usages and reuse the same token/helper.
 
 ## Prohibited
