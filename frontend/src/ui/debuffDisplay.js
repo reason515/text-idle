@@ -3,13 +3,55 @@
  * Extensible for future buff/debuff types.
  */
 
+import { getShieldBuff } from '../game/priestSkills.js'
+
+export { getShieldBuff }
+
 export const DEBUFF_DISPLAY = {
-  sunder: { name: '破甲', short: 'SA', isDebuff: true },
-  dazed: { name: '眩晕', short: 'DZ', isDebuff: true },
-  splinter: { name: '破法', short: 'SP', isDebuff: true },
-  bleed: { name: '流血', short: 'BL', isDebuff: true },
-  frostbolt: { name: '霜箭', short: 'FB', isDebuff: true },
-  burn: { name: '燃烧', short: 'BN', isDebuff: true },
+  sunder: { name: '破甲', short: '破甲', isDebuff: true },
+  dazed: { name: '眩晕', short: '眩晕', isDebuff: true },
+  splinter: { name: '破法', short: '破法', isDebuff: true },
+  bleed: { name: '流血', short: '流血', isDebuff: true },
+  frostbolt: { name: '霜箭', short: '霜箭', isDebuff: true },
+  burn: { name: '燃烧', short: '燃烧', isDebuff: true },
+}
+
+/** Buff badges (short label max 4 Chinese characters). */
+export const BUFF_DISPLAY = {
+  shield: { name: '真言术：盾', short: '护盾' },
+}
+
+/** Taunt status on monsters (not a debuff entry). */
+export const TAUNT_DISPLAY = { name: '嘲讽', short: '嘲讽' }
+
+/**
+ * @param {Object} unit
+ * @returns {string}
+ */
+export function getShieldTip(unit) {
+  const s = getShieldBuff(unit)
+  if (!s) return ''
+  return `剩余吸收 ${s.absorbRemaining}，剩余 ${s.remainingRounds ?? 0} 回合`
+}
+
+/**
+ * @param {{ actionsRemaining: number, casterId?: string }} taunt
+ * @returns {string}
+ */
+export function getTauntTip(taunt) {
+  if (!taunt || taunt.actionsRemaining == null) return ''
+  return `剩余 ${taunt.actionsRemaining} 次行动内强制攻击嘲讽者`
+}
+
+/**
+ * @param {{ actionsRemaining: number, casterId?: string }|null|undefined} taunt
+ * @param {string} [casterDisplayName]
+ * @returns {string}
+ */
+export function getTauntDetailText(taunt, casterDisplayName) {
+  if (!taunt || taunt.actionsRemaining == null) return ''
+  const who = casterDisplayName || '嘲讽者'
+  return `剩余 ${taunt.actionsRemaining} 次行动内强制攻击 ${who}`
 }
 
 /**

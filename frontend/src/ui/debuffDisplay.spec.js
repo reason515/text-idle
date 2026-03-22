@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from './debuffDisplay.js'
+import {
+  DEBUFF_DISPLAY,
+  getDebuffTip,
+  getShieldTip,
+  getTauntTip,
+  getTauntDetailText,
+  unitDebuffs,
+} from './debuffDisplay.js'
 
 describe('debuffDisplay', () => {
   describe('DEBUFF_DISPLAY', () => {
     it('has sunder with name and short label', () => {
-      expect(DEBUFF_DISPLAY.sunder).toEqual({ name: '破甲', short: 'SA', isDebuff: true })
+      expect(DEBUFF_DISPLAY.sunder).toEqual({ name: '破甲', short: '破甲', isDebuff: true })
     })
   })
 
@@ -60,6 +67,27 @@ describe('debuffDisplay', () => {
     it('returns empty array when unit is null/undefined', () => {
       expect(unitDebuffs(null)).toEqual([])
       expect(unitDebuffs(undefined)).toEqual([])
+    })
+  })
+
+  describe('getShieldTip', () => {
+    it('returns absorb and rounds when shield present', () => {
+      expect(getShieldTip({ shield: { absorbRemaining: 40, remainingRounds: 2 } })).toBe('剩余吸收 40，剩余 2 回合')
+    })
+    it('returns empty when no shield', () => {
+      expect(getShieldTip({})).toBe('')
+    })
+  })
+
+  describe('getTauntTip', () => {
+    it('returns actions remaining', () => {
+      expect(getTauntTip({ actionsRemaining: 2, casterId: 'h1' })).toBe('剩余 2 次行动内强制攻击嘲讽者')
+    })
+  })
+
+  describe('getTauntDetailText', () => {
+    it('includes caster display name', () => {
+      expect(getTauntDetailText({ actionsRemaining: 1, casterId: 'x' }, '战士')).toBe('剩余 1 次行动内强制攻击 战士')
     })
   })
 })

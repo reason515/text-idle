@@ -41,6 +41,17 @@ export function getShieldBuff(unit) {
 }
 
 /**
+ * End-of-round shield duration tick (matches combat.js).
+ * Mutates unit.shield; removes shield when duration expires.
+ * @param {Object} unit
+ */
+export function tickShieldDuration(unit) {
+  if (!unit?.shield || (unit.currentHP ?? 0) <= 0) return
+  unit.shield.remainingRounds = (unit.shield.remainingRounds ?? 1) - 1
+  if (unit.shield.remainingRounds <= 0) delete unit.shield
+}
+
+/**
  * Apply damage to a shielded unit. Shield absorbs first; overflow goes to HP.
  * Mutates unit.shield and unit.currentHP.
  * @param {Object} unit - Target with optional shield

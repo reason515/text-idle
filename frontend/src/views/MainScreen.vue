@@ -67,12 +67,18 @@
               </div>
               <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
             </div>
-            <div v-if="unitDebuffs(hero).length > 0" class="status-effects-row">
+            <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
+              <span
+                v-if="getShieldBuff(hero)"
+                class="status-badge status-buff tooltip-wrap has-tip"
+              >
+                {{ BUFF_DISPLAY.shield.short }}
+                <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}: {{ getShieldTip(hero) }}</span>
+              </span>
               <span
                 v-for="d in unitDebuffs(hero)"
                 :key="d.type + '-' + (d.remainingRounds ?? 0)"
-                class="status-badge status-debuff tooltip-wrap"
-                :title="getDebuffTip(d)"
+                class="status-badge status-debuff tooltip-wrap has-tip"
               >
                 {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
                 <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
@@ -141,12 +147,18 @@
               </div>
               <span class="bar-num" :style="{ color: hpBarColor(monsterHpPct(m)) }">{{ m.currentHP }}/{{ m.maxHP }}</span>
             </div>
-            <div v-if="unitDebuffs(m).length > 0" class="status-effects-row">
+            <div v-if="m.taunt || unitDebuffs(m).length > 0" class="status-effects-row">
+              <span
+                v-if="m.taunt"
+                class="status-badge status-taunt tooltip-wrap has-tip"
+              >
+                {{ TAUNT_DISPLAY.short }}
+                <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}: {{ getTauntTip(m.taunt) }}</span>
+              </span>
               <span
                 v-for="d in unitDebuffs(m)"
                 :key="d.type + '-' + (d.remainingRounds ?? 0)"
-                class="status-badge status-debuff tooltip-wrap"
-                :title="getDebuffTip(d)"
+                class="status-badge status-debuff tooltip-wrap has-tip"
               >
                 {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
                 <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
@@ -831,6 +843,17 @@
               </div>
             </div>
           </div>
+          <div v-if="getShieldBuff(selectedHero)" class="detail-sep-line">增益</div>
+          <div v-if="getShieldBuff(selectedHero)" class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">{{ BUFF_DISPLAY.shield.name }}</span>
+              <span class="detail-value">
+                <span class="tooltip-wrap has-tip">{{ getShieldTip(selectedHero) }}
+                  <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}：吸收伤害直至打破或回合结束；{{ getShieldTip(selectedHero) }}</span>
+                </span>
+              </span>
+            </div>
+          </div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-sep-line">减益</div>
           <div v-if="unitDebuffs(selectedHero).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedHero)" :key="d.type" class="detail-row">
@@ -1219,7 +1242,18 @@
               <span class="detail-value">{{ getMonsterSkillDisplay(selectedMonster.skill).cooldown }} 回合</span>
             </div>
           </div>
-          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">Debuffs</div>
+          <div v-if="selectedMonster.taunt" class="detail-sep-line">状态</div>
+          <div v-if="selectedMonster.taunt" class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">{{ TAUNT_DISPLAY.name }}</span>
+              <span class="detail-value">
+                <span class="tooltip-wrap has-tip">{{ getTauntDetailText(selectedMonster.taunt, tauntCasterDisplayName(selectedMonster)) }}
+                  <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}：战士嘲讽后，该怪物在剩余行动次数内强制以嘲讽者为攻击目标（与仇恨无关）。{{ getTauntTip(selectedMonster.taunt) }}</span>
+                </span>
+              </span>
+            </div>
+          </div>
+          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">减益</div>
           <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-section">
             <div v-for="d in unitDebuffs(selectedMonster)" :key="d.type" class="detail-row">
               <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
@@ -1349,11 +1383,21 @@ function getMonsterArmorTooltip(unit) {
   return `Absorbs ${effective} physical damage per hit`
 }
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
-import { getPriestSkillById } from '../game/priestSkills.js'
+import { getPriestSkillById, tickShieldDuration } from '../game/priestSkills.js'
 import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
-import { DEBUFF_DISPLAY, getDebuffTip, unitDebuffs } from '../ui/debuffDisplay.js'
+import {
+  DEBUFF_DISPLAY,
+  BUFF_DISPLAY,
+  TAUNT_DISPLAY,
+  getDebuffTip,
+  getShieldBuff,
+  getShieldTip,
+  getTauntTip,
+  getTauntDetailText,
+  unitDebuffs,
+} from '../ui/debuffDisplay.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
@@ -1497,6 +1541,12 @@ let floatNumId = 0
 const toastMessages = ref([])
 let toastId = 0
 const pendingSkillChoices = ref([])
+
+function tauntCasterDisplayName(monster) {
+  if (!monster?.taunt?.casterId) return ''
+  const h = displayHeroes.value.find((x) => x.id === monster.taunt.casterId)
+  return h ? heroDisplayName(h.name) : ''
+}
 const shopMessage = ref(null)
 const shopConfirmingSlot = ref(null)
 const COMBAT_PROGRESS_KEY = 'combatProgress'
@@ -2405,6 +2455,17 @@ function buildDebuffFromEntry(entry) {
   return debuff
 }
 
+function syncSelectedUnitsFromCombat() {
+  if (selectedHero.value?.id) {
+    const sh = displayHeroes.value.find((h) => h.id === selectedHero.value.id)
+    if (sh) selectedHero.value = sh
+  }
+  if (selectedMonster.value?.id) {
+    const sm = currentMonsters.value.find((m) => m.id === selectedMonster.value.id)
+    if (sm) selectedMonster.value = sm
+  }
+}
+
 function applyOneCombatEntry(entry) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
@@ -2458,15 +2519,22 @@ function applyOneCombatEntry(entry) {
   const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
   if (mi >= 0) {
     const updated = [...currentMonsters.value]
-    updated[mi] = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
+    let row = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
     if (entry.debuffApplied || entry.debuffRefreshed) {
       const newDebuff = buildDebuffFromEntry(entry)
-      const debuffs = [...(updated[mi].debuffs || [])]
+      const debuffs = [...(row.debuffs || [])]
       const existing = debuffs.find((d) => d.type === newDebuff.type)
       if (existing) Object.assign(existing, newDebuff)
       else debuffs.push(newDebuff)
-      updated[mi] = { ...updated[mi], debuffs }
+      row = { ...row, debuffs }
     }
+    if (entry.tauntApplied) {
+      row = {
+        ...row,
+        taunt: { casterId: entry.actorId, actionsRemaining: entry.tauntActionsRemaining ?? 2 },
+      }
+    }
+    updated[mi] = row
     currentMonsters.value = updated
   }
   let updated = [...displayHeroes.value]
@@ -2482,11 +2550,48 @@ function applyOneCombatEntry(entry) {
       else debuffs.push(newDebuff)
       updated[hi] = { ...updated[hi], debuffs }
     }
+    if (entry.skillId === 'power-word-shield' && entry.absorbAmount != null) {
+      updated[hi] = {
+        ...updated[hi],
+        shield: {
+          absorbRemaining: entry.absorbAmount,
+          remainingRounds: entry.shieldDuration ?? 3,
+        },
+      }
+    }
+    if (entry.shieldAbsorbed != null && entry.shieldAbsorbed > 0 && updated[hi].shield) {
+      const absorb = Math.max(0, (updated[hi].shield.absorbRemaining || 0) - entry.shieldAbsorbed)
+      if (absorb <= 0) {
+        const row = { ...updated[hi] }
+        delete row.shield
+        updated[hi] = row
+      } else {
+        updated[hi] = { ...updated[hi], shield: { ...updated[hi].shield, absorbRemaining: absorb } }
+      }
+    }
   }
   const actorRage = entry.actorRageAfter ?? entry.rageAfter
   const ai = updated.findIndex((h) => h.id === entry.actorId)
   if (ai >= 0 && actorRage !== undefined) updated[ai] = { ...updated[ai], currentMP: actorRage }
   if (hi >= 0 || (ai >= 0 && actorRage !== undefined)) displayHeroes.value = updated
+
+  if (entry.actorTier != null && entry.actorId) {
+    const ami = currentMonsters.value.findIndex((m) => m.id === entry.actorId)
+    if (ami >= 0) {
+      const mu = [...currentMonsters.value]
+      const mon = mu[ami]
+      if (mon.taunt && mon.taunt.actionsRemaining > 0) {
+        const nr = mon.taunt.actionsRemaining - 1
+        mu[ami] = {
+          ...mon,
+          taunt: nr > 0 ? { ...mon.taunt, actionsRemaining: nr } : undefined,
+        }
+        currentMonsters.value = mu
+      }
+    }
+  }
+
+  syncSelectedUnitsFromCombat()
 }
 
 async function animateCombatLog(result) {
@@ -2505,8 +2610,12 @@ async function animateCombatLog(result) {
         for (const unit of [...displayHeroes.value, ...currentMonsters.value]) {
           if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) tickDebuffs(unit)
         }
+        for (const h of displayHeroes.value) {
+          tickShieldDuration(h)
+        }
         displayHeroes.value = [...displayHeroes.value]
         currentMonsters.value = [...currentMonsters.value]
+        syncSelectedUnitsFromCombat()
       }
     }
     await scrollLog()
@@ -2530,8 +2639,12 @@ async function animateCombatLog(result) {
       for (const unit of [...displayHeroes.value, ...currentMonsters.value]) {
         if (Array.isArray(unit.debuffs) && unit.debuffs.length > 0) tickDebuffs(unit)
       }
+      for (const h of displayHeroes.value) {
+        tickShieldDuration(h)
+      }
       displayHeroes.value = [...displayHeroes.value]
       currentMonsters.value = [...currentMonsters.value]
+      syncSelectedUnitsFromCombat()
       await scrollLog()
       await sleepMsRespectingPause(combatDelayMs(2000))
     }
@@ -4317,6 +4430,16 @@ input.tactics-condition-value[type="number"] {
   background: rgba(212, 160, 23, 0.25);
   border: 1px solid var(--color-debuff);
   color: var(--color-debuff-light);
+}
+.status-buff {
+  background: var(--bg-darker);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.status-taunt {
+  background: var(--bg-darker);
+  border: 1px solid var(--warning);
+  color: var(--warning);
 }
 .status-badge.tooltip-wrap .tooltip-text {
   white-space: normal;

@@ -10,6 +10,7 @@ import {
   executePowerWordShield,
   getShieldBuff,
   applyDamageToShieldedUnit,
+  tickShieldDuration,
 } from './priestSkills.js'
 
 describe('priestSkills', () => {
@@ -112,6 +113,20 @@ describe('priestSkills', () => {
     it('returns shield object when present', () => {
       const shield = { absorbRemaining: 15, remainingRounds: 2 }
       expect(getShieldBuff({ shield })).toBe(shield)
+    })
+  })
+
+  describe('tickShieldDuration', () => {
+    it('removes shield when rounds reach zero', () => {
+      const unit = { currentHP: 10, shield: { absorbRemaining: 5, remainingRounds: 1 } }
+      tickShieldDuration(unit)
+      expect(unit.shield).toBeUndefined()
+    })
+
+    it('decrements remaining rounds', () => {
+      const unit = { currentHP: 10, shield: { absorbRemaining: 5, remainingRounds: 3 } }
+      tickShieldDuration(unit)
+      expect(unit.shield.remainingRounds).toBe(2)
     })
   })
 })
