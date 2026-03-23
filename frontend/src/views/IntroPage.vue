@@ -1,27 +1,82 @@
 <template>
   <div class="intro-wrap">
     <div class="panel intro-panel">
-      <!-- Step 1: Game Introduction -->
-      <template v-if="step === 1">
-        <h2 class="intro-title">欢迎来到 Text Idle</h2>
-        <div class="intro-content intro-step1">
-          <p>
-            Text Idle 是一款文字风格的放置类 RPG 游戏。系统将为你预置三位英雄，
-            组成经典的「战法牧」铁三角，带领他们踏上冒险之旅。
-          </p>
-          <div class="intro-heroes-preview">
-            <span class="hero-tag hero-tank">坦克</span>
-            <span class="hero-tag hero-dps">输出</span>
-            <span class="hero-tag hero-heal">治疗</span>
+      <div class="intro-shell">
+        <div class="intro-topbar">
+          <div class="intro-brand">
+            <span class="intro-chip intro-chip-primary">新手引导</span>
+            <span class="intro-chip">固定三人开局</span>
           </div>
-          <p>
-            <strong>玩法</strong>：战斗自动进行，你只需预先配置技能优先级与战术。
-            队伍会按你的策略探索地图、击败怪物，获取经验、金币与装备。
-          </p>
-          <p>
-            <strong>目标</strong>：积累探索度解锁 BOSS，击败 BOSS 后招募新英雄，
-            不断强化队伍，挑战更强敌人，享受放置与策略的乐趣！
-          </p>
+          <div class="intro-step-track" aria-label="欢迎流程进度">
+            <div
+              v-for="item in stepItems"
+              :key="item.id"
+              class="step-node"
+              :class="{ 'is-active': step === item.id, 'is-complete': step > item.id }"
+            >
+              <span class="step-index">0{{ item.id }}</span>
+              <div class="step-copy">
+                <span class="step-name">{{ item.name }}</span>
+                <span class="step-desc">{{ item.desc }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="intro-hero-banner">
+          <div class="intro-hero-copy">
+            <p class="intro-kicker">{{ stepMeta.kicker }}</p>
+            <h2 class="intro-title">{{ stepMeta.title }}</h2>
+            <p class="intro-subtitle">{{ stepMeta.subtitle }}</p>
+          </div>
+          <div class="intro-banner-metrics">
+            <div class="intro-metric-card">
+              <span class="intro-metric-value">3</span>
+              <span class="intro-metric-label">初始英雄</span>
+            </div>
+            <div class="intro-metric-card">
+              <span class="intro-metric-value intro-metric-skill">AI</span>
+              <span class="intro-metric-label">自动战斗</span>
+            </div>
+            <div class="intro-metric-card">
+              <span class="intro-metric-value intro-metric-exp">AFK</span>
+              <span class="intro-metric-label">离线成长</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="step === 1">
+        <div class="intro-content intro-step1">
+          <div class="intro-story-card">
+            <p>
+              这是一款以队伍配置与长期成长为核心的文字挂机 RPG。系统会先为你准备三位英雄，
+              组成稳定的前排、输出、治疗铁三角，让你一进入游戏就能感受到完整战斗循环。
+            </p>
+            <div class="intro-heroes-preview">
+              <span class="hero-tag hero-tank">坦克</span>
+              <span class="hero-tag hero-dps">输出</span>
+              <span class="hero-tag hero-heal">治疗</span>
+            </div>
+            <p>
+              你不需要在战斗中频繁点指令，而是通过预先配置技能优先级、目标策略和阵容搭配，
+              让队伍按你的思路持续推进。
+            </p>
+          </div>
+          <div class="intro-highlight-grid">
+            <div class="intro-highlight-card">
+              <span class="highlight-title">战斗方式</span>
+              <p>战斗自动进行，你负责提前设定技能优先级与战术取向。</p>
+            </div>
+            <div class="intro-highlight-card">
+              <span class="highlight-title">成长目标</span>
+              <p>探索地图、击败首领、招募新成员，逐步把小队扩展到完整 5 人。</p>
+            </div>
+            <div class="intro-highlight-card">
+              <span class="highlight-title">核心乐趣</span>
+              <p>看懂公式、优化阵容、微调战术，再观察挂机收益慢慢滚起来。</p>
+            </div>
+          </div>
         </div>
         <div class="intro-actions">
           <button class="btn btn-primary" @click="step = 2">下一步</button>
@@ -30,33 +85,60 @@
 
       <!-- Step 2: Team Name -->
       <template v-else-if="step === 2">
-        <h2 class="intro-title">为你的队伍起个名字</h2>
-        <form @submit.prevent="goToHeroPreview">
-          <div class="form-group">
-            <label for="teamName">队伍名称</label>
-            <input
-              id="teamName"
-              v-model="teamName"
-              type="text"
-              placeholder="例如：勇者小队"
-              maxlength="20"
-              required
-            />
-            <p v-if="error" class="error-msg">{{ error }}</p>
+        <div class="team-name-layout">
+          <div class="team-name-copy">
+            <div class="team-note-card">
+              <span class="team-note-label">命名建议</span>
+              <p>队伍名称会陪伴你整个冒险流程，建议起一个简短、好记、带点风格的名字。</p>
+            </div>
+            <div class="team-suggestion-list">
+              <span class="team-suggestion">晨星远征队</span>
+              <span class="team-suggestion">灰烬守望</span>
+              <span class="team-suggestion">北境先遣团</span>
+            </div>
           </div>
-          <div class="intro-actions">
-            <button type="button" class="btn btn-secondary" @click="step = 1">
-              上一步
-            </button>
-            <button type="submit" class="btn btn-primary">下一步</button>
+          <div class="team-form-shell">
+            <form @submit.prevent="goToHeroPreview">
+              <div class="form-group">
+                <label for="teamName">队伍名称</label>
+                <input
+                  id="teamName"
+                  v-model="teamName"
+                  type="text"
+                  placeholder="例如：勇者小队"
+                  maxlength="20"
+                  required
+                />
+                <p class="field-tip">2-20 个字符，推荐简洁有辨识度。</p>
+                <p v-if="error" class="error-msg">{{ error }}</p>
+              </div>
+              <div class="intro-actions">
+                <button type="button" class="btn btn-secondary" @click="step = 1">
+                  上一步
+                </button>
+                <button type="submit" class="btn btn-primary">下一步</button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       </template>
 
       <!-- Step 3: Hero Preview -->
       <template v-else>
-        <h2 class="intro-title">你的初始队伍</h2>
-        <p class="intro-subtitle">三位英雄已就绪，点击英雄查看详情，点击「开始冒险」进入地图战斗。</p>
+        <div class="preview-summary">
+          <div class="preview-summary-card">
+            <span class="preview-summary-label">队伍名称</span>
+            <span class="preview-summary-value">{{ teamName }}</span>
+          </div>
+          <div class="preview-summary-card">
+            <span class="preview-summary-label">开局配置</span>
+            <span class="preview-summary-value">固定三人小队</span>
+          </div>
+          <div class="preview-summary-card">
+            <span class="preview-summary-label">下一步</span>
+            <span class="preview-summary-value">进入主界面</span>
+          </div>
+        </div>
         <div class="hero-preview-grid">
           <div
             v-for="hero in fixedTrioFull"
@@ -84,6 +166,7 @@
             </div>
           </div>
         </div>
+        <p class="preview-footnote">点击英雄可查看定位、属性与初始技能；确认无误后即可开始冒险。</p>
         <div class="intro-actions">
           <button type="button" class="btn btn-secondary" @click="step = 2">
             上一步
@@ -109,15 +192,15 @@
           </div>
           <span class="intro-hero-role">{{ getClassInfo(selectedHeroDetail.class)?.role }}</span>
           <div v-if="selectedHeroDetail.bio" class="intro-hero-bio">
-            <span class="section-label">About</span>
+            <span class="section-label">背景</span>
             <p>{{ selectedHeroDetail.bio }}</p>
           </div>
           <div v-if="getClassInfo(selectedHeroDetail.class)" class="intro-hero-class-desc">
-            <span class="section-label">Class</span>
+            <span class="section-label">职业定位</span>
             <p>{{ getClassInfo(selectedHeroDetail.class).desc }}</p>
           </div>
           <div class="intro-hero-attrs">
-            <span class="section-label">Primary Attributes</span>
+            <span class="section-label">一级属性</span>
             <div class="intro-hero-attr-grid">
               <div v-for="attr in primaryAttrsFor(selectedHeroDetail)" :key="attr.key" class="intro-hero-attr-row">
                 <span class="attr-label">{{ attr.label }}</span>
@@ -126,7 +209,7 @@
             </div>
           </div>
           <div class="intro-hero-secondary">
-            <span class="section-label">Secondary Attributes (Lv1)</span>
+            <span class="section-label">二级属性（Lv1）</span>
             <div class="intro-hero-attr-grid">
               <div v-for="item in secondaryAttrsFor(selectedHeroDetail)" :key="item.key" class="intro-hero-attr-row">
                 <span class="attr-label">{{ item.label }}</span>
@@ -135,7 +218,7 @@
             </div>
           </div>
           <div class="intro-hero-skills">
-            <span class="section-label">Skills</span>
+            <span class="section-label">初始技能</span>
             <div v-for="skillId in (selectedHeroDetail.skills || [])" :key="skillId" class="intro-hero-skill-card">
               <div class="intro-skill-header">
                 <span class="skill-name">{{ getSkillName(selectedHeroDetail.class, skillId) }}</span>
@@ -144,7 +227,7 @@
               <p class="skill-desc">{{ getSkillEffectDesc(selectedHeroDetail.class, skillId) }}</p>
             </div>
           </div>
-          <button class="btn" @click="selectedHeroDetail = null">Close</button>
+          <button class="btn" @click="selectedHeroDetail = null">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -162,12 +245,18 @@ import { getLevelSkillById } from '../game/warriorLevelSkills.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const PRIMARY_ATTR_LABELS = {
-  strength: 'Strength',
-  agility: 'Agility',
-  intellect: 'Intellect',
-  stamina: 'Stamina',
-  spirit: 'Spirit',
+  strength: '力量',
+  agility: '敏捷',
+  intellect: '智力',
+  stamina: '耐力',
+  spirit: '精神',
 }
+
+const stepItems = [
+  { id: 1, name: '欢迎', desc: '了解玩法' },
+  { id: 2, name: '命名', desc: '建立队伍' },
+  { id: 3, name: '预览', desc: '开始冒险' },
+]
 
 const router = useRouter()
 const step = ref(1)
@@ -176,6 +265,28 @@ const error = ref('')
 const selectedHeroDetail = ref(null)
 
 const fixedTrioFull = computed(() => createFixedTrioSquad())
+
+const stepMeta = computed(() => {
+  if (step.value === 1) {
+    return {
+      kicker: 'WELCOME TO TEXT IDLE',
+      title: '欢迎来到 Text Idle',
+      subtitle: '先快速了解这款游戏的节奏、目标，以及你将如何带领小队成长。',
+    }
+  }
+  if (step.value === 2) {
+    return {
+      kicker: 'NAME YOUR PARTY',
+      title: '为你的队伍起个名字',
+      subtitle: '你的冒险将从一个名字开始，它会出现在后续流程的关键位置。',
+    }
+  }
+  return {
+    kicker: 'SQUAD READY',
+    title: '你的初始队伍',
+    subtitle: '三位英雄已经待命，确认阵容后就可以正式踏上第一段远征。',
+  }
+})
 
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
@@ -202,8 +313,8 @@ function getSkillName(heroClass, skillId) {
 
 function getSkillCost(heroClass, skillId) {
   const def = getSkillDef(heroClass, skillId)
-  if (def?.manaCost != null) return `${def.manaCost} Mana`
-  if (def?.rageCost != null) return `${def.rageCost} Rage`
+  if (def?.manaCost != null) return `${def.manaCost} 法力`
+  if (def?.rageCost != null) return `${def.rageCost} 怒气`
   return ''
 }
 
@@ -265,26 +376,160 @@ function startAdventure() {
 }
 
 .intro-panel {
-  width: min(100%, 56rem);
-  background: var(--bg-panel);
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  padding: 2rem;
-  box-shadow: 0 0 20px rgba(0, 204, 102, 0.15);
+  width: min(100%, 68rem);
+  padding: 1.5rem;
+  box-shadow: 0 0 12px var(--focus-glow);
+}
+
+.intro-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.intro-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.intro-brand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.intro-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  letter-spacing: 0.08em;
+}
+
+.intro-chip-primary {
+  color: var(--color-victory);
+}
+
+.intro-step-track {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.step-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 9rem;
+  padding: 0.85rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  color: var(--text-muted);
+}
+
+.step-node.is-active {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+}
+
+.step-node.is-complete .step-index {
+  color: var(--color-victory);
+}
+
+.step-index {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+}
+
+.step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.step-name {
+  color: var(--text-value);
+  font-size: var(--font-base);
+}
+
+.step-desc {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.intro-hero-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 22rem);
+  gap: 1rem;
+}
+
+.intro-hero-copy {
+  padding: 1.25rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.intro-kicker {
+  margin: 0 0 0.75rem 0;
+  color: var(--accent);
+  font-size: var(--font-sm);
+  letter-spacing: 0.1em;
+}
+
+.intro-banner-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.intro-metric-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+}
+
+.intro-metric-value {
+  color: var(--color-victory);
+  font-size: var(--font-2xl);
+  line-height: 1;
+}
+
+.intro-metric-skill {
+  color: var(--color-skill);
+}
+
+.intro-metric-exp {
+  color: var(--color-exp);
+}
+
+.intro-metric-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
 }
 
 .intro-title {
-  font-size: var(--font-2xl);
+  font-size: var(--font-3xl);
   color: var(--text);
-  margin: 0 0 1.5rem 0;
-  text-align: center;
+  margin: 0;
+  text-align: left;
 }
 
 .intro-subtitle {
   font-size: var(--font-base);
   color: var(--text-label);
-  margin: 0 0 1.5rem 0;
-  text-align: center;
+  margin: 0.75rem 0 0 0;
+  text-align: left;
 }
 
 .intro-content {
@@ -292,14 +537,33 @@ function startAdventure() {
   line-height: 1.65;
 }
 
-.intro-content p {
-  margin: 0 0 1rem 0;
+.intro-step1 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.intro-story-card,
+.team-note-card,
+.team-form-shell,
+.preview-summary-card {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.intro-story-card {
+  padding: 1.25rem;
+}
+
+.intro-story-card p {
+  margin: 0;
   font-size: var(--font-base);
   color: var(--text);
 }
 
-.intro-content p:last-child {
-  margin-bottom: 0;
+.intro-story-card p + p {
+  margin-top: 1rem;
 }
 
 .intro-step1 .intro-heroes-preview {
@@ -312,23 +576,46 @@ function startAdventure() {
 .hero-tag {
   font-size: var(--font-sm);
   padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-dark);
+  background: var(--bg-elevated);
 }
 
 .hero-tank {
   color: var(--color-phys);
-  background: rgba(255, 170, 68, 0.08);
 }
 
 .hero-dps {
   color: var(--color-magic);
-  background: rgba(204, 136, 255, 0.08);
 }
 
 .hero-heal {
   color: var(--color-heal);
-  background: rgba(92, 184, 92, 0.08);
+}
+
+.intro-highlight-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.intro-highlight-card {
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+}
+
+.highlight-title {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  letter-spacing: 0.08em;
+}
+
+.intro-highlight-card p {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--text-value);
 }
 
 .form-group {
@@ -346,16 +633,21 @@ function startAdventure() {
   width: 100%;
   padding: 0.6rem 0.8rem;
   font-size: var(--font-lg);
-  background: var(--bg-darker);
+  background: var(--bg-elevated);
   border: 2px solid var(--border);
-  border-radius: 4px;
   color: var(--text);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(0, 255, 170, 0.2);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+
+.field-tip {
+  margin: 0.5rem 0 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
 }
 
 .error-msg {
@@ -368,6 +660,58 @@ function startAdventure() {
   display: flex;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+
+.team-name-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+  gap: 1rem;
+}
+
+.team-name-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.team-note-card {
+  padding: 1.25rem;
+}
+
+.team-note-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-base);
+  line-height: 1.6;
+}
+
+.team-note-label {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  letter-spacing: 0.08em;
+}
+
+.team-suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.team-suggestion {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  color: var(--text-value);
+  font-size: var(--font-sm);
+}
+
+.team-form-shell {
+  padding: 1.25rem;
 }
 
 .intro-actions .btn {
@@ -383,7 +727,7 @@ function startAdventure() {
 .btn-primary:hover {
   background: var(--bg-hover);
   border-color: var(--accent);
-  box-shadow: 0 0 10px rgba(0, 255, 170, 0.25);
+  box-shadow: 0 0 8px var(--focus-glow);
 }
 
 .btn-secondary {
@@ -403,14 +747,38 @@ function startAdventure() {
   margin-bottom: 1.5rem;
 }
 
+.preview-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.preview-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+}
+
+.preview-summary-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+}
+
+.preview-summary-value {
+  color: var(--text-value);
+  font-size: var(--font-md);
+}
+
 .hero-preview-card {
   background: var(--bg-darker);
   border: 2px solid;
-  border-radius: 6px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
 .hero-preview-card.clickable {
@@ -419,7 +787,7 @@ function startAdventure() {
 
 .hero-preview-card.clickable:hover {
   background: var(--bg-hover);
-  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 8px var(--focus-glow);
 }
 
 .hero-card-header {
@@ -454,7 +822,6 @@ function startAdventure() {
   padding: 0.15rem 0.4rem;
   background: var(--bg-skill-tint);
   border: 1px solid var(--border-dark);
-  border-radius: 3px;
   color: var(--color-skill);
 }
 
@@ -468,6 +835,12 @@ function startAdventure() {
 
 .stat-item {
   color: var(--text-value);
+}
+
+.preview-footnote {
+  margin: 0 0 1rem 0;
+  color: var(--text-muted);
+  font-size: var(--font-base);
 }
 
 /* Hero detail modal */
@@ -485,8 +858,7 @@ function startAdventure() {
 .intro-hero-detail-modal {
   background: var(--bg-panel);
   border: 2px solid;
-  border-radius: 6px;
-  box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
+  box-shadow: 0 0 12px var(--focus-glow);
   width: min(92vw, 36rem);
   max-height: 85vh;
   overflow-y: auto;
@@ -527,7 +899,6 @@ function startAdventure() {
 .section-label {
   font-size: var(--font-sm);
   color: var(--text-label);
-  text-transform: uppercase;
   letter-spacing: 0.05em;
   display: block;
   margin-bottom: 0.35rem;
@@ -578,7 +949,6 @@ function startAdventure() {
   padding: 0.6rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
-  border-radius: 4px;
 }
 
 .intro-skill-header {
@@ -606,7 +976,26 @@ function startAdventure() {
   line-height: 1.35;
 }
 
+@media (max-width: 1100px) {
+  .intro-topbar,
+  .intro-hero-banner,
+  .intro-step1,
+  .team-name-layout {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .intro-topbar {
+    align-items: stretch;
+  }
+
+  .intro-step-track {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 640px) {
+  .preview-summary,
   .hero-preview-grid {
     grid-template-columns: 1fr;
   }

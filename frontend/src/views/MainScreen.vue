@@ -1,27 +1,62 @@
 <template>
   <div class="battle-screen">
     <div class="top-bar">
-      <button class="map-btn" @click="showMapModal = true">
-        <span class="map-name">{{ currentMapName }}</span>
-        <span class="map-arrow">&#9660;</span>
-      </button>
-      <div class="gold-display" :title="'金币: ' + gold">
-        <span class="gold-label">金币</span>
-        <span class="gold-value">{{ gold }}</span>
-      </div>
-      <div class="explore-bar-wrap">
-        <div class="explore-track">
-          <div class="explore-fill" :style="{ width: progress.currentProgress + '%' }"></div>
+      <div class="topbar-left">
+        <div class="topbar-section topbar-map-section">
+          <span class="topbar-label">当前地图</span>
+          <button class="map-btn" @click="showMapModal = true">
+            <span class="map-name">{{ currentMapName }}</span>
+            <span class="map-arrow">&#9660;</span>
+          </button>
         </div>
-        <span class="explore-pct">{{ progress.currentProgress }}%</span>
-        <span v-if="progress.bossAvailable" class="boss-badge">BOSS</span>
+        <div class="topbar-section topbar-progress-section">
+          <div class="progress-header">
+            <span class="topbar-label">探索进度</span>
+            <span class="progress-text">{{ progress.currentProgress }}%</span>
+          </div>
+          <div class="explore-bar-wrap">
+            <div class="explore-track">
+              <div class="explore-fill" :style="{ width: progress.currentProgress + '%' }"></div>
+            </div>
+            <span v-if="progress.bossAvailable" class="boss-badge">BOSS</span>
+          </div>
+        </div>
       </div>
-      <button class="btn-logout" @click="logout">登出</button>
+      <div class="topbar-center">
+        <div class="gold-display tooltip-wrap">
+          <span class="gold-label">金币</span>
+          <span class="gold-value">{{ gold }}</span>
+          <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-action-group">
+          <span class="topbar-group-label">功能</span>
+          <div class="topbar-action-buttons">
+            <button class="backpack-btn topbar-btn" @click="showBackpackModal = true">
+              背包 {{ inventoryCount }}/100
+            </button>
+            <button class="shop-btn topbar-btn" @click="showShopModal = true">
+              商店
+            </button>
+          </div>
+        </div>
+        <div class="topbar-logout-group">
+          <span class="topbar-group-label">账号</span>
+          <button class="btn-logout" @click="logout">登出</button>
+        </div>
+      </div>
     </div>
 
     <div class="battle-content">
-      <div class="squad-col">
-        <div class="col-header">{{ squadDisplayName }}</div>
+      <div class="squad-col battle-panel">
+        <div class="panel-header">
+          <div class="panel-heading">
+            <div class="col-header">{{ squadDisplayName }}</div>
+            <p class="panel-subtitle">阵容、血量、资源与状态一览</p>
+          </div>
+          <span class="panel-chip">{{ displayHeroes.length }}/5</span>
+        </div>
         <div class="squad-list">
           <div
             v-for="(hero, i) in displayHeroes"
@@ -45,7 +80,10 @@
               <span class="hero-name" :style="{ color: classColor(hero.class) }">{{ heroDisplayName(hero.name) }}</span>
               <span class="hero-class" :style="{ color: classColor(hero.class) }">{{ classDisplayName(hero.class) }}</span>
             </div>
-            <span class="card-level">Lv.{{ hero.level || 1 }}</span>
+            <div class="card-meta-row">
+              <span class="card-level">Lv.{{ hero.level || 1 }}</span>
+              <span class="card-role">{{ getClassInfo(hero.class)?.role }}</span>
+            </div>
             <div class="bar-row">
               <span class="bar-label">HP</span>
               <div class="bar-track">
@@ -67,41 +105,49 @@
               </div>
               <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
             </div>
-            <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
-              <span
-                v-if="getShieldBuff(hero)"
-                class="status-badge status-buff tooltip-wrap has-tip"
-              >
-                {{ BUFF_DISPLAY.shield.short }}
-                <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}: {{ getShieldTip(hero) }}</span>
-              </span>
-              <span
-                v-for="d in unitDebuffs(hero)"
-                :key="d.type + '-' + (d.remainingRounds ?? 0)"
-                class="status-badge status-debuff tooltip-wrap has-tip"
-              >
-                {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
-                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
-              </span>
+            <div class="card-footer-row">
+              <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
+                <span
+                  v-if="getShieldBuff(hero)"
+                  class="status-badge status-buff tooltip-wrap has-tip"
+                >
+                  {{ BUFF_DISPLAY.shield.short }}
+                  <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}: {{ getShieldTip(hero) }}</span>
+                </span>
+                <span
+                  v-for="d in unitDebuffs(hero)"
+                  :key="d.type + '-' + (d.remainingRounds ?? 0)"
+                  class="status-badge status-debuff tooltip-wrap has-tip"
+                >
+                  {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
+                  <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+                </span>
+              </div>
+              <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="hero.isTank === true"
+                  :data-testid="'hero-tank-check-' + hero.id"
+                  @change="setHeroAsTank(hero, $event.target.checked)"
+                />
+                <span class="tank-check-label">坦克</span>
+                <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
+              </label>
             </div>
-            <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
-              <input
-                type="checkbox"
-                :checked="hero.isTank === true"
-                :data-testid="'hero-tank-check-' + hero.id"
-                @change="setHeroAsTank(hero, $event.target.checked)"
-              />
-              <span class="tank-check-label">坦克</span>
-              <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
-            </label>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">暂无英雄，招募开始冒险。</div>
         </div>
         <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ 招募</button>
       </div>
 
-      <div class="monsters-col">
-        <div class="col-header">怪物</div>
+      <div class="monsters-col battle-panel">
+        <div class="panel-header">
+          <div class="panel-heading">
+            <div class="col-header">怪物</div>
+            <p class="panel-subtitle">当前遭遇与仇恨目标</p>
+          </div>
+          <span class="panel-chip">{{ currentMonsters.length }}</span>
+        </div>
         <div class="monster-list">
           <div
             v-for="(m, i) in currentMonsters"
@@ -124,21 +170,23 @@
               <span class="monster-name">{{ m.name }}</span>
               <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
             </div>
-            <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
-            <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip">
-              <span class="monster-target">
-                &rarr;
-                <span
-                  :style="{
-                    color: monsterTargets[m.id].targetClass
-                      ? classColor(monsterTargets[m.id].targetClass)
-                      : monsterTargets[m.id].targetTier
-                        ? monsterTierColor(monsterTargets[m.id].targetTier)
-                        : 'var(--text-muted)',
-                  }"
-                >{{ monsterTargets[m.id].targetName }}</span>
-              </span>
-              <span class="tooltip-text">{{ monsterTargets[m.id].targetName }}</span>
+            <div class="card-meta-row">
+              <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
+              <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip">
+                <span class="monster-target-label">目标</span>
+                <span class="monster-target">
+                  <span
+                    :style="{
+                      color: monsterTargets[m.id].targetClass
+                        ? classColor(monsterTargets[m.id].targetClass)
+                        : monsterTargets[m.id].targetTier
+                          ? monsterTierColor(monsterTargets[m.id].targetTier)
+                          : 'var(--text-muted)',
+                    }"
+                  >{{ monsterTargets[m.id].targetName }}</span>
+                </span>
+                <span class="tooltip-text">{{ monsterTargets[m.id].targetName }}</span>
+              </div>
             </div>
             <div class="bar-row">
               <span class="bar-label">HP</span>
@@ -147,46 +195,44 @@
               </div>
               <span class="bar-num" :style="{ color: hpBarColor(monsterHpPct(m)) }">{{ m.currentHP }}/{{ m.maxHP }}</span>
             </div>
-            <div v-if="m.taunt || unitDebuffs(m).length > 0" class="status-effects-row">
-              <span
-                v-if="m.taunt"
-                class="status-badge status-taunt tooltip-wrap has-tip"
-              >
-                {{ TAUNT_DISPLAY.short }}
-                <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}: {{ getTauntTip(m.taunt) }}</span>
-              </span>
-              <span
-                v-for="d in unitDebuffs(m)"
-                :key="d.type + '-' + (d.remainingRounds ?? 0)"
-                class="status-badge status-debuff tooltip-wrap has-tip"
-              >
-                {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
-                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
-              </span>
+            <div v-if="m.taunt || unitDebuffs(m).length > 0" class="card-footer-row">
+              <div class="status-effects-row">
+                <span
+                  v-if="m.taunt"
+                  class="status-badge status-taunt tooltip-wrap has-tip"
+                >
+                  {{ TAUNT_DISPLAY.short }}
+                  <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}: {{ getTauntTip(m.taunt) }}</span>
+                </span>
+                <span
+                  v-for="d in unitDebuffs(m)"
+                  :key="d.type + '-' + (d.remainingRounds ?? 0)"
+                  class="status-badge status-debuff tooltip-wrap has-tip"
+                >
+                  {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
+                  <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
+                </span>
+              </div>
             </div>
           </div>
           <div v-if="currentMonsters.length === 0" class="empty-hint">暂无遭遇。</div>
         </div>
       </div>
-      <div class="log-col">
-        <div class="log-col-header">
-          <span class="col-header">战斗日志</span>
+      <div class="log-col battle-panel">
+        <div class="log-col-header panel-header">
+          <div class="panel-heading">
+            <span class="col-header">战斗日志</span>
+            <p class="panel-subtitle">逐回合记录战斗、奖励与恢复过程</p>
+          </div>
           <div class="log-actions">
+            <span class="panel-chip panel-chip-muted">{{ isPaused ? '已暂停' : '自动播放' }}</span>
             <button
               class="btn btn-sm pause-btn"
               :class="{ paused: isPaused }"
-              :title="isPaused ? '继续' : '暂停'"
               @click="isPaused = !isPaused"
             >
               {{ isPaused ? '继续' : '暂停' }}
             </button>
-            <button class="btn btn-sm backpack-btn" title="背包" @click="showBackpackModal = true">
-              背包 {{ inventoryCount }}/100
-            </button>
-            <button class="btn btn-sm shop-btn" title="商店" @click="showShopModal = true">
-              商店
-            </button>
-            <!-- Reserved for future: speed, settings, etc. -->
           </div>
         </div>
         <div class="log-list" ref="logListEl">
@@ -378,6 +424,48 @@
               </div>
             </div>
           </template>
+        </div>
+      </div>
+      <div class="chat-col battle-panel">
+        <div class="panel-header chat-panel-header">
+          <div class="panel-heading">
+            <span class="col-header">世界聊天</span>
+            <p class="panel-subtitle">预留给后续的跨玩家频道与社交互动</p>
+          </div>
+          <span class="panel-chip panel-chip-muted">即将开放</span>
+        </div>
+        <div class="chat-preview-list">
+          <div class="chat-preview-item">
+            <span class="chat-channel-tag">世界</span>
+            <div class="chat-preview-copy">
+              <span class="chat-preview-author">系统</span>
+              <p>世界聊天区域预留中，后续可用于实时频道与系统公告。</p>
+            </div>
+          </div>
+          <div class="chat-preview-item">
+            <span class="chat-channel-tag">示例</span>
+            <div class="chat-preview-copy">
+              <span class="chat-preview-author">玩家A</span>
+              <p>有人准备挑战下一张地图的首领吗？</p>
+            </div>
+          </div>
+          <div class="chat-preview-item">
+            <span class="chat-channel-tag">示例</span>
+            <div class="chat-preview-copy">
+              <span class="chat-preview-author">玩家B</span>
+              <p>我刚刷到一件不错的法系装备，晚点可以分享配置思路。</p>
+            </div>
+          </div>
+        </div>
+        <div class="chat-preview-composer">
+          <label class="chat-composer-label" for="worldChatPreview">世界消息</label>
+          <textarea
+            id="worldChatPreview"
+            class="chat-composer-input"
+            placeholder="世界聊天功能即将开放"
+            disabled
+          ></textarea>
+          <button type="button" class="btn chat-send-btn" disabled>发送</button>
         </div>
       </div>
     </div>
@@ -1346,7 +1434,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
+import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -1500,6 +1588,9 @@ function classColor(heroClass) {
 }
 function classDisplayName(heroClass) {
   return CLASS_DISPLAY_NAMES[heroClass] ?? heroClass
+}
+function getClassInfo(heroClass) {
+  return CLASS_INFO[heroClass] ?? null
 }
 function monsterTierColor(tier) {
   return MONSTER_TIER_COLORS[tier] || 'var(--color-normal)'
@@ -2863,21 +2954,96 @@ onUnmounted(() => {
 
 .top-bar {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.4rem 1rem;
-  border-bottom: 1px solid var(--border);
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border-dark);
   background: var(--bg-panel);
   flex-shrink: 0;
 }
 
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.topbar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-right {
+  flex-shrink: 0;
+}
+
+.topbar-center {
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.topbar-action-group,
+.topbar-logout-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.topbar-action-buttons {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
+.topbar-group-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  letter-spacing: 0.06em;
+}
+
+.topbar-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.topbar-map-section {
+  min-width: 14rem;
+}
+
+.topbar-progress-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  letter-spacing: 0.06em;
+}
+
 .map-btn {
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  width: fit-content;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
   color: var(--accent);
   font-family: inherit;
   font-size: var(--font-base);
-  padding: 0.25rem 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2896,24 +3062,57 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.gold-display {
+.progress-header {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.5rem;
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.progress-text {
+  color: var(--color-victory);
+  font-size: var(--font-base);
+}
+
+.gold-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  min-width: 7rem;
+  min-height: 100%;
+  padding: 0.6rem 0.9rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
   color: var(--color-gold);
   font-size: var(--font-base);
   flex-shrink: 0;
+  text-align: center;
 }
 .gold-label {
-  color: var(--text-muted);
-  font-size: var(--font-s);
+  color: var(--text-label);
+  font-size: var(--font-sm);
 }
 .gold-value {
   font-weight: normal;
   min-width: 2ch;
+  font-size: var(--font-lg);
+  line-height: 1;
+}
+.gold-tooltip {
+  white-space: nowrap;
+  min-width: max-content;
+}
+
+.topbar-btn {
+  min-height: 2.35rem;
+  padding: 0.65rem 0.8rem;
+  font-family: inherit;
+  font-size: var(--font-base);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .modal-box.inventory-modal {
@@ -3145,17 +3344,15 @@ onUnmounted(() => {
 .equipment-slot-val.equip-blocked:hover { text-decoration: none; }
 
 .explore-bar-wrap {
-  flex: 1;
-  min-width: 10rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 .explore-track {
   flex: 1;
-  height: 8px;
+  height: 0.7rem;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-dark);
   overflow: hidden;
 }
 .explore-fill {
@@ -3163,18 +3360,12 @@ onUnmounted(() => {
   background: var(--color-victory);
   transition: width 0.4s;
 }
-.explore-pct {
-  font-size: var(--font-base-sm);
-  color: var(--color-victory);
-  flex-shrink: 0;
-  min-width: 2.5rem;
-  text-align: right;
-}
 .boss-badge {
   font-size: var(--font-sm);
   color: var(--color-boss);
   border: 1px solid var(--color-boss);
-  padding: 0.05rem 0.3rem;
+  background: var(--bg-elevated);
+  padding: 0.15rem 0.45rem;
   flex-shrink: 0;
   animation: pulse 1s ease-in-out infinite;
 }
@@ -3188,12 +3379,13 @@ onUnmounted(() => {
 }
 
 .btn-logout {
-  background: var(--bg-dark);
+  min-height: 2.35rem;
+  background: var(--bg-elevated);
   border: 1px solid var(--error);
   color: var(--error);
   font-family: inherit;
-  font-size: var(--font-base-sm);
-  padding: 0.2rem 0.5rem;
+  font-size: var(--font-base);
+  padding: 0.65rem 0.9rem;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -3203,34 +3395,74 @@ onUnmounted(() => {
 
 .battle-content {
   display: grid;
-  grid-template-columns: 15rem 15rem 1fr;
+  grid-template-columns: 17rem 16rem minmax(0, 1fr) 15rem;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: var(--bg-dark);
 }
 
-.squad-col,
-.log-col,
-.monsters-col {
+.battle-panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.6rem 0.75rem;
-  border-right: 1px solid var(--border);
-}
-.log-col {
-  border-right: none;
+  padding: 0.75rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dark);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
-.log-col-header {
+.log-col {
+  border-color: var(--border);
+}
+
+.chat-col {
+  gap: 0.75rem;
+}
+
+.chat-panel-header {
+  margin-bottom: 0;
+}
+
+.panel-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border-dark);
   flex-shrink: 0;
+}
+
+.panel-heading {
+  min-width: 0;
+}
+
+.panel-subtitle {
+  margin: 0.35rem 0 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.panel-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.8rem;
+  min-height: 1.8rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  color: var(--text-value);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+
+.panel-chip-muted {
+  color: var(--text-label);
 }
 
 .log-actions {
@@ -3243,7 +3475,7 @@ onUnmounted(() => {
 
 .log-actions .btn {
   width: auto;
-  min-width: 5rem;
+  min-width: 4.75rem;
   margin-top: 0;
   flex-shrink: 0;
 }
@@ -3253,8 +3485,8 @@ onUnmounted(() => {
   padding: 0.2rem 0.5rem;
 }
 .pause-btn {
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
   color: var(--text);
   cursor: pointer;
 }
@@ -3269,14 +3501,15 @@ onUnmounted(() => {
 
 .backpack-btn,
 .shop-btn {
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
   color: var(--text);
 }
 .backpack-btn:hover,
 .shop-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--bg-hover);
 }
 .shop-modal {
   min-width: 20rem;
@@ -3396,19 +3629,16 @@ onUnmounted(() => {
 .toast-shop { color: var(--color-gold); }
 
 .col-header {
-  font-size: var(--font-base-sm);
-  color: var(--text-label);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.4rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--border);
+  font-size: var(--font-md);
+  color: var(--text-value);
+  letter-spacing: 0.04em;
   flex-shrink: 0;
 }
 
 /* Shared scrollbar styling */
 .squad-list,
 .monster-list,
+.chat-preview-list,
 .detail-modal,
 .detail-tab-content {
   scrollbar-width: thin;
@@ -3416,18 +3646,21 @@ onUnmounted(() => {
 }
 .squad-list::-webkit-scrollbar,
 .monster-list::-webkit-scrollbar,
+.chat-preview-list::-webkit-scrollbar,
 .detail-modal::-webkit-scrollbar,
 .detail-tab-content::-webkit-scrollbar {
   width: 6px;
 }
 .squad-list::-webkit-scrollbar-track,
 .monster-list::-webkit-scrollbar-track,
+.chat-preview-list::-webkit-scrollbar-track,
 .detail-modal::-webkit-scrollbar-track,
 .detail-tab-content::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }
 .squad-list::-webkit-scrollbar-thumb,
 .monster-list::-webkit-scrollbar-thumb,
+.chat-preview-list::-webkit-scrollbar-thumb,
 .detail-modal::-webkit-scrollbar-thumb,
 .detail-tab-content::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
@@ -3435,9 +3668,109 @@ onUnmounted(() => {
 }
 .squad-list::-webkit-scrollbar-thumb:hover,
 .monster-list::-webkit-scrollbar-thumb:hover,
+.chat-preview-list::-webkit-scrollbar-thumb:hover,
 .detail-modal::-webkit-scrollbar-thumb:hover,
 .detail-tab-content::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+
+.chat-preview-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.6rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+}
+
+.chat-preview-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+}
+
+.chat-channel-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.4rem;
+  min-height: 1.35rem;
+  padding: 0.1rem 0.3rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  color: var(--text-label);
+  font-size: var(--font-xs);
+  flex-shrink: 0;
+}
+
+.chat-preview-copy {
+  min-width: 0;
+}
+
+.chat-preview-author {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-value);
+  font-size: var(--font-sm);
+}
+
+.chat-preview-copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+.chat-preview-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+}
+
+.chat-composer-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+}
+
+.chat-composer-input {
+  width: 100%;
+  min-height: 5.5rem;
+  resize: none;
+  padding: 0.6rem;
+  font-family: inherit;
+  font-size: var(--font-base);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  color: var(--text-muted);
+}
+
+.chat-composer-input:disabled {
+  opacity: 1;
+}
+
+.chat-send-btn {
+  margin-top: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.chat-send-btn:hover:disabled {
+  background: var(--bg-elevated);
+  border-color: var(--border-dark);
+  color: var(--text-muted);
+  box-shadow: none;
+  text-shadow: none;
 }
 
 /* Hero cards */
@@ -3446,22 +3779,25 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
 }
 .hero-card {
   border: 1px solid;
-  padding: 0.35rem 0.45rem;
-  background: var(--bg-dark);
+  padding: 0.55rem 0.6rem;
+  background: var(--bg-elevated);
   cursor: pointer;
   transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 .hero-card:hover {
   background: var(--bg-hover);
 }
 .hero-card.acting {
-  transform: scale(1.08);
-  box-shadow: 0 0 0 2px rgba(0, 255, 170, 0.85), 0 0 12px rgba(0, 255, 170, 0.35);
+  transform: translateY(-0.1rem);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--focus-glow);
 }
 .hero-card.targetHit {
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
@@ -3490,7 +3826,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 0.1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 .hero-name {
   font-size: var(--font-base);
@@ -3500,23 +3837,35 @@ onUnmounted(() => {
 .hero-class {
   font-size: var(--font-sm);
   display: inline-block;
-  padding: 0.08rem 0.3rem;
+  padding: 0.12rem 0.38rem;
   border: 1px solid currentColor;
-  border-radius: 3px;
+}
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
 }
 .card-level {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  margin-bottom: 0.15rem;
+}
+.card-role {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  padding: 0.12rem 0.4rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
 }
 .recruit-btn {
-  margin-top: 0.4rem;
+  margin-top: 0.65rem;
   flex-shrink: 0;
   width: 100%;
-  padding: 0.35rem;
+  padding: 0.55rem;
   font-size: var(--font-base);
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
   color: var(--accent);
   font-family: inherit;
   cursor: pointer;
@@ -3571,7 +3920,10 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -3590,24 +3942,26 @@ onUnmounted(() => {
 }
 
 .log-separator {
-  margin: 0.6rem 0;
+  margin: 0.7rem 0;
 }
 .log-separator-battle {
-  border-top: 2px solid var(--border-dark);
-  margin: 0.8rem 0;
+  border-top: 1px solid var(--border);
+  margin: 0.95rem 0 0.8rem 0;
 }
 .log-separator-round {
   border-top: 1px dashed var(--border-dashed);
-  margin: 0.3rem 0;
+  margin: 0.45rem 0 0.15rem 0;
 }
 
 .log-map-entry {
   font-size: var(--font-base);
-  padding: 0.5rem 0.6rem;
-  margin: 0.35rem 0;
-  background: var(--bg-darker);
+  padding: 0.75rem 0.85rem;
+  margin: 0.15rem 0 0.35rem 0;
+  background: var(--bg-elevated);
   border-left: 4px solid var(--color-exp);
-  border-radius: 0 4px 4px 0;
+  border-top: 1px solid var(--border-dark);
+  border-right: 1px solid var(--border-dark);
+  border-bottom: 1px solid var(--border-dark);
   color: var(--text-value);
 }
 .log-map-entry-label {
@@ -3627,31 +3981,43 @@ onUnmounted(() => {
 .log-encounter {
   font-size: var(--font-base);
   color: var(--accent);
-  padding: 0.3rem 0;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  border-left: 3px solid var(--accent);
   font-style: italic;
 }
 
 .log-summary {
   font-size: var(--font-base);
   font-weight: bold;
-  padding: 0.3rem 0;
-  border-top: 1px solid var(--border-dashed);
-  margin-top: 0.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-elevated);
+  margin-top: 0.2rem;
+}
+.log-summary.victory-text {
+  border-left: 3px solid var(--color-victory);
+}
+.log-summary.defeat-text {
+  border-left: 3px solid var(--color-defeat);
 }
 .log-rewards-box {
-  margin-top: 0.35rem;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid rgba(255, 204, 68, 0.55);
-  border-radius: 4px;
-  background: rgba(68, 51, 34, 0.35);
+  margin-top: 0.15rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--color-gold);
+  background: var(--bg-dark);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.6rem;
 }
 .log-rewards-box-defeat {
-  border-color: rgba(255, 68, 68, 0.5);
-  background: rgba(68, 34, 34, 0.3);
+  border-color: var(--error);
+  background: var(--bg-dark);
 }
 .log-summary .log-rewards-box .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0; }
@@ -3682,11 +4048,10 @@ onUnmounted(() => {
 .log-levelup {
   font-size: var(--font-base);
   font-weight: bold;
-  padding: 0.4rem 0.5rem;
-  margin: 0.25rem 0;
-  background: rgba(136, 255, 170, 0.08);
+  padding: 0.55rem 0.7rem;
+  margin: 0.15rem 0;
+  background: var(--bg-elevated);
   border: 1px solid var(--color-exp);
-  border-radius: 4px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3709,11 +4074,11 @@ onUnmounted(() => {
 .log-defeated {
   font-size: var(--font-base);
   font-weight: bold;
-  padding: 0.35rem 0.5rem;
-  margin: 0.2rem 0;
-  background: rgba(255, 68, 68, 0.1);
+  padding: 0.5rem 0.65rem;
+  margin: 0.15rem 0;
+  background: var(--bg-elevated);
   border: 1px solid var(--color-defeat);
-  border-radius: 4px;
+  border-left-width: 3px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3729,9 +4094,11 @@ onUnmounted(() => {
 .log-defeated-text { font-weight: bold; }
 
 .log-rest {
-  font-size: var(--font-s);
+  font-size: var(--font-sm);
   color: var(--text-muted);
-  padding: 0.15rem 0;
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
   font-style: italic;
 }
 .log-rest-sep {
@@ -3746,16 +4113,17 @@ onUnmounted(() => {
   font-size: var(--font-base);
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
+  gap: 0.25rem;
   align-items: baseline;
-  padding: 0.12rem 0;
-  border-bottom: 1px solid var(--border-darkest);
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
 }
 .log-round {
   color: var(--color-log-detail);
-  background: rgba(34, 68, 51, 0.6);
-  padding: 0.05rem 0.25rem;
-  border-radius: 2px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  padding: 0.08rem 0.35rem;
   flex-shrink: 0;
 }
 .log-sep {
@@ -3796,35 +4164,46 @@ onUnmounted(() => {
   font-size: var(--font-sm);
 }
 .monster-target-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: var(--font-sm);
   color: var(--text-muted);
-  margin-top: 0.05rem;
-  margin-bottom: 0.05rem;
+  min-width: 0;
+  padding: 0.12rem 0.4rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.monster-target-label {
+  color: var(--text-label);
+  flex-shrink: 0;
+}
 .monster-target {
   color: var(--text-muted);
   font-size: var(--font-sm);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .log-dtype {
   color: var(--color-log-detail);
   font-size: var(--font-sm);
-  background: rgba(34, 68, 51, 0.5);
-  padding: 0.02rem 0.2rem;
-  border-radius: 2px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  padding: 0.04rem 0.25rem;
 }
 .log-detail-box {
   width: 100%;
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
   margin-left: 2.5rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid rgba(102, 170, 136, 0.5);
-  border-radius: 3px;
-  background: rgba(34, 68, 51, 0.25);
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-dark);
 }
-.log-detail-box > * + * { margin-top: 0.15rem; }
+.log-detail-box > * + * { margin-top: 0.25rem; }
 .log-entry.log-dot .log-detail-box { margin-left: 0; }
 .log-detail-box .log-calc,
 .log-detail-box .log-target-hp,
@@ -3838,12 +4217,14 @@ onUnmounted(() => {
   font-size: var(--font-sm);
   color: var(--color-log-detail-alt);
   padding-left: 0;
+  line-height: 1.45;
 }
 .log-target-hp {
   width: 100%;
   font-size: var(--font-sm);
   color: var(--color-log-detail-alt);
   padding-left: 0;
+  line-height: 1.45;
 }
 .log-detail-box .log-debuff { color: var(--text-muted); }
 
@@ -3859,22 +4240,25 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
 }
 .monster-card {
-  border: 1px solid var(--border);
-  padding: 0.35rem 0.45rem;
-  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  padding: 0.55rem 0.6rem;
+  background: var(--bg-elevated);
   cursor: pointer;
   transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 .monster-card:hover {
-  background: rgba(255, 102, 68, 0.04);
+  background: var(--bg-hover);
 }
 .monster-card.acting {
-  transform: scale(1.08);
-  box-shadow: 0 0 0 2px rgba(0, 255, 170, 0.85), 0 0 12px rgba(0, 255, 170, 0.35);
+  transform: translateY(-0.1rem);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--focus-glow);
 }
 .monster-card.targetHit {
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
@@ -3904,7 +4288,7 @@ onUnmounted(() => {
 .empty-hint {
   color: var(--text-muted);
   font-size: var(--font-base-sm);
-  padding: 0.5rem 0;
+  padding: 0.75rem 0;
   text-align: center;
 }
 
@@ -4295,6 +4679,13 @@ input.tactics-condition-value[type="number"] {
   bottom: auto;
   top: calc(100% + 4px);
 }
+.gold-display .tooltip-text.tooltip-below {
+  bottom: auto;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
 .resource-rage { color: var(--color-rage) !important; }
 
 /* Attribute allocation */
@@ -4368,17 +4759,29 @@ input.tactics-condition-value[type="number"] {
 .status-effects-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-top: 0.25rem;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.card-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-dark);
 }
 .hero-tank-check {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  margin-top: 0.25rem;
   font-size: var(--font-xs);
   color: var(--color-phys);
   cursor: pointer;
+  flex-shrink: 0;
+  padding: 0.12rem 0.35rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
 }
 .hero-tank-check input[type="checkbox"] {
   appearance: none;
@@ -4386,9 +4789,8 @@ input.tactics-condition-value[type="number"] {
   width: 0.75rem;
   height: 0.75rem;
   min-width: 0.75rem;
-  background: var(--bg-dark);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
-  border-radius: 2px;
   cursor: pointer;
   flex-shrink: 0;
   display: grid;
@@ -4418,12 +4820,11 @@ input.tactics-condition-value[type="number"] {
 }
 .status-badge {
   font-size: var(--font-xs);
-  padding: 0.1rem 0.3rem;
-  border-radius: 3px;
+  padding: 0.12rem 0.35rem;
   cursor: help;
 }
 .status-debuff {
-  background: rgba(212, 160, 23, 0.25);
+  background: var(--bg-dark);
   border: 1px solid var(--color-debuff);
   color: var(--color-debuff-light);
 }
