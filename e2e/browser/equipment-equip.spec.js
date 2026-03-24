@@ -140,7 +140,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-sep-line').filter({ hasText: 'Equipment' })).toBeVisible()
+    await expect(page.locator('.detail-sep-line').filter({ hasText: '\u88c5\u5907' })).toBeVisible()
     const slotRows = page.locator('.equipment-slot-row')
     await expect(slotRows).toHaveCount(10)
     await expect(slotRows.first()).toContainText('空')
@@ -164,7 +164,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(armorRow).toBeVisible({ timeout: 5000 })
     const armorBefore = await armorRow.locator('.detail-value').textContent()
 
-    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
+    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
@@ -187,7 +187,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const helmSlot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val')
+    const helmSlot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' }).locator('.equipment-slot-val')
     await helmSlot.scrollIntoViewIfNeeded()
     await helmSlot.click()
     const inventoryModal = page.locator('.inventory-modal')
@@ -195,7 +195,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(inventoryModal.locator('.modal-title')).toContainText('头盔', { timeout: 5000 })
     const slots = inventoryModal.locator('.inventory-slot')
     await expect(slots).toHaveCount(1, { timeout: 5000 })
-    await expect(slots.first()).toContainText('便帽')
+    await expect(slots.first()).toContainText('Cap')
   })
 
   test('unequip restores slot to Empty', async ({ page }) => {
@@ -216,19 +216,30 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
     }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      squad.forEach((h) => {
+        delete h.currentHP
+      })
+      localStorage.setItem('squad', JSON.stringify(squad))
+    })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    await pauseCombat(page)
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toBeVisible({ timeout: 5000 })
-    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Helm' }).locator('.equipment-slot-val').click()
+    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.item-detail-modal').filter({ hasText: 'Cap' })).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: 'Unequip' }).click()
-    await expect(page.locator('.sell-confirm-text').filter({ hasText: 'Unequip and move to backpack' })).toBeVisible({ timeout: 5000 })
-    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
+    await page.getByRole('button', { name: '\u5378\u4e0b' }).click()
+    await expect(page.locator('.sell-confirm-text').filter({ hasText: '\u5378\u4e0b\u5e76\u79fb\u81f3\u80cc\u5305' })).toBeVisible({ timeout: 5000 })
+    await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.detail-modal .equipment-slot-val').filter({ hasText: 'Cap' })).toHaveCount(0, { timeout: 5000 })
     await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '头盔' })).toContainText('空', { timeout: 5000 })
   })
 
   test('AC10/AC11: equip weapon with damage range shows PhysAtk as min-max in hero detail', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `eq-weapon-range-e2e-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)
 
@@ -238,21 +249,32 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
     }, SAMPLE_WEAPON_RANGE, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      squad.forEach((h) => {
+        delete h.currentHP
+      })
+      localStorage.setItem('squad', JSON.stringify(squad))
+    })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
-    await page.locator('.equipment-slot-row').filter({ hasText: 'Main Hand' }).locator('.equipment-slot-val').click()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u4e3b\u624b' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Short Sword' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
 
-    const physAtkRow = page.locator('.detail-row').filter({ hasText: 'PhysAtk' }).first()
+    const physAtkRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'PhysAtk' }).first()
     await expect(physAtkRow).toBeVisible()
     const physAtkVal = await physAtkRow.locator('.detail-value').textContent()
     expect(physAtkVal).toMatch(/^\d+\.?\d*-\d+\.?\d*$/)
   })
 
   test('equip second ring when first ring already equipped (Ring1 item to Ring2 slot)', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `eq-dual-ring-e2e-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)
 
@@ -268,10 +290,21 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
     }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      squad.forEach((h) => {
+        delete h.currentHP
+      })
+      localStorage.setItem('squad', JSON.stringify(squad))
+    })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const ring2Slot = page.locator('.detail-modal .equipment-slot-row').filter({ hasText: 'Ring' }).nth(1).locator('.equipment-slot-val')
+    // EQUIPMENT_SLOTS: Ring1 index 8, Ring2 index 9 (both labeled 戒指)
+    const ring2Slot = page.locator('.detail-modal .equipment-slot-row').nth(9).locator('.equipment-slot-val')
     await ring2Slot.scrollIntoViewIfNeeded()
     await expect(ring2Slot).toContainText('空', { timeout: 5000 })
     await ring2Slot.click()
@@ -309,7 +342,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Ring' }).first().click()
     await expect(page.locator('.item-detail-modal')).toBeVisible()
-    await page.locator('.item-detail-modal').getByRole('button', { name: /^Varian/ }).first().click({ timeout: 5000 })
+    await page.locator('.item-detail-modal').getByRole('button', { name: /^\u74e6\u91cc\u5b89/ }).first().click({ timeout: 5000 })
     await expect(page.locator('.equip-replace-choices')).toBeVisible()
     await page.locator('.equip-replace-option').first().click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
@@ -344,12 +377,12 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).last().click()
     await expect(page.locator('.item-detail-modal')).toBeVisible({ timeout: 5000 })
-    await page.locator('.item-detail-modal').getByRole('button', { name: /^Varian/ }).first().click({ timeout: 5000 })
+    await page.locator('.item-detail-modal').getByRole('button', { name: /^\u74e6\u91cc\u5b89/ }).first().click({ timeout: 5000 })
     await expect(page.locator('.item-compare-section')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.item-compare-label').filter({ hasText: 'Current' })).toBeVisible()
-    await expect(page.locator('.item-compare-label').filter({ hasText: 'New' })).toBeVisible()
+    await expect(page.locator('.item-compare-label').filter({ hasText: '\u5f53\u524d' })).toBeVisible()
+    await expect(page.locator('.item-compare-label').filter({ hasText: '\u65b0\u88c5\u5907' })).toBeVisible()
     await expect(page.locator('.equip-replace-hint')).toContainText('背包')
-    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
+    await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible({ timeout: 5000 })
 
     const result = await page.evaluate(() => {

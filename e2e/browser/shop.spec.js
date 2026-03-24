@@ -38,8 +38,8 @@ test.describe('Shop (Example 24)', () => {
     await expect(page.locator('.shop-modal')).toBeVisible()
     await expect(page.locator('.shop-modal .modal-title')).toContainText('商店')
     await expect(page.locator('.shop-gold-row')).toContainText('金币')
-    await expect(page.locator('.shop-slot-row').filter({ hasText: 'Body Armor' })).toBeVisible()
-    await expect(page.locator('.shop-slot-row').filter({ hasText: 'gold' }).first()).toBeVisible()
+    await expect(page.locator('.shop-slot-row').filter({ hasText: '\u80f8\u7532' })).toBeVisible()
+    await expect(page.locator('.shop-slot-row').filter({ hasText: '\u91d1\u5e01' }).first()).toBeVisible()
   })
 
   test('Buy with sufficient gold deducts gold and adds item', async ({ page }) => {
@@ -56,16 +56,16 @@ test.describe('Shop (Example 24)', () => {
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()
 
-    const helmRow = page.locator('.shop-slot-row').filter({ hasText: 'Helm' })
-    await helmRow.getByRole('button', { name: 'Buy' }).click()
+    const helmRow = page.locator('.shop-slot-row').filter({ hasText: '\u5934\u76d4' })
+    await helmRow.getByRole('button', { name: '\u8d2d\u4e70' }).click()
     await expect(page.locator('.shop-confirm-row')).toBeVisible()
-    await page.getByRole('button', { name: 'Confirm' }).click()
+    await page.getByRole('button', { name: '\u786e\u8ba4' }).click()
 
     await expect(page.locator('.shop-modal')).toBeVisible()
     const goldAfter = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0
     expect(goldAfter).toBeLessThan(goldBefore)
 
-    await page.locator('.shop-modal').getByRole('button', { name: 'Close' }).click()
+    await page.locator('.shop-modal').getByRole('button', { name: '\u5173\u95ed' }).click()
     await expect(page.locator('.shop-modal')).not.toBeVisible()
 
     await page.locator('.backpack-btn').click()
@@ -85,8 +85,8 @@ test.describe('Shop (Example 24)', () => {
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()
 
-    const helmRow = page.locator('.shop-slot-row').filter({ hasText: 'Helm' })
-    const buyBtn = helmRow.getByRole('button', { name: 'Buy' })
+    const helmRow = page.locator('.shop-slot-row').filter({ hasText: '\u5934\u76d4' })
+    const buyBtn = helmRow.getByRole('button', { name: '\u8d2d\u4e70' })
     await expect(buyBtn).toBeDisabled()
   })
 
@@ -99,7 +99,7 @@ test.describe('Shop (Example 24)', () => {
     await page.locator('.shop-btn').click()
     await expect(page.locator('.shop-modal')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '\u5173\u95ed' }).click()
     await expect(page.locator('.shop-modal')).not.toBeVisible()
   })
 })

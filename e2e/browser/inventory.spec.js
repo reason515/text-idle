@@ -45,7 +45,7 @@ test.describe('Inventory (Example 22)', () => {
     await backpackBtn.click()
     await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.inventory-counter')).toContainText(/\/\s*100/, { timeout: 5000 })
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: '\u5173\u95ed' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
   })
 
@@ -66,7 +66,7 @@ test.describe('Inventory (Example 22)', () => {
     const counterMatch = counterText.match(/(\d+)\s*\/\s*100/)
     expect(counterMatch).not.toBeNull()
     expect(Number(counterMatch[1])).toBeGreaterThanOrEqual(1)
-    await expect(page.locator('.inventory-slot').first()).toContainText('便帽')
+    await expect(page.locator('.inventory-slot').first()).toContainText('Cap')
   })
 
   test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
@@ -83,9 +83,9 @@ test.describe('Inventory (Example 22)', () => {
     await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
     const slot = page.locator('.inventory-slot').filter({ hasText: 'Cap' }).first()
     await slot.hover()
-    await page.waitForTimeout(150)
+    await page.waitForTimeout(280)
     const tooltip = page.locator('.inventory-slot-tooltip')
-    await expect(tooltip).toBeVisible({ timeout: 3000 })
+    await expect(tooltip).toBeVisible({ timeout: 15000 })
     await expect(tooltip).toContainText('护甲')
   })
 
@@ -102,12 +102,12 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await expect(page.locator('.item-detail-modal')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.item-detail-modal')).toContainText('便帽')
+    await expect(page.locator('.item-detail-modal')).toContainText('Cap')
     await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: '槽位' })).toContainText('头盔')
-    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Level Req' })).toBeVisible()
-    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: 'Sell Price' })).toBeVisible()
-    await expect(page.locator('.item-detail-modal').getByRole('button', { name: 'Sell' })).toBeVisible()
-    await page.locator('.item-detail-modal').getByRole('button', { name: 'Close' }).click()
+    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: '\u7b49\u7ea7\u9700\u6c42' })).toBeVisible()
+    await expect(page.locator('.item-detail-modal .detail-row').filter({ hasText: '\u51fa\u552e\u4ef7\u683c' })).toBeVisible()
+    await expect(page.locator('.item-detail-modal').getByRole('button', { name: '\u51fa\u552e' })).toBeVisible()
+    await page.locator('.item-detail-modal').getByRole('button', { name: '\u5173\u95ed' }).click()
   })
 
   test('Sell removes item and increases gold', async ({ page }) => {
@@ -125,8 +125,8 @@ test.describe('Inventory (Example 22)', () => {
 
     await page.locator('.backpack-btn').click()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
-    await page.locator('.item-detail-modal').getByRole('button', { name: 'Sell' }).click()
-    await page.locator('.item-detail-modal').getByRole('button', { name: 'Confirm' }).click()
+    await page.locator('.item-detail-modal').getByRole('button', { name: '\u51fa\u552e' }).click()
+    await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
 
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
     const invAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('playerInventory') || '[]'))

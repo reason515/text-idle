@@ -2912,6 +2912,11 @@ async function runCombatLoop() {
       progress.value = deductExplorationProgress(progress.value, 10)
       saveProgress()
       await sleepMs(combatDelayMs(2000))
+      // E2E fast mode: autoRest heals in the same tick; yield so defeated UI can be observed
+      if (isE2eFastMode()) {
+        await nextTick()
+        await sleepMs(150)
+      }
       await autoRest(result.heroesAfter, { isDefeat: true })
     }
 

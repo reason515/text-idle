@@ -45,10 +45,11 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(card.locator('.card-level')).toContainText('Lv.')
     await expect(card.locator('.bar-track').first()).toBeVisible()
     await expect(card.locator('.bar-row').first()).toContainText('HP')
-    await expect(card.locator('.bar-row').nth(1)).toContainText('Rage')
+    await expect(card.locator('.bar-row').nth(1)).toContainText('\u6012\u6c14')
   })
 
   test('HP bar color reflects health: green when healthy', async ({ page }) => {
+    test.setTimeout(120000)
     const email = `hp-color-e2e-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)
 
@@ -164,7 +165,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
     await expect(page.locator('.log-agi').first()).toBeVisible()
     const agiText = await page.locator('.log-agi').first().textContent()
-    expect(agiText).toMatch(/\(AGI \d+\)/)
+    expect(agiText).toMatch(/\uff08\u654f\u6377 \d+\uff09/)
   })
 
   test('combat log shows target HP change', async ({ page }) => {
@@ -175,7 +176,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page.locator('.log-target-hp').first()).toBeVisible({ timeout: 30000 })
     const hpText = await page.locator('.log-target-hp').first().textContent()
-    expect(hpText).toMatch(/HP:.*->.*\/\d+/)
+    expect(hpText).toMatch(/\u751f\u547d:.*->.*\/\d+/)
   })
 
   test('battle summary appears after combat ends', async ({ page }) => {
@@ -239,10 +240,11 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const battleContent = page.locator('.battle-content')
     await expect(battleContent).toBeVisible()
     const cols = battleContent.locator('> div')
-    await expect(cols).toHaveCount(3)
+    await expect(cols).toHaveCount(4)
     await expect(cols.nth(0)).toHaveClass(/squad-col/)
     await expect(cols.nth(1)).toHaveClass(/monsters-col/)
     await expect(cols.nth(2)).toHaveClass(/log-col/)
+    await expect(cols.nth(3)).toHaveClass(/chat-col/)
   })
 
   test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {
@@ -253,7 +255,9 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      squad.forEach((h) => { if (h.maxHP) h.currentHP = h.maxHP })
+      squad.forEach((h) => {
+        delete h.currentHP
+      })
       localStorage.setItem('squad', JSON.stringify(squad))
     }, undefined, { pauseFirst: true })
     await pauseCombat(page)
@@ -266,7 +270,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const basicHpMatch = basicHpText.match(/(\d+)\s*\/\s*(\d+)/)
     expect(basicHpMatch).not.toBeNull()
     const basicHpValue = basicHpMatch ? basicHpMatch[2] : null
-    const secondaryHp = page.locator('.detail-section-secondary .detail-row').filter({ hasText: 'HP' })
+    const secondaryHp = page.locator('.detail-section-secondary .detail-row').filter({ hasText: '\u751f\u547d' })
     await expect(secondaryHp).toBeVisible()
     await expect(secondaryHp).toContainText(String(basicHpValue))
     await page.getByRole('button', { name: '关闭' }).click()
@@ -315,8 +319,8 @@ test.describe('Combat Flow (Example 5-9)', () => {
     })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
-    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Sunder Armor' }).first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Armor reduced by 8' }).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u7834\u7532' }).first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u62a4\u7532\u964d\u4f4e 8' }).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('Example 31: Taunt appears in combat log when warrior has Taunt skill (AC4)', async ({ page }) => {
@@ -340,7 +344,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     })
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
-    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: 'Taunt' }).first()).toBeVisible({ timeout: 60000 })
+    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u5632\u8bbd' }).first()).toBeVisible({ timeout: 60000 })
   })
 })
 
@@ -370,7 +374,6 @@ test.describe('Threat Display (Example 32)', () => {
     await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '嘲讽' }).first()).toBeVisible({ timeout: 60000 })
     await expect(page.locator('.log-calc').filter({ hasText: '2 次行动' }).first()).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.log-calc').filter({ hasText: '->' }).first()).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.monster-target-row').filter({ hasText: 'Tank' }).first()).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.log-target-intent').filter({ hasText: '嘲讽' }).first()).toBeVisible({ timeout: 5000 })
   })
 

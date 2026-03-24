@@ -181,7 +181,7 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
     await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
 
-    await page.locator('.skill-choice-modal button').filter({ hasText: 'Skip' }).click()
+    await page.locator('.skill-choice-modal button').filter({ hasText: '\u8df3\u8fc7' }).click()
 
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
     await expect(page.locator('.hero-card').first()).toBeVisible()

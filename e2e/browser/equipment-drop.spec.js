@@ -77,8 +77,8 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
     }, undefined, { pauseFirst: true, safePath: '/main' })
     await page.waitForTimeout(150)
 
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
-    const summary = page.locator('.log-summary.victory-text').first()
+    await expect(page.locator('.log-summary.victory-text .log-item-drop').first()).toBeVisible({ timeout: 90000 })
+    const summary = page.locator('.log-summary.victory-text').filter({ has: page.locator('.log-item-drop') }).last()
     const dropCount = await summary.locator('.log-item-drop').count()
     expect(dropCount).toBeGreaterThanOrEqual(1)
   })

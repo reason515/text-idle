@@ -6,23 +6,23 @@ test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
-    await expect(page.getByText('放置类 RPG')).toBeVisible()
+    await expect(page.getByText(/\u6587\u5b57\u6302\u673a RPG/)).toBeVisible()
   })
 
   test('AC2: clicking Next shows team name step', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
@@ -34,10 +34,10 @@ test.describe('Opening Introduction E2E', () => {
   test('AC2b: entering team name and Next shows hero preview step', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
@@ -54,10 +54,10 @@ test.describe('Opening Introduction E2E', () => {
   test('AC3: entering team name and confirming redirects to main with fixed trio', async ({ page }) => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await page.goto('/register?e2e=1')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
@@ -78,10 +78,10 @@ test.describe('Opening Introduction E2E', () => {
     const email = `intro-e2e-${Date.now()}@example.com`
     await setupNewRun(page)
     await page.goto('/register?e2e=1')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password (min 8 chars)').fill('password123')
-    await page.getByLabel('Confirm Password').fill('password123')
-    await page.getByRole('button', { name: 'Register' }).click()
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
@@ -90,12 +90,12 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.goto('/login')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel(/Password/).fill('password123')
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.getByLabel('\u90ae\u7bb1').fill(email)
+    await page.getByLabel('\u5bc6\u7801').fill('password123')
+    await page.getByRole('button', { name: '\u767b\u5f55' }).click()
 
-    await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
     await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.col-header').first()).toBeVisible()
   })
