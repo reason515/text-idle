@@ -1,0 +1,28 @@
+---
+description: Go backend - packages, tests, API layer
+globs:
+  - "**/*.go"
+alwaysApply: false
+---
+
+# Backend (Go)
+
+## Layout
+
+- `cmd/server/` - application entry
+- `internal/` - `handler`, `service`, `repository`, `model`, `server`, etc.
+- Root `e2e/*_test.go` - Go tests co-located with E2E package (not Playwright)
+
+## Code
+
+- ASCII only in source (see `core.mdc`).
+- Prefer clear handler -> service -> repository boundaries; handle errors explicitly.
+
+## Tests
+
+- Go tests: `*_test.go` next to packages (e.g. `internal/handler/auth_test.go`).
+- Run: `go test ./...` from repo root, or scoped package path.
+
+## Not in scope here
+
+- Vue/CSS and browser E2E live under `frontend/` and `e2e/browser/`; follow those rules when editing those paths.

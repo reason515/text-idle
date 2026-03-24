@@ -1,6 +1,8 @@
 ---
 description: UI design tokens - colors, fonts, spacing. All new UI MUST follow.
-alwaysApply: true
+globs:
+  - frontend/**/*
+alwaysApply: false
 ---
 
 # UI Design Standards

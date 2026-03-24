@@ -1,0 +1,32 @@
+---
+description: Design and requirements docs - cross-refs, checklist, code alignment
+globs:
+  - docs/design/**/*
+  - docs/requirements-format.md
+  - docs/design-change-impact.md
+alwaysApply: false
+---
+
+# Documentation sync (`docs/design/`, requirements, impact checklist)
+
+## Language
+
+- Documentation **may** use non-ASCII (see `core.mdc`: ASCII applies to **source code**, not necessarily to `docs/`).
+
+## When editing design docs
+
+- Keep [docs/design/index.md](docs/design/index.md) navigation and module summaries accurate when adding, renaming, or removing design files.
+- Formulas, attributes, skill text, and UI behavior described in `docs/design/*.md` must stay **consistent** with implementation (`frontend/src/`, backend, tests). If the doc is authoritative, update code/tests; if the code is authoritative, update the doc in the same change set.
+- UI appearance and tokens: [docs/design/11-ui-tokens.md](docs/design/11-ui-tokens.md) must match [frontend/src/style.css](frontend/src/style.css) when tokens change (and vice versa).
+
+## Core flow or UX changes
+
+- For squad, recruitment, skills, intro, routing, or similar: run through [docs/design-change-impact.md](docs/design-change-impact.md) (Examples, E2E, routing, requirements examples).
+
+## Requirements and acceptance criteria
+
+- When user stories or acceptance criteria are affected, update [docs/requirements-format.md](docs/requirements-format.md) so examples and ACs match the current product flow.
+
+## Full sync list
+
+- Broader obligation (unit/E2E, all doc paths): see **Doc and Test Sync** in `workflow.mdc`.

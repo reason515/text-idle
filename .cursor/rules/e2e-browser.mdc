@@ -1,0 +1,27 @@
+---
+description: Playwright E2E - browser specs, ports, helpers
+globs:
+  - e2e/browser/**/*
+alwaysApply: false
+---
+
+# E2E Browser (`e2e/browser/`)
+
+## Definition
+
+- Full UI flow through the browser to the backend (Playwright).
+- Specs: `e2e/browser/*.spec.js`; shared helpers: `e2e/browser/testHelpers.js`, `globalSetup.js`, `globalHooks.js`.
+
+## Running
+
+- From repo root: `npm run e2e` (runs port release / DB reset per project script when configured).
+- If ports 8080 / 5173 are in use or running manually: `powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1` first (see `workflow.mdc`).
+
+## Implementation
+
+- ASCII only in spec and helper source.
+- Follow patterns in existing specs; for new coverage, see [.cursor/skills/text-idle-add-e2e-test/SKILL.md](.cursor/skills/text-idle-add-e2e-test/SKILL.md).
+
+## Doc sync
+
+- When E2E asserts behavior tied to design or acceptance criteria, update `docs/design/` or requirements docs per `workflow.mdc`.

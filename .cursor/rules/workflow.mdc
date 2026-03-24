@@ -26,18 +26,9 @@ Update them when the change affects formulas, attributes, UI behavior, or accept
 
 **Design change impact**: When modifying core flows (squad, recruitment, skills, intro, routing), run the [Design Change Impact Checklist](docs/design-change-impact.md) to avoid UI/flow oversights (e.g., Examples, E2E, routing).
 
-## Color Usage (Gold)
+**Frontend / UI**: When editing `frontend/**`, follow `ui-design.mdc` (tokens, gold vs accent, tooltips, forms).
 
-- `var(--color-gold)` / gold color: **ONLY** for gold-related content (currency, rewards, sell, costs)
-- Other highlights (accent, level-up, skill, victory): use `var(--accent)`, `var(--color-exp)`, `var(--color-skill)`, `var(--color-victory)` etc.
-
-## Tooltip Style (Unified)
-
-All hover tips must use the custom tooltip pattern, not native `title`:
-
-- Wrap: `class="tooltip-wrap has-tip"` (has-tip adds dotted underline and help cursor)
-- Content: `<span class="tooltip-text">Tip content here</span>` inside the wrap
-- Do NOT use `:title` or `title=` for user-facing tooltips; it shows native OS style
+**Design / requirements docs**: When editing `docs/design/**`, `docs/requirements-format.md`, or `docs/design-change-impact.md`, follow `docs-sync.mdc` (cross-refs, checklist, alignment with code).
 
 ## Prohibited
 
@@ -50,11 +41,11 @@ All hover tips must use the custom tooltip pattern, not native `title`:
 
 - E2E = full UI flow through browser to backend
 - Location: `e2e/browser/`
-- Use Playwright
+- Use Playwright; detailed rules for specs and port setup: `e2e-browser.mdc` (applies when editing `e2e/browser/**`)
 
 ## E2E Port Release (Before Running)
 
-Before running `npm run e2e`, release ports 8080 and 5173 and reset DB:
+Before running `npm run e2e`, release ports 8080 and 5173 and reset DB (full detail in `e2e-browser.mdc`):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1

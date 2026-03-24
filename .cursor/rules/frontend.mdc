@@ -1,0 +1,26 @@
+---
+description: Frontend (Vue/Vite) - structure, Vitest unit tests
+globs:
+  - frontend/**/*
+alwaysApply: false
+---
+
+# Frontend (`frontend/`)
+
+## Stack
+
+- Vue 3, Vite; entry `frontend/src/main.js`, views under `frontend/src/views/`, game logic under `frontend/src/game/`.
+
+## Unit tests (Vitest)
+
+- Colocated: `frontend/src/**/*.spec.js`
+- Run from repo: `cd frontend; npm run test` (or `npm run test` in `frontend` per package.json)
+- Prefer mirroring patterns in existing `*.spec.js` files next to the module under test.
+
+## UI and styling
+
+- All UI must follow `ui-design.mdc` (same glob) and [docs/design/11-ui-tokens.md](docs/design/11-ui-tokens.md).
+
+## Doc sync
+
+- When changing game rules, formulas, or user-visible behavior, update `docs/design/` and tests per `workflow.mdc`.

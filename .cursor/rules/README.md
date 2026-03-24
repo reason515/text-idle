@@ -2,18 +2,21 @@
 
 ## Structure
 
-| File | alwaysApply | Purpose |
-|------|-------------|---------|
-| `core.mdc` | true | ASCII, TDD, Definition of Done, pre-implementation checklist |
-| `workflow.mdc` | true | Output order, prohibited behaviors, E2E definition |
-| `game-design.mdc` | true | Turn-based combat, no real-time units (seconds/minutes) |
-| `shell.mdc` | false | PowerShell rules (globs: package.json, configs) |
-| `rules.md` | - | Full reference (Cursor loads .mdc, not .md) |
+| File | Scope | Purpose |
+|------|---------|---------|
+| `core.mdc` | always | ASCII, TDD, Definition of Done, pre-implementation checklist |
+| `workflow.mdc` | always | Output order, doc sync, prohibited behaviors, E2E definition, anti-hang |
+| `game-design.mdc` | always | Turn-based combat, idle game, no real-time units |
+| `shell.mdc` | always | PowerShell rules (no `&&`, prefer project tools) |
+| `frontend.mdc` | `frontend/**` | Vue/Vite layout, Vitest unit tests, pointer to UI tokens |
+| `ui-design.mdc` | `frontend/**` | Tokens, colors, tooltips, forms, battle log semantic colors |
+| `backend.mdc` | `**/*.go` | Go packages, `go test`, handler/service boundaries |
+| `e2e-browser.mdc` | `e2e/browser/**` | Playwright specs, helpers, port script, E2E skill |
+| `docs-sync.mdc` | `docs/design/**`, `docs/requirements-format.md`, `docs/design-change-impact.md` | Index cross-refs, formula/UI alignment, impact checklist, requirements AC |
+| `rules.md` | - | Full human reference (Cursor loads `.mdc`, not `.md`) |
+
+Rules with `globs` apply when the active context matches those paths (e.g. editing a file under `frontend/`). Always-applied rules still apply everywhere.
 
 ## Why .mdc?
 
-Cursor's rules system uses `.mdc` (Markdown with YAML frontmatter). Files with `alwaysApply: true` are included in every AI context. The old `rules.md` may not be loaded automatically.
-
-## Verification
-
-After editing rules, start a new chat to ensure they are applied.
+Cursor rules use `.mdc` (Markdown with YAML frontmatter). After editing rules, start a new chat so updated rules apply.

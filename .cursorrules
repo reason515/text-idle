@@ -1,6 +1,6 @@
 # Project Standards & AI Behavior
 
-**Primary rules:** `.cursor/rules/*.mdc` (alwaysApply). Read these before implementation.
+**Primary rules:** `.cursor/rules/*.mdc` (always-apply + path `globs` for `frontend/**`, `**/*.go`, `e2e/browser/**`, `docs/design/**`, and listed docs). Read these before implementation.
 
 ## Language & Encoding
 - **Language**: ALL code, variable names, function names, and comments MUST be written in English.
