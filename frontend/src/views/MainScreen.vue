@@ -1051,21 +1051,37 @@
                     <div class="ai-tactics-preview-label">解析预览</div>
                     <div v-if="aiTacticsResult.tactics.skillPriority?.length" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key">技能优先级</span>
-                      <span class="ai-tactics-preview-val">{{ aiTacticsResult.tactics.skillPriority.map(id => skillDisplayName(id, selectedHero.class)).join(' > ') }}</span>
+                      <span class="ai-tactics-preview-val ai-tactics-priority-chain">
+                        <template v-for="(skillId, priorityIndex) in aiTacticsResult.tactics.skillPriority" :key="skillId">
+                          <span class="ai-tactics-priority-token ai-tactics-priority-token-skill">{{ skillDisplayName(skillId, selectedHero.class) }}</span>
+                          <span v-if="priorityIndex < aiTacticsResult.tactics.skillPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                        </template>
+                      </span>
                     </div>
                     <div v-if="aiTacticsResult.tactics.targetRule" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key">默认目标</span>
-                      <span class="ai-tactics-preview-val">{{ targetRuleDisplayName(aiTacticsResult.tactics.targetRule) }}</span>
+                      <span class="ai-tactics-preview-val">
+                        <span class="ai-tactics-rule-item">
+                          <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(aiTacticsResult.tactics.targetRule) }}</span>
+                        </span>
+                      </span>
                     </div>
                     <div v-for="(c, ci) in aiTacticsResult.tactics.conditions" :key="ci" class="ai-tactics-preview-row">
-                      <span class="ai-tactics-preview-key">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
-                      <span class="ai-tactics-preview-val">
-                        <template v-if="c.targetRule">目标：{{ targetRuleDisplayName(c.targetRule) }}</template>
-                        <template v-else-if="c.targetRules?.length">目标优先链：{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</template>
-                        <template v-if="c.when">
-                          <span v-if="c.targetRule || c.targetRules?.length"> | </span>
-                          条件：{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template>
-                        </template>
+                      <span class="ai-tactics-preview-key ai-tactics-preview-skill-key">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
+                      <span class="ai-tactics-preview-val ai-tactics-rule-list">
+                        <span v-if="c.targetRule" class="ai-tactics-rule-item">
+                          <span class="ai-tactics-rule-label">目标</span>
+                          <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
+                        </span>
+                        <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
+                          <span class="ai-tactics-rule-label">目标优先链</span>
+                          <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</span>
+                        </span>
+                        <span v-if="c.when" class="ai-tactics-rule-item">
+                          <span class="ai-tactics-rule-label">条件</span>
+                          <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
+                        </span>
+                        <span v-if="!c.targetRule && !c.targetRules?.length && !c.when" class="ai-tactics-current-empty">无额外规则</span>
                       </span>
                     </div>
                   </div>
@@ -1079,21 +1095,24 @@
               <div v-if="selectedHero.tactics && (selectedHero.tactics.skillPriority?.length || selectedHero.tactics.targetRule || selectedHero.tactics.conditions?.length)" class="detail-section ai-tactics-current">
                 <div class="ai-tactics-current-row">
                   <span class="ai-tactics-current-label">技能优先级</span>
-                  <span class="ai-tactics-current-val">
+                  <span class="ai-tactics-current-val ai-tactics-priority-chain">
                     <template v-if="tacticsSkillPriority(selectedHero).length">
-                      <span
-                        v-for="(sid, pi) in tacticsSkillPriority(selectedHero)"
-                        :key="sid"
-                        class="ai-tactics-current-skill"
-                      ><span class="ai-tactics-current-skill-name">{{ getHeroSkillDisplay(sid, selectedHero).name }}</span><span v-if="pi < tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-current-arrow"> &gt; </span></span>
-                      <span class="ai-tactics-current-basic"> &gt; 普通攻击</span>
+                      <template v-for="(sid, pi) in tacticsSkillPriority(selectedHero)" :key="sid">
+                        <span class="ai-tactics-priority-token ai-tactics-priority-token-skill">{{ getHeroSkillDisplay(sid, selectedHero).name }}</span>
+                        <span class="ai-tactics-priority-arrow">&gt;</span>
+                        <span v-if="pi === tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
+                      </template>
                     </template>
                     <span v-else class="ai-tactics-current-empty">未设置（按默认顺序）</span>
                   </span>
                 </div>
                 <div class="ai-tactics-current-row">
                   <span class="ai-tactics-current-label">默认目标</span>
-                  <span class="ai-tactics-current-val">{{ targetRuleDisplayName(tacticsTargetRule(selectedHero)) }}</span>
+                  <span class="ai-tactics-current-val">
+                    <span class="ai-tactics-rule-item">
+                      <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(tacticsTargetRule(selectedHero)) }}</span>
+                    </span>
+                  </span>
                 </div>
                 <template v-if="selectedHero.tactics.conditions?.length">
                   <div class="ai-tactics-current-divider"></div>
@@ -1104,13 +1123,19 @@
                     class="ai-tactics-current-row ai-tactics-current-condition"
                   >
                     <span class="ai-tactics-current-label ai-tactics-current-skill-label">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
-                    <span class="ai-tactics-current-val">
-                      <template v-if="c.targetRule">目标：{{ targetRuleDisplayName(c.targetRule) }}</template>
-                      <template v-else-if="c.targetRules?.length">目标优先链：{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</template>
-                      <template v-if="c.when">
-                        <span v-if="c.targetRule || c.targetRules?.length" class="ai-tactics-current-sep"> | </span>
-                        条件：{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template>
-                      </template>
+                    <span class="ai-tactics-current-val ai-tactics-rule-list">
+                      <span v-if="c.targetRule" class="ai-tactics-rule-item">
+                        <span class="ai-tactics-rule-label">目标</span>
+                        <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
+                      </span>
+                      <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
+                        <span class="ai-tactics-rule-label">目标优先链</span>
+                        <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</span>
+                      </span>
+                      <span v-if="c.when" class="ai-tactics-rule-item">
+                        <span class="ai-tactics-rule-label">条件</span>
+                        <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
+                      </span>
                       <span v-if="!c.targetRule && !c.targetRules?.length && !c.when" class="ai-tactics-current-empty">无额外规则</span>
                     </span>
                   </div>
@@ -4571,6 +4596,10 @@ input.tactics-condition-value[type="number"] {
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.75rem;
 }
 .ai-tactics-key-block {
   display: flex;
@@ -4578,8 +4607,8 @@ input.tactics-condition-value[type="number"] {
   gap: 0.5rem;
 }
 .ai-tactics-key-guide {
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.6rem 0.75rem;
 }
@@ -4626,6 +4655,7 @@ input.tactics-condition-value[type="number"] {
   display: flex;
   gap: 0.4rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 .ai-tactics-key-input {
   flex: 1;
@@ -4645,14 +4675,32 @@ input.tactics-condition-value[type="number"] {
 .ai-tactics-key-btn {
   white-space: nowrap;
 }
+/* Global .btn is width:100%; keep tactics controls compact */
+.ai-tactics-key-row .btn.btn-sm,
+.ai-tactics-key-saved .btn.btn-sm,
+.ai-tactics-actions .btn.btn-sm,
+.ai-tactics-apply-row .btn.btn-sm,
+.ai-tactics-current-clear-row .btn.btn-sm {
+  width: auto;
+  min-width: 0;
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.65rem;
+  border-width: 1px;
+  font-size: var(--font-sm);
+}
 .ai-tactics-key-saved {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: var(--font-sm);
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 .ai-tactics-key-ok {
-  color: var(--accent);
+  color: var(--color-victory);
 }
 .ai-tactics-key-change {
   font-size: var(--font-xs);
@@ -4660,8 +4708,12 @@ input.tactics-condition-value[type="number"] {
 }
 .ai-tactics-input-hint {
   font-size: var(--font-sm);
-  color: var(--text-muted);
-  line-height: 1.4;
+  color: var(--text-label);
+  line-height: 1.5;
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border-dark);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
 }
 .ai-tactics-textarea {
   width: 100%;
@@ -4682,20 +4734,25 @@ input.tactics-condition-value[type="number"] {
   box-shadow: 0 0 6px var(--focus-glow);
 }
 .ai-tactics-textarea::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
   font-size: var(--font-sm);
+  opacity: 1;
 }
 .ai-tactics-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem 0.6rem;
+  row-gap: 0.35rem;
 }
 .ai-tactics-submit {
-  min-width: 5rem;
+  flex-shrink: 0;
 }
 .ai-tactics-hint {
   font-size: var(--font-xs);
-  color: var(--text-muted);
+  color: var(--text-placeholder);
+  white-space: nowrap;
+  line-height: 1.35;
 }
 .ai-tactics-error {
   font-size: var(--font-sm);
@@ -4703,8 +4760,8 @@ input.tactics-condition-value[type="number"] {
   padding: 0.3rem 0;
 }
 .ai-tactics-result {
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.6rem 0.7rem;
   display: flex;
@@ -4722,34 +4779,96 @@ input.tactics-condition-value[type="number"] {
   gap: 0.15rem;
 }
 .ai-tactics-warning-item {
-  font-size: var(--font-xs);
+  font-size: var(--font-sm);
   color: var(--warning);
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem;
 }
 .ai-tactics-preview {
-  background: var(--bg-elevated);
+  background: var(--bg-dark);
   border-radius: 4px;
+  border: 1px solid var(--border-dark);
   padding: 0.4rem 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.35rem;
 }
 .ai-tactics-preview-label {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  margin-bottom: 0.15rem;
+  font-size: var(--font-sm);
+  color: var(--accent);
+  margin-bottom: 0.1rem;
 }
 .ai-tactics-preview-row {
-  display: flex;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 0.25rem 0.6rem;
   font-size: var(--font-sm);
-  flex-wrap: wrap;
+  align-items: start;
 }
 .ai-tactics-preview-key {
   color: var(--text-label);
-  min-width: 6rem;
 }
 .ai-tactics-preview-val {
   color: var(--text-value);
+  min-width: 0;
+}
+.ai-tactics-preview-skill-key {
+  color: var(--color-skill);
+  font-style: italic;
+}
+.ai-tactics-priority-chain {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.ai-tactics-priority-token {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
+  color: var(--text-value);
+  line-height: 1.3;
+}
+.ai-tactics-priority-token-skill {
+  color: var(--color-skill);
+  background: var(--bg-skill-tint);
+  font-style: italic;
+}
+.ai-tactics-priority-token-basic {
+  color: var(--color-log-basic);
+}
+.ai-tactics-priority-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ai-tactics-rule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.ai-tactics-rule-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.15rem 0.45rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
+}
+.ai-tactics-rule-label {
+  color: var(--text-label);
+  white-space: nowrap;
+}
+.ai-tactics-rule-value {
+  color: var(--text-value);
+  min-width: 0;
   word-break: break-word;
 }
 .ai-tactics-apply-row {
@@ -4776,33 +4895,25 @@ input.tactics-condition-value[type="number"] {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.75rem;
 }
 .ai-tactics-current-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 0.25rem 0.6rem;
+  align-items: start;
   font-size: var(--font-base);
   line-height: 1.5;
 }
 .ai-tactics-current-label {
   color: var(--text-label);
-  min-width: 5.5rem;
-  flex-shrink: 0;
 }
 .ai-tactics-current-val {
   color: var(--text-value);
-  word-break: break-word;
-}
-.ai-tactics-current-skill-name {
-  color: var(--color-skill);
-  font-style: italic;
-}
-.ai-tactics-current-arrow {
-  color: var(--text-muted);
-}
-.ai-tactics-current-basic {
-  color: var(--text-muted);
-  font-size: var(--font-sm);
+  min-width: 0;
 }
 .ai-tactics-current-empty {
   color: var(--text-muted);
@@ -4814,25 +4925,25 @@ input.tactics-condition-value[type="number"] {
 }
 .ai-tactics-current-sub-title {
   font-size: var(--font-sm);
-  color: var(--text-muted);
+  color: var(--accent);
   margin-bottom: 0.1rem;
 }
 .ai-tactics-current-condition {
-  padding-left: 0.5rem;
+  padding-left: 0;
 }
 .ai-tactics-current-skill-label {
   color: var(--color-skill);
   font-style: italic;
-}
-.ai-tactics-current-sep {
-  color: var(--text-muted);
 }
 .ai-tactics-current-clear-row {
   margin-top: 0.4rem;
   display: flex;
 }
 .ai-tactics-current-none {
-  padding: 0.5rem 0;
+  padding: 0.75rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
 }
 .detail-empty-hint {
   color: var(--text-muted);
