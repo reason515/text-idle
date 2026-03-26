@@ -1128,28 +1128,32 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 **Design Reference (from design doc)**
 
-- **Tactics structure**: Each hero has `tactics` with `skillPriority`, `targetRule`, and optional `conditions`. See [10-tactics.md](design/10-tactics.md).
+- **Tactics structure**: Each hero has `tactics` with `skillPriority`, `targetRule`, and optional `conditions` (per-skill `targetRule`, `targetRules` fallback chain, or `when`). See [10-tactics.md](design/10-tactics.md).
+- **Configuration UI**: Natural-language input + AI parse (SiliconFlow Qwen3-8B) + Apply merges into saved tactics; read-only **current tactics** summary. See [10-tactics.md](design/10-tactics.md) section 7.
 - **Skill priority**: Ordered list of skill IDs; the first skill that passes resource, cooldown, and conditions is used; if none, basic attack.
-- **Target rules (enemy)**: lowest-hp, highest-hp, order (first/random), and threat presets (`threat-not-tank-random`, `threat-tank-top-random`, `threat-tank-top-lowest-on-tank`, `threat-tank-top-highest-on-tank`; require designated tank). Legacy IDs may still load. See [10-tactics.md](design/10-tactics.md).
+- **Target rules (enemy)**: lowest-hp, highest-hp, order (first/random), and threat presets (`threat-not-tank-random`, `threat-tank-top-random`, `threat-tank-top-lowest-on-tank`, `threat-tank-top-highest-on-tank`; require designated tank for full semantics). Legacy IDs may still load. See [10-tactics.md](design/10-tactics.md).
 - **Target rules (ally)**: lowest-hp-ally, self, tank — for heals and buffs.
-- **Conditions**: Per-skill triggers (target-hp-below, target-has-debuff, ally-ot, etc.); `target-has-debuff` filters target pool; `ally-ot` is placeholder until threat system exists.
+- **targetRules chain**: Per-skill array tried in order until a target is found; if none, skill is skipped. See [10-tactics.md](design/10-tactics.md).
+- **Conditions**: Per-skill triggers (target-hp-below, target-has-debuff, ally-ot, etc.); `target-has-debuff` filters target pool.
+- **Apply merge**: Incoming `skillPriority` / `targetRule` overwrite when present; `conditions` merge by `skillId`.
 - **Default**: When no tactics configured, use hero's skill list order and first alive target.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Player is on the main screen or squad view | Player opens the Tactics/Strategize UI | A tactics configuration interface is shown; player can select a hero to configure |
-| AC2 | Player has selected a hero and opened tactics config | Player views the config | Skill priority (ordered list), target rule (dropdown), and optional conditions per skill are editable |
-| AC3 | Player sets skill priority to [Shield Slam, Sunder Armor, Heroic Strike] for a Warrior | Player saves tactics | The hero's tactics are persisted; in combat, the hero tries Shield Slam first, then Sunder Armor, then Heroic Strike (subject to resource, cooldown, conditions) |
-| AC4 | Player sets target rule to "lowest-hp" for a DPS hero | Hero acts in combat | The hero selects the enemy with the lowest current HP as the target (among valid targets for the chosen skill) |
-| AC5 | Player sets target rule to "lowest-hp-ally" for a heal skill condition | Healer acts in combat | The healer selects the ally with the lowest current HP as the heal target |
+| AC1 | Player is on the main screen or squad view | Player opens a hero and the Tactics tab | The AI tactics section is shown (natural language input and AI parse action); player can describe rules in text |
+| AC2 | Player has selected a hero and opened the Tactics tab | Player views the panel | A read-only **current tactics** area shows applied priority, default target, and per-skill rules when configured; or a hint when nothing is configured |
+| AC3 | Player has not configured a SiliconFlow API Key (or equivalent) | Player attempts to run AI parse with non-empty text | The UI shows an error or prompt to configure the API Key before parsing |
+| AC4 | Warrior tactics are persisted with target rule `lowest-hp` (via AI apply or saved data) | Hero acts in combat | The hero selects the enemy with the lowest current HP as the target (among valid targets for the chosen skill) |
+| AC5 | Healer tactics use ally target `lowest-hp-ally` for a heal (via AI apply or saved data) | Healer acts in combat | The healer selects the ally with the lowest current HP as the heal target |
 | AC6 | Hero has tactics configured with skill priority [A, B, C] | Hero's turn arrives and skill A fails (insufficient resource or cooldown) | The hero tries skill B next; if B fails, tries C; if all fail, performs basic attack |
 | AC7 | Hero has no tactics configured | Hero acts in combat | Default behavior: use hero's skill list order; target is first alive enemy |
-| AC8 | Player configures condition `{ skillId: 'execute', when: 'target-hp-below', value: 0.30 }` | Warrior's turn and Execute is in priority list | Execute is only attempted when the selected target has HP below 30%; otherwise Execute is skipped and next skill is tried |
-| AC9 | Player configures condition `{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }` | Warrior's turn and no enemy has Sunder debuff | Shield Slam is skipped (no valid target); next skill in priority (e.g., Sunder Armor) is tried |
-| AC10 | Player configures condition `{ skillId: 'taunt', when: 'ally-ot' }` | Threat system is not yet implemented | ally-ot evaluates to false; Taunt is skipped; next skill in priority is tried (placeholder behavior) |
-| AC11 | Player sets target rule for Basic Attack to "lowest-hp" in tactics | Hero performs basic attack (no skill available) | The hero selects the enemy with the lowest current HP as the target |
+| AC8 | Hero has condition `{ skillId: 'execute', when: 'target-hp-below', value: 0.30 }` | Warrior's turn and Execute is in priority list | Execute is only attempted when the selected target has HP below 30%; otherwise Execute is skipped and next skill is tried |
+| AC9 | Hero has condition `{ skillId: 'shield-slam', when: 'target-has-debuff', value: 'sunder' }` | Warrior's turn and no enemy has Sunder debuff | Shield Slam is skipped (no valid target); next skill in priority (e.g., Sunder Armor) is tried |
+| AC10 | Hero has condition `{ skillId: 'taunt', when: 'ally-ot' }` | Combat state where ally-ot is false | Taunt is skipped when the condition is not met; next skill in priority is tried |
+| AC11 | Hero has global target rule `lowest-hp` and performs basic attack | No skill in priority is usable | Basic attack uses the same target-rule resolution as other enemy-targeting actions for that hero |
+| AC12 | Player applies a second AI parse that only adds per-skill `conditions` | Player clicks Apply | Existing `skillPriority` and `targetRule` remain unless the new result explicitly includes them; conditions merge by `skillId` |
 
 ---
 

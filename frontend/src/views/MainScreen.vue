@@ -992,7 +992,7 @@
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
             <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
               <div class="detail-sep-line">AI 战术配置</div>
-              <div class="detail-section ai-tactics-section">
+              <div class="detail-section ai-tactics-section" data-testid="ai-tactics-section">
                 <div v-if="aiTacticsShowKey" class="ai-tactics-key-block">
                   <div class="ai-tactics-key-guide">
                     <div class="ai-tactics-key-guide-title">如何免费获取 API Key</div>
@@ -1023,6 +1023,7 @@
                 <textarea
                   v-model="aiTacticsInput"
                   class="ai-tactics-textarea"
+                  data-testid="ai-tactics-textarea"
                   :placeholder="selectedHero.class === 'Priest'
                     ? '例：先给自己上盾，然后治疗血量最低的队友；队友血量低于40%时才治疗'
                     : selectedHero.class === 'Warrior'
@@ -1036,12 +1037,13 @@
                   <button
                     type="button"
                     class="btn btn-sm ai-tactics-submit"
+                    data-testid="ai-tactics-submit"
                     :disabled="aiTacticsLoading || !aiTacticsInput.trim()"
                     @click="aiTacticsSubmit(selectedHero)"
                   >{{ aiTacticsLoading ? '解析中...' : 'AI 解析' }}</button>
                   <span class="ai-tactics-hint">Ctrl+Enter 快捷提交</span>
                 </div>
-                <div v-if="aiTacticsError" class="ai-tactics-error">{{ aiTacticsError }}</div>
+                <div v-if="aiTacticsError" class="ai-tactics-error" data-testid="ai-tactics-error">{{ aiTacticsError }}</div>
                 <div v-if="aiTacticsResult" class="ai-tactics-result">
                   <div class="ai-tactics-explanation">{{ aiTacticsResult.explanation }}</div>
                   <div v-if="aiTacticsResult.warnings.length > 0" class="ai-tactics-warnings">
@@ -1092,7 +1094,7 @@
                 </div>
               </div>
               <div class="detail-sep-line">当前战术</div>
-              <div v-if="selectedHero.tactics && (selectedHero.tactics.skillPriority?.length || selectedHero.tactics.targetRule || selectedHero.tactics.conditions?.length)" class="detail-section ai-tactics-current">
+              <div v-if="selectedHero.tactics && (selectedHero.tactics.skillPriority?.length || selectedHero.tactics.targetRule || selectedHero.tactics.conditions?.length)" class="detail-section ai-tactics-current" data-testid="ai-tactics-current">
                 <div class="ai-tactics-current-row">
                   <span class="ai-tactics-current-label">技能优先级</span>
                   <span class="ai-tactics-current-val ai-tactics-priority-chain">
@@ -1141,10 +1143,10 @@
                   </div>
                 </template>
                 <div class="ai-tactics-current-clear-row">
-                  <button type="button" class="btn btn-sm ai-tactics-discard-btn" @click="aiTacticsClearAll(selectedHero)">清空全部战术</button>
+                  <button type="button" class="btn btn-sm ai-tactics-discard-btn" data-testid="ai-tactics-clear-all" @click="aiTacticsClearAll(selectedHero)">清空全部战术</button>
                 </div>
               </div>
-              <div v-else class="detail-section ai-tactics-current-none">
+              <div v-else class="detail-section ai-tactics-current-none" data-testid="ai-tactics-current-empty">
                 <span class="ai-tactics-current-empty">尚未配置战术，请在上方输入规则后点击「AI 解析」。</span>
               </div>
             </template>
@@ -1438,7 +1440,7 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
-import { parseNaturalLanguageTactics, validateAiTactics, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
+import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
@@ -2082,19 +2084,9 @@ function aiTacticsApply(hero) {
   if (!result?.tactics || !hero) return
   const t = result.tactics
   saveTacticsToSquad(hero, (tactics) => {
-    if (t.skillPriority?.length) tactics.skillPriority = t.skillPriority
-    if (t.targetRule) tactics.targetRule = t.targetRule
-    if (Array.isArray(t.conditions) && t.conditions.length > 0) {
-      if (!tactics.conditions) tactics.conditions = []
-      for (const newCond of t.conditions) {
-        const idx = tactics.conditions.findIndex((c) => c.skillId === newCond.skillId)
-        if (idx >= 0) {
-          tactics.conditions[idx] = { ...newCond }
-        } else {
-          tactics.conditions.push({ ...newCond })
-        }
-      }
-    }
+    const merged = mergeAiTacticsApply(tactics, t)
+    Object.keys(tactics).forEach((k) => delete tactics[k])
+    Object.assign(tactics, merged)
   })
   aiTacticsResult.value = null
   aiTacticsInput.value = ''

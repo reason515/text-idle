@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateAiTactics } from './aiTactics.js'
+import { validateAiTactics, mergeAiTacticsApply } from './aiTactics.js'
 
 describe('validateAiTactics', () => {
   const priestSkills = ['flash-heal', 'power-word-shield']
@@ -177,5 +177,41 @@ describe('validateAiTactics', () => {
     const result = validateAiTactics(raw, warriorSkills, 'Warrior')
     expect(result.tactics.conditions).toHaveLength(1)
     expect(result.tactics.conditions[0].when).toBe('target-hp-below')
+  })
+})
+
+describe('mergeAiTacticsApply', () => {
+  it('merges conditions by skillId and preserves other skills', () => {
+    const existing = {
+      skillPriority: ['sunder-armor', 'taunt'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [
+        { skillId: 'taunt', targetRule: 'threat-not-tank-random' },
+      ],
+    }
+    const incoming = {
+      conditions: [
+        { skillId: 'sunder-armor', targetRules: ['threat-not-tank-random', 'lowest-hp'] },
+      ],
+    }
+    const merged = mergeAiTacticsApply(existing, incoming)
+    expect(merged.skillPriority).toEqual(['sunder-armor', 'taunt'])
+    expect(merged.targetRule).toBe('threat-not-tank-random')
+    expect(merged.conditions).toHaveLength(2)
+    expect(merged.conditions.find((c) => c.skillId === 'taunt')).toEqual(existing.conditions[0])
+    expect(merged.conditions.find((c) => c.skillId === 'sunder-armor')?.targetRules).toEqual([
+      'threat-not-tank-random',
+      'lowest-hp',
+    ])
+  })
+
+  it('overwrites skillPriority and targetRule when incoming provides them', () => {
+    const existing = { skillPriority: ['taunt'], targetRule: 'first' }
+    const merged = mergeAiTacticsApply(existing, {
+      skillPriority: ['sunder-armor'],
+      targetRule: 'lowest-hp',
+    })
+    expect(merged.skillPriority).toEqual(['sunder-armor'])
+    expect(merged.targetRule).toBe('lowest-hp')
   })
 })

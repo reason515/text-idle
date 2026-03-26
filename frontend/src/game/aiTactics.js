@@ -334,6 +334,35 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
 }
 
 /**
+ * Merge validated AI tactics into existing hero tactics (used on Apply).
+ * - skillPriority / targetRule: overwritten only when incoming provides them.
+ * - conditions: merged by skillId (replace same skill, append new skills).
+ * @param {Object|undefined} existing
+ * @param {Object} incoming - Parsed tactics from validateAiTactics
+ * @returns {Object} New tactics object (does not mutate existing)
+ */
+export function mergeAiTacticsApply(existing, incoming) {
+  const out = existing && typeof existing === 'object'
+    ? JSON.parse(JSON.stringify(existing))
+    : {}
+  if (!incoming || typeof incoming !== 'object') return out
+  const t = incoming
+  if (t.skillPriority?.length) out.skillPriority = [...t.skillPriority]
+  if (t.targetRule) out.targetRule = t.targetRule
+  if (Array.isArray(t.conditions) && t.conditions.length > 0) {
+    if (!out.conditions) out.conditions = []
+    for (const newCond of t.conditions) {
+      if (!newCond?.skillId) continue
+      const idx = out.conditions.findIndex((c) => c.skillId === newCond.skillId)
+      const copy = { ...newCond }
+      if (idx >= 0) out.conditions[idx] = copy
+      else out.conditions.push(copy)
+    }
+  }
+  return out
+}
+
+/**
  * Call AI to parse natural language into tactics.
  * @param {string} userInput - Player's natural language rules
  * @param {string} heroClass - Warrior / Mage / Priest
