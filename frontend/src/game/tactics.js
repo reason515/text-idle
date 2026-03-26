@@ -244,6 +244,13 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
     return alive.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))
   }
 
+  if (targetRule === 'self') {
+    const { actor } = opts
+    if (!actor) return null
+    const found = alive.find((u) => u.id === actor.id)
+    return found ?? null
+  }
+
   if (targetRule === 'highest-hp') {
     return alive.reduce((a, b) => ((a.currentHP ?? 0) > (b.currentHP ?? 0) ? a : b))
   }

@@ -991,215 +991,136 @@
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
             <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
-              <div class="detail-sep-line">技能优先级与单技能配置</div>
-              <div class="detail-section tactics-priority-hint">按序尝试技能；均不可用时普攻。指定坦克的战士可为破甲、普攻设目标 1、2（1 无效时用 2）。</div>
-              <div class="detail-section tactics-condition-category-hint">「敌方」含按怪与仇恨的条件；「友方」看队友血量。与上方选怪规则不同。</div>
-              <div v-if="!hasDesignatedTank" class="detail-section tactics-tank-hint">
-                <span class="tactics-tank-hint-text">需先在小队指定一名坦克，方可选仇恨相关规则。</span>
-              </div>
-              <div class="detail-section tactics-default-target-row">
-                <span class="detail-label tactics-default-label">默认目标</span>
-                <template v-if="selectedHero.class === 'Priest'">
-                  <select
-                    :value="tacticsTargetRule(selectedHero)"
-                    class="tactics-select tactics-default-target"
-                    data-testid="tactics-target-rule"
-                    @change="setTacticsTargetRule(selectedHero, $event.target.value)"
-                  >
-                    <option
-                      v-for="opt in tacticsDefaultTargetOptions(selectedHero)"
-                      :key="opt.value"
-                      :value="opt.value"
-                      :disabled="opt.requiresTank && !hasDesignatedTank"
-                    >{{ opt.label }}</option>
-                  </select>
-                </template>
-                <template v-else>
-                  <select
-                    :value="getGlobalEnemyTargetL1(selectedHero)"
-                    class="tactics-select tactics-default-target tactics-enemy-l1"
-                    data-testid="tactics-target-rule-l1"
-                    @change="onGlobalEnemyTargetL1(selectedHero, $event.target.value)"
-                  >
-                    <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
-                  </select>
-                  <select
-                    :value="getGlobalEnemyTargetL2(selectedHero)"
-                    class="tactics-select tactics-default-target tactics-enemy-l2"
-                    data-testid="tactics-target-rule-l2"
-                    @change="onGlobalEnemyTargetL2(selectedHero, getGlobalEnemyTargetL1(selectedHero), $event.target.value)"
-                  >
-                    <option
-                      v-for="opt in enemyL2OptionsForL1(getGlobalEnemyTargetL1(selectedHero))"
-                      :key="opt.id"
-                      :value="opt.id"
-                      :disabled="opt.requiresTank && !hasDesignatedTank"
-                    >{{ opt.label }}</option>
-                  </select>
-                </template>
-                <span class="tactics-default-hint">（未单独设时用）</span>
-              </div>
-              <div class="tactics-skill-list">
-                <div
-                  v-for="(skillId, idx) in tacticsDisplaySkillList(selectedHero)"
-                  :key="skillId"
-                  class="tactics-skill-row tactics-skill-row-expanded"
-                >
-                  <div class="tactics-skill-header">
-                    <span class="tactics-skill-order">{{ idx + 1 }}.</span>
-                    <span
-                      class="tactics-skill-name"
-                      :class="skillId === 'basic-attack' ? 'tactics-skill-name-basic' : 'tactics-skill-name-skill'"
-                    >{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
-                    <div v-if="skillId !== 'basic-attack'" class="tactics-skill-btns">
-                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx === 0" @click="moveTacticsSkill(selectedHero, idx, -1)">&#9650;</button>
-                      <button type="button" class="btn btn-sm tactics-move-btn" :disabled="idx >= tacticsDisplaySkillList(selectedHero).length - 2" @click="moveTacticsSkill(selectedHero, idx, 1)">&#9660;</button>
-                    </div>
+              <div class="detail-sep-line">AI 战术配置</div>
+              <div class="detail-section ai-tactics-section">
+                <div v-if="aiTacticsShowKey" class="ai-tactics-key-block">
+                  <div class="ai-tactics-key-guide">
+                    <div class="ai-tactics-key-guide-title">如何免费获取 API Key</div>
+                    <ol class="ai-tactics-key-steps">
+                      <li>访问 <a href="https://cloud.siliconflow.cn" target="_blank" rel="noopener" class="ai-tactics-link">cloud.siliconflow.cn</a> 注册并登录</li>
+                      <li>进入 <a href="https://cloud.siliconflow.cn/account/ak" target="_blank" rel="noopener" class="ai-tactics-link">API 密钥</a> 页面</li>
+                      <li>点击 <strong>新建 API 密钥</strong>，复制生成的 <code class="ai-tactics-code">sk-...</code> 密钥</li>
+                      <li>粘贴到下方输入框，点击保存</li>
+                    </ol>
+                    <div class="ai-tactics-key-note">使用免费的 Qwen3-8B 模型，不会产生任何费用。</div>
                   </div>
-                  <div class="tactics-skill-config">
-                    <template v-if="showWarriorTankTargetFallback(selectedHero, skillId)">
-                      <div class="tactics-skill-config-row tactics-target-fallback-row tactics-enemy-target-cascade">
-                        <span class="tactics-skill-config-label">目标 1</span>
-                        <select
-                          :value="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l1"
-                          :data-testid="'tactics-skill-target-' + skillId + '-0-l1'"
-                          @change="onSkillEnemyTargetL1ForStep(selectedHero, skillId, 0, $event.target.value)"
-                        >
-                          <option :value="ENEMY_TARGET_L1_INHERIT">{{ tacticsInheritDefaultLabel() }}</option>
-                          <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
-                        </select>
-                        <select
-                          v-if="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0) !== ENEMY_TARGET_L1_INHERIT"
-                          :value="getSkillEnemyTargetL2ForStep(selectedHero, skillId, 0)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l2"
-                          :data-testid="'tactics-skill-target-' + skillId + '-0-l2'"
-                          @change="onSkillEnemyTargetL2ForStep(selectedHero, skillId, 0, getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0), $event.target.value)"
-                        >
-                          <option
-                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0))"
-                            :key="opt.id"
-                            :value="opt.id"
-                            :disabled="opt.requiresTank && !hasDesignatedTank"
-                          >{{ opt.label }}</option>
-                        </select>
-                      </div>
-                      <div class="tactics-skill-config-row tactics-target-fallback-row tactics-enemy-target-cascade">
-                        <span class="tactics-skill-config-label">目标 2</span>
-                        <select
-                          :value="getSkillEnemyRow2L1(selectedHero, skillId)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l1"
-                          :data-testid="'tactics-skill-target-' + skillId + '-1-l1'"
-                          @change="onSkillEnemyRow2L1(selectedHero, skillId, $event.target.value)"
-                        >
-                          <option value="">{{ row2NoneLabel() }}</option>
-                          <option v-for="l1 in ENEMY_TARGET_L1" :key="'r2-' + l1.id" :value="l1.id">{{ l1.label }}</option>
-                        </select>
-                        <select
-                          v-if="getSkillEnemyRow2L1(selectedHero, skillId)"
-                          :value="getSkillEnemyRow2L2(selectedHero, skillId)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l2"
-                          :data-testid="'tactics-skill-target-' + skillId + '-1-l2'"
-                          @change="onSkillEnemyRow2L2(selectedHero, skillId, getSkillEnemyRow2L1(selectedHero, skillId), $event.target.value)"
-                        >
-                          <option
-                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyRow2L1(selectedHero, skillId))"
-                            :key="opt.id"
-                            :value="opt.id"
-                            :disabled="opt.requiresTank && !hasDesignatedTank"
-                          >{{ opt.label }}</option>
-                        </select>
-                      </div>
-                    </template>
-                    <div
-                      v-else
-                      class="tactics-skill-config-row tactics-enemy-target-cascade"
-                    >
-                      <span class="tactics-skill-config-label">目标</span>
-                      <template v-if="skillTargetsAllies(skillId, selectedHero)">
-                        <select
-                          :value="getSkillTargetRule(selectedHero, skillId)"
-                          class="tactics-select tactics-skill-target"
-                          :data-testid="'tactics-skill-target-' + skillId"
-                          @change="setSkillTargetRule(selectedHero, skillId, $event.target.value)"
-                        >
-                          <option value="">{{ tacticsInheritDefaultLabel() }}</option>
-                          <option
-                            v-for="opt in TACTICS_TARGET_OPTIONS_ALLY"
-                            :key="opt.value"
-                            :value="opt.value"
-                            :disabled="opt.requiresTank && !hasDesignatedTank"
-                          >{{ opt.label }}</option>
-                        </select>
-                      </template>
-                      <template v-else>
-                        <select
-                          :value="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l1"
-                          :data-testid="'tactics-skill-target-' + skillId + '-l1'"
-                          @change="onSkillEnemyTargetL1ForStep(selectedHero, skillId, 0, $event.target.value)"
-                        >
-                          <option :value="ENEMY_TARGET_L1_INHERIT">{{ tacticsInheritDefaultLabel() }}</option>
-                          <option v-for="l1 in ENEMY_TARGET_L1" :key="l1.id" :value="l1.id">{{ l1.label }}</option>
-                        </select>
-                        <select
-                          v-if="getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0) !== ENEMY_TARGET_L1_INHERIT"
-                          :value="getSkillEnemyTargetL2ForStep(selectedHero, skillId, 0)"
-                          class="tactics-select tactics-skill-target tactics-enemy-l2"
-                          :data-testid="'tactics-skill-target-' + skillId + '-l2'"
-                          @change="onSkillEnemyTargetL2ForStep(selectedHero, skillId, 0, getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0), $event.target.value)"
-                        >
-                          <option
-                            v-for="opt in enemyL2OptionsForL1(getSkillEnemyTargetL1ForStep(selectedHero, skillId, 0))"
-                            :key="opt.id"
-                            :value="opt.id"
-                            :disabled="opt.requiresTank && !hasDesignatedTank"
-                          >{{ opt.label }}</option>
-                        </select>
-                      </template>
-                    </div>
-                    <div v-if="skillId !== 'basic-attack'" class="tactics-skill-config-row">
-                      <span class="tactics-skill-config-label">条件</span>
-                      <select
-                        :value="getSkillConditionWhen(selectedHero, skillId)"
-                        class="tactics-select tactics-skill-condition tactics-skill-condition-combined"
-                        :data-testid="'tactics-skill-condition-' + skillId"
-                        @change="setSkillConditionWhen(selectedHero, skillId, $event.target.value)"
-                      >
-                        <option value="">{{ TACTICS_CONDITION_BY_TARGET.enemy[0].label }}</option>
-                        <optgroup v-for="group in TACTICS_CONDITION_OPTGROUPS" :key="group.id" :label="group.label">
-                          <option
-                            v-for="opt in group.options"
-                            :key="group.id + '-' + opt.when"
-                            :value="opt.when"
-                            :disabled="opt.requiresTank && !hasDesignatedTank"
-                          >{{ opt.label }}</option>
-                        </optgroup>
-                      </select>
-                      <template v-if="conditionNeedsValue(getSkillConditionWhen(selectedHero, skillId))">
-                        <input
-                          v-if="conditionValueType(getSkillConditionWhen(selectedHero, skillId)) === 'number'"
-                          type="number"
-                          min="1"
-                          max="99"
-                          :value="conditionValueAsPercent(getSkillConditionValue(selectedHero, skillId))"
-                          class="tactics-condition-value tactics-skill-condition-value"
-                          :data-testid="'tactics-skill-value-' + skillId"
-                          @input="setSkillConditionValuePercent(selectedHero, skillId, $event.target.value)"
-                        />
-                        <select
-                          v-else-if="conditionValueType(getSkillConditionWhen(selectedHero, skillId)) === 'debuff'"
-                          :value="getSkillConditionValue(selectedHero, skillId) ?? 'sunder'"
-                          class="tactics-select tactics-condition-value tactics-condition-debuff"
-                          :data-testid="'tactics-skill-value-' + skillId"
-                          @change="setSkillConditionValue(selectedHero, skillId, $event.target.value)"
-                        >
-                          <option v-for="(info, key) in DEBUFF_DISPLAY" :key="key" :value="key">{{ info.name }}</option>
-                        </select>
-                      </template>
-                    </div>
+                  <div class="ai-tactics-key-row">
+                    <input
+                      v-model="aiTacticsKeyInput"
+                      type="password"
+                      class="ai-tactics-key-input"
+                      placeholder="sk-xxxxxxxxxxxxxxxx"
+                      @keyup.enter="aiTacticsSaveKey()"
+                    />
+                    <button type="button" class="btn btn-sm ai-tactics-key-btn" @click="aiTacticsSaveKey()">保存</button>
                   </div>
                 </div>
+                <div v-else class="ai-tactics-key-saved">
+                  <span class="ai-tactics-key-ok">API Key 已配置</span>
+                  <button type="button" class="btn btn-sm ai-tactics-key-change" @click="aiTacticsShowKey = true">修改</button>
+                </div>
+                <div class="ai-tactics-input-hint">用自然语言描述战术规则，AI 会自动解析为游戏配置。</div>
+                <textarea
+                  v-model="aiTacticsInput"
+                  class="ai-tactics-textarea"
+                  :placeholder="selectedHero.class === 'Priest'
+                    ? '例：先给自己上盾，然后治疗血量最低的队友；队友血量低于40%时才治疗'
+                    : selectedHero.class === 'Warrior'
+                      ? '例：先嘲讽，再破甲，目标选坦克仇恨最低的怪；盾牌猛击仅在目标有破甲减益时使用'
+                      : '例：先放火球术，再用奥术冲击；优先攻击血量最低的敌人'"
+                  rows="3"
+                  :disabled="aiTacticsLoading"
+                  @keydown.ctrl.enter="aiTacticsSubmit(selectedHero)"
+                ></textarea>
+                <div class="ai-tactics-actions">
+                  <button
+                    type="button"
+                    class="btn btn-sm ai-tactics-submit"
+                    :disabled="aiTacticsLoading || !aiTacticsInput.trim()"
+                    @click="aiTacticsSubmit(selectedHero)"
+                  >{{ aiTacticsLoading ? '解析中...' : 'AI 解析' }}</button>
+                  <span class="ai-tactics-hint">Ctrl+Enter 快捷提交</span>
+                </div>
+                <div v-if="aiTacticsError" class="ai-tactics-error">{{ aiTacticsError }}</div>
+                <div v-if="aiTacticsResult" class="ai-tactics-result">
+                  <div class="ai-tactics-explanation">{{ aiTacticsResult.explanation }}</div>
+                  <div v-if="aiTacticsResult.warnings.length > 0" class="ai-tactics-warnings">
+                    <div v-for="(w, i) in aiTacticsResult.warnings" :key="i" class="ai-tactics-warning-item">{{ w }}</div>
+                  </div>
+                  <div class="ai-tactics-preview">
+                    <div class="ai-tactics-preview-label">解析预览</div>
+                    <div v-if="aiTacticsResult.tactics.skillPriority?.length" class="ai-tactics-preview-row">
+                      <span class="ai-tactics-preview-key">技能优先级</span>
+                      <span class="ai-tactics-preview-val">{{ aiTacticsResult.tactics.skillPriority.map(id => skillDisplayName(id, selectedHero.class)).join(' > ') }}</span>
+                    </div>
+                    <div v-if="aiTacticsResult.tactics.targetRule" class="ai-tactics-preview-row">
+                      <span class="ai-tactics-preview-key">默认目标</span>
+                      <span class="ai-tactics-preview-val">{{ targetRuleDisplayName(aiTacticsResult.tactics.targetRule) }}</span>
+                    </div>
+                    <div v-for="(c, ci) in aiTacticsResult.tactics.conditions" :key="ci" class="ai-tactics-preview-row">
+                      <span class="ai-tactics-preview-key">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
+                      <span class="ai-tactics-preview-val">
+                        <template v-if="c.targetRule">目标：{{ targetRuleDisplayName(c.targetRule) }}</template>
+                        <template v-else-if="c.targetRules?.length">目标优先链：{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</template>
+                        <template v-if="c.when">
+                          <span v-if="c.targetRule || c.targetRules?.length"> | </span>
+                          条件：{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template>
+                        </template>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="ai-tactics-apply-row">
+                    <button type="button" class="btn btn-sm ai-tactics-apply-btn" @click="aiTacticsApply(selectedHero)">应用</button>
+                    <button type="button" class="btn btn-sm ai-tactics-discard-btn" @click="aiTacticsResult = null">放弃</button>
+                  </div>
+                </div>
+              </div>
+              <div class="detail-sep-line">当前战术</div>
+              <div v-if="selectedHero.tactics && (selectedHero.tactics.skillPriority?.length || selectedHero.tactics.targetRule || selectedHero.tactics.conditions?.length)" class="detail-section ai-tactics-current">
+                <div class="ai-tactics-current-row">
+                  <span class="ai-tactics-current-label">技能优先级</span>
+                  <span class="ai-tactics-current-val">
+                    <template v-if="tacticsSkillPriority(selectedHero).length">
+                      <span
+                        v-for="(sid, pi) in tacticsSkillPriority(selectedHero)"
+                        :key="sid"
+                        class="ai-tactics-current-skill"
+                      ><span class="ai-tactics-current-skill-name">{{ getHeroSkillDisplay(sid, selectedHero).name }}</span><span v-if="pi < tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-current-arrow"> &gt; </span></span>
+                      <span class="ai-tactics-current-basic"> &gt; 普通攻击</span>
+                    </template>
+                    <span v-else class="ai-tactics-current-empty">未设置（按默认顺序）</span>
+                  </span>
+                </div>
+                <div class="ai-tactics-current-row">
+                  <span class="ai-tactics-current-label">默认目标</span>
+                  <span class="ai-tactics-current-val">{{ targetRuleDisplayName(tacticsTargetRule(selectedHero)) }}</span>
+                </div>
+                <template v-if="selectedHero.tactics.conditions?.length">
+                  <div class="ai-tactics-current-divider"></div>
+                  <div class="ai-tactics-current-sub-title">单技能规则</div>
+                  <div
+                    v-for="(c, ci) in selectedHero.tactics.conditions"
+                    :key="ci"
+                    class="ai-tactics-current-row ai-tactics-current-condition"
+                  >
+                    <span class="ai-tactics-current-label ai-tactics-current-skill-label">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
+                    <span class="ai-tactics-current-val">
+                      <template v-if="c.targetRule">目标：{{ targetRuleDisplayName(c.targetRule) }}</template>
+                      <template v-else-if="c.targetRules?.length">目标优先链：{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</template>
+                      <template v-if="c.when">
+                        <span v-if="c.targetRule || c.targetRules?.length" class="ai-tactics-current-sep"> | </span>
+                        条件：{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template>
+                      </template>
+                      <span v-if="!c.targetRule && !c.targetRules?.length && !c.when" class="ai-tactics-current-empty">无额外规则</span>
+                    </span>
+                  </div>
+                </template>
+                <div class="ai-tactics-current-clear-row">
+                  <button type="button" class="btn btn-sm ai-tactics-discard-btn" @click="aiTacticsClearAll(selectedHero)">清空全部战术</button>
+                </div>
+              </div>
+              <div v-else class="detail-section ai-tactics-current-none">
+                <span class="ai-tactics-current-empty">尚未配置战术，请在上方输入规则后点击「AI 解析」。</span>
               </div>
             </template>
             <div v-else class="detail-empty-hint">无可配置战术的技能。</div>
@@ -1492,6 +1413,7 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
+import { parseNaturalLanguageTactics, validateAiTactics, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
@@ -1623,6 +1545,12 @@ const showBackpackModal = ref(false)
 const showShopModal = ref(false)
 const selectedHero = ref(null)
 const heroDetailTab = ref('attrs')
+const aiTacticsInput = ref('')
+const aiTacticsLoading = ref(false)
+const aiTacticsResult = ref(null)
+const aiTacticsError = ref('')
+const aiTacticsKeyInput = ref(getApiKey())
+const aiTacticsShowKey = ref(!hasApiKey())
 const selectedMonster = ref(null)
 const selectedItem = ref(null)
 const sellConfirmingItem = ref(null)
@@ -2092,6 +2020,68 @@ function assignPoint(attr) {
 
 function heroSkillIds(hero) {
   return getHeroSkillIds(hero)
+}
+
+function aiTacticsSaveKey() {
+  setApiKey(aiTacticsKeyInput.value)
+  aiTacticsShowKey.value = !hasApiKey()
+}
+
+async function aiTacticsSubmit(hero) {
+  if (!hero || aiTacticsLoading.value) return
+  if (!hasApiKey()) {
+    aiTacticsError.value = '请先配置 API Key'
+    aiTacticsShowKey.value = true
+    return
+  }
+  const input = aiTacticsInput.value.trim()
+  if (!input) return
+  aiTacticsLoading.value = true
+  aiTacticsError.value = ''
+  aiTacticsResult.value = null
+  try {
+    const skills = heroSkillIds(hero)
+    const result = await parseNaturalLanguageTactics(input, hero.class, skills, {
+      existingTactics: hero.tactics || null,
+    })
+    aiTacticsResult.value = result
+  } catch (e) {
+    aiTacticsError.value = e.message || '未知错误'
+  } finally {
+    aiTacticsLoading.value = false
+  }
+}
+
+function aiTacticsApply(hero) {
+  const result = aiTacticsResult.value
+  if (!result?.tactics || !hero) return
+  const t = result.tactics
+  saveTacticsToSquad(hero, (tactics) => {
+    if (t.skillPriority?.length) tactics.skillPriority = t.skillPriority
+    if (t.targetRule) tactics.targetRule = t.targetRule
+    if (Array.isArray(t.conditions) && t.conditions.length > 0) {
+      if (!tactics.conditions) tactics.conditions = []
+      for (const newCond of t.conditions) {
+        const idx = tactics.conditions.findIndex((c) => c.skillId === newCond.skillId)
+        if (idx >= 0) {
+          tactics.conditions[idx] = { ...newCond }
+        } else {
+          tactics.conditions.push({ ...newCond })
+        }
+      }
+    }
+  })
+  aiTacticsResult.value = null
+  aiTacticsInput.value = ''
+}
+
+function aiTacticsClearAll(hero) {
+  if (!hero) return
+  saveTacticsToSquad(hero, (tactics) => {
+    delete tactics.skillPriority
+    delete tactics.targetRule
+    delete tactics.conditions
+  })
 }
 
 function tacticsSkillPriority(hero) {
@@ -4574,6 +4564,275 @@ input.tactics-condition-value[type="number"] {
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text);
+}
+/* AI Tactics */
+.ai-tactics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.ai-tactics-key-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ai-tactics-key-guide {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+.ai-tactics-key-guide-title {
+  font-size: var(--font-base);
+  color: var(--text-value);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.ai-tactics-key-steps {
+  margin: 0;
+  padding-left: 1.3rem;
+  font-size: var(--font-sm);
+  color: var(--text-label);
+  line-height: 1.65;
+}
+.ai-tactics-key-steps li {
+  margin-bottom: 0.1rem;
+}
+.ai-tactics-key-steps strong {
+  color: var(--text-value);
+}
+.ai-tactics-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.ai-tactics-link:hover {
+  text-decoration: underline;
+}
+.ai-tactics-code {
+  background: var(--bg-elevated);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: var(--font-xs);
+  color: var(--text-value);
+}
+.ai-tactics-key-note {
+  margin-top: 0.35rem;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+.ai-tactics-key-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.ai-tactics-key-input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.ai-tactics-key-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+.ai-tactics-key-btn {
+  white-space: nowrap;
+}
+.ai-tactics-key-saved {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--font-sm);
+}
+.ai-tactics-key-ok {
+  color: var(--accent);
+}
+.ai-tactics-key-change {
+  font-size: var(--font-xs);
+  padding: 0.1rem 0.4rem;
+}
+.ai-tactics-input-hint {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.ai-tactics-textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.4rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-base);
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.ai-tactics-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+.ai-tactics-textarea::placeholder {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+.ai-tactics-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ai-tactics-submit {
+  min-width: 5rem;
+}
+.ai-tactics-hint {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+.ai-tactics-error {
+  font-size: var(--font-sm);
+  color: var(--error);
+  padding: 0.3rem 0;
+}
+.ai-tactics-result {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.ai-tactics-explanation {
+  font-size: var(--font-base);
+  color: var(--text-value);
+  line-height: 1.4;
+}
+.ai-tactics-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.ai-tactics-warning-item {
+  font-size: var(--font-xs);
+  color: var(--warning);
+}
+.ai-tactics-preview {
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.ai-tactics-preview-label {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+.ai-tactics-preview-row {
+  display: flex;
+  gap: 0.4rem;
+  font-size: var(--font-sm);
+  flex-wrap: wrap;
+}
+.ai-tactics-preview-key {
+  color: var(--text-label);
+  min-width: 6rem;
+}
+.ai-tactics-preview-val {
+  color: var(--text-value);
+  word-break: break-word;
+}
+.ai-tactics-apply-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+.ai-tactics-apply-btn {
+  background: var(--accent);
+  color: var(--bg-dark);
+  font-weight: 600;
+}
+.ai-tactics-apply-btn:hover {
+  filter: brightness(1.15);
+}
+.ai-tactics-discard-btn {
+  opacity: 0.7;
+}
+.ai-tactics-discard-btn:hover {
+  opacity: 1;
+}
+/* Current tactics summary */
+.ai-tactics-current {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.ai-tactics-current-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: var(--font-base);
+  line-height: 1.5;
+}
+.ai-tactics-current-label {
+  color: var(--text-label);
+  min-width: 5.5rem;
+  flex-shrink: 0;
+}
+.ai-tactics-current-val {
+  color: var(--text-value);
+  word-break: break-word;
+}
+.ai-tactics-current-skill-name {
+  color: var(--color-skill);
+  font-style: italic;
+}
+.ai-tactics-current-arrow {
+  color: var(--text-muted);
+}
+.ai-tactics-current-basic {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+.ai-tactics-current-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.ai-tactics-current-divider {
+  border-top: 1px dashed var(--border-dark);
+  margin: 0.25rem 0;
+}
+.ai-tactics-current-sub-title {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin-bottom: 0.1rem;
+}
+.ai-tactics-current-condition {
+  padding-left: 0.5rem;
+}
+.ai-tactics-current-skill-label {
+  color: var(--color-skill);
+  font-style: italic;
+}
+.ai-tactics-current-sep {
+  color: var(--text-muted);
+}
+.ai-tactics-current-clear-row {
+  margin-top: 0.4rem;
+  display: flex;
+}
+.ai-tactics-current-none {
+  padding: 0.5rem 0;
 }
 .detail-empty-hint {
   color: var(--text-muted);

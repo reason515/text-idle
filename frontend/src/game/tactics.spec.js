@@ -221,6 +221,20 @@ describe('tactics', () => {
       expect(pickTargetByRule([], 'lowest-hp')).toBeNull()
     })
 
+    it('self picks the acting hero when present in candidates', () => {
+      const actor = { id: 'priest-1', currentHP: 100 }
+      const tank = { id: 'warrior-1', currentHP: 100 }
+      const allies = [tank, actor]
+      const r = pickTargetByRule(allies, 'self', Math.random, { actor })
+      expect(r.id).toBe('priest-1')
+    })
+
+    it('self returns null when actor not in candidate pool', () => {
+      const actor = { id: 'priest-1', currentHP: 100 }
+      const tank = { id: 'warrior-1', currentHP: 100 }
+      expect(pickTargetByRule([tank], 'self', Math.random, { actor })).toBeNull()
+    })
+
     it('lowest-threat picks monster with lowest threat on actor', () => {
       const actor = { id: 'warrior' }
       const threat = {

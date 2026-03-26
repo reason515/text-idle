@@ -543,7 +543,9 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
       ? { threat, actor, heroes, tankId: designatedTank?.id }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank: getTankFn }
-        : {}
+        : rule === 'self'
+          ? { actor }
+          : {}
     const chosen = pickTargetByRule(pool, rule, rng, pickOpts)
     if (chosen) return chosen
   }

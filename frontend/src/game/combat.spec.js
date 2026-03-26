@@ -650,6 +650,43 @@ describe('combat progression and systems', () => {
     expect(magicAttackEntry.damageType).toBe('magic')
   })
 
+  it('Priest Power Word: Shield with target self applies shield to priest', () => {
+    const priest = sampleHero({
+      id: 'priest-1',
+      class: 'Priest',
+      intellect: 12,
+      spirit: 10,
+      agility: 20,
+      skills: ['power-word-shield'],
+      tactics: {
+        skillPriority: ['power-word-shield'],
+        conditions: [{ skillId: 'power-word-shield', targetRule: 'self' }],
+      },
+    })
+    const warrior = sampleHero({
+      id: 'warrior-1',
+      class: 'Warrior',
+      isTank: true,
+      agility: 4,
+      strength: 10,
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob A',
+          damageType: 'physical',
+          base: { hp: 200, physAtk: 2, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes: [warrior, priest], monsters, rng: () => 0.5, maxRounds: 8 })
+    const shieldEntry = result.log.find((e) => e.skillId === 'power-word-shield')
+    expect(shieldEntry).toBeDefined()
+    expect(shieldEntry.targetId).toBe('priest-1')
+  })
+
   it('Mage with Arcane Blast uses skill when mana sufficient', () => {
     const mage = sampleHero({
       id: 'm1',
