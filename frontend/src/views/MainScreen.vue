@@ -106,6 +106,16 @@
               <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
             </div>
             <div class="card-footer-row">
+              <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="hero.isTank === true"
+                  :data-testid="'hero-tank-check-' + hero.id"
+                  @change="setHeroAsTank(hero, $event.target.checked)"
+                />
+                <span class="tank-check-label">坦克</span>
+                <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
+              </label>
               <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
                 <span
                   v-if="getShieldBuff(hero)"
@@ -123,16 +133,6 @@
                   <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
                 </span>
               </div>
-              <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
-                <input
-                  type="checkbox"
-                  :checked="hero.isTank === true"
-                  :data-testid="'hero-tank-check-' + hero.id"
-                  @change="setHeroAsTank(hero, $event.target.checked)"
-                />
-                <span class="tank-check-label">坦克</span>
-                <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
-              </label>
             </div>
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">暂无英雄，招募开始冒险。</div>
@@ -1459,6 +1459,7 @@ import {
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
+import { unitIdMatches } from '../utils/unitId.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2540,11 +2541,11 @@ function buildDebuffFromEntry(entry) {
 
 function syncSelectedUnitsFromCombat() {
   if (selectedHero.value?.id) {
-    const sh = displayHeroes.value.find((h) => h.id === selectedHero.value.id)
+    const sh = displayHeroes.value.find((h) => unitIdMatches(h.id, selectedHero.value.id))
     if (sh) selectedHero.value = sh
   }
   if (selectedMonster.value?.id) {
-    const sm = currentMonsters.value.find((m) => m.id === selectedMonster.value.id)
+    const sm = currentMonsters.value.find((m) => unitIdMatches(m.id, selectedMonster.value.id))
     if (sm) selectedMonster.value = sm
   }
 }
@@ -2585,7 +2586,7 @@ function applyOneCombatEntry(entry) {
   if (entry.type === 'manaRegenBatch' && Array.isArray(entry.updates)) {
     let batchHeroes = [...displayHeroes.value]
     for (const u of entry.updates) {
-      const bi = batchHeroes.findIndex((h) => h.id === u.actorId)
+      const bi = batchHeroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
       if (bi >= 0) batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
     }
     displayHeroes.value = batchHeroes
@@ -2624,7 +2625,7 @@ function applyOneCombatEntry(entry) {
     pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
   }
 
-  const mi = currentMonsters.value.findIndex((m) => m.id === entry.targetId)
+  const mi = currentMonsters.value.findIndex((m) => unitIdMatches(m.id, entry.targetId))
   if (mi >= 0) {
     const updated = [...currentMonsters.value]
     let row = { ...updated[mi], currentHP: Math.max(0, targetHpAfter ?? updated[mi].currentHP) }
@@ -2646,7 +2647,7 @@ function applyOneCombatEntry(entry) {
     currentMonsters.value = updated
   }
   let updated = [...displayHeroes.value]
-  const hi = updated.findIndex((h) => h.id === entry.targetId)
+  const hi = updated.findIndex((h) => unitIdMatches(h.id, entry.targetId))
   if (hi >= 0) {
     updated[hi] = { ...updated[hi], currentHP: Math.max(0, targetHpAfter ?? updated[hi].currentHP) }
     if (entry.targetRageAfter !== undefined) updated[hi] = { ...updated[hi], currentMP: entry.targetRageAfter }
@@ -2679,7 +2680,7 @@ function applyOneCombatEntry(entry) {
     }
   }
   const actorResourceAfter = entry.actorRageAfter ?? entry.rageAfter ?? entry.manaAfter
-  const ai = updated.findIndex((h) => h.id === entry.actorId)
+  const ai = updated.findIndex((h) => unitIdMatches(h.id, entry.actorId))
   if (ai >= 0 && actorResourceAfter !== undefined) updated[ai] = { ...updated[ai], currentMP: actorResourceAfter }
   if (hi >= 0 || (ai >= 0 && actorResourceAfter !== undefined)) displayHeroes.value = updated
 
@@ -5150,13 +5151,15 @@ input.tactics-condition-value[type="number"] {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  min-width: 0;
+  flex-shrink: 0;
+  min-width: min-content;
 }
 .card-footer-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.5rem;
+  flex-wrap: wrap;
   margin-top: 0.45rem;
   padding-top: 0.45rem;
   border-top: 1px solid var(--border-dark);

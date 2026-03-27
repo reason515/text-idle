@@ -228,6 +228,13 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 - 标题：`var(--font-2xl)`，`var(--text)`
 - 内容：`var(--font-base)` 或 `var(--font-md)`
 
+### 5.5 单位卡片底部（buff / debuff 与操作并排）
+
+- 英雄卡等底部若使用横向 `flex` 并排「状态徽章区」与「固定控件」（如坦克勾选），**不得**给徽章容器设置 `min-width: 0` 且默认 `flex-shrink: 1` 而不加约束，否则在窄宽度下徽章区可被挤成 **0 宽度**而不可见。
+- 推荐：状态行使用 `flex-shrink: 0`、`min-width: min-content`；必要时父行允许 `flex-wrap: wrap` 换行。
+- 同一行内**不要**对「坦克勾选 + 状态徽章」使用 `justify-content: space-between`，否则勾选会被顶到面板最右侧；应使用 `justify-content: flex-start` 与统一 `gap`。
+- **顺序**：英雄卡底部先渲染「坦克」勾选，再在其**右侧**渲染 buff/debuff 徽章，这样勾选位置固定，状态增多时只向右延伸。
+
 ---
 
 ## 6. 与现有设计文档的关系
