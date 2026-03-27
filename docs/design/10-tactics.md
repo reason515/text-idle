@@ -209,6 +209,8 @@
 
 **自然语言 → 结构化配置**：前端调用 SiliconFlow（OpenAI 兼容接口）的 **Qwen3-8B** 模型，将玩家输入解析为 `skillPriority`、`targetRule`、`conditions`（与第二节数据模型一致）。实现见 `frontend/src/game/aiTactics.js`（系统提示词、输出校验、合并逻辑）。
 
+**牧师 AI 提示（易错点）**：系统提示词明确要求「治疗 / 加血」对应 **flash-heal**，「盾 / 套盾」对应 **power-word-shield**。玩家说「坦克血量低于 X% 时**治疗**」时，`tank-hp-below` 应配在 **flash-heal**（技能级 `when` 或目标链步骤），不应单独绑在 **power-word-shield** 上。`validateAiTactics` 若检测到「真言术：盾」含 `tank-hp-below` 而「快速治疗」完全未使用 `tank-hp-below`，会追加一条 **提示** 类警告（不自动改数据）。
+
 **API Key**：玩家在界面中配置 SiliconFlow API Key，保存在浏览器 **localStorage**（键名由实现定义）。未配置 Key 时无法发起解析。
 
 **应用（合并）**：点击「应用」时，将本次解析结果 **合并** 进英雄已有 `tactics`：
@@ -223,7 +225,7 @@
 
 步骤条件仅在该步使用，与技能级 `when`（技能整体启用门控）相互独立。
 
-**校验与防幻觉**：`validateAiTactics` 过滤非法枚举、无意义数值条件；并可结合用户原文去掉未提及的 `when` 条件（避免模型编造）。详见代码与单元测试 `frontend/src/game/aiTactics.spec.js`。
+**校验与防幻觉**：`validateAiTactics` 过滤非法枚举、无意义数值条件；并可结合用户原文去掉未提及的 `when` 条件（避免模型编造）；牧师场景下对「盾绑了坦克血量、治疗未绑」的可疑组合追加提示。详见代码与单元测试 `frontend/src/game/aiTactics.spec.js`。
 
 **指定坦克**：小队面板中每位英雄有「坦克」勾选；仅可指定一名坦克。仇恨相关目标规则依赖指定坦克时的行为见第二节「回退（未指定坦克）」等说明。
 

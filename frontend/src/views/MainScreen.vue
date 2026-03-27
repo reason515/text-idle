@@ -1078,7 +1078,7 @@
                         </span>
                         <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标优先链</span>
-                          <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</span>
+                          <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
                         </span>
                         <span v-if="c.when" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">条件</span>
@@ -1133,7 +1133,7 @@
                       </span>
                       <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标优先链</span>
-                        <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleDisplayName(r)).join(' → 找不到时 → ') }}</span>
+                        <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
                       </span>
                       <span v-if="c.when" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">条件</span>
@@ -1441,7 +1441,7 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
-import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
+import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRuleStepDisplay, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'

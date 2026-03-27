@@ -97,7 +97,12 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "resource-below" : resource < value (number)
 - "round-gte" : round number >= value (number)
 - "enemy-targeting-self" : at least one enemy's top-threat target is the caster (no value). Use when caster wants to react to being focused by enemies.
-- "tank-hp-below" : designated tank HP% < value (0.0-1.0). Use to gate heals/shields for tank based on tank health.
+- "tank-hp-below" : designated tank HP% < value (0.0-1.0). Use to gate tank-related actions. **Which skill** depends on what the player said (see Priest rules below).
+
+## Priest: flash-heal vs power-word-shield (CRITICAL - do not mix up)
+- **flash-heal** (快速治疗 / 治疗 / 加血 / 奶): **healing** only. If the player says "坦克血量低于X%时**治疗**", "**对坦克治疗**", "低血量时**奶**坦克", put **tank-hp-below** and tank targeting on **flash-heal**, NOT on power-word-shield.
+- **power-word-shield** (真言术：盾 / 盾 / 套盾 / 上盾): **absorb shield** only. If the player says "坦克血量**高**时套盾", "**盾**坦克", "给坦克**盾**", use power-word-shield. **Never** assign skill-level **when: tank-hp-below** to power-word-shield when the player clearly asked for **治疗** at low tank HP.
+- Per-step **{ "rule": "tank", "when": "tank-hp-below", "value": 0.7 }** on **flash-heal** means: heal tank when tank HP < 70%. Same step shape on **power-word-shield** only if the player asked for **盾** under that HP condition (rare); default is heal = flash-heal.
 
 ## Skill mapping for ${heroClass}
 ${getSkillNameMap(heroClass, skillIds)}
@@ -139,6 +144,12 @@ Reason: This is a SUPPLEMENTARY rule. The player wants different behavior based 
 - When non-tank targets exist: sunder targets them (1st rule in chain hits), taunt targets them (its rule hits)
 - When ALL enemies on tank: sunder falls back to lowest-hp (2nd rule in chain), taunt finds no target and is skipped
 Use per-skill targetRules fallback chains. Do NOT change skillPriority or global targetRule.
+
+WRONG 4 (Priest) - putting "tank low HP heal" on shield instead of flash-heal:
+Player: "坦克血量低于70%时对坦克施放治疗，否则套盾" or similar where **治疗** = heal at low tank HP
+WRONG: { "conditions": [{ "skillId": "power-word-shield", "when": "tank-hp-below", "value": 0.7, "targetRules": ["tank", "self-if-enemy-targeting"] }] }
+CORRECT: **tank-hp-below + heal tank** belongs on **flash-heal** (e.g. targetRules include { "rule": "tank", "when": "tank-hp-below", "value": 0.7 } or skill-level when tank-hp-below + tank). **power-word-shield** gets the "otherwise shield" branch without wrongly using tank-hp-below as ONLY shield trigger when player said heal when low.
+Reason: 快速治疗 = flash-heal. 真言术盾 = power-word-shield. Low tank HP + **治疗** -> flash-heal, not shield.
 
 ## Examples
 
@@ -280,6 +291,22 @@ function userMentionsConditions(userInput) {
 }
 
 /**
+ * True if a tactics condition entry uses tank-hp-below at skill level or in any targetRules step.
+ * @param {{ when?: string, targetRules?: unknown[] }|undefined} c
+ * @returns {boolean}
+ */
+export function conditionEntryHasTankHpBelow(c) {
+  if (!c) return false
+  if (c.when === 'tank-hp-below') return true
+  const chain = c.targetRules
+  if (!Array.isArray(chain)) return false
+  return chain.some((step) => {
+    if (typeof step === 'object' && step !== null && step.when === 'tank-hp-below') return true
+    return false
+  })
+}
+
+/**
  * Validate and sanitize AI output against known enums.
  * @param {Object} raw - Parsed JSON from AI
  * @param {string[]} skillIds - Hero's available skill IDs
@@ -348,6 +375,16 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
       return clean
     })
     .filter((c) => c.targetRule || c.targetRules?.length || c.when)
+
+  if (heroClass === 'Priest' && conditions.length > 0) {
+    const fh = conditions.find((c) => c.skillId === 'flash-heal')
+    const pw = conditions.find((c) => c.skillId === 'power-word-shield')
+    if (pw && conditionEntryHasTankHpBelow(pw) && !conditionEntryHasTankHpBelow(fh)) {
+      warnings.push(
+        '提示：真言术：盾绑定了「坦克血量低于」，快速治疗未绑定。若玩家意图是「坦克低血量时治疗」，请把 tank-hp-below 配在 flash-heal（技能条件或目标链步骤）上，而不是真言术：盾。',
+      )
+    }
+  }
 
   return {
     tactics: { skillPriority: priority, targetRule, conditions },
@@ -487,6 +524,26 @@ export function skillDisplayName(skillId, heroClass) {
  */
 export function targetRuleDisplayName(rule) {
   return TARGET_RULE_DISPLAY[rule] || rule
+}
+
+/**
+ * Format a single targetRules chain step for display.
+ * Handles both plain rule strings and conditional step objects { rule, when, value }.
+ * @param {string|{ rule: string, when?: string, value?: * }} step
+ * @returns {string}
+ */
+export function targetRuleStepDisplay(step) {
+  if (typeof step === 'string') return targetRuleDisplayName(step)
+  if (typeof step === 'object' && step !== null && typeof step.rule === 'string') {
+    const rulePart = targetRuleDisplayName(step.rule)
+    if (step.when && WHEN_DISPLAY[step.when]) {
+      const whenPart = WHEN_DISPLAY[step.when]
+      const valuePart = conditionValueDisplay(step.when, step.value)
+      return valuePart ? `${rulePart}（${whenPart} ${valuePart}）` : `${rulePart}（${whenPart}）`
+    }
+    return rulePart
+  }
+  return String(step)
 }
 
 /**

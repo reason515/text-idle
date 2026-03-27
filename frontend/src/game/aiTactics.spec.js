@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateAiTactics, mergeAiTacticsApply } from './aiTactics.js'
+import { validateAiTactics, mergeAiTacticsApply, targetRuleStepDisplay, conditionEntryHasTankHpBelow } from './aiTactics.js'
 
 describe('validateAiTactics', () => {
   const priestSkills = ['flash-heal', 'power-word-shield']
@@ -238,5 +238,83 @@ describe('mergeAiTacticsApply', () => {
     })
     expect(merged.skillPriority).toEqual(['sunder-armor'])
     expect(merged.targetRule).toBe('lowest-hp')
+  })
+})
+
+describe('conditionEntryHasTankHpBelow', () => {
+  it('returns true for skill-level when', () => {
+    expect(conditionEntryHasTankHpBelow({ skillId: 'flash-heal', when: 'tank-hp-below', value: 0.7 })).toBe(true)
+  })
+
+  it('returns true when a targetRules step has tank-hp-below', () => {
+    expect(
+      conditionEntryHasTankHpBelow({
+        skillId: 'flash-heal',
+        targetRules: ['self-if-enemy-targeting', { rule: 'tank', when: 'tank-hp-below', value: 0.7 }],
+      }),
+    ).toBe(true)
+  })
+
+  it('returns false when only plain string steps', () => {
+    expect(conditionEntryHasTankHpBelow({ skillId: 'power-word-shield', targetRules: ['tank', 'self'] })).toBe(false)
+  })
+})
+
+describe('validateAiTactics Priest tank-hp-below mismatch warning', () => {
+  const priest = ['flash-heal', 'power-word-shield']
+
+  it('warns when power-word-shield has tank-hp-below but flash-heal does not', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        { skillId: 'flash-heal', targetRules: ['self-if-enemy-targeting', 'tank'] },
+        {
+          skillId: 'power-word-shield',
+          when: 'tank-hp-below',
+          value: 0.7,
+          targetRules: ['tank', 'self-if-enemy-targeting'],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest')
+    expect(result.warnings.some((w) => w.includes('真言术：盾'))).toBe(true)
+    expect(result.warnings.some((w) => w.includes('flash-heal'))).toBe(true)
+  })
+
+  it('does not warn when both skills reference tank-hp-below appropriately', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: ['self-if-enemy-targeting', { rule: 'tank', when: 'tank-hp-below', value: 0.7 }],
+        },
+        { skillId: 'power-word-shield', targetRules: ['self-if-enemy-targeting', 'tank'] },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest')
+    expect(result.warnings.some((w) => w.includes('真言术：盾绑定了'))).toBe(false)
+  })
+})
+
+describe('targetRuleStepDisplay', () => {
+  it('returns display name for plain rule string', () => {
+    expect(targetRuleStepDisplay('tank')).toBe('坦克')
+    expect(targetRuleStepDisplay('self')).toBe('自身')
+    expect(targetRuleStepDisplay('self-if-enemy-targeting')).toBe('自身（仅当被敌人盯上时）')
+  })
+
+  it('returns rule display with condition for step object', () => {
+    const result = targetRuleStepDisplay({ rule: 'tank', when: 'tank-hp-below', value: 0.7 })
+    expect(result).toBe('坦克（坦克血量低于 70%）')
+  })
+
+  it('returns rule display without condition clause when no when', () => {
+    expect(targetRuleStepDisplay({ rule: 'tank' })).toBe('坦克')
+  })
+
+  it('falls back to String() for unknown input', () => {
+    expect(targetRuleStepDisplay(null)).toBe('null')
+    expect(targetRuleStepDisplay(42)).toBe('42')
   })
 })
