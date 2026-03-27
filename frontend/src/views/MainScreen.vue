@@ -1073,19 +1073,19 @@
                     <div v-for="(c, ci) in aiTacticsResult.tactics.conditions" :key="ci" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key ai-tactics-preview-skill-key">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
                       <span class="ai-tactics-preview-val ai-tactics-rule-list">
-                        <span v-if="c.targetRule" class="ai-tactics-rule-item">
-                          <span class="ai-tactics-rule-label">目标</span>
-                          <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
-                        </span>
-                        <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
+                        <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标优先链</span>
                           <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
+                        </span>
+                        <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
+                          <span class="ai-tactics-rule-label">目标</span>
+                          <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
                         </span>
                         <span v-if="c.when" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">条件</span>
                           <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
                         </span>
-                        <span v-if="!c.targetRule && !c.targetRules?.length && !c.when" class="ai-tactics-current-empty">无额外规则</span>
+                        <span v-if="!c.targetRules?.length && !c.targetRule && !c.when" class="ai-tactics-current-empty">无额外规则</span>
                       </span>
                     </div>
                   </div>
@@ -1128,19 +1128,19 @@
                   >
                     <span class="ai-tactics-current-label ai-tactics-current-skill-label">{{ skillDisplayName(c.skillId, selectedHero.class) }}</span>
                     <span class="ai-tactics-current-val ai-tactics-rule-list">
-                      <span v-if="c.targetRule" class="ai-tactics-rule-item">
-                        <span class="ai-tactics-rule-label">目标</span>
-                        <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
-                      </span>
-                      <span v-else-if="c.targetRules?.length" class="ai-tactics-rule-item">
+                      <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标优先链</span>
                         <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
+                      </span>
+                      <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
+                        <span class="ai-tactics-rule-label">目标</span>
+                        <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
                       </span>
                       <span v-if="c.when" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">条件</span>
                         <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
                       </span>
-                      <span v-if="!c.targetRule && !c.targetRules?.length && !c.when" class="ai-tactics-current-empty">无额外规则</span>
+                      <span v-if="!c.targetRules?.length && !c.targetRule && !c.when" class="ai-tactics-current-empty">无额外规则</span>
                     </span>
                   </div>
                 </template>
@@ -1504,7 +1504,7 @@ const TACTICS_CONDITION_BY_TARGET = {
   ],
   ally: [
     { when: '', label: '无' },
-    { when: 'ally-hp-below', label: '队友 HP 低于 %', valueDefault: 0.4, valueType: 'number' },
+    { when: 'ally-hp-below', label: '己方 HP 低于 %（含自身）', valueDefault: 0.4, valueType: 'number' },
   ],
   self: [
     { when: '', label: '无' },

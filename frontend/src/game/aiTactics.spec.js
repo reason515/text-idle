@@ -239,6 +239,66 @@ describe('mergeAiTacticsApply', () => {
     expect(merged.skillPriority).toEqual(['sunder-armor'])
     expect(merged.targetRule).toBe('lowest-hp')
   })
+
+  it('strips targetRule from merged copy when targetRules is set', () => {
+    const existing = {
+      conditions: [{ skillId: 'flash-heal', targetRule: 'tank', targetRules: [{ rule: 'tank', when: 'tank-hp-below', value: 0.7 }] }],
+    }
+    const incoming = {
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRule: 'tank',
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 },
+            { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+          ],
+        },
+      ],
+    }
+    const merged = mergeAiTacticsApply(existing, incoming)
+    const fh = merged.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.targetRule).toBeUndefined()
+    expect(fh.targetRules).toHaveLength(2)
+  })
+
+  it('prepends Priest flash-heal emergency rule onto existing flash-heal targetRules', () => {
+    const existing = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          when: 'self-hp-below',
+          value: 0.6,
+          targetRules: ['self-if-enemy-targeting', { rule: 'tank', when: 'tank-hp-below', value: 0.7 }],
+        },
+      ],
+    }
+    const incoming = {
+      conditions: [{ skillId: 'flash-heal', targetRule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }],
+    }
+    const merged = mergeAiTacticsApply(existing, incoming)
+    const fh = merged.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.targetRules[0]).toEqual({
+      rule: 'lowest-hp-ally',
+      when: 'ally-hp-below',
+      value: 0.3,
+    })
+    expect(fh.targetRules[1]).toBe('self-if-enemy-targeting')
+    expect(fh.when).toBe('self-hp-below')
+  })
+})
+
+describe('validateAiTactics skillPriority dedupe', () => {
+  it('removes duplicate skill IDs in skillPriority', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'flash-heal', 'power-word-shield'],
+      conditions: [],
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest')
+    expect(result.tactics.skillPriority).toEqual(['flash-heal', 'power-word-shield'])
+    expect(result.warnings.some((w) => w.includes('去重'))).toBe(true)
+  })
 })
 
 describe('conditionEntryHasTankHpBelow', () => {
@@ -294,6 +354,92 @@ describe('validateAiTactics Priest tank-hp-below mismatch warning', () => {
     }
     const result = validateAiTactics(raw, priest, 'Priest')
     expect(result.warnings.some((w) => w.includes('真言术：盾绑定了'))).toBe(false)
+  })
+})
+
+describe('targetRuleStepDisplay whenAll', () => {
+  it('joins multiple when clauses with semicolon', () => {
+    const s = {
+      rule: 'self-if-enemy-targeting',
+      whenAll: [
+        { when: 'self-hp-below', value: 0.6 },
+        { when: 'enemy-targeting-self' },
+      ],
+    }
+    const out = targetRuleStepDisplay(s)
+    expect(out).toContain('自身（仅当被敌人盯上时）')
+    expect(out).toContain('自身血量低于')
+    expect(out).toContain('60%')
+    expect(out).toContain('有敌人以自己为目标')
+  })
+})
+
+describe('validateAiTactics targetRule vs targetRules', () => {
+  const priestSkills = ['flash-heal', 'power-word-shield']
+
+  it('drops targetRule when targetRules is present', () => {
+    const raw = {
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRule: 'tank',
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 },
+            { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest')
+    expect(result.tactics.conditions[0].targetRule).toBeUndefined()
+    expect(result.tactics.conditions[0].targetRules).toHaveLength(2)
+  })
+})
+
+describe('validateAiTactics targetRules whenAll', () => {
+  const priestSkills = ['flash-heal', 'power-word-shield']
+
+  it('accepts self-no-shield and self-hp-above in whenAll', () => {
+    const raw = {
+      conditions: [
+        {
+          skillId: 'power-word-shield',
+          targetRules: [
+            {
+              rule: 'self-if-enemy-targeting',
+              whenAll: [{ when: 'self-hp-above', value: 0.6 }, { when: 'self-no-shield' }],
+            },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest')
+    const steps = result.tactics.conditions[0].targetRules
+    expect(steps[0].whenAll).toHaveLength(2)
+    expect(steps[0].whenAll[1].when).toBe('self-no-shield')
+  })
+
+  it('persists whenAll with multiple clauses', () => {
+    const raw = {
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'self-if-enemy-targeting',
+              whenAll: [
+                { when: 'self-hp-below', value: 0.6 },
+                { when: 'enemy-targeting-self' },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest')
+    const steps = result.tactics.conditions[0].targetRules
+    expect(steps[0].whenAll).toHaveLength(2)
+    expect(steps[0].whenAll[0].when).toBe('self-hp-below')
   })
 })
 

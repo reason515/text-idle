@@ -90,7 +90,8 @@
 | target-hp-below | 目标 HP 比例低于 X | 斩杀 (30%) |
 | target-hp-above | 目标 HP 比例高于 X | — |
 | self-hp-below | 自身 HP 比例低于 X | 破釜沉舟 |
-| ally-hp-below | 任意友方 HP 比例低于 X | 治疗技能 |
+| self-hp-above | 自身 HP 比例高于 X | 牧师：血量较高时套盾等 |
+| ally-hp-below | 任意存活己方（含施法者）HP 比例低于 X | 治疗技能 |
 | self-hit-this-round | 本回合受到过攻击 | 复仇 |
 | target-has-debuff | 目标有指定 debuff；同时过滤目标池 | 盾牌猛击（破甲）、深度冻结（冰霜 debuff） |
 | ally-ot | 存在至少一个怪物，其仇恨最高目标不是指定坦克（战术 UI：条件类别 **敌方**，条目 **OT**） | 嘲讽 |
@@ -98,11 +99,15 @@
 | resource-below | 资源低于 X | 填充技 |
 | round-gte | 回合数 ≥ X | 起手 Buff |
 | enemy-targeting-self | 存在至少一个存活怪物，其仇恨最高目标是当前施法者自身（即我被盯上）。依赖仇恨系统；无仇恨数据时条件不满足。 | 牧师被怪物集火时转为自保技能 |
+| enemy-not-targeting-self | 无存活怪物以施法者为仇恨最高目标（与上一行互斥）。 | 牧师：仅当「未被怪盯上」时对坦克施法等 |
 | tank-hp-below | 指定坦克当前 HP 比例低于 X。若未指定坦克则条件不满足。可用于目标链中的步骤条件（见下方扩展格式）。 | 牧师在坦克 HP 较低时才释放治疗，否则上盾 |
+| tank-hp-above | 指定坦克 HP 比例高于 X | 牧师：坦克血线安全时套盾 |
+| self-no-shield | 施法者身上**无**真言术：盾吸收（`shield` 数据）。非 debuff。 | 套盾前判断 |
+| tank-no-shield | 指定坦克身上无真言术：盾 | 对坦克套盾前判断 |
 
 **说明**：
 
-- `target-has-debuff`：先按 debuff 过滤目标池，若无有效目标则跳过该技能。
+- `target-has-debuff`：先按 debuff 过滤目标池，若无有效目标则跳过该技能。**不要用此项表示「没有真言术：盾」**；无盾请用 `self-no-shield` / `tank-no-shield`。
 - `ally-ot`：依赖仇恨系统与**指定坦克**；若未指定坦克，该条件及仇恨/坦克相关目标选项不可用。
 
 ---
@@ -215,13 +220,19 @@
 
 **应用（合并）**：点击「应用」时，将本次解析结果 **合并** 进英雄已有 `tactics`：
 - 若解析结果包含 `skillPriority` / `targetRule`，则 **覆盖** 对应字段；
-- `conditions` 按 **skillId** 合并：同 skillId 整段替换，新 skillId 则追加。
+- `conditions` 按 **skillId** 合并：同 skillId **一般**为整段替换，新 skillId 则追加。
+- **牧师快速治疗例外**：若本次解析仅给出「任意己方血量低于 X% + 治疗血最少队友」类 **紧急补充**（`ally-hp-below` + `lowest-hp-ally`，且无完整 `targetRules` 链），合并时会将该步 **插入到** 已有 `flash-heal` 的 `targetRules` **最前**，并保留原有技能级 `when` 与后续链，避免覆盖整条战术。
+
+**战斗执行（牧师快速治疗门控）**：若 `flash-heal` 的 `targetRules` **首步**为 `{ when: ally-hp-below }`（紧急抬血），则当 **任意存活己方（含牧师自身）** 生命比例低于该阈值时，**允许**在本回合尝试快速治疗，即使技能级 `when`（如 `self-hp-below`）未满足；否则仍按技能级条件判定。实现见 `checkPriestFlashHealSkillAllowed`（`frontend/src/game/tactics.js`）与牧师技能路径（`frontend/src/game/combat.js`）。
 
 **目标优先链（`targetRules`）**：技能级可配置 `targetRules: [stepA, stepB, ...]`。战斗在选目标时按顺序尝试；若某步选不到合法目标则尝试下一步；若整条链都无目标则 **跳过该技能**。用于表达「平时打 A 类目标，没有时再打 B 类」等场景。UI 摘要中展示为「目标优先链：… → 找不到时 → …」。
+
+**与 `targetRule` 并存**：若同一条 `conditions` 项同时写了 `targetRule`（单目标）和 `targetRules`（链），**战斗引擎与 `getTargetRuleChain` 以 `targetRules` 为准**（见 `frontend/src/game/tactics.js`）。`validateAiTactics` 在存在非空 `targetRules` 时会 **去掉** `targetRule`，避免旧字段残留；主界面「当前战术」展示亦 **优先显示目标优先链**，避免只显示过期的单目标。
 
 每个步骤可以是：
 - **普通字符串**：`"self-if-enemy-targeting"` — 无附加条件，直接按规则选目标
 - **带条件的步骤对象**：`{ "rule": "tank", "when": "tank-hp-below", "value": 0.7 }` — 先检查 `when` 条件；条件不满足时该步返回 null（继续下一步）；条件满足时按 `rule` 选目标
+- **多条件步骤（AND）**：`{ "rule": "self-if-enemy-targeting", "whenAll": [ { "when": "self-hp-below", "value": 0.6 } ] }` — 该步要求 **所有** `whenAll` 中的条件同时满足后，再按 `rule` 选目标。用于「被盯上时自奶，且自身血量低于 60%」等需多门槛的场景。单条件仍用 `when`/`value` 即可。实现：`evaluateTargetRuleStepGates`（`frontend/src/game/tactics.js`），选目标循环见 `frontend/src/game/combat.js` 中 `pickTarget`。
 
 步骤条件仅在该步使用，与技能级 `when`（技能整体启用门控）相互独立。
 

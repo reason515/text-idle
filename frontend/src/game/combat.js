@@ -39,6 +39,8 @@ import {
   TACTICS_TARGET_RULE_INHERIT,
   getConditions,
   checkCondition,
+  checkPriestFlashHealSkillAllowed,
+  evaluateTargetRuleStepGates,
   filterTargetsByCondition,
   pickTargetByRule,
 } from './tactics.js'
@@ -175,6 +177,19 @@ const TIER_MULTIPLIER = {
 /** Per-level stat scaling. ~14% per level to match player 5 attr points impact. Was 0.08 (~7%/level). */
 const DEFAULT_LEVEL_SCALE = 0.16
 
+/**
+ * Monster Agility (turn order) scales softer than HP/PhysAtk/SpellPower: heroes gain Agi mostly from
+ * attribute points, while monsters used the full power factor and almost always acted first.
+ * blend 0..1: how much of the extra power above 1x applies to Agility; baseMult slightly lowers early-game monster Agi vs templates.
+ */
+const MONSTER_AGILITY_POWER_BLEND = 0.4
+const MONSTER_AGILITY_BASE_MULT = 0.9
+
+function monsterAgilityFromFactor(baseAgility, factor) {
+  const blended = 1 + (factor - 1) * MONSTER_AGILITY_POWER_BLEND
+  return Math.max(1, Math.round(baseAgility * blended * MONSTER_AGILITY_BASE_MULT))
+}
+
 function deepCopy(value) {
   return JSON.parse(JSON.stringify(value))
 }
@@ -303,7 +318,7 @@ export function createMonster(template, options = {}) {
     currentHP: Math.round(base.hp * factor),
     physAtk: Math.round(base.physAtk * factor),
     spellPower: Math.round(base.spellPower * factor),
-    agility: Math.round(base.agility * factor),
+    agility: monsterAgilityFromFactor(base.agility, factor),
     armor: Math.round(base.armor * factor) + Math.floor(level * 0.5),
     resistance: Math.round(base.resistance * factor) + Math.floor(level * 0.5),
     skillChance: tier === 'normal' ? 0 : tier === 'elite' ? 0.35 : 0.45,
@@ -499,7 +514,7 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
 
 function pickTarget(actor, heroes, monsters, opts = {}) {
-  const { threat, tauntState, skillId, conditions, rng, designatedTank } = opts
+  const { threat, tauntState, skillId, conditions, rng, designatedTank, round } = opts
   if (actor.side === 'monster') {
     return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng)
   }
@@ -520,13 +535,9 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
 
   for (const step of chain) {
     const stepRule = typeof step === 'string' ? step : step.rule
-    const stepWhen = typeof step === 'object' && step !== null ? step.when : null
-    const stepValue = typeof step === 'object' && step !== null ? step.value : undefined
-
-    if (stepWhen) {
-      const stepCond = { when: stepWhen, value: stepValue }
-      const stepCtx = { threat, tankId: designatedTank?.id }
-      if (!checkCondition(stepCond, actor, null, heroes, monsters, stepCtx)) continue
+    const stepCtx = { threat, tauntState, tankId: designatedTank?.id, round, rng }
+    if (typeof step === 'object' && step !== null) {
+      if (!evaluateTargetRuleStepGates(step, actor, heroes, monsters, stepCtx)) continue
     }
 
     const resolved = stepRule === TACTICS_TARGET_RULE_INHERIT ? globalDefault : stepRule
@@ -964,7 +975,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (!skill || manaCost > (actor.currentMP || 0)) continue
 
           const priestCond = conditions.find((c) => c.skillId === skillId)
-          if (priestCond && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+          if (skillId === 'flash-heal') {
+            if (priestCond && !checkPriestFlashHealSkillAllowed(priestCond, actor, heroUnits, monsterUnits, ctx)) {
+              continue
+            }
+          } else if (priestCond && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) {
+            continue
+          }
           const priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
             skillId,
             conditions,

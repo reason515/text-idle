@@ -6,6 +6,9 @@ import {
   TACTICS_TARGET_RULE_INHERIT,
   getConditions,
   checkCondition,
+  checkPriestFlashHealSkillAllowed,
+  evaluateTargetRuleStepGates,
+  getAllyHpBelowThresholdFromStep,
   filterTargetsByCondition,
   pickTargetByRule,
   isTacticsConditionInactive,
@@ -217,6 +220,58 @@ describe('tactics', () => {
       expect(checkCondition(cond, priest, null, heroes, monsters, { threat })).toBe(false)
     })
 
+    it('self-hp-above passes when caster HP ratio above threshold', () => {
+      const actor = { currentHP: 70, maxHP: 100 }
+      const cond = { when: 'self-hp-above', value: 0.6 }
+      expect(checkCondition(cond, actor, null, [], [], {})).toBe(true)
+    })
+
+    it('tank-hp-above passes when tank HP ratio above threshold', () => {
+      const cond = { when: 'tank-hp-above', value: 0.7 }
+      const tank = { id: 't', currentHP: 80, maxHP: 100 }
+      expect(checkCondition(cond, {}, null, [tank], [], { tankId: 't' })).toBe(true)
+    })
+
+    it('self-no-shield passes when actor has no shield buff', () => {
+      const actor = { id: 'p', currentHP: 100, maxHP: 100 }
+      expect(checkCondition({ when: 'self-no-shield' }, actor, null, [], [], {})).toBe(true)
+    })
+
+    it('self-no-shield fails when actor has shield', () => {
+      const actor = {
+        id: 'p',
+        currentHP: 100,
+        maxHP: 100,
+        shield: { absorbRemaining: 10, remainingRounds: 2 },
+      }
+      expect(checkCondition({ when: 'self-no-shield' }, actor, null, [], [], {})).toBe(false)
+    })
+
+    it('enemy-not-targeting-self is true when no monster top-threats actor', () => {
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+      const heroes = [priest, tank]
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      const threat = { m1: { priest: 10, tank: 80 } }
+      expect(checkCondition({ when: 'enemy-not-targeting-self' }, priest, null, heroes, monsters, { threat })).toBe(true)
+    })
+
+    it('enemy-not-targeting-self is false when a monster top-threats actor', () => {
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+      const heroes = [priest, tank]
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      const threat = { m1: { priest: 80, tank: 10 } }
+      expect(checkCondition({ when: 'enemy-not-targeting-self' }, priest, null, heroes, monsters, { threat })).toBe(false)
+    })
+
+    it('ally-hp-below includes caster when priest is low', () => {
+      const cond = { when: 'ally-hp-below', value: 0.3 }
+      const priest = { id: 'p', currentHP: 20, maxHP: 100 }
+      const tank = { id: 't', currentHP: 200, maxHP: 200 }
+      expect(checkCondition(cond, priest, null, [priest, tank], [], {})).toBe(true)
+    })
+
     it('enemy-targeting-self ignores dead monsters', () => {
       const cond = { when: 'enemy-targeting-self' }
       const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
@@ -256,6 +311,57 @@ describe('tactics', () => {
       const tank = { id: 'tank', currentHP: 0, maxHP: 200 }
       const heroes = [tank]
       expect(checkCondition(cond, {}, null, heroes, [], { tankId: 'tank' })).toBe(false)
+    })
+  })
+
+  describe('evaluateTargetRuleStepGates', () => {
+    it('requires all whenAll clauses to pass (AND)', () => {
+      const priest = { id: 'p', currentHP: 50, maxHP: 100 }
+      const tank = { id: 't', currentHP: 200, maxHP: 200 }
+      const step = {
+        rule: 'self-if-enemy-targeting',
+        whenAll: [{ when: 'self-hp-below', value: 0.6 }],
+      }
+      expect(evaluateTargetRuleStepGates(step, priest, [priest, tank], [], {})).toBe(true)
+      const fullHp = { ...priest, currentHP: 100, maxHP: 100 }
+      expect(evaluateTargetRuleStepGates(step, fullHp, [fullHp, tank], [], {})).toBe(false)
+    })
+  })
+
+  describe('getAllyHpBelowThresholdFromStep', () => {
+    it('reads threshold from whenAll', () => {
+      expect(
+        getAllyHpBelowThresholdFromStep({
+          rule: 'lowest-hp-ally',
+          whenAll: [{ when: 'ally-hp-below', value: 0.25 }],
+        }),
+      ).toBe(0.25)
+    })
+  })
+
+  describe('checkPriestFlashHealSkillAllowed', () => {
+    it('allows flash-heal when emergency ally-hp-below step passes even if skill when fails', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const tank = { id: 't', currentHP: 10, maxHP: 100 }
+      const cond = {
+        skillId: 'flash-heal',
+        when: 'self-hp-below',
+        value: 0.6,
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }, 'tank'],
+      }
+      expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], [], {})).toBe(true)
+    })
+
+    it('falls back to skill-level when emergency step does not apply', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const tank = { id: 't', currentHP: 80, maxHP: 100 }
+      const cond = {
+        skillId: 'flash-heal',
+        when: 'self-hp-below',
+        value: 0.6,
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }, 'tank'],
+      }
+      expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], [], {})).toBe(false)
     })
   })
 

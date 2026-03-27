@@ -160,14 +160,16 @@
 #### 2.3.5 属性公式与配置参数
 
 ```
-HP         = Base_HP * TierMult * (1 + Level * LevelScale)
-PhysAtk    = Base_PhysAtk * TierMult * (1 + Level * LevelScale)
-SpellPower = Base_SpellPower * TierMult * (1 + Level * LevelScale)
-Agility    = Base_Agility * TierMult * (1 + Level * LevelScale)
-Armor      = Base_Armor * TierMult * (1 + Level * LevelScale) + floor(Level * 0.5)
-Resistance = Base_Resistance * TierMult * (1 + Level * LevelScale) + floor(Level * 0.5)
+Factor      = TierMult * (1 + Level * LevelScale)
+HP          = Base_HP * Factor
+PhysAtk     = Base_PhysAtk * Factor
+SpellPower  = Base_SpellPower * Factor
+Agility     = max(1, round(Base_Agility * (1 + (Factor - 1) * AgilityBlend) * AgilityBaseMult))
+Armor       = Base_Armor * Factor + floor(Level * 0.5)
+Resistance  = Base_Resistance * Factor + floor(Level * 0.5)
 ```
 
+- **敏捷（出手顺序）**：与 HP/攻击**不同**，敏捷不直接乘完整 `Factor`，而用 `AgilityBlend`（约 0.4）只吸收部分等级与类型带来的强度增长，并乘 `AgilityBaseMult`（约 0.9），避免怪物几乎总先于同等级英雄出手；暴击/闪避仍走英雄侧公式，怪物敏捷主要用于排序。
 - **Armor/Resistance 等级底数**：即使 Base 为 0，高等级怪物也会获得 `floor(Level * 0.5)` 的护甲/抗性，保证随等级合理成长。
 
 | 参数 | 说明 | 示例 |
@@ -176,6 +178,7 @@ Resistance = Base_Resistance * TierMult * (1 + Level * LevelScale) + floor(Level
 | TierMult | 类型系数：Normal≈1.15, Elite≈1.5, Boss≈2.8（普通怪略强、精英略弱，缩小差距） | 可配置 |
 | Level | 怪物等级（与队伍等级挂钩，单张地图内怪物等级在 [baseLevel+min, baseLevel+max] 范围内随机） | 1–60 |
 | LevelScale_* | 等级缩放系数 | 如 LevelScale=0.16（约每级 14% 提升，与玩家每级 5 属性点强度相当） |
+| AgilityBlend / AgilityBaseMult | 怪物敏捷相对 HP 的软化系数 | 实现见 `frontend/src/game/combat.js`（`MONSTER_AGILITY_*`） |
 
 - **小数值原则**：1 级普通怪 HP 约 20–50，PhysAtk/SpellPower 约 5–15，与 1 级英雄量级相当；随等级与类型系数放大。
 

@@ -206,6 +206,26 @@ describe('combat progression and systems', () => {
     expect(high.physAtk).toBeGreaterThanOrEqual(low.physAtk * 1.5)
   })
 
+  it('monster Agility scales slower than HP from level (turn-order balance)', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const low = createMonster(template, { tier: 'normal', level: 1 })
+    const high = createMonster(template, { tier: 'normal', level: 10 })
+    const hpRatio = high.maxHP / low.maxHP
+    const agiRatio = high.agility / low.agility
+    expect(high.agility).toBeGreaterThan(low.agility)
+    expect(agiRatio).toBeLessThan(hpRatio * 0.82)
+  })
+
+  it('monster Agility gains less from tier than HP does', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const normal = createMonster(template, { tier: 'normal', level: 5 })
+    const elite = createMonster(template, { tier: 'elite', level: 5 })
+    const hpRatio = elite.maxHP / normal.maxHP
+    const agiRatio = elite.agility / normal.agility
+    expect(elite.agility).toBeGreaterThan(normal.agility)
+    expect(agiRatio).toBeLessThan(hpRatio)
+  })
+
   it('monster armor and resistance scale with level (all attributes grow)', () => {
     const template = { id: 't', name: 'T', damageType: 'physical', base: { hp: 40, physAtk: 8, spellPower: 0, agility: 6, armor: 3, resistance: 2 } }
     const low = createMonster(template, { tier: 'normal', level: 1 })

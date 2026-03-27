@@ -4,8 +4,10 @@
  */
 
 import { getSunderDebuff } from './warriorSkills.js'
+import { getShieldBuff } from './priestSkills.js'
 
-/** @typedef {{ rule: string, when?: string, value?: number|string }} TargetRuleStep */
+/** @typedef {{ when: string, value?: number|string }} WhenClause */
+/** @typedef {{ rule: string, when?: string, value?: number|string, whenAll?: WhenClause[] }} TargetRuleStep */
 /** @typedef {{ skillId: string, when?: string, value?: number|string, targetRule?: string, targetRules?: (string|TargetRuleStep)[] }} TacticsCondition */
 
 /** Sentinel: use tactics.targetRule for this chain step */
@@ -120,6 +122,12 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     return ratio < threshold
   }
 
+  if (when === 'self-hp-above') {
+    const threshold = typeof value === 'number' ? value : 0.6
+    const ratio = (actor.currentHP ?? 0) / Math.max(1, actor.maxHP ?? 1)
+    return ratio > threshold
+  }
+
   if (when === 'ally-hp-below') {
     const threshold = typeof value === 'number' ? value : 0.4
     return heroes.some((h) => h.currentHP > 0 && (h.currentHP ?? 0) / Math.max(1, h.maxHP ?? 1) < threshold)
@@ -162,6 +170,37 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     return ratio < threshold
   }
 
+  if (when === 'tank-hp-above') {
+    const threshold = typeof value === 'number' ? value : 0.7
+    const tankId = ctx?.tankId
+    if (!tankId) return false
+    const tank = heroes.find((h) => h.id === tankId && (h.currentHP ?? 0) > 0)
+    if (!tank) return false
+    const ratio = (tank.currentHP ?? 0) / Math.max(1, tank.maxHP ?? 1)
+    return ratio > threshold
+  }
+
+  if (when === 'self-no-shield') {
+    return !getShieldBuff(actor)
+  }
+
+  if (when === 'tank-no-shield') {
+    const tankId = ctx?.tankId
+    if (!tankId) return false
+    const tank = heroes.find((h) => h.id === tankId && (h.currentHP ?? 0) > 0)
+    if (!tank) return false
+    return !getShieldBuff(tank)
+  }
+
+  if (when === 'enemy-not-targeting-self') {
+    const threat = ctx?.threat
+    if (!threat) return true
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
+    if (aliveMonsters.length === 0) return true
+    return !aliveMonsters.some((m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id)
+  }
+
   if (when === 'resource-above') {
     const threshold = typeof value === 'number' ? value : 50
     return (actor.currentMP ?? 0) >= threshold
@@ -178,6 +217,74 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
   }
 
   return true
+}
+
+/**
+ * Read ally-hp-below threshold from a targetRules step (single when or whenAll).
+ * @param {string|TargetRuleStep} step
+ * @returns {number|null}
+ */
+export function getAllyHpBelowThresholdFromStep(step) {
+  if (typeof step !== 'object' || step === null) return null
+  if (step.when === 'ally-hp-below') return typeof step.value === 'number' ? step.value : 0.3
+  if (Array.isArray(step.whenAll)) {
+    const w = step.whenAll.find((x) => x && x.when === 'ally-hp-below')
+    if (w) return typeof w.value === 'number' ? w.value : 0.3
+  }
+  return null
+}
+
+/**
+ * All per-step gates must pass before pickTargetByRule runs for that step.
+ * Supports legacy { when, value } or { whenAll: [{ when, value }, ...] } (AND).
+ * @param {string|TargetRuleStep} step
+ * @param {Object} actor
+ * @param {Object[]} heroes
+ * @param {Object[]} monsters
+ * @param {Object} ctx
+ * @returns {boolean}
+ */
+export function evaluateTargetRuleStepGates(step, actor, heroes, monsters, ctx) {
+  if (typeof step !== 'object' || step === null) return true
+  const c = ctx || {}
+  if (Array.isArray(step.whenAll) && step.whenAll.length > 0) {
+    return step.whenAll.every((w) => {
+      if (!w || !w.when) return true
+      return checkCondition({ when: w.when, value: w.value }, actor, null, heroes, monsters, c)
+    })
+  }
+  if (step.when) {
+    return checkCondition({ when: step.when, value: step.value }, actor, null, heroes, monsters, c)
+  }
+  return true
+}
+
+/**
+ * Whether Priest flash-heal may be considered this turn (before target chain).
+ * If the first targetRules step is an emergency { when: ally-hp-below }, allow the skill
+ * when that check passes even if skill-level when (e.g. self-hp-below) would fail.
+ * @param {TacticsCondition|null|undefined} priestCond
+ * @param {Object} actor
+ * @param {Object[]} heroes
+ * @param {Object[]} monsters
+ * @param {Object} ctx
+ * @returns {boolean}
+ */
+export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, monsters, ctx) {
+  if (!priestCond || isTacticsConditionInactive(priestCond)) return true
+  const chain = priestCond.targetRules
+  if (!Array.isArray(chain) || chain.length === 0) {
+    return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
+  }
+  const first = chain[0]
+  if (typeof first === 'object' && first !== null) {
+    const th = getAllyHpBelowThresholdFromStep(first)
+    if (th != null) {
+      const emergency = { when: 'ally-hp-below', value: th }
+      if (checkCondition(emergency, actor, null, heroes, monsters, ctx)) return true
+    }
+  }
+  return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
 }
 
 /**

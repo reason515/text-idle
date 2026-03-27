@@ -81,7 +81,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 
 ## targetRule values: ally targeting (Priest)
 - "tank" : target the tank hero
-- "lowest-hp-ally" : target ally with lowest HP
+- "lowest-hp-ally" : target ally with lowest **current** HP (absolute, not %); among allies below a threshold, this picks the most injured by current HP
 - "self" : target self (always, regardless of threat)
 - "self-if-enemy-targeting" : target self ONLY when at least one enemy's top-threat target is self; returns null otherwise (used in targetRules chain to branch: self when threatened → fallback to ally/tank when safe)
 
@@ -89,7 +89,8 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "target-hp-below" : target HP% < value (0.0-1.0, e.g. 0.3 = 30%)
 - "target-hp-above" : target HP% > value
 - "self-hp-below" : caster HP% < value
-- "ally-hp-below" : any ally HP% < value
+- "self-hp-above" : caster HP% > value (e.g. "自己HP高于60%")
+- "ally-hp-below" : any **living ally** (including the caster) has HP% < value — **NOT** "teammates only"; Chinese "自身或队友低于X%" maps here
 - "self-hit-this-round" : caster was hit this round (no value)
 - "target-has-debuff" : target has debuff (value: "sunder" / "frostbolt" / "burn")
 - "ally-ot" : an ally pulled aggro from tank (no value)
@@ -97,7 +98,23 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "resource-below" : resource < value (number)
 - "round-gte" : round number >= value (number)
 - "enemy-targeting-self" : at least one enemy's top-threat target is the caster (no value). Use when caster wants to react to being focused by enemies.
+- "enemy-not-targeting-self" : no alive enemy has top-threat on the caster (inverse of enemy-targeting-self). Use when the player says "没有怪物打自己 / 不存在目标为自己的怪物" for tank-branch rules.
 - "tank-hp-below" : designated tank HP% < value (0.0-1.0). Use to gate tank-related actions. **Which skill** depends on what the player said (see Priest rules below).
+- "tank-hp-above" : designated tank HP% > value (e.g. "坦克血量高于70%才套盾")
+- "self-no-shield" : caster has **no** Power Word: Shield absorb on self (no value). Use for "自己身上没有真言术盾/没有盾buff". **NEVER** use target-has-debuff for this.
+- "tank-no-shield" : designated tank has no shield (no value). For "坦克身上没有盾".
+
+## Priest: shield buff vs debuff (CRITICAL — common model mistake)
+- **No shield / 没有盾 / 没有真言术盾** on an ally = **self-no-shield** (when target is self) or **tank-no-shield** (when target is tank). The engine checks \`unit.shield\` absorb, not debuffs.
+- **NEVER** map "没有真言术盾" to \`target-has-debuff\` with value \`power-word-shield\` — that is **wrong** (debuffs and shields are different systems).
+
+## Priest: emergency heal (higher priority) when **existingTactics** already has flash-heal (CRITICAL)
+- If the player asks to **add** a **higher-priority** rule: when **self OR any teammate** HP% < T, use **flash-heal** on the right target (usually **lowest-hp-ally** among the party when triage is needed):
+  - Put this as the **first** step in **flash-heal** \`targetRules\`: \`{ "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": <T> }\`
+  - **Keep** the existing skill-level \`when\` (e.g. self-hp-below) and **append** the previous flash-heal \`targetRules\` chain **after** this first step (prepend emergency, do not delete the old chain).
+  - **Never** use skill-level \`when: ally-hp-below\` **alone** for flash-heal to mean "only cast when someone is low" — that would **block** the rest of the heal logic. Emergency must be a **targetRules** step with per-step \`when: ally-hp-below\`, not the only skill gate.
+- **Do NOT** put duplicate skill IDs in \`skillPriority\` (e.g. two "flash-heal"). **Do NOT** drop \`power-word-shield\` from priority unless the player asked.
+- If \`existingTactics\` is provided, output **only** the **delta** fields **or** the **full merged** flash-heal entry; never output a flash-heal condition that replaces the whole chain with only the new line.
 
 ## Priest: flash-heal vs power-word-shield (CRITICAL - do not mix up)
 - **flash-heal** (快速治疗 / 治疗 / 加血 / 奶): **healing** only. If the player says "坦克血量低于X%时**治疗**", "**对坦克治疗**", "低血量时**奶**坦克", put **tank-hp-below** and tank targeting on **flash-heal**, NOT on power-word-shield.
@@ -113,6 +130,7 @@ ${getSkillNameMap(heroClass, skillIds)}
 3. When player says "use X first, then Y, then basic attack" or "X not available then use Y": skillPriority = ["X", "Y"]. NO conditions needed for resource/cooldown.
 4. When player says "target enemies not targeting me" or "target enemies attacking allies": use "threat-not-tank-random".
 5. **targetRules fallback chain** (VERY IMPORTANT): "targetRules" is an ARRAY of rules tried in order. Each step can be either a plain rule string OR a step object with a per-step condition: { "rule": "<rule-id>", "when": "<condition>", "value": <threshold> }. If a step has a "when" condition that fails, that step is SKIPPED (returns null, engine tries next step). This enables branching: "when A target X, otherwise target Y". Example: ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] means "self when targeted; tank only when tank HP < 70%". If NO step succeeds, the skill is **skipped entirely**.
+5b. **whenAll** (per-step AND): Use { "rule": "<rule-id>", "whenAll": [ { "when": "<condition>", "value": <threshold> }, ... ] } when **multiple** gates must all pass before that step tries to pick a target (e.g. self-if-enemy-targeting **and** self HP < 60%). Single condition still uses "when"/"value" on the step. **All** whenAll entries must pass (AND).
 6. Only use enum values listed above. Do NOT invent new ones.
 7. "explanation" must be in Chinese, 1-2 sentences.
 8. Percentage thresholds: convert to 0.0-1.0 (40% -> 0.4).
@@ -144,6 +162,41 @@ Reason: This is a SUPPLEMENTARY rule. The player wants different behavior based 
 - When non-tank targets exist: sunder targets them (1st rule in chain hits), taunt targets them (its rule hits)
 - When ALL enemies on tank: sunder falls back to lowest-hp (2nd rule in chain), taunt finds no target and is skipped
 Use per-skill targetRules fallback chains. Do NOT change skillPriority or global targetRule.
+
+WRONG 6 (Priest) - "no shield" mapped to debuff:
+Player: "自己身上没有真言术盾时对自己套盾"
+WRONG: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "target-has-debuff", "value": "power-word-shield" }] }] }
+CORRECT: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-no-shield" }] }] }
+
+WRONG 5 (Priest) - emergency triage replaces entire flash-heal or duplicates priority:
+Player (existing): flash-heal has self-hp-below 0.6 and targetRules [self-if-enemy-targeting, tank step...]; skillPriority ["flash-heal","power-word-shield"]
+User: "在现有基础上新增更高优先级：当自身或队友生命低于30%时优先对其快速治疗"
+WRONG: { "skillPriority": ["flash-heal", "flash-heal", "power-word-shield"], "conditions": [{ "skillId": "flash-heal", "targetRule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 }] }
+CORRECT: { "conditions": [{ "skillId": "flash-heal", "when": "self-hp-below", "value": 0.6, "targetRules": [{ "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 }, "self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] }] }
+Reason: Prepend emergency step; keep skill when + full chain. ally-hp-below includes self. No duplicate skills in skillPriority.
+
+Player (Priest): "只有自身血量低于60%且被敌人盯上时，才对自身用快速治疗"
+Output: { "conditions": [{ "skillId": "flash-heal", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-hp-below", "value": 0.6 }] }] }] }
+Note: Multiple per-step gates use whenAll (AND). Do not rely on skill-level when alone if the player asked for a chain-step-only restriction.
+
+Player (Priest, combined triage + shield/heal branches — reference shape):
+(1) Party anyone HP<30%: flash-heal lowest. (2) If monsters target priest: PWS self when priest HP>60% and no shield; else flash-heal self when priest HP<60%. (3) If no monster targets priest: PWS tank when tank HP>70% and no shield; else flash-heal tank when tank HP<70%.
+Output: {
+  "skillPriority": ["flash-heal", "power-word-shield"],
+  "targetRule": "lowest-hp",
+  "conditions": [
+    { "skillId": "flash-heal", "targetRules": [
+      { "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 },
+      { "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-hp-below", "value": 0.6 }] },
+      { "rule": "tank", "whenAll": [{ "when": "tank-hp-below", "value": 0.7 }, { "when": "enemy-not-targeting-self" }] }
+    ]},
+    { "skillId": "power-word-shield", "targetRules": [
+      { "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }, { "when": "self-no-shield" }] },
+      { "rule": "tank", "whenAll": [{ "when": "tank-hp-above", "value": 0.7 }, { "when": "tank-no-shield" }, { "when": "enemy-not-targeting-self" }] }
+    ]}
+  ],
+  "explanation": "..."
+}
 
 WRONG 4 (Priest) - putting "tank low HP heal" on shield instead of flash-heal:
 Player: "坦克血量低于70%时对坦克施放治疗，否则套盾" or similar where **治疗** = heal at low tank HP
@@ -257,10 +310,11 @@ const VALID_TARGET_RULES_ALLY = new Set([
 ])
 
 const VALID_WHEN = new Set([
-  'target-hp-below', 'target-hp-above', 'self-hp-below', 'ally-hp-below',
+  'target-hp-below', 'target-hp-above', 'self-hp-below', 'self-hp-above', 'ally-hp-below',
   'self-hit-this-round', 'target-has-debuff', 'ally-ot',
   'resource-above', 'resource-below', 'round-gte',
-  'enemy-targeting-self', 'tank-hp-below',
+  'enemy-targeting-self', 'enemy-not-targeting-self', 'tank-hp-below', 'tank-hp-above',
+  'self-no-shield', 'tank-no-shield',
 ])
 
 function isNonsensicalCondition(when, value) {
@@ -273,6 +327,8 @@ function isNonsensicalCondition(when, value) {
 const CONDITION_KEYWORDS = [
   /血量.{0,4}(低于|少于|不足|以下|小于|<)/,
   /血量.{0,4}(高于|大于|超过|以上|>)/,
+  /(没有|无|不存在).{0,6}(盾|真言术)/,
+  /(高于|超过).{0,4}\d+%/,
   /[hH][pP].{0,4}(低于|少于|不足|以下|below|<)/,
   /[hH][pP].{0,4}(高于|大于|超过|以上|above|>)/,
   /减益|debuff/i,
@@ -302,8 +358,80 @@ export function conditionEntryHasTankHpBelow(c) {
   if (!Array.isArray(chain)) return false
   return chain.some((step) => {
     if (typeof step === 'object' && step !== null && step.when === 'tank-hp-below') return true
+    if (typeof step === 'object' && step !== null && Array.isArray(step.whenAll)) {
+      return step.whenAll.some((w) => w && w.when === 'tank-hp-below')
+    }
     return false
   })
+}
+
+function stepIsOnlyAllyHpBelowEmergency(s) {
+  if (typeof s !== 'object' || s === null) return false
+  if (s.when === 'ally-hp-below') return true
+  if (Array.isArray(s.whenAll) && s.whenAll.length === 1 && s.whenAll[0]?.when === 'ally-hp-below') return true
+  return false
+}
+
+function flashHealEmergencyStepFromIncoming(inc) {
+  if (!inc || inc.skillId !== 'flash-heal') return null
+  if (Array.isArray(inc.targetRules) && inc.targetRules.length === 1) {
+    const s = inc.targetRules[0]
+    if (typeof s === 'object' && s !== null && stepIsOnlyAllyHpBelowEmergency(s)) {
+      if (s.when === 'ally-hp-below') {
+        return { rule: s.rule || 'lowest-hp-ally', when: 'ally-hp-below', value: s.value }
+      }
+      const w = s.whenAll[0]
+      return { rule: s.rule || 'lowest-hp-ally', when: 'ally-hp-below', value: w.value }
+    }
+  }
+  if (inc.when === 'ally-hp-below' && (inc.targetRule === 'lowest-hp-ally' || !inc.targetRule)) {
+    return { rule: inc.targetRule || 'lowest-hp-ally', when: 'ally-hp-below', value: inc.value }
+  }
+  return null
+}
+
+function isFlashHealEmergencySupplement(inc) {
+  if (!inc || inc.skillId !== 'flash-heal') return false
+  if (inc.targetRules && inc.targetRules.length > 1) return false
+  if (inc.targetRules && inc.targetRules.length === 1) {
+    const s = inc.targetRules[0]
+    return typeof s === 'object' && s !== null && stepIsOnlyAllyHpBelowEmergency(s)
+  }
+  return inc.when === 'ally-hp-below' && (inc.targetRule === 'lowest-hp-ally' || !inc.targetRule)
+}
+
+function normalizeFlashHealTargetRules(cond) {
+  if (cond.targetRules?.length) return [...cond.targetRules]
+  if (cond.targetRule) return [cond.targetRule]
+  return []
+}
+
+function mergeFlashHealWithEmergency(existing, incoming) {
+  const em = flashHealEmergencyStepFromIncoming(incoming)
+  if (!em) return null
+  const base = normalizeFlashHealTargetRules(existing)
+  if (base.length > 0) {
+    const b0 = base[0]
+    if (typeof b0 === 'object' && b0 !== null && stepIsOnlyAllyHpBelowEmergency(b0)) {
+      const v0 =
+        b0.when === 'ally-hp-below'
+          ? (typeof b0.value === 'number' ? b0.value : 0.3)
+          : (typeof b0.whenAll[0].value === 'number' ? b0.whenAll[0].value : 0.3)
+      const v1 = typeof em.value === 'number' ? em.value : 0.3
+      const r0 = b0.rule || 'lowest-hp-ally'
+      const r1 = em.rule || 'lowest-hp-ally'
+      if (v0 === v1 && r0 === r1) return { ...existing }
+    }
+  }
+  const out = {
+    skillId: 'flash-heal',
+    targetRules: [em, ...base],
+  }
+  if (existing.when) {
+    out.when = existing.when
+    if (existing.value !== undefined) out.value = existing.value
+  }
+  return out
 }
 
 /**
@@ -320,13 +448,20 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   const isAllyClass = heroClass === 'Priest'
   const validTargetRules = isAllyClass ? VALID_TARGET_RULES_ALLY : VALID_TARGET_RULES_ENEMY
 
-  const priority = (raw.skillPriority || []).filter((id) => {
+  const priority = []
+  const seenPriority = new Set()
+  for (const id of raw.skillPriority || []) {
     if (!skillSet.has(id)) {
       warnings.push(`已移除未知技能「${id}」`)
-      return false
+      continue
     }
-    return true
-  })
+    if (seenPriority.has(id)) {
+      warnings.push(`技能优先级已去重：移除重复的「${id}」`)
+      continue
+    }
+    seenPriority.add(id)
+    priority.push(id)
+  }
 
   let targetRule = raw.targetRule || null
   if (targetRule && !validTargetRules.has(targetRule)) {
@@ -350,9 +485,31 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
             if (typeof r === 'object' && r !== null && typeof r.rule === 'string') {
               if (!allValid.has(r.rule)) return null
               const step = { rule: r.rule }
+              const whenClauses = []
               if (r.when && VALID_WHEN.has(r.when) && !isNonsensicalCondition(r.when, r.value)) {
-                step.when = r.when
-                if (r.value !== undefined) step.value = r.value
+                whenClauses.push({ when: r.when, value: r.value })
+              }
+              if (Array.isArray(r.whenAll)) {
+                for (const w of r.whenAll) {
+                  if (w && VALID_WHEN.has(w.when) && !isNonsensicalCondition(w.when, w.value)) {
+                    whenClauses.push({ when: w.when, value: w.value })
+                  }
+                }
+              }
+              if (whenClauses.length === 0) return step
+              const seen = new Set()
+              const deduped = []
+              for (const w of whenClauses) {
+                const key = `${w.when}:${w.value ?? ''}`
+                if (seen.has(key)) continue
+                seen.add(key)
+                deduped.push(w)
+              }
+              if (deduped.length === 1) {
+                step.when = deduped[0].when
+                if (deduped[0].value !== undefined) step.value = deduped[0].value
+              } else {
+                step.whenAll = deduped
               }
               return step
             }
@@ -371,6 +528,9 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
           clean.when = c.when
           if (c.value !== undefined) clean.value = c.value
         }
+      }
+      if (clean.targetRules?.length) {
+        delete clean.targetRule
       }
       return clean
     })
@@ -414,7 +574,16 @@ export function mergeAiTacticsApply(existing, incoming) {
     for (const newCond of t.conditions) {
       if (!newCond?.skillId) continue
       const idx = out.conditions.findIndex((c) => c.skillId === newCond.skillId)
+      if (newCond.skillId === 'flash-heal' && idx >= 0 && isFlashHealEmergencySupplement(newCond)) {
+        const merged = mergeFlashHealWithEmergency(out.conditions[idx], newCond)
+        if (merged) {
+          if (merged.targetRules?.length) delete merged.targetRule
+          out.conditions[idx] = merged
+          continue
+        }
+      }
       const copy = { ...newCond }
+      if (copy.targetRules?.length) delete copy.targetRule
       if (idx >= 0) out.conditions[idx] = copy
       else out.conditions.push(copy)
     }
@@ -496,7 +665,8 @@ const WHEN_DISPLAY = {
   'target-hp-below': '目标血量低于',
   'target-hp-above': '目标血量高于',
   'self-hp-below': '自身血量低于',
-  'ally-hp-below': '队友血量低于',
+  'self-hp-above': '自身血量高于',
+  'ally-hp-below': '己方任意血量低于（含自身）',
   'self-hit-this-round': '本回合被攻击',
   'target-has-debuff': '目标有减益',
   'ally-ot': '队友抢到仇恨（脱离坦克控制）',
@@ -504,7 +674,11 @@ const WHEN_DISPLAY = {
   'resource-below': '资源低于',
   'round-gte': '回合数不少于',
   'enemy-targeting-self': '有敌人以自己为目标',
+  'enemy-not-targeting-self': '无敌人以自己为目标',
   'tank-hp-below': '坦克血量低于',
+  'tank-hp-above': '坦克血量高于',
+  'self-no-shield': '自身无真言术：盾',
+  'tank-no-shield': '坦克无真言术：盾',
 }
 
 /**
@@ -532,10 +706,21 @@ export function targetRuleDisplayName(rule) {
  * @param {string|{ rule: string, when?: string, value?: * }} step
  * @returns {string}
  */
+function whenClauseDisplay(w) {
+  if (!w || !w.when || !WHEN_DISPLAY[w.when]) return ''
+  const whenPart = WHEN_DISPLAY[w.when]
+  const valuePart = conditionValueDisplay(w.when, w.value)
+  return valuePart ? `${whenPart} ${valuePart}` : whenPart
+}
+
 export function targetRuleStepDisplay(step) {
   if (typeof step === 'string') return targetRuleDisplayName(step)
   if (typeof step === 'object' && step !== null && typeof step.rule === 'string') {
     const rulePart = targetRuleDisplayName(step.rule)
+    if (Array.isArray(step.whenAll) && step.whenAll.length > 0) {
+      const parts = step.whenAll.map(whenClauseDisplay).filter(Boolean)
+      return parts.length ? `${rulePart}（${parts.join('；')}）` : rulePart
+    }
     if (step.when && WHEN_DISPLAY[step.when]) {
       const whenPart = WHEN_DISPLAY[step.when]
       const valuePart = conditionValueDisplay(step.when, step.value)
@@ -563,8 +748,17 @@ export function whenDisplayName(when) {
  */
 export function conditionValueDisplay(when, value) {
   if (value === undefined || value === null) return ''
-  if (when === 'target-hp-below' || when === 'target-hp-above' || when === 'self-hp-below' || when === 'ally-hp-below' || when === 'tank-hp-below') {
-    return Math.round((typeof value === 'number' ? value : 0.3) * 100) + '%'
+  if (
+    when === 'target-hp-below' ||
+    when === 'target-hp-above' ||
+    when === 'self-hp-below' ||
+    when === 'self-hp-above' ||
+    when === 'ally-hp-below' ||
+    when === 'tank-hp-below' ||
+    when === 'tank-hp-above'
+  ) {
+    const def = when === 'self-hp-above' || when === 'tank-hp-above' ? 0.6 : 0.3
+    return Math.round((typeof value === 'number' ? value : def) * 100) + '%'
   }
   if (when === 'target-has-debuff') {
     const map = { sunder: '破甲', frostbolt: '冰霜', burn: '燃烧' }
