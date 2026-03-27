@@ -759,6 +759,11 @@ describe('combat progression and systems', () => {
     expect(skillEntry).toBeDefined()
     expect(skillEntry.damageType).toBe('magic')
     expect(skillEntry.finalDamage).toBeGreaterThanOrEqual(1)
+    expect(skillEntry.manaConsumed).toBeGreaterThan(0)
+    expect(skillEntry.manaAfter).toBeDefined()
+    const manaBatch = result.log.find((e) => e.type === 'manaRegenBatch')
+    expect(manaBatch).toBeDefined()
+    expect(manaBatch.updates.some((u) => u.actorId === 'm1')).toBe(true)
   })
 
   it('Warrior with Cleave skill hits multiple targets when rage sufficient', () => {

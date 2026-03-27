@@ -1219,11 +1219,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     // Mage/Priest mana recovery per round (Base + Spirit * k)
     const MANA_REGEN_BASE = 4
     const MANA_REGEN_SPIRIT_SCALE = 1
+    const manaRegenUpdates = []
     for (const hero of heroUnits) {
       if (hero.currentHP <= 0) continue
       if (hero.class !== 'Mage' && hero.class !== 'Priest') continue
       const regen = MANA_REGEN_BASE + (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
       hero.currentMP = Math.min(hero.maxMP, (hero.currentMP || 0) + Math.max(1, Math.floor(regen)))
+      manaRegenUpdates.push({ actorId: hero.id, manaAfter: hero.currentMP })
+    }
+    if (manaRegenUpdates.length > 0) {
+      log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
     }
 
     // Tick shield duration (Power Word: Shield)

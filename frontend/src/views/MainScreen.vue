@@ -340,6 +340,7 @@
               </template>
               <template v-else>{{ entry.message }}</template>
             </div>
+            <div v-else-if="entry.type === 'manaRegenBatch'" class="log-mana-regen-sync" aria-hidden="true"></div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span
@@ -2581,6 +2582,17 @@ function applyOneCombatEntry(entry) {
   }
   addLogEntry(entry)
 
+  if (entry.type === 'manaRegenBatch' && Array.isArray(entry.updates)) {
+    let batchHeroes = [...displayHeroes.value]
+    for (const u of entry.updates) {
+      const bi = batchHeroes.findIndex((h) => h.id === u.actorId)
+      if (bi >= 0) batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
+    }
+    displayHeroes.value = batchHeroes
+    syncSelectedUnitsFromCombat()
+    return
+  }
+
   const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
   if (
     (targetHpAfter != null && targetHpAfter <= 0) &&
@@ -2666,10 +2678,10 @@ function applyOneCombatEntry(entry) {
       }
     }
   }
-  const actorRage = entry.actorRageAfter ?? entry.rageAfter
+  const actorResourceAfter = entry.actorRageAfter ?? entry.rageAfter ?? entry.manaAfter
   const ai = updated.findIndex((h) => h.id === entry.actorId)
-  if (ai >= 0 && actorRage !== undefined) updated[ai] = { ...updated[ai], currentMP: actorRage }
-  if (hi >= 0 || (ai >= 0 && actorRage !== undefined)) displayHeroes.value = updated
+  if (ai >= 0 && actorResourceAfter !== undefined) updated[ai] = { ...updated[ai], currentMP: actorResourceAfter }
+  if (hi >= 0 || (ai >= 0 && actorResourceAfter !== undefined)) displayHeroes.value = updated
 
   if (entry.actorTier != null && entry.actorId) {
     const ami = currentMonsters.value.findIndex((m) => m.id === entry.actorId)
@@ -3970,6 +3982,10 @@ onUnmounted(() => {
 .log-separator-round {
   border-top: 1px dashed var(--border-dashed);
   margin: 0.45rem 0 0.15rem 0;
+}
+/* Sync-only log row: updates MP bar without visible text */
+.log-mana-regen-sync {
+  display: none;
 }
 
 .log-map-entry {
