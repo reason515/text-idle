@@ -293,11 +293,12 @@
                 >{{ entry.targetName }}</span>
                 <span class="log-sep">{{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
                 <span class="log-sep">造成</span>
-                <span class="log-dmg log-phys-dmg">-{{ entry.damage }}</span>
+                <span class="log-dmg log-phys-dmg">-{{ netDamageToHp(entry) }}</span>
                 <span class="log-sep">生命:</span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span>
                 <span class="log-sep">-></span>
                 <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
+                <div v-if="damageFormulaEquation(entry)" class="log-calc">{{ damageFormulaEquation(entry) }}</div>
               </div>
             </div>
             <div v-else-if="entry.type === 'unitDefeated'" class="log-defeated">
@@ -363,7 +364,7 @@
                     entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
                     entry.isCrit ? 'log-crit' : ''
                   ]"
-                >{{ entry.finalDamage }}</span>
+                >{{ netDamageToHp(entry) }}</span>
                 <span v-if="entry.isCrit" class="log-crit-mark">暴击！</span>
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
@@ -1456,7 +1457,7 @@ import {
   itemMatchesSlot,
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
-import { damageFormulaEquation, supportSkillEffectLine } from '../game/battleLogFormat.js'
+import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2595,10 +2596,16 @@ function applyOneCombatEntry(entry) {
   }
 
   if (entry.type === 'dot') {
-    pushFloatingNumber(entry.targetId, '-' + entry.damage, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
+    const dotHpLoss = netDamageToHp(entry)
+    if (dotHpLoss > 0) {
+      pushFloatingNumber(entry.targetId, '-' + dotHpLoss, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
+    }
   } else if (entry.targetId && entry.finalDamage > 0) {
-    const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : '技能') : null)
-    pushFloatingNumber(entry.targetId, '-' + entry.finalDamage, { skillName: skillName ?? null, type: 'damage' })
+    const hpLoss = netDamageToHp(entry)
+    if (hpLoss > 0) {
+      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : '技能') : null)
+      pushFloatingNumber(entry.targetId, '-' + hpLoss, { skillName: skillName ?? null, type: 'damage' })
+    }
   }
   if (entry.heal > 0 && entry.actorId) {
     const skillName = entry.skillName ?? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : null)

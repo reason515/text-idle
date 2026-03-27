@@ -1054,6 +1054,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
         damage.absorbedByShield = shieldResult.absorbed
         damage.overflowDamage = shieldResult.overflow
+        damage.shieldBroke = shieldResult.shieldBroke
+        damage.shieldAbsorbRemainingAfter = target.shield?.absorbRemaining ?? 0
+        damage.shieldRemainingRoundsAfter = target.shield?.remainingRounds ?? null
       } else {
         target.currentHP = damage.nextHP
       }
@@ -1117,7 +1120,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorTier: actor.tier || null,
         action: action.action,
         ...(action.skillId && { skillId: action.skillId }),
-        ...(damage.absorbedByShield != null && damage.absorbedByShield > 0 && { shieldAbsorbed: damage.absorbedByShield }),
+        ...(damage.absorbedByShield != null &&
+          damage.absorbedByShield > 0 && {
+            shieldAbsorbed: damage.absorbedByShield,
+            shieldBroke: damage.shieldBroke,
+            shieldAbsorbRemainingAfter: damage.shieldAbsorbRemainingAfter ?? 0,
+            shieldRemainingRoundsAfter: damage.shieldRemainingRoundsAfter ?? null,
+          }),
         ...(action.skillName && { skillName: action.skillName }),
         targetId: target.id,
         targetName: target.name,
@@ -1168,7 +1177,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       for (const d of dotDebuffs) {
         const dotDamage = d.damagePerRound
         const hpBefore = unit.currentHP
-        unit.currentHP = Math.max(0, hpBefore - dotDamage)
+        const sr = applyDamageToShieldedUnit(unit, dotDamage)
         log.push({
           round,
           type: 'dot',
@@ -1178,6 +1187,14 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           targetTier: unit.tier || null,
           debuffType: d.type,
           damage: dotDamage,
+          ...(sr.absorbed > 0
+            ? {
+                shieldAbsorbed: sr.absorbed,
+                shieldBroke: sr.shieldBroke,
+                shieldAbsorbRemainingAfter: unit.shield?.absorbRemaining ?? 0,
+                shieldRemainingRoundsAfter: unit.shield?.remainingRounds ?? null,
+              }
+            : {}),
           targetHPBefore: hpBefore,
           targetHPAfter: unit.currentHP,
           targetMaxHP: unit.maxHP,

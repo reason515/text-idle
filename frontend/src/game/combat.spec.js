@@ -650,6 +650,54 @@ describe('combat progression and systems', () => {
     expect(magicAttackEntry.damageType).toBe('magic')
   })
 
+  it('Power Word: Shield on tank absorbs monster damage (log shieldAbsorbed, HP only loses overflow)', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      isTank: true,
+      agility: 10,
+      strength: 20,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'] },
+      currentHP: 500,
+    })
+    const priest = sampleHero({
+      id: 'p1',
+      class: 'Priest',
+      intellect: 40,
+      spirit: 10,
+      agility: 12,
+      skills: ['power-word-shield'],
+      tactics: {
+        skillPriority: ['power-word-shield'],
+        conditions: [{ skillId: 'power-word-shield', targetRule: 'tank' }],
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Weak Mob',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 8, spellPower: 0, agility: 3, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes: [warrior, priest], monsters, rng: () => 0.5, maxRounds: 8 })
+    const shieldEntry = result.log.find((e) => e.skillId === 'power-word-shield')
+    expect(shieldEntry).toBeDefined()
+    expect(shieldEntry.targetId).toBe('w1')
+    const monsterHits = result.log.filter(
+      (e) => e.actorTier != null && e.targetId === 'w1' && e.finalDamage != null && e.finalDamage > 0
+    )
+    expect(monsterHits.length).toBeGreaterThan(0)
+    const firstHit = monsterHits[0]
+    expect(firstHit.shieldAbsorbed).toBeGreaterThan(0)
+    const overflow = firstHit.finalDamage - firstHit.shieldAbsorbed
+    expect(firstHit.targetHPAfter).toBe(firstHit.targetHPBefore - overflow)
+  })
+
   it('Priest Power Word: Shield with target self applies shield to priest', () => {
     const priest = sampleHero({
       id: 'priest-1',
