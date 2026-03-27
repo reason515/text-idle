@@ -104,6 +104,37 @@ describe('tactics', () => {
       }
       expect(getTargetRuleChain(actor, 'taunt', actor.tactics.conditions)).toEqual(['highest-threat'])
     })
+
+    it('passes through step objects in targetRules', () => {
+      const conditions = [{
+        skillId: 'flash-heal',
+        targetRules: [
+          'self-if-enemy-targeting',
+          { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+        ],
+      }]
+      const chain = getTargetRuleChain({}, 'flash-heal', conditions)
+      expect(chain).toHaveLength(2)
+      expect(chain[0]).toBe('self-if-enemy-targeting')
+      expect(chain[1]).toEqual({ rule: 'tank', when: 'tank-hp-below', value: 0.7 })
+    })
+
+    it('filters out invalid step objects from targetRules', () => {
+      const conditions = [{
+        skillId: 'flash-heal',
+        targetRules: [
+          'self-if-enemy-targeting',
+          { rule: '' },
+          { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+          null,
+          42,
+        ],
+      }]
+      const chain = getTargetRuleChain({}, 'flash-heal', conditions)
+      expect(chain).toHaveLength(2)
+      expect(chain[0]).toBe('self-if-enemy-targeting')
+      expect(chain[1]).toEqual({ rule: 'tank', when: 'tank-hp-below', value: 0.7 })
+    })
   })
 
   describe('checkCondition', () => {
@@ -156,6 +187,75 @@ describe('tactics', () => {
       expect(checkCondition(cond, {}, null, [], [], { round: 3 })).toBe(true)
       expect(checkCondition(cond, {}, null, [], [], { round: 2 })).toBe(true)
       expect(checkCondition(cond, {}, null, [], [], { round: 1 })).toBe(false)
+    })
+
+    it('enemy-targeting-self returns false when no threat in ctx', () => {
+      const cond = { when: 'enemy-targeting-self' }
+      const actor = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const heroes = [actor]
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      expect(checkCondition(cond, actor, null, heroes, monsters, {})).toBe(false)
+    })
+
+    it('enemy-targeting-self returns true when a monster top-threat is the actor', () => {
+      const cond = { when: 'enemy-targeting-self' }
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+      const heroes = [priest, tank]
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      const threat = { m1: { priest: 80, tank: 10 } }
+      expect(checkCondition(cond, priest, null, heroes, monsters, { threat })).toBe(true)
+    })
+
+    it('enemy-targeting-self returns false when all monsters top-threat is another hero', () => {
+      const cond = { when: 'enemy-targeting-self' }
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+      const heroes = [priest, tank]
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      const threat = { m1: { priest: 10, tank: 80 } }
+      expect(checkCondition(cond, priest, null, heroes, monsters, { threat })).toBe(false)
+    })
+
+    it('enemy-targeting-self ignores dead monsters', () => {
+      const cond = { when: 'enemy-targeting-self' }
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+      const heroes = [priest, tank]
+      const monsters = [
+        { id: 'm1', currentHP: 0 },
+        { id: 'm2', currentHP: 50 },
+      ]
+      // m1 is dead (should be ignored); m2 targets tank
+      const threat = { m1: { priest: 100, tank: 10 }, m2: { priest: 10, tank: 80 } }
+      expect(checkCondition(cond, priest, null, heroes, monsters, { threat })).toBe(false)
+    })
+
+    it('tank-hp-below returns false when no tankId in ctx', () => {
+      const cond = { when: 'tank-hp-below', value: 0.7 }
+      const tank = { id: 'tank', currentHP: 50, maxHP: 200 }
+      expect(checkCondition(cond, {}, null, [tank], [], {})).toBe(false)
+    })
+
+    it('tank-hp-below returns true when tank HP below threshold', () => {
+      const cond = { when: 'tank-hp-below', value: 0.7 }
+      const tank = { id: 'tank', currentHP: 100, maxHP: 200 }
+      const heroes = [tank]
+      expect(checkCondition(cond, {}, null, heroes, [], { tankId: 'tank' })).toBe(true)
+    })
+
+    it('tank-hp-below returns false when tank HP above threshold', () => {
+      const cond = { when: 'tank-hp-below', value: 0.7 }
+      const tank = { id: 'tank', currentHP: 160, maxHP: 200 }
+      const heroes = [tank]
+      expect(checkCondition(cond, {}, null, heroes, [], { tankId: 'tank' })).toBe(false)
+    })
+
+    it('tank-hp-below returns false when designated tank is dead', () => {
+      const cond = { when: 'tank-hp-below', value: 0.7 }
+      const tank = { id: 'tank', currentHP: 0, maxHP: 200 }
+      const heroes = [tank]
+      expect(checkCondition(cond, {}, null, heroes, [], { tankId: 'tank' })).toBe(false)
     })
   })
 
@@ -409,6 +509,75 @@ describe('tactics', () => {
         heroes: [{ id: 'h1', currentHP: 100 }],
       })
       expect(r?.id).toBe('m1')
+    })
+
+    describe('self-if-enemy-targeting', () => {
+      const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
+      const tank = { id: 'tank', currentHP: 200, maxHP: 200 }
+
+      it('returns self when an enemy top-threat is the actor', () => {
+        const allies = [priest, tank]
+        const monsters = [{ id: 'm1', currentHP: 50 }]
+        const threat = { m1: { priest: 80, tank: 10 } }
+        const r = pickTargetByRule(allies, 'self-if-enemy-targeting', Math.random, {
+          actor: priest,
+          threat,
+          heroes: allies,
+          monsters,
+        })
+        expect(r?.id).toBe('priest')
+      })
+
+      it('returns null when no enemy is targeting the actor', () => {
+        const allies = [priest, tank]
+        const monsters = [{ id: 'm1', currentHP: 50 }]
+        const threat = { m1: { priest: 10, tank: 80 } }
+        const r = pickTargetByRule(allies, 'self-if-enemy-targeting', Math.random, {
+          actor: priest,
+          threat,
+          heroes: allies,
+          monsters,
+        })
+        expect(r).toBeNull()
+      })
+
+      it('returns null when no threat info provided', () => {
+        const allies = [priest, tank]
+        const r = pickTargetByRule(allies, 'self-if-enemy-targeting', Math.random, {
+          actor: priest,
+        })
+        expect(r).toBeNull()
+      })
+
+      it('returns null when actor not in candidate pool', () => {
+        const allies = [tank]
+        const monsters = [{ id: 'm1', currentHP: 50 }]
+        const threat = { m1: { priest: 90, tank: 10 } }
+        const r = pickTargetByRule(allies, 'self-if-enemy-targeting', Math.random, {
+          actor: priest,
+          threat,
+          heroes: [priest, tank],
+          monsters,
+        })
+        expect(r).toBeNull()
+      })
+
+      it('ignores dead monsters when checking targeting', () => {
+        const allies = [priest, tank]
+        const monsters = [
+          { id: 'm1', currentHP: 0 },
+          { id: 'm2', currentHP: 50 },
+        ]
+        // m1 is dead (should be ignored); m2 targets tank
+        const threat = { m1: { priest: 100, tank: 10 }, m2: { priest: 5, tank: 80 } }
+        const r = pickTargetByRule(allies, 'self-if-enemy-targeting', Math.random, {
+          actor: priest,
+          threat,
+          heroes: allies,
+          monsters,
+        })
+        expect(r).toBeNull()
+      })
     })
   })
 })

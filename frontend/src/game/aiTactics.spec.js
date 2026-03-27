@@ -117,6 +117,31 @@ describe('validateAiTactics', () => {
     ])
   })
 
+  it('validates targetRules with conditional step objects (rule + when + value)', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      targetRule: 'tank',
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          when: 'self-hp-below',
+          value: 0.6,
+          targetRules: [
+            'self-if-enemy-targeting',
+            { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+            { rule: 'bad-rule', when: 'tank-hp-below', value: 0.5 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest')
+    expect(result.warnings).toEqual([])
+    expect(result.tactics.conditions[0].targetRules).toEqual([
+      'self-if-enemy-targeting',
+      { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+    ])
+  })
+
   it('handles empty/missing input gracefully', () => {
     const result = validateAiTactics({}, [], 'Warrior')
     expect(result.tactics.skillPriority).toEqual([])

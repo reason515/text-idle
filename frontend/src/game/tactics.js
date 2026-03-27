@@ -5,7 +5,8 @@
 
 import { getSunderDebuff } from './warriorSkills.js'
 
-/** @typedef {{ skillId: string, when?: string, value?: number|string, targetRule?: string, targetRules?: string[] }} TacticsCondition */
+/** @typedef {{ rule: string, when?: string, value?: number|string }} TargetRuleStep */
+/** @typedef {{ skillId: string, when?: string, value?: number|string, targetRule?: string, targetRules?: (string|TargetRuleStep)[] }} TacticsCondition */
 
 /** Sentinel: use tactics.targetRule for this chain step */
 export const TACTICS_TARGET_RULE_INHERIT = 'default'
@@ -26,16 +27,21 @@ export function isTacticsConditionInactive(condition) {
 
 /**
  * Ordered target rules for a skill; 'default' means inherit global tactics.targetRule.
+ * Each step may be a plain rule string or a conditional step object { rule, when?, value? }.
  * @param {Object} actor
  * @param {string} skillId
  * @param {TacticsCondition[]|undefined} conditions
- * @returns {string[]}
+ * @returns {(string|TargetRuleStep)[]}
  */
 export function getTargetRuleChain(actor, skillId, conditions) {
   const list = conditions ?? []
   const cond = list.find((c) => c.skillId === skillId)
   if (cond?.targetRules?.length) {
-    return cond.targetRules.filter((r) => typeof r === 'string' && r.length > 0)
+    return cond.targetRules.filter((r) => {
+      if (typeof r === 'string') return r.length > 0
+      if (typeof r === 'object' && r !== null) return typeof r.rule === 'string' && r.rule.length > 0
+      return false
+    })
   }
   if (cond?.targetRule) {
     return [cond.targetRule]
@@ -136,6 +142,24 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     const isAllyOTFn = ctx?.isAllyOT
     if (!threat || !isAllyOTFn) return false
     return isAllyOTFn(heroes, monsters, threat)
+  }
+
+  if (when === 'enemy-targeting-self') {
+    const threat = ctx?.threat
+    if (!threat) return false
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
+    return aliveMonsters.some((m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id)
+  }
+
+  if (when === 'tank-hp-below') {
+    const threshold = typeof value === 'number' ? value : 0.7
+    const tankId = ctx?.tankId
+    if (!tankId) return false
+    const tank = heroes.find((h) => h.id === tankId && (h.currentHP ?? 0) > 0)
+    if (!tank) return false
+    const ratio = (tank.currentHP ?? 0) / Math.max(1, tank.maxHP ?? 1)
+    return ratio < threshold
   }
 
   if (when === 'resource-above') {
@@ -249,6 +273,20 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
     if (!actor) return null
     const found = alive.find((u) => u.id === actor.id)
     return found ?? null
+  }
+
+  if (targetRule === 'self-if-enemy-targeting') {
+    const { actor, threat, heroes, monsters: monsList } = opts
+    if (!actor) return null
+    const selfUnit = alive.find((u) => u.id === actor.id)
+    if (!selfUnit) return null
+    if (!threat || !heroes || !monsList) return null
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    const aliveMonsters = monsList.filter((m) => (m.currentHP ?? 0) > 0)
+    const anyTargetingActor = aliveMonsters.some(
+      (m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id
+    )
+    return anyTargetingActor ? selfUnit : null
   }
 
   if (targetRule === 'highest-hp') {

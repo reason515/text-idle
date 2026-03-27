@@ -82,7 +82,8 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 ## targetRule values: ally targeting (Priest)
 - "tank" : target the tank hero
 - "lowest-hp-ally" : target ally with lowest HP
-- "self" : target self
+- "self" : target self (always, regardless of threat)
+- "self-if-enemy-targeting" : target self ONLY when at least one enemy's top-threat target is self; returns null otherwise (used in targetRules chain to branch: self when threatened → fallback to ally/tank when safe)
 
 ## condition "when" values
 - "target-hp-below" : target HP% < value (0.0-1.0, e.g. 0.3 = 30%)
@@ -95,6 +96,8 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "resource-above" : resource >= value (number, e.g. 50)
 - "resource-below" : resource < value (number)
 - "round-gte" : round number >= value (number)
+- "enemy-targeting-self" : at least one enemy's top-threat target is the caster (no value). Use when caster wants to react to being focused by enemies.
+- "tank-hp-below" : designated tank HP% < value (0.0-1.0). Use to gate heals/shields for tank based on tank health.
 
 ## Skill mapping for ${heroClass}
 ${getSkillNameMap(heroClass, skillIds)}
@@ -104,7 +107,7 @@ ${getSkillNameMap(heroClass, skillIds)}
 2. **NEVER** add conditions for "resource insufficient" or "cooldown not ready". The engine handles this automatically: if a skill in skillPriority cannot be used (not enough resource, on cooldown), it is skipped to the next skill. This is the MOST IMPORTANT rule.
 3. When player says "use X first, then Y, then basic attack" or "X not available then use Y": skillPriority = ["X", "Y"]. NO conditions needed for resource/cooldown.
 4. When player says "target enemies not targeting me" or "target enemies attacking allies": use "threat-not-tank-random".
-5. **targetRules fallback chain** (VERY IMPORTANT): "targetRules" is an ARRAY of rules tried in order. The engine tries rules[0] first; if no valid target is found, it tries rules[1], etc. If a skill's targetRules finds NO valid target at all, the skill is **skipped entirely**. Use this to express conditional scenarios like "normally do X, but when situation changes do Y".
+5. **targetRules fallback chain** (VERY IMPORTANT): "targetRules" is an ARRAY of rules tried in order. Each step can be either a plain rule string OR a step object with a per-step condition: { "rule": "<rule-id>", "when": "<condition>", "value": <threshold> }. If a step has a "when" condition that fails, that step is SKIPPED (returns null, engine tries next step). This enables branching: "when A target X, otherwise target Y". Example: ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] means "self when targeted; tank only when tank HP < 70%". If NO step succeeds, the skill is **skipped entirely**.
 6. Only use enum values listed above. Do NOT invent new ones.
 7. "explanation" must be in Chinese, 1-2 sentences.
 8. Percentage thresholds: convert to 0.0-1.0 (40% -> 0.4).
@@ -155,7 +158,11 @@ Player: "给自己上盾，队友血量低于40%时治疗血最少的人"
 Output: { "conditions": [{ "skillId": "power-word-shield", "targetRule": "self" }, { "skillId": "flash-heal", "targetRule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.4 }] }
 
 Player: "盾牌猛击只在目标有破甲减益时使用"
-Output: { "conditions": [{ "skillId": "shield-slam", "when": "target-has-debuff", "value": "sunder" }] }`
+Output: { "conditions": [{ "skillId": "shield-slam", "when": "target-has-debuff", "value": "sunder" }] }
+
+Player (Priest): "有敌人打我时优先对自己施法：血量低于60%用治疗，否则用盾；没有敌人打我时则对坦克施法（坦克血量低于70%治疗，否则盾），法力不足时普攻血量最低的敌人"
+Output: { "skillPriority": ["flash-heal", "power-word-shield"], "targetRule": "lowest-hp", "conditions": [{ "skillId": "flash-heal", "when": "self-hp-below", "value": 0.6, "targetRules": ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] }, { "skillId": "power-word-shield", "targetRules": ["self-if-enemy-targeting", "tank"] }] }
+Note: flash-heal gated by self-hp-below 0.6. targetRules step1 "self-if-enemy-targeting": returns self if enemies target priest (else null). step2 { rule:"tank", when:"tank-hp-below", value:0.7 }: returns tank if tank HP<70% (else null - flash-heal skipped). power-word-shield: no when; self when targeted, else tank always. targetRule "lowest-hp" handles basic attack fallback.`
 }
 
 export const SKILL_NAME_MAP = {
@@ -235,13 +242,14 @@ const VALID_TARGET_RULES_ENEMY = new Set([
 ])
 
 const VALID_TARGET_RULES_ALLY = new Set([
-  'tank', 'lowest-hp-ally', 'self',
+  'tank', 'lowest-hp-ally', 'self', 'self-if-enemy-targeting',
 ])
 
 const VALID_WHEN = new Set([
   'target-hp-below', 'target-hp-above', 'self-hp-below', 'ally-hp-below',
   'self-hit-this-round', 'target-has-debuff', 'ally-ot',
   'resource-above', 'resource-below', 'round-gte',
+  'enemy-targeting-self', 'tank-hp-below',
 ])
 
 function isNonsensicalCondition(when, value) {
@@ -264,6 +272,7 @@ const CONDITION_KEYWORDS = [
   /法力.{0,4}(高于|大于|超过|以上|>)/,
   /第.{0,3}回合|回合.{0,4}(大于|超过|之后|以后)/,
   /\d+%/,
+  /存在.*目标.*自己|目标.*是.*自己.*的敌|有.*敌人.*(打|攻击|针对).*我|敌人.*盯.*我/,
 ]
 
 function userMentionsConditions(userInput) {
@@ -308,7 +317,21 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
       }
       if (Array.isArray(c.targetRules) && c.targetRules.length > 0) {
         const allValid = new Set([...VALID_TARGET_RULES_ENEMY, ...VALID_TARGET_RULES_ALLY, 'default'])
-        clean.targetRules = c.targetRules.filter((r) => allValid.has(r))
+        clean.targetRules = c.targetRules
+          .map((r) => {
+            if (typeof r === 'string') return allValid.has(r) ? r : null
+            if (typeof r === 'object' && r !== null && typeof r.rule === 'string') {
+              if (!allValid.has(r.rule)) return null
+              const step = { rule: r.rule }
+              if (r.when && VALID_WHEN.has(r.when) && !isNonsensicalCondition(r.when, r.value)) {
+                step.when = r.when
+                if (r.value !== undefined) step.value = r.value
+              }
+              return step
+            }
+            return null
+          })
+          .filter((r) => r !== null)
         if (clean.targetRules.length === 0) delete clean.targetRules
       }
       if (c.when && VALID_WHEN.has(c.when)) {
@@ -428,6 +451,7 @@ const TARGET_RULE_DISPLAY = {
   'tank': '坦克',
   'lowest-hp-ally': '血量最低的队友',
   'self': '自身',
+  'self-if-enemy-targeting': '自身（仅当被敌人盯上时）',
   'default': '默认',
 }
 
@@ -442,6 +466,8 @@ const WHEN_DISPLAY = {
   'resource-above': '资源高于',
   'resource-below': '资源低于',
   'round-gte': '回合数不少于',
+  'enemy-targeting-self': '有敌人以自己为目标',
+  'tank-hp-below': '坦克血量低于',
 }
 
 /**
@@ -480,7 +506,7 @@ export function whenDisplayName(when) {
  */
 export function conditionValueDisplay(when, value) {
   if (value === undefined || value === null) return ''
-  if (when === 'target-hp-below' || when === 'target-hp-above' || when === 'self-hp-below' || when === 'ally-hp-below') {
+  if (when === 'target-hp-below' || when === 'target-hp-above' || when === 'self-hp-below' || when === 'ally-hp-below' || when === 'tank-hp-below') {
     return Math.round((typeof value === 'number' ? value : 0.3) * 100) + '%'
   }
   if (when === 'target-has-debuff') {

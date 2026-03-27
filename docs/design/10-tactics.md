@@ -76,6 +76,7 @@
 |---------|------|
 | lowest-hp-ally | 己方 HP 最低（战术 UI：**HP 最低**，与敌方规则同名不同用） |
 | self | 仅自己 |
+| self-if-enemy-targeting | 仅自己，但**当且仅当**至少有一个存活怪物的最高仇恨目标是当前施法者时才返回自身；否则返回 null，使目标优先链继续尝试后续规则。用于「被盯上则自保，安全时改支援」的分支逻辑。 |
 | tank | 指定坦克（战术 UI：**坦克**） |
 
 技能若有目标类型（单体伤害 / 治疗 / 己方 Buff），目标规则仅在该类型内生效。技能级可覆盖 `targetRule`（如治疗用 `lowest-hp-ally`）。
@@ -96,6 +97,8 @@
 | resource-above | 资源高于 X | 爆发技 |
 | resource-below | 资源低于 X | 填充技 |
 | round-gte | 回合数 ≥ X | 起手 Buff |
+| enemy-targeting-self | 存在至少一个存活怪物，其仇恨最高目标是当前施法者自身（即我被盯上）。依赖仇恨系统；无仇恨数据时条件不满足。 | 牧师被怪物集火时转为自保技能 |
+| tank-hp-below | 指定坦克当前 HP 比例低于 X。若未指定坦克则条件不满足。可用于目标链中的步骤条件（见下方扩展格式）。 | 牧师在坦克 HP 较低时才释放治疗，否则上盾 |
 
 **说明**：
 
@@ -144,6 +147,49 @@
 
 ---
 
+## 五（续）、示例：牧师「被盯上自保，安全时按坦克 HP 择机支援」
+
+| 场景 | 行为 |
+|------|------|
+| 有怪物以牧师为目标，且牧师 HP < 60% | 快速治疗 → 自身 |
+| 有怪物以牧师为目标，牧师 HP ≥ 60% | 真言术：盾 → 自身 |
+| 无怪物以牧师为目标，坦克 HP < 70% | 快速治疗 → 坦克 |
+| 无怪物以牧师为目标，坦克 HP ≥ 70% | 真言术：盾 → 坦克 |
+| 法力不足（技能全部跳过） | 普攻 → 血量最低的敌人 |
+
+配置：
+
+```javascript
+{
+  skillPriority: ['flash-heal', 'power-word-shield'],
+  targetRule: 'lowest-hp',   // 普攻目标
+  conditions: [
+    {
+      skillId: 'flash-heal',
+      when: 'self-hp-below',
+      value: 0.6,
+      // 步骤 1：被盯上时治自己；步骤 2：安全且坦克 HP < 70% 时治坦克；否则跳过
+      targetRules: [
+        'self-if-enemy-targeting',
+        { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+      ],
+    },
+    {
+      skillId: 'power-word-shield',
+      // 无额外条件，始终可用；被盯上则盾自己，否则盾坦克
+      targetRules: ['self-if-enemy-targeting', 'tank'],
+    },
+  ]
+}
+```
+
+**执行逻辑**：
+- `flash-heal` 被技能级 `when: self-hp-below 0.6` 门控；自身 HP 充足时直接跳过，进入 `power-word-shield`。
+- `flash-heal` 的目标链：先尝试 `self-if-enemy-targeting`（被盯上 → 治自己），否则尝试 `{ rule: 'tank', when: 'tank-hp-below', value: 0.7 }`（坦克 HP < 70% → 治坦克），两步均无目标则 flash-heal 跳过。
+- `power-word-shield` 始终可用：`self-if-enemy-targeting` 被盯上则盾自己；安全时 `tank` 步无附加条件，始终盾坦克。
+
+---
+
 ## 六、与技能设计的衔接
 
 | 技能 | 内置条件 | 策略可配置 |
@@ -169,7 +215,13 @@
 - 若解析结果包含 `skillPriority` / `targetRule`，则 **覆盖** 对应字段；
 - `conditions` 按 **skillId** 合并：同 skillId 整段替换，新 skillId 则追加。
 
-**目标优先链（`targetRules`）**：技能级可配置 `targetRules: [ruleA, ruleB, ...]`。战斗在选目标时按顺序尝试；若某步选不到合法目标则尝试下一步；若整条链都无目标则 **跳过该技能**。用于表达「平时打 A 类目标，没有时再打 B 类」等场景。UI 摘要中展示为「目标优先链：… → 找不到时 → …」。
+**目标优先链（`targetRules`）**：技能级可配置 `targetRules: [stepA, stepB, ...]`。战斗在选目标时按顺序尝试；若某步选不到合法目标则尝试下一步；若整条链都无目标则 **跳过该技能**。用于表达「平时打 A 类目标，没有时再打 B 类」等场景。UI 摘要中展示为「目标优先链：… → 找不到时 → …」。
+
+每个步骤可以是：
+- **普通字符串**：`"self-if-enemy-targeting"` — 无附加条件，直接按规则选目标
+- **带条件的步骤对象**：`{ "rule": "tank", "when": "tank-hp-below", "value": 0.7 }` — 先检查 `when` 条件；条件不满足时该步返回 null（继续下一步）；条件满足时按 `rule` 选目标
+
+步骤条件仅在该步使用，与技能级 `when`（技能整体启用门控）相互独立。
 
 **校验与防幻觉**：`validateAiTactics` 过滤非法枚举、无意义数值条件；并可结合用户原文去掉未提及的 `when` 条件（避免模型编造）。详见代码与单元测试 `frontend/src/game/aiTactics.spec.js`。
 

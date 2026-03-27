@@ -519,7 +519,17 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   const globalDefault = actor.tactics?.targetRule || 'first'
 
   for (const step of chain) {
-    const resolved = step === TACTICS_TARGET_RULE_INHERIT ? globalDefault : step
+    const stepRule = typeof step === 'string' ? step : step.rule
+    const stepWhen = typeof step === 'object' && step !== null ? step.when : null
+    const stepValue = typeof step === 'object' && step !== null ? step.value : undefined
+
+    if (stepWhen) {
+      const stepCond = { when: stepWhen, value: stepValue }
+      const stepCtx = { threat, tankId: designatedTank?.id }
+      if (!checkCondition(stepCond, actor, null, heroes, monsters, stepCtx)) continue
+    }
+
+    const resolved = stepRule === TACTICS_TARGET_RULE_INHERIT ? globalDefault : stepRule
     let pool = filtered
     let rule = resolved
     if (!targetAllies && resolved === 'sunder-first' && pool.length > 0) {
@@ -538,9 +548,10 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
         rule === 'threat-not-tank-random' ||
         rule === 'threat-tank-top-random' ||
         rule === 'threat-tank-top-lowest-on-tank' ||
-        rule === 'threat-tank-top-highest-on-tank')
+        rule === 'threat-tank-top-highest-on-tank' ||
+        rule === 'self-if-enemy-targeting')
     const pickOpts = needsThreatOpts
-      ? { threat, actor, heroes, tankId: designatedTank?.id }
+      ? { threat, actor, heroes, tankId: designatedTank?.id, monsters }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank: getTankFn }
         : rule === 'self'
@@ -692,6 +703,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         rng,
         threat,
         isAllyOT: (h, m, t) => isAllyOT(h, m, t, designatedTankUnit),
+        tankId: designatedTankUnit?.id,
       }
       const conditions = getConditions(actor)
       const skillPriority = getSkillPriority(actor)
