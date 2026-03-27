@@ -10,6 +10,8 @@ alwaysApply: true
 1. [ ] Read these rules fully
 2. [ ] Confirm: Will I write tests? (Unit + E2E per feature)
 3. [ ] Confirm: Will ALL code use ASCII only? (No Chinese in source)
+4. [ ] Confirm: Which **docs and tests** must move with this change? (`docs/design/`, `docs/requirements-format.md`, Vitest, Go `*_test.go`, Playwright per `workflow.mdc`)
+5. [ ] Confirm: Will my **final reply include a Sync summary** (what docs/tests updated or N/A)?
 
 ---
 
@@ -25,8 +27,10 @@ alwaysApply: true
 
 A task is NOT complete until:
 
-- Core logic has **unit tests**
-- Features with UI have **E2E tests** in `e2e/browser/`
+- Core logic has **unit tests** (frontend `*.spec.js` and/or Go `*_test.go` as applicable)
+- Features with UI have **E2E tests** in `e2e/browser/` when the feature is user-visible
+- **Documentation and requirements** stay aligned: if the change touches behavior, formulas, AC, or examples, update `docs/design/` and/or `docs/requirements-format.md` (and `docs/design-change-impact.md` when core flows change), or state **N/A** with reason
+- The final response includes the **Sync summary** required by `workflow.mdc`
 - All code is ASCII-only
 
 ---

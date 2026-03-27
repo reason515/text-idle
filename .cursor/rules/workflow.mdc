@@ -15,25 +15,54 @@ alwaysApply: true
 
 ## Doc and Test Sync (MANDATORY)
 
-On every change, check whether these need updates:
+**Intent:** A code change is not "done" if design docs, requirements examples/AC, or tests are left stale. **Evaluate every non-trivial change**; do not default to code-only.
 
-- `docs/design/` - design doc (formulas, attributes, UI specs); see [index.md](docs/design/index.md); UI tokens: [11-ui-tokens.md](docs/design/11-ui-tokens.md)
-- `docs/requirements-format.md` - acceptance criteria, user stories
-- Unit tests: `frontend/src/**/*.spec.js`
-- E2E tests: `e2e/browser/*.spec.js`
+### Artifacts (what to keep aligned)
 
-Update them when the change affects formulas, attributes, UI behavior, or acceptance criteria.
+| Artifact | Path / pattern |
+|----------|------------------|
+| Design | `docs/design/` (start at [index.md](docs/design/index.md)); UI tokens: [11-ui-tokens.md](docs/design/11-ui-tokens.md) |
+| Requirements (user stories, AC, examples) | [docs/requirements-format.md](docs/requirements-format.md) |
+| Impact checklist | [docs/design-change-impact.md](docs/design-change-impact.md) (core flows) |
+| Unit (frontend) | `frontend/src/**/*.spec.js` (Vitest) |
+| Unit (backend) | `*_test.go` next to Go packages |
+| E2E (browser) | `e2e/browser/*.spec.js` (Playwright) |
 
-**Design change impact**: When modifying core flows (squad, recruitment, skills, intro, routing), run the [Design Change Impact Checklist](docs/design-change-impact.md) to avoid UI/flow oversights (e.g., Examples, E2E, routing).
+### When you MUST update (same change set as the code)
 
-**Frontend / UI**: When editing `frontend/**`, follow `ui-design.mdc` (tokens, gold vs accent, tooltips, forms).
+Update the matching rows **before** considering the task complete:
 
-**Design / requirements docs**: When editing `docs/design/**`, `docs/requirements-format.md`, or `docs/design-change-impact.md`, follow `docs-sync.mdc` (cross-refs, checklist, alignment with code).
+- **Design docs** - Formulas, attributes, skills, combat rules, progression, or any UI/flow behavior that `docs/design/` already describes or should describe for the feature you touched.
+- **requirements-format.md** - User stories, acceptance criteria, or worked examples in that doc that would be wrong after your change.
+- **Vitest** - Any `frontend/` logic or derived behavior you changed; add or adjust specs so behavior stays locked.
+- **Go tests** - Any Go behavior you changed; add or adjust `*_test.go` in the same area.
+- **Playwright E2E** - Any user-visible flow, route, or UI copy/behavior covered or implied by E2E; add or update specs so regressions are caught.
+
+**Design change impact:** When modifying core flows (squad, recruitment, skills, intro, routing), walk [docs/design-change-impact.md](docs/design-change-impact.md) in the same change (Examples, E2E, routing, requirements examples).
+
+### When explicit N/A is allowed
+
+You may skip an artifact only if it truly does not apply, and you **state N/A with a one-line reason** in your final summary (e.g. doc-only edit; dependency bump with no behavior change; pure formatting). **Silent omission is not allowed.**
+
+### Pre-close checklist (run mentally before finishing)
+
+1. Did I change behavior, data, API, UI, or docs that readers/tests rely on?
+2. If yes: which artifacts from the table did I update or explicitly mark N/A?
+3. Did I run `npm run test` (frontend) and/or `go test ./...` when those areas changed? E2E when UI/flow changed?
+
+### Final response to the user (required)
+
+End with a short **Sync summary**: bullets for `docs/` (files or "N/A"), unit tests (files or "N/A"), E2E (files or "N/A"), and tests run (commands + pass/fail or "not run" + why).
+
+**Frontend / UI:** When editing `frontend/**`, follow `ui-design.mdc` (tokens, gold vs accent, tooltips, forms).
+
+**Design / requirements docs:** When editing `docs/design/**`, `docs/requirements-format.md`, or `docs/design-change-impact.md`, follow `docs-sync.mdc` (cross-refs, checklist, alignment with code).
 
 ## Prohibited
 
 - Non-ASCII in code
 - Skipping tests for core logic
+- **Closing a task with code-only changes** when design, requirements examples, or tests should have been updated (see Doc and Test Sync)
 - Using `&&` in PowerShell (use `;` instead)
 - Overengineering, placeholder logic
 

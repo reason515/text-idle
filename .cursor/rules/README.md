@@ -5,7 +5,7 @@
 | File | Scope | Purpose |
 |------|---------|---------|
 | `core.mdc` | always | ASCII, TDD, Definition of Done, pre-implementation checklist |
-| `workflow.mdc` | always | Output order, doc sync, prohibited behaviors, E2E definition, anti-hang |
+| `workflow.mdc` | always | Output order, **Doc and Test Sync** (artifacts, triggers, N/A, Sync summary), E2E definition, anti-hang |
 | `game-design.mdc` | always | Turn-based combat, idle game, no real-time units |
 | `shell.mdc` | always | PowerShell rules (no `&&`, prefer project tools) |
 | `frontend.mdc` | `frontend/**` | Vue/Vite layout, Vitest unit tests, pointer to UI tokens |

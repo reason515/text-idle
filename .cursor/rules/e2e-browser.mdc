@@ -24,4 +24,4 @@ alwaysApply: false
 
 ## Doc sync
 
-- When E2E asserts behavior tied to design or acceptance criteria, update `docs/design/` or requirements docs per `workflow.mdc`.
+- New or changed user flows: update specs **and** the artifacts listed in **Doc and Test Sync** (`workflow.mdc`) in the **same change**. E2E must not be the only updated surface while design docs or requirements examples stay stale.

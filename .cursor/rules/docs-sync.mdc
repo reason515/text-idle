@@ -27,6 +27,6 @@ alwaysApply: false
 
 - When user stories or acceptance criteria are affected, update [docs/requirements-format.md](docs/requirements-format.md) so examples and ACs match the current product flow.
 
-## Full sync list
+## Full sync list (mandatory)
 
-- Broader obligation (unit/E2E, all doc paths): see **Doc and Test Sync** in `workflow.mdc`.
+- The **authoritative** checklist for what to update (design, requirements-format, Vitest, Go tests, Playwright, N/A rules, Sync summary) is **Doc and Test Sync** in `workflow.mdc`. Follow it on every implementation task; this file adds **how** to edit docs when you touch them.

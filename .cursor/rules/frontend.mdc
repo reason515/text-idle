@@ -23,4 +23,4 @@ alwaysApply: false
 
 ## Doc sync
 
-- When changing game rules, formulas, or user-visible behavior, update `docs/design/` and tests per `workflow.mdc`.
+- Follow **Doc and Test Sync** in `workflow.mdc`: `docs/design/`, `docs/requirements-format.md`, Vitest, and Playwright when behavior, formulas, or UI-visible output change (or mark N/A with reason).

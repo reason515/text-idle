@@ -23,6 +23,10 @@ alwaysApply: false
 - Go tests: `*_test.go` next to packages (e.g. `internal/handler/auth_test.go`).
 - Run: `go test ./...` from repo root, or scoped package path.
 
+## Doc and test sync
+
+- Backend behavior or API changes: update colocated `*_test.go` and any design docs that describe the contract; full matrix: **Doc and Test Sync** in `workflow.mdc`.
+
 ## Not in scope here
 
 - Vue/CSS and browser E2E live under `frontend/` and `e2e/browser/`; follow those rules when editing those paths.
