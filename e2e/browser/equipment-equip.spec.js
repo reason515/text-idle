@@ -143,7 +143,10 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.detail-sep-line').filter({ hasText: '\u88c5\u5907' })).toBeVisible()
     const slotRows = page.locator('.equipment-slot-row')
     await expect(slotRows).toHaveCount(10)
-    await expect(slotRows.first()).toContainText('空')
+    // Fixed trio Warrior: starter short sword (MainHand) and cloth chest (Armor); OffHand still empty
+    await expect(slotRows.first()).toContainText('\u77ed\u5200')
+    await expect(slotRows.nth(1)).toContainText('\u7a7a')
+    await expect(slotRows.nth(3)).toContainText('\u5e03\u7532')
   })
 
   test('equip from backpack updates Armor in secondary attributes', async ({ page }) => {
@@ -253,6 +256,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
         delete h.currentHP
+        if (h.equipment) delete h.equipment.MainHand
       })
       localStorage.setItem('squad', JSON.stringify(squad))
     })

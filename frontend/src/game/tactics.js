@@ -359,6 +359,25 @@ function pickRandomAlive(units, rng) {
 }
 
 /**
+ * True when every candidate monster has 0 threat from every alive hero (combat opening).
+ * Used so threat-not-tank-random can still pick a target on round 1 before any threat is applied.
+ * @param {Record<string, Record<string, number>>|undefined} threat
+ * @param {Object[]} aliveMonsters
+ * @param {Object[]} aliveHeroes
+ * @returns {boolean}
+ */
+function isThreatAllZeroAcrossPool(threat, aliveMonsters, aliveHeroes) {
+  if (!threat || aliveMonsters.length === 0) return true
+  for (const m of aliveMonsters) {
+    const table = threat[m.id] ?? {}
+    for (const h of aliveHeroes) {
+      if ((table[h.id] ?? 0) !== 0) return false
+    }
+  }
+  return true
+}
+
+/**
  * Pick a target from candidates using the target rule.
  * Threat rules against designated tank need opts.threat, opts.heroes, opts.tankId.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
@@ -409,7 +428,11 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
     let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
     if (pool.length === 0) {
-      pool = alive
+      if (isThreatAllZeroAcrossPool(threat, alive, aliveHeroes)) {
+        pool = alive
+      } else {
+        return null
+      }
     }
     return pickRandomAlive(pool, rng)
   }

@@ -13,6 +13,7 @@ import {
   QUALITY_MAGIC,
   QUALITY_RARE,
   SHOP_SLOTS,
+  createStarterWhiteItem,
 } from './equipment.js'
 
 function fixedRng(values) {
@@ -404,6 +405,28 @@ describe('equipment', () => {
       expect(b.physAtkMin).toBe(8)
       expect(b.physAtkMax).toBe(12)
       expect(b.physAtk).toBe(0)
+    })
+  })
+
+  describe('createStarterWhiteItem', () => {
+    it('returns normal MainHand weapon with phys damage range', () => {
+      const item = createStarterWhiteItem({ id: 'test-mh', baseKey: 'MainHand', slot: 'MainHand', baseName: '\u77ed\u5200' })
+      expect(item).toBeTruthy()
+      expect(item?.quality).toBe(QUALITY_NORMAL)
+      expect(item?.physAtkMin).toBeDefined()
+      expect(item?.physAtkMax).toBeDefined()
+    })
+
+    it('returns normal Armor with armor and resistance', () => {
+      const item = createStarterWhiteItem({ id: 'test-armor', baseKey: 'Armor', slot: 'Armor' })
+      expect(item?.quality).toBe(QUALITY_NORMAL)
+      expect((item?.armor || 0) + (item?.resistance || 0)).toBeGreaterThan(0)
+    })
+
+    it('returns wand with spell power range', () => {
+      const item = createStarterWhiteItem({ id: 'test-wand', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' })
+      expect(item?.spellPowerMin).toBeDefined()
+      expect(item?.spellPowerMax).toBeDefined()
     })
   })
 })

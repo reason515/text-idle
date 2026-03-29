@@ -160,6 +160,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Fixed initial trio**: Warrior (tank), Mage (DPS), Priest (healer). No character selection at start; each has 2 fixed initial skills. Skill choice (enhance or learn new) begins at level 5.
+- **Starter gear**: Each of the three starts with normal (white) **MainHand** and **Armor** (Warrior: short sword; Mage/Priest: wand; chest: cloth tier-1 base from [06-equipment.md](./design/06-equipment.md); mid rolls, no affixes).
 - **Squad expansion**: After defeating map 1 boss (Hogger) → recruit 4th hero; after defeating map 2 boss (VanCleef) → recruit 5th hero. Max 5 heroes.
 - **Classes**: Warrior, Paladin, Priest, Druid, Mage, Rogue, Hunter, Warlock, Shaman. Each class has at least one hero available for expansion recruitment.
 - **Hero roster (one per class minimum)**:
@@ -197,6 +198,7 @@ Then [expected result/verifiable behavior].
 | AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values |
 | AC4 | Player has fewer than 5 characters in the squad and has defeated a map boss (map 1 or 2) | Player triggers squad expansion (e.g., via recruitment UI) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero; expansion heroes join at level 5 (map 1) or 10 (map 2) with full onboarding flow (Example 27) |
 | AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
+| AC6 | Player has the fixed initial trio | Player inspects each hero's equipment | Each hero has MainHand and Armor equipped with normal (white) starter items |
 
 ---
 
@@ -1129,13 +1131,14 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 **Design Reference (from design doc)**
 
 - **Tactics structure**: Each hero has `tactics` with `skillPriority`, `targetRule`, and optional `conditions` (per-skill `targetRule`, `targetRules` fallback chain, or `when`). See [10-tactics.md](design/10-tactics.md).
-- **Configuration UI**: Natural-language input + AI parse (SiliconFlow Qwen3-8B) + Apply merges into saved tactics; read-only **current tactics** summary. See [10-tactics.md](design/10-tactics.md) section 7.
+- **Configuration UI**: Natural-language input + AI parse (SiliconFlow Qwen3-8B) + Apply merges into saved tactics; read-only **current tactics** summary (skill IDs such as `basic-attack` are shown with localized names, e.g. 普通攻击). Normal-attack targeting is configured via `conditions` entry `skillId: basic-attack` (same target-rule vocabulary as skills); it must not appear in `skillPriority`. See [10-tactics.md](design/10-tactics.md) section 7.
 - **Skill priority**: Ordered list of skill IDs; the first skill that passes resource, cooldown, and conditions is used; if none, basic attack.
-- **Target rules (enemy)**: lowest-hp, highest-hp, order (first/random), and threat presets (`threat-not-tank-random`, `threat-tank-top-random`, `threat-tank-top-lowest-on-tank`, `threat-tank-top-highest-on-tank`; require designated tank for full semantics). Legacy IDs may still load. See [10-tactics.md](design/10-tactics.md).
+- **Target rules (enemy)**: lowest-hp, highest-hp, order (first/random), and threat presets (`threat-not-tank-random`, `threat-tank-top-random`, `threat-tank-top-lowest-on-tank`, `threat-tank-top-highest-on-tank`; require designated tank for full semantics). For `threat-not-tank-random`, when threat is already non-zero and every monster's top threat is the tank, the rule yields no target (so e.g. Taunt skips unless a per-skill chain adds a fallback such as `lowest-hp` on Sunder). Opening combat with all-zero threat still picks among all alive enemies. Legacy IDs may still load. See [10-tactics.md](design/10-tactics.md).
 - **Target rules (ally)**: lowest-hp-ally, self, tank — for heals and buffs.
 - **targetRules chain**: Per-skill array tried in order until a target is found; if none, skill is skipped. See [10-tactics.md](design/10-tactics.md).
 - **Conditions**: Per-skill triggers (target-hp-below, target-has-debuff, ally-ot, etc.); `target-has-debuff` filters target pool.
 - **Apply merge**: Incoming `skillPriority` / `targetRule` overwrite when present; `conditions` merge by `skillId`.
+- **AI validate supplement**: If user text mentions rage/mana shortage then normal attack (or 否则普攻) but parsed JSON omits `basic-attack` in `conditions`, frontend validation may append `basic-attack` target rules and show a warning (see `frontend/src/game/aiTactics.js`).
 - **Default**: When no tactics configured, use hero's skill list order and first alive target.
 
 **Acceptance Criteria**

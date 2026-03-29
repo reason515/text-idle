@@ -50,8 +50,15 @@ The player may describe one rule or many. Only output what the player mentioned;
 
 ## Hero info
 - Class: ${heroClass}
-- Available skills: ${JSON.stringify(skillIds)}
+- Available skills (for skillPriority and conditions.skillId): hero skills ${JSON.stringify(skillIds)} plus **"basic-attack"** (normal attack target rules only — see below)
 ${existingCtx}
+## basic-attack (normal attack) — per-skill tactics (CRITICAL)
+- When all skills in **skillPriority** are skipped (resource, cooldown, or no valid target), the engine uses **normal attack**. You can set **targetRule** / **targetRules** for it via **conditions** with **"skillId": "basic-attack"** — same as any other skill.
+- **NEVER** put **"basic-attack"** in **skillPriority**. It is always the implicit last step after listed skills.
+- **Chinese disambiguation (do NOT confuse)**:
+  - Player wants **lowest current HP** enemy: use **"lowest-hp"**. Phrases: "血量最低", "HP最低", "血最少的敌人", "打残血的", "普攻打血量最低", "普通攻击优先血量最低".
+  - Player wants **lowest threat on the tank** among monsters that are on the tank: use **"threat-tank-top-lowest-on-tank"**. Phrases: "仇恨最低", "对坦克仇恨最低", "快丢仇恨的怪" when clearly **threat**-based (not HP). If the player says **both** "普攻" and "血量最低", map **basic-attack** to **lowest-hp**, not threat-lowest.
+- If the player does **not** mention normal-attack targeting, **omit** a **basic-attack** condition; the global **targetRule** applies to basic attack via inheritance.
 ## Output schema
 Return ONLY a JSON object (no markdown fences, no explanation text outside JSON):
 {
@@ -125,9 +132,9 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 ${getSkillNameMap(heroClass, skillIds)}
 
 ## Critical rules
-1. skillPriority: ONLY skill IDs from available list. NEVER include "basic-attack" (it is automatic fallback).
-2. **NEVER** add conditions for "resource insufficient" or "cooldown not ready". The engine handles this automatically: if a skill in skillPriority cannot be used (not enough resource, on cooldown), it is skipped to the next skill. This is the MOST IMPORTANT rule.
-3. When player says "use X first, then Y, then basic attack" or "X not available then use Y": skillPriority = ["X", "Y"]. NO conditions needed for resource/cooldown.
+1. skillPriority: ONLY hero skill IDs from the list above (NOT "basic-attack"). Normal attack is automatic after priority; use **conditions** with **skillId "basic-attack"** to set **which enemy** to hit.
+2. **NEVER** add **when: resource-below / cooldown** on **skills** — the engine auto-skips. **You MUST still output basic-attack in conditions** when the player names **普通攻击/普攻** together with **怒气不足/法力不足/否则…普攻** so **targeting** is explicit: use **targetRule** / **targetRules** only (not resource **when**).
+3. When the player describes priority only (嘲讽 then 破甲 then 普攻) **and** says **怒气不足则普通攻击** or **对HP最低…破甲…怒气不足则普通攻击**, output **skillPriority** plus **conditions** including **{ "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }** whenever **sunder-armor** uses **["threat-not-tank-random", "lowest-hp"]**, so normal attack matches the same fallback (non-tank first, else lowest HP).
 4. When player says "target enemies not targeting me" or "target enemies attacking allies": use "threat-not-tank-random".
 5. **targetRules fallback chain** (VERY IMPORTANT): "targetRules" is an ARRAY of rules tried in order. Each step can be either a plain rule string OR a step object with a per-step condition: { "rule": "<rule-id>", "when": "<condition>", "value": <threshold> }. If a step has a "when" condition that fails, that step is SKIPPED (returns null, engine tries next step). This enables branching: "when A target X, otherwise target Y". Example: ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] means "self when targeted; tank only when tank HP < 70%". If NO step succeeds, the skill is **skipped entirely**.
 5b. **whenAll** (per-step AND): Use { "rule": "<rule-id>", "whenAll": [ { "when": "<condition>", "value": <threshold> }, ... ] } when **multiple** gates must all pass before that step tries to pick a target (e.g. self-if-enemy-targeting **and** self HP < 60%). Single condition still uses "when"/"value" on the step. **All** whenAll entries must pass (AND).
@@ -137,6 +144,7 @@ ${getSkillNameMap(heroClass, skillIds)}
 9. If player only describes partial changes, only output those fields. Omit skillPriority/targetRule/conditions if not mentioned. **NEVER change skillPriority or global targetRule unless the player explicitly asks to change them.**
 10. **NEVER invent conditions the player did not explicitly mention.** Only add a "when" condition if the player clearly states a trigger (e.g. "HP below 30%", "target has debuff"). If the player only specifies priority and target, output ONLY skillPriority and targetRule - NO conditions.
 11. When player says "don't use skill X" or "不使用X" **in a conditional context** (e.g. "when all enemies on tank, don't use taunt"): set that skill's targetRules to ONLY include rules that match the OTHER scenario, so it naturally has no valid target in the described scenario. Do NOT remove the skill from skillPriority (it still applies in other situations).
+11b. **Taunt (\`taunt\`) target chain**: NEVER put \`lowest-hp\`, \`first\`, \`random\`, or \`highest-hp\` as a **fallback step after** \`threat-not-tank-random\` on **taunt**. Taunting "lowest HP" when all enemies are already on the tank is wrong. Use **only** \`targetRule: "threat-not-tank-random"\` OR a **single-step** \`targetRules: ["threat-not-tank-random"]\` for taunt. The two-step chain \`["threat-not-tank-random", "lowest-hp"]\` is for **sunder-armor** (or other damage skills) only — **not** for taunt.
 12. When player says "don't use skill X" **unconditionally**: exclude from skillPriority.
 
 ## WRONG examples (NEVER do this)
@@ -144,8 +152,8 @@ ${getSkillNameMap(heroClass, skillIds)}
 WRONG 1 - fabricating resource condition:
 Player: "优先破甲，怒气不足用嘲讽，嘲讽CD不足用普通攻击"
 WRONG: { "skillPriority": ["sunder-armor", "taunt"], "conditions": [{ "skillId": "taunt", "when": "resource-below", "value": 0 }] }
-CORRECT: { "skillPriority": ["sunder-armor", "taunt"] }
-Reason: "怒气不足/CD不足" = engine auto-skips. No condition needed.
+CORRECT: { "skillPriority": ["sunder-armor", "taunt"] } — no **when** on skills for resource/CD.
+Reason: "怒气不足/CD不足" = engine auto-skips. **Do not** add **resource-below** **when**. If the player also needs **who** to hit with **普通攻击**, add **basic-attack** **targetRules** (see WRONG 9), not resource **when**.
 
 WRONG 2 - fabricating conditions player never mentioned:
 Player: "对HP最低的敌人使用技能，优先使用破甲，不使用嘲讽"
@@ -209,6 +217,20 @@ Reason: 快速治疗 = flash-heal. 真言术盾 = power-word-shield. Low tank HP
 Player: "先破甲再嘲讽，优先打没在打我的怪"
 Output: { "skillPriority": ["sunder-armor", "taunt"], "targetRule": "threat-not-tank-random" }
 
+Player (tank Warrior — full rule set matching OT + all-on-tank + rage fallback):
+"存在目标不是坦克的敌人时，优先对其施放嘲讽，如果嘲讽CD中则施放破甲，如果怒气不足则施放普通攻击。所有敌人目标都是坦克时，优先对HP最低的敌人施放破甲，怒气不足则施放普通攻击，不施放嘲讽"
+Output: {
+  "skillPriority": ["taunt", "sunder-armor"],
+  "targetRule": "threat-not-tank-random",
+  "conditions": [
+    { "skillId": "taunt", "targetRule": "threat-not-tank-random" },
+    { "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] },
+    { "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }
+  ],
+  "explanation": "非坦克怪优先嘲讽，否则破甲；全员打坦克时破甲打最低血，嘲讽无目标跳过；怒气不足时普攻继承默认后打最低血。"
+}
+Note: **basic-attack** is required in **conditions** so the preview shows normal-attack targeting; **targetRules** mirror sunder (global non-tank first, else lowest-hp).
+
 Player: "优先对目标不是自己的敌人使用技能"
 Output: { "targetRule": "threat-not-tank-random" }
 Note: "目标不是自己" for a tank = enemies NOT attacking the tank = threat-not-tank-random
@@ -218,6 +240,23 @@ Existing: skillPriority=["sunder-armor","taunt"], targetRule="threat-not-tank-ra
 Output: { "conditions": [{ "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] }, { "skillId": "taunt", "targetRule": "threat-not-tank-random" }] }
 Note: Use targetRules fallback chain. "threat-not-tank-random" is tried first; when all enemies on tank, it returns null, so engine falls back to "lowest-hp" for sunder. For taunt, only "threat-not-tank-random" is set, so it is skipped when no non-tank targets. Do NOT touch skillPriority or global targetRule.
 
+WRONG 7 - taunt must not share sunder's lowest-hp fallback:
+Output: { "conditions": [{ "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] }, { "skillId": "taunt", "targetRules": ["threat-not-tank-random", "lowest-hp"] }] }
+CORRECT: same sunder condition; taunt uses ONLY { "skillId": "taunt", "targetRule": "threat-not-tank-random" } (single rule, no lowest-hp fallback).
+Reason: Taunt on lowest-HP enemy when everyone already targets the tank is pointless and contradicts "do not taunt in that situation".
+
+WRONG 8 - basic-attack HP lowest vs threat lowest:
+Player: "普攻打血量最低" / "普通攻击优先打血最少的敌人"
+WRONG: { "conditions": [{ "skillId": "basic-attack", "targetRule": "threat-tank-top-lowest-on-tank" }] }
+CORRECT: { "conditions": [{ "skillId": "basic-attack", "targetRule": "lowest-hp" }] }
+Reason: "血量最低" / "血最少" = **lowest-hp**. Reserve **threat-tank-top-lowest-on-tank** only when the player clearly means **threat** (仇恨最低 / 对坦克仇恨最低), not HP.
+
+WRONG 9 - omitting basic-attack when player names 怒气不足 + 普通攻击:
+Player: (same as tank Warrior full rule example above)
+WRONG: { "skillPriority": ["taunt", "sunder-armor"], "targetRule": "threat-not-tank-random", "conditions": [{ "skillId": "taunt", "targetRule": "threat-not-tank-random" }, { "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] }] }
+CORRECT: include **{ "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }** in **conditions** (see full example above).
+Reason: Player explicitly described **when** normal attack is used and expects **解析预览** to show **普通攻击** rules. **basic-attack** is not in **skillPriority** but must appear in **conditions** for target selection.
+
 Player: "给自己上盾，队友血量低于40%时治疗血最少的人"
 Output: { "conditions": [{ "skillId": "power-word-shield", "targetRule": "self" }, { "skillId": "flash-heal", "targetRule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.4 }] }
 
@@ -225,12 +264,13 @@ Player: "盾牌猛击只在目标有破甲减益时使用"
 Output: { "conditions": [{ "skillId": "shield-slam", "when": "target-has-debuff", "value": "sunder" }] }
 
 Player (Priest): "有敌人打我时优先对自己施法：血量低于60%用治疗，否则用盾；没有敌人打我时则对坦克施法（坦克血量低于70%治疗，否则盾），法力不足时普攻血量最低的敌人"
-Output: { "skillPriority": ["flash-heal", "power-word-shield"], "targetRule": "lowest-hp", "conditions": [{ "skillId": "flash-heal", "when": "self-hp-below", "value": 0.6, "targetRules": ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] }, { "skillId": "power-word-shield", "targetRules": ["self-if-enemy-targeting", "tank"] }] }
-Note: flash-heal gated by self-hp-below 0.6. targetRules step1 "self-if-enemy-targeting": returns self if enemies target priest (else null). step2 { rule:"tank", when:"tank-hp-below", value:0.7 }: returns tank if tank HP<70% (else null - flash-heal skipped). power-word-shield: no when; self when targeted, else tank always. targetRule "lowest-hp" handles basic attack fallback.`
+Output: { "skillPriority": ["flash-heal", "power-word-shield"], "targetRule": "lowest-hp", "conditions": [{ "skillId": "flash-heal", "when": "self-hp-below", "value": 0.6, "targetRules": ["self-if-enemy-targeting", { "rule": "tank", "when": "tank-hp-below", "value": 0.7 }] }, { "skillId": "power-word-shield", "targetRules": ["self-if-enemy-targeting", "tank"] }, { "skillId": "basic-attack", "targetRule": "lowest-hp" }] }
+Note: flash-heal gated by self-hp-below 0.6. targetRules step1 "self-if-enemy-targeting": returns self if enemies target priest (else null). step2 { rule:"tank", when:"tank-hp-below", value:0.7 }: returns tank if tank HP<70% (else null - flash-heal skipped). power-word-shield: no when; self when targeted, else tank always. When the player explicitly mentions **normal-attack** targeting, add **basic-attack** condition; else global targetRule can inherit to basic attack.`
 }
 
 export const SKILL_NAME_MAP = {
   Warrior: {
+    'basic-attack': '普通攻击',
     'sunder-armor': '破甲',
     'taunt': '嘲讽',
     'heroic-strike': '英勇打击',
@@ -261,6 +301,7 @@ export const SKILL_NAME_MAP = {
     'challenging-shout': '挑战怒吼',
   },
   Mage: {
+    'basic-attack': '普通攻击',
     'arcane-blast': '奥术冲击',
     'fireball': '火球术',
     'frostbolt': '寒冰箭',
@@ -285,6 +326,7 @@ export const SKILL_NAME_MAP = {
     'arcane-storm': '奥术风暴',
   },
   Priest: {
+    'basic-attack': '普通攻击',
     'flash-heal': '快速治疗',
     'power-word-shield': '真言术：盾',
   },
@@ -292,7 +334,8 @@ export const SKILL_NAME_MAP = {
 
 function getSkillNameMap(heroClass, skillIds) {
   const map = SKILL_NAME_MAP[heroClass] || {}
-  const lines = skillIds
+  const ids = [...new Set([...skillIds, 'basic-attack'])]
+  const lines = ids
     .filter((id) => map[id])
     .map((id) => `- "${map[id]}" -> "${id}"`)
   if (lines.length === 0) return '(no named skills)'
@@ -435,6 +478,34 @@ function mergeFlashHealWithEmergency(existing, incoming) {
 }
 
 /**
+ * If the player mentioned using normal attack after rage/mana shortage (or 否则普攻) but the model omitted basic-attack, add a default target chain.
+ * @param {string|undefined} userInput
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function supplementBasicAttackIfMentioned(userInput, conditions, warnings) {
+  if (!userInput || typeof userInput !== 'string') return
+  if (conditions.some((c) => c.skillId === 'basic-attack')) return
+
+  const compact = userInput.replace(/\s/g, '')
+  if (!/普通攻击|普攻/.test(compact)) return
+
+  const resourceThenAttack =
+    /怒气不足[\s\S]{0,32}(则|就|再)?(施放)?(普通攻击|普攻)/.test(compact) ||
+    /(则|就|再)(施放)?(普通攻击|普攻)[\s\S]{0,16}(当|若)?[\s\S]{0,20}怒气不足/.test(compact) ||
+    /法力不足[\s\S]{0,32}(则|就)?(施放)?(普通攻击|普攻)/.test(compact) ||
+    /法力不够[\s\S]{0,32}(则|就)?(施放)?(普通攻击|普攻)/.test(compact)
+  const elseAttack = /(否则|不然)(施放)?(普通攻击|普攻)/.test(compact)
+
+  if (!resourceThenAttack && !elseAttack) return
+
+  conditions.push({ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] })
+  warnings.push(
+    '已补充：描述含怒气不足/法力不足或「否则」接普通攻击时，已为「普通攻击」添加目标链：默认 → 血量最低（与破甲在全员打坦克时的第二段一致）。',
+  )
+}
+
+/**
  * Validate and sanitize AI output against known enums.
  * @param {Object} raw - Parsed JSON from AI
  * @param {string[]} skillIds - Hero's available skill IDs
@@ -444,14 +515,19 @@ function mergeFlashHealWithEmergency(existing, incoming) {
  */
 export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   const warnings = []
-  const skillSet = new Set(skillIds)
+  const prioritySkillSet = new Set(skillIds)
+  const conditionSkillSet = new Set([...skillIds, 'basic-attack'])
   const isAllyClass = heroClass === 'Priest'
   const validTargetRules = isAllyClass ? VALID_TARGET_RULES_ALLY : VALID_TARGET_RULES_ENEMY
 
   const priority = []
   const seenPriority = new Set()
   for (const id of raw.skillPriority || []) {
-    if (!skillSet.has(id)) {
+    if (id === 'basic-attack') {
+      warnings.push('已移除技能优先级中的「普通攻击」（普攻为自动兜底，请用 conditions 中 skillId basic-attack 配置普攻目标）')
+      continue
+    }
+    if (!prioritySkillSet.has(id)) {
       warnings.push(`已移除未知技能「${id}」`)
       continue
     }
@@ -470,7 +546,7 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   }
 
   const conditions = (raw.conditions || [])
-    .filter((c) => c && c.skillId && skillSet.has(c.skillId))
+    .filter((c) => c && c.skillId && conditionSkillSet.has(c.skillId))
     .map((c) => {
       const clean = { skillId: c.skillId }
       if (c.targetRule) {
@@ -535,6 +611,23 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
       return clean
     })
     .filter((c) => c.targetRule || c.targetRules?.length || c.when)
+
+  const TAUNT_DISALLOWED_FALLBACK = new Set(['lowest-hp', 'first', 'random', 'highest-hp', 'sunder-first'])
+  for (const c of conditions) {
+    if (c.skillId !== 'taunt' || !Array.isArray(c.targetRules) || c.targetRules.length < 2) continue
+    const bad = c.targetRules.slice(1).some((s) => {
+      const rid = typeof s === 'string' ? s : (s && typeof s === 'object' && typeof s.rule === 'string' ? s.rule : '')
+      return TAUNT_DISALLOWED_FALLBACK.has(rid)
+    })
+    if (bad) {
+      warnings.push(
+        '已修正：嘲讽仅应对「非坦克第一仇恨」目标；不应在无可嘲讽目标时退化为血量最低等规则，已保留目标链第一步。',
+      )
+      c.targetRules = [c.targetRules[0]]
+    }
+  }
+
+  supplementBasicAttackIfMentioned(userInput, conditions, warnings)
 
   if (heroClass === 'Priest' && conditions.length > 0) {
     const fh = conditions.find((c) => c.skillId === 'flash-heal')

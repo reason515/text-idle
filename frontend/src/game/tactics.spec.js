@@ -524,7 +524,7 @@ describe('tactics', () => {
       expect(r.id).toBe('m1')
     })
 
-    it('threat-not-tank-random falls back to all alive monsters when top threat ties (e.g. all 0) make subset empty', () => {
+    it('threat-not-tank-random falls back to all alive only when all threat values are still zero (combat opening)', () => {
       const heroes = [
         { id: 'tank', currentHP: 100 },
         { id: 'mage', currentHP: 100 },
@@ -543,6 +543,27 @@ describe('tactics', () => {
         tankId: 'tank',
       })
       expect(r.id).toBe('m1')
+    })
+
+    it('threat-not-tank-random returns null when no non-tank-top monsters but threat is non-zero (all on tank)', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 50, mage: 10 },
+        m2: { tank: 40, mage: 5 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 100 },
+        { id: 'm2', currentHP: 100 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-not-tank-random', () => 0, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r).toBeNull()
     })
 
     it('threat-tank-top-random picks random among monsters whose top threat is tank', () => {

@@ -555,6 +555,20 @@ describe('heroes', () => {
       const squad = createFixedTrioSquad()
       expect(squad.every((h) => h.tactics?.skillPriority?.length > 0)).toBe(true)
     })
+
+    it('each hero has starter MainHand weapon and Armor (white quality)', () => {
+      const squad = createFixedTrioSquad()
+      for (const h of squad) {
+        expect(h.equipment?.MainHand).toBeTruthy()
+        expect(h.equipment?.MainHand?.quality).toBe('normal')
+        expect(h.equipment?.Armor).toBeTruthy()
+        expect(h.equipment?.Armor?.quality).toBe('normal')
+      }
+      const warrior = squad.find((x) => x.class === 'Warrior')
+      expect(warrior?.equipment?.MainHand?.baseName).toBe('\u77ed\u5200')
+      const mage = squad.find((x) => x.class === 'Mage')
+      expect(mage?.equipment?.MainHand?.baseName).toBe('\u6743\u6756')
+    })
   })
 
   describe('createExpansionCharacter', () => {

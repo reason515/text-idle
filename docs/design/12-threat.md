@@ -103,7 +103,7 @@
 
 | 规则 ID | 含义（简述） |
 |---------|----------------|
-| `threat-not-tank-random` | 仇恨表第一名**不是**指定坦克的怪中随机 |
+| `threat-not-tank-random` | 仇恨表第一名**不是**指定坦克的怪中随机；若已存在非零威胁且全体第一仇恨均为坦克则**无目标**（开局全 0 威胁时仍在全体存活怪中随机）。详见 [10-tactics.md](10-tactics.md) |
 | `threat-tank-top-random` | 仇恨表第一名**是**指定坦克的怪中随机 |
 | `threat-tank-top-lowest-on-tank` | 在上一行同一子集内，对坦克仇恨**最低** |
 | `threat-tank-top-highest-on-tank` | 在上一行同一子集内，对坦克仇恨**最高** |

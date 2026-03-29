@@ -105,6 +105,16 @@ function rollWeaponDamageRange(arr, rng) {
   return { min, max }
 }
 
+/** Mid-roll weapon range for deterministic starter items (same base tables as drops). */
+function weaponMidRollFromBase(arr) {
+  const r = weaponDamageRanges(arr)
+  if (!r) return null
+  const min = Math.round((r.minLow + r.minHigh) / 2)
+  const max = Math.round((r.maxLow + r.maxHigh) / 2)
+  if (min > max) return { min: max, max: min }
+  return { min, max }
+}
+
 function rollInRange(baseMin, baseMax, quality, rng) {
   if (quality === QUALITY_MAGIC) {
     const low = Math.max(1, Math.floor(baseMin * 0.7))
@@ -319,6 +329,83 @@ function applyAffixToItem(item, affix) {
   else if (stat === 'intellect') item.intBonus = (item.intBonus || 0) + val
   else if (stat === 'stamina') item.staBonus = (item.staBonus || 0) + val
   else if (stat === 'spirit') item.spiBonus = (item.spiBonus || 0) + val
+}
+
+/**
+ * Normal (white) quality item for level-1 starter loadout. Mid rolls, no affixes.
+ * Reuses base tables from itemBases (same ids as drop pipeline).
+ * @param {{ id: string, baseKey: string, slot: string, baseName?: string|null }} opts
+ * @returns {Object|null}
+ */
+export function createStarterWhiteItem({ id, baseKey, slot, baseName = null }) {
+  const bases = getBaseItemsForSlot(baseKey)
+  const tierBases = bases?.normal
+  if (!tierBases?.length) return null
+  const baseDef = baseName
+    ? tierBases.find((b) => b.name === baseName)
+    : tierBases.find((b) => b.levelReq === 1) ?? tierBases[0]
+  if (!baseDef) return null
+
+  const itemTier = 'normal'
+  const resolvedSlot = slot
+  const item = {
+    id,
+    slot: resolvedSlot,
+    baseName: baseDef.name,
+    itemTier,
+    quality: QUALITY_NORMAL,
+    levelReq: baseDef.levelReq,
+    strReq: baseDef.str || 0,
+    agiReq: baseDef.agi || 0,
+    intReq: baseDef.int || 0,
+    spiReq: baseDef.spi || 0,
+    armor: 0,
+    resistance: 0,
+    physAtk: 0,
+    spellPower: 0,
+    prefixes: [],
+    suffixes: [],
+    epithet: null,
+  }
+
+  const rollMidScalar = (arr) => {
+    if (Array.isArray(arr)) {
+      const [a, b] = arr
+      return Math.round((a + b) / 2)
+    }
+    return arr || 0
+  }
+
+  const armorSlots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt']
+  if (armorSlots.includes(resolvedSlot) && baseDef.armorResistTotal) {
+    const [tMin, tMax] = baseDef.armorResistTotal
+    const total = Math.round((tMin + tMax) / 2)
+    const armor = total >= 2 ? Math.max(1, Math.floor(total / 2)) : 1
+    item.armor = armor
+    item.resistance = total - armor
+  } else {
+    item.armor = rollMidScalar(baseDef.armor)
+    item.resistance = rollMidScalar(baseDef.resistance)
+  }
+
+  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
+  const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? weaponMidRollFromBase(baseDef.physAtk) : null
+  if (physAtkRange) {
+    item.physAtkMin = physAtkRange.min
+    item.physAtkMax = physAtkRange.max
+  } else {
+    item.physAtk = rollMidScalar(baseDef.physAtk)
+  }
+
+  const spellPowerRange = isWeaponBase && Array.isArray(baseDef.spellPower) ? weaponMidRollFromBase(baseDef.spellPower) : null
+  if (spellPowerRange) {
+    item.spellPowerMin = spellPowerRange.min
+    item.spellPowerMax = spellPowerRange.max
+  } else {
+    item.spellPower = rollMidScalar(baseDef.spellPower)
+  }
+
+  return item
 }
 
 /**

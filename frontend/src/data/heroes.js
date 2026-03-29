@@ -6,7 +6,7 @@
  * Heroes may have equipment: { [slot]: EquipmentItem } for 11 slots.
  */
 
-import { getEquipmentBonuses } from '../game/equipment.js'
+import { getEquipmentBonuses, createStarterWhiteItem } from '../game/equipment.js'
 import {
   PHYS_ATK_UNARMED_MIN,
   PHYS_ATK_UNARMED_MAX,
@@ -576,10 +576,7 @@ export function createFixedTrioSquad() {
   w.tactics = {
     skillPriority: ['taunt', 'sunder-armor'],
     targetRule: 'threat-not-tank-random',
-    conditions: [
-      { skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] },
-      { skillId: 'basic-attack', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] },
-    ],
+    conditions: [{ skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] }],
   }
   const m = createCharacter(mage, { skills: ['fireball', 'arcane-blast'] })
   m.tactics = { skillPriority: ['fireball', 'arcane-blast'], targetRule: 'lowest-hp' }
@@ -592,6 +589,20 @@ export function createFixedTrioSquad() {
       { skillId: 'power-word-shield', targetRule: 'tank' },
     ],
   }
+
+  w.equipment = {
+    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-warrior', baseKey: 'MainHand', slot: 'MainHand', baseName: '\u77ed\u5200' }),
+    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-warrior', baseKey: 'Armor', slot: 'Armor' }),
+  }
+  m.equipment = {
+    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-mage', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' }),
+    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-mage', baseKey: 'Armor', slot: 'Armor' }),
+  }
+  p.equipment = {
+    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-priest', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' }),
+    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-priest', baseKey: 'Armor', slot: 'Armor' }),
+  }
+
   return [w, m, p]
 }
 

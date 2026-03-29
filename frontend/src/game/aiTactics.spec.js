@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { validateAiTactics, mergeAiTacticsApply, targetRuleStepDisplay, conditionEntryHasTankHpBelow } from './aiTactics.js'
+import {
+  validateAiTactics,
+  mergeAiTacticsApply,
+  targetRuleStepDisplay,
+  conditionEntryHasTankHpBelow,
+  skillDisplayName,
+} from './aiTactics.js'
 
 describe('validateAiTactics', () => {
   const priestSkills = ['flash-heal', 'power-word-shield']
@@ -115,6 +121,79 @@ describe('validateAiTactics', () => {
       'default',
       'threat-tank-top-lowest-on-tank',
     ])
+  })
+
+  it('allows basic-attack in conditions (not in skillPriority)', () => {
+    const raw = {
+      skillPriority: ['taunt', 'sunder-armor'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [{ skillId: 'basic-attack', targetRule: 'lowest-hp' }],
+      explanation: 'x',
+    }
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior')
+    expect(result.tactics.conditions).toEqual([{ skillId: 'basic-attack', targetRule: 'lowest-hp' }])
+    expect(result.warnings).toEqual([])
+  })
+
+  it('supplements basic-attack target chain when user mentions rage then normal attack but AI omitted', () => {
+    const raw = {
+      skillPriority: ['taunt', 'sunder-armor'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [
+        { skillId: 'taunt', targetRule: 'threat-not-tank-random' },
+        { skillId: 'sunder-armor', targetRules: ['threat-not-tank-random', 'lowest-hp'] },
+      ],
+    }
+    const userInput =
+      '存在非坦克目标时优先嘲讽否则破甲怒气不足则普通攻击全员打坦克时对HP最低破甲怒气不足则普通攻击不嘲讽'
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior', userInput)
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba).toEqual({ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] })
+    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(true)
+  })
+
+  it('does not duplicate basic-attack when AI already included it', () => {
+    const raw = {
+      skillPriority: ['taunt', 'sunder-armor'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [
+        { skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] },
+        { skillId: 'taunt', targetRule: 'threat-not-tank-random' },
+      ],
+    }
+    const userInput = '怒气不足则普通攻击'
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior', userInput)
+    expect(result.tactics.conditions.filter((c) => c.skillId === 'basic-attack')).toHaveLength(1)
+    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(false)
+  })
+
+  it('strips basic-attack from skillPriority and warns', () => {
+    const raw = {
+      skillPriority: ['taunt', 'basic-attack', 'sunder-armor'],
+      targetRule: 'first',
+      conditions: [],
+    }
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior')
+    expect(result.tactics.skillPriority).toEqual(['taunt', 'sunder-armor'])
+    expect(result.warnings.some((w) => w.includes('普通攻击'))).toBe(true)
+  })
+
+  it('truncates taunt targetRules when AI adds lowest-hp fallback (taunt must not inherit sunder chain)', () => {
+    const raw = {
+      skillPriority: ['taunt', 'sunder-armor'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [
+        { skillId: 'sunder-armor', targetRules: ['threat-not-tank-random', 'lowest-hp'] },
+        { skillId: 'taunt', targetRules: ['threat-not-tank-random', 'lowest-hp'] },
+      ],
+      explanation: 'x',
+    }
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior')
+    const tauntC = result.tactics.conditions.find((c) => c.skillId === 'taunt')
+    expect(tauntC?.targetRules).toEqual(['threat-not-tank-random'])
+    expect(result.warnings.some((w) => w.includes('嘲讽'))).toBe(true)
+    const sunderC = result.tactics.conditions.find((c) => c.skillId === 'sunder-armor')
+    expect(sunderC?.targetRules).toEqual(['threat-not-tank-random', 'lowest-hp'])
   })
 
   it('validates targetRules with conditional step objects (rule + when + value)', () => {
@@ -440,6 +519,14 @@ describe('validateAiTactics targetRules whenAll', () => {
     const steps = result.tactics.conditions[0].targetRules
     expect(steps[0].whenAll).toHaveLength(2)
     expect(steps[0].whenAll[0].when).toBe('self-hp-below')
+  })
+})
+
+describe('skillDisplayName', () => {
+  it('maps basic-attack to Chinese for tactics summary (all classes)', () => {
+    expect(skillDisplayName('basic-attack', 'Warrior')).toBe('普通攻击')
+    expect(skillDisplayName('basic-attack', 'Mage')).toBe('普通攻击')
+    expect(skillDisplayName('basic-attack', 'Priest')).toBe('普通攻击')
   })
 })
 
