@@ -903,17 +903,17 @@
               </div>
               <div class="detail-section detail-section-primary">
                 <div v-for="attr in PRIMARY_ATTRS" :key="attr.key" class="detail-row attr-row">
-                  <span class="detail-label">{{ attr.label }}</span>
+                  <span class="detail-label tooltip-wrap has-tip">
+                    {{ attr.label }}
+                    <span class="tooltip-text tooltip-below primary-attr-tip" v-html="getPrimaryAttrFullTip(attr.key)"></span>
+                  </span>
                   <span class="detail-value">
-                    <span class="attr-val tooltip-wrap" :class="{ 'has-tip': getPrimaryAttrEquipTip(attr.key) }">
-                      {{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}
-                      <span v-if="getPrimaryAttrEquipTip(attr.key)" class="tooltip-text" v-html="getPrimaryAttrEquipTip(attr.key)"></span>
-                    </span>
+                    <span class="attr-val">{{ getEffectiveAttrs(selectedHero)[attr.key] ?? 0 }}</span>
                     <button
                       v-if="(selectedHero.unassignedPoints || 0) > 0"
                       type="button"
                       class="btn btn-sm attr-btn"
-                      :title="'Add 1 to ' + attr.label"
+                      aria-label="Allocate one attribute point"
                       @click="assignPoint(attr.key)"
                     >+</button>
                   </span>
@@ -1461,6 +1461,7 @@ import {
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
 import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRuleStepDisplay, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
+import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
 import { buyFromShop, getShopPrice, SHOP_SLOTS } from '../game/shop.js'
@@ -2445,14 +2446,12 @@ function getHeroSkillDisplay(skillId, hero = null) {
   return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? getPriestSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
 }
 
-function getPrimaryAttrEquipTip(attrKey) {
+function getPrimaryAttrFullTip(attrKey) {
   if (!selectedHero.value) return ''
   const hero = squad.value.find((h) => h.id === selectedHero.value.id)
-  if (!hero?.equipment) return ''
-  const eq = getEquipmentBonuses(hero.equipment)
+  const eq = getEquipmentBonuses(hero?.equipment || {})
   const bonus = eq[attrKey] || 0
-  if (bonus <= 0) return ''
-  return '<span class="tip-equip-label">EQP:</span> +' + bonus
+  return buildPrimaryAttrTooltipHtml(selectedHero.value.class, attrKey, bonus)
 }
 
 function showFormulaTooltip(e, html) {
@@ -5051,6 +5050,23 @@ input.tactics-condition-value[type="number"] {
 .formula-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
 .formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
 .formula-tip :deep(.tip-op) { color: var(--color-formula-op); }
+.primary-attr-tip :deep(.tip-purpose) { color: var(--text-label); font-weight: 600; display: block; margin-bottom: 0.2rem; }
+.primary-attr-tip :deep(.tip-muted) { color: var(--text-muted); font-size: var(--font-xs); }
+.primary-attr-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
+.primary-attr-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
+.primary-attr-tip :deep(.tip-op) { color: var(--color-formula-op); }
+.detail-section-primary .detail-label.tooltip-wrap.has-tip { max-width: 100%; }
+.primary-attr-tip.tooltip-text {
+  white-space: normal;
+  max-width: min(42rem, 96vw);
+  min-width: min(28rem, 92vw);
+  line-height: 1.55;
+  text-align: left;
+  right: auto;
+  left: 0;
+  bottom: auto;
+  top: calc(100% + 4px);
+}
 .formula-tooltip-floating {
   position: fixed;
   z-index: 350;
