@@ -399,6 +399,61 @@ describe('conditionEntryHasTankHpBelow', () => {
   })
 })
 
+describe('validateAiTactics supplementPriestFlashHealTankHealWhenNoEnemyOnSelf', () => {
+  const priest = ['flash-heal', 'power-word-shield']
+
+  it('inserts tank flash-heal step when user text requires it but model omitted', () => {
+    const user =
+      '没有目标是自己的敌人且坦克HP低于70%时对坦克使用快速治疗坦克高于70%且无盾则套盾'
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }],
+        },
+        { skillId: 'power-word-shield', targetRules: ['self-if-enemy-targeting', 'tank'] },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest', user)
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.targetRules).toHaveLength(2)
+    expect(fh.targetRules[1]).toMatchObject({
+      rule: 'tank',
+      whenAll: [{ when: 'tank-hp-below', value: 0.7 }, { when: 'enemy-not-targeting-self' }],
+    })
+    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(true)
+  })
+
+  it('does not duplicate when flash-heal already has tank-hp-below', () => {
+    const user = '没有目标是自己的敌人坦克低于70%快速治疗'
+    const raw = {
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 },
+            { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest', user)
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.targetRules).toHaveLength(2)
+    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(false)
+  })
+
+  it('does not run for Warrior', () => {
+    const user = '没有目标是自己的敌人坦克低于70%快速治疗'
+    const raw = {
+      conditions: [{ skillId: 'heroic-strike', targetRule: 'lowest-hp' }],
+    }
+    const result = validateAiTactics(raw, ['heroic-strike'], 'Warrior', user)
+    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(false)
+  })
+})
+
 describe('validateAiTactics Priest tank-hp-below mismatch warning', () => {
   const priest = ['flash-heal', 'power-word-shield']
 

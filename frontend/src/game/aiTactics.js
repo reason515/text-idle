@@ -127,6 +127,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - **flash-heal** (快速治疗 / 治疗 / 加血 / 奶): **healing** only. If the player says "坦克血量低于X%时**治疗**", "**对坦克治疗**", "低血量时**奶**坦克", put **tank-hp-below** and tank targeting on **flash-heal**, NOT on power-word-shield.
 - **power-word-shield** (真言术：盾 / 盾 / 套盾 / 上盾): **absorb shield** only. If the player says "坦克血量**高**时套盾", "**盾**坦克", "给坦克**盾**", use power-word-shield. **Never** assign skill-level **when: tank-hp-below** to power-word-shield when the player clearly asked for **治疗** at low tank HP.
 - Per-step **{ "rule": "tank", "when": "tank-hp-below", "value": 0.7 }** on **flash-heal** means: heal tank when tank HP < 70%. Same step shape on **power-word-shield** only if the player asked for **盾** under that HP condition (rare); default is heal = flash-heal.
+- **"No enemy on self" + tank heal (CRITICAL)**: If the player says **没有目标是自己的敌人** / **无敌人以自己为目标** AND **坦克血量低于70%** AND **快速治疗/对坦克治疗**, **flash-heal** MUST include \`{ "rule": "tank", "whenAll": [{ "when": "tank-hp-below", "value": 0.7 }, { "when": "enemy-not-targeting-self" }] }\`. **Do NOT** output only **power-word-shield** for the tank branch — **flash-heal** must carry the tank heal step. **Do NOT omit** this step when **power-word-shield** already has \`enemy-not-targeting-self\` + tank steps.
 
 ## Skill mapping for ${heroClass}
 ${getSkillNameMap(heroClass, skillIds)}
@@ -211,6 +212,30 @@ Player: "坦克血量低于70%时对坦克施放治疗，否则套盾" or simila
 WRONG: { "conditions": [{ "skillId": "power-word-shield", "when": "tank-hp-below", "value": 0.7, "targetRules": ["tank", "self-if-enemy-targeting"] }] }
 CORRECT: **tank-hp-below + heal tank** belongs on **flash-heal** (e.g. targetRules include { "rule": "tank", "when": "tank-hp-below", "value": 0.7 } or skill-level when tank-hp-below + tank). **power-word-shield** gets the "otherwise shield" branch without wrongly using tank-hp-below as ONLY shield trigger when player said heal when low.
 Reason: 快速治疗 = flash-heal. 真言术盾 = power-word-shield. Low tank HP + **治疗** -> flash-heal, not shield.
+
+WRONG 4b (Priest) - tank heal branch missing from flash-heal while shield has full tank chain:
+Player: "没有目标是自己的敌人，坦克HP低于70%时对坦克快速治疗；坦克HP高于70%且无盾时对坦克套盾"
+WRONG: { "conditions": [{ "skillId": "flash-heal", "targetRules": [{ "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 }] }, { "skillId": "power-word-shield", "targetRules": [{ "rule": "tank", "whenAll": [{ "when": "tank-hp-above", "value": 0.7 }, { "when": "tank-no-shield" }, { "when": "enemy-not-targeting-self" }] }] }] }
+CORRECT: Add to **flash-heal** \`targetRules\`: \`{ "rule": "tank", "whenAll": [{ "when": "tank-hp-below", "value": 0.7 }, { "when": "enemy-not-targeting-self" }] }\` after the triage step (or alone if no triage). **Never** leave only **power-word-shield** to cover the tank branch when the player asked for **治疗** at low tank HP.
+
+Player (Priest — four bullets: triage 30%, self shield when targeted + no shield, tank heal/shield when not targeted, else lowest-hp attack):
+"1.队伍中存在HP低于30%的队友（含自己）时对其使用快速治疗 2.有敌人的目标是自己且自己身上无真言术盾则对自己使用真言术盾 3.没有目标是自己的敌人，坦克HP低于70%时对坦克快速治疗；坦克HP高于70%且坦克身上无真言术盾时对坦克使用真言术盾 4.其它情况普通攻击HP最低的敌人"
+Output: {
+  "skillPriority": ["flash-heal", "power-word-shield"],
+  "conditions": [
+    { "skillId": "flash-heal", "targetRules": [
+      { "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 },
+      { "rule": "tank", "whenAll": [{ "when": "tank-hp-below", "value": 0.7 }, { "when": "enemy-not-targeting-self" }] }
+    ]},
+    { "skillId": "power-word-shield", "targetRules": [
+      { "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-no-shield" }] },
+      { "rule": "tank", "whenAll": [{ "when": "tank-hp-above", "value": 0.7 }, { "when": "tank-no-shield" }, { "when": "enemy-not-targeting-self" }] }
+    ]},
+    { "skillId": "basic-attack", "targetRule": "lowest-hp" }
+  ],
+  "explanation": "..."
+}
+Note: Rule (3) **治疗** = flash-heal tank step with **whenAll** [tank-hp-below 0.7, enemy-not-targeting-self]; rule (3) **盾** = power-word-shield — both skills need the tank branch.
 
 ## Examples
 
@@ -506,6 +531,66 @@ function supplementBasicAttackIfMentioned(userInput, conditions, warnings) {
 }
 
 /**
+ * Heuristic: model often omits flash-heal tank step when player asks for heal tank when HP<70% and no enemy on self.
+ * @param {string|undefined} userInput
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function supplementPriestFlashHealTankHealWhenNoEnemyOnSelf(userInput, conditions, warnings) {
+  if (!userInput || typeof userInput !== 'string') return
+  const t = userInput.replace(/\s/g, '')
+  const tankLow70 =
+    /坦克.{0,14}(低于|小于).{0,4}70/.test(t) ||
+    /坦克.{0,12}(血|HP|hp).{0,6}(低于|小于).{0,4}70/.test(t) ||
+    /70%.{0,12}坦克/.test(t)
+  const heal = /快速治疗|治疗坦克|对坦克.{0,8}治疗/.test(t)
+  const noSelf =
+    /没有.{0,12}目标.{0,6}自己|无.{0,8}(敌人|怪).{0,10}目标.{0,6}自己|无敌人.{0,8}(打|盯|针对|攻击)自己|不存在.{0,10}目标.{0,6}自己/.test(t)
+  if (!tankLow70 || !heal || !noSelf) return
+
+  const fh = conditions.find((c) => c.skillId === 'flash-heal')
+  if (!fh) return
+  if (conditionEntryHasTankHpBelow(fh)) return
+
+  const step = {
+    rule: 'tank',
+    whenAll: [
+      { when: 'tank-hp-below', value: 0.7 },
+      { when: 'enemy-not-targeting-self' },
+    ],
+  }
+
+  if (!fh.targetRules?.length) {
+    if (fh.targetRule) {
+      fh.targetRules = [fh.targetRule]
+      delete fh.targetRule
+    } else {
+      fh.targetRules = [step]
+      warnings.push(
+        '已补充：原文含「无敌人以自己为目标且坦克血量低于70%时治疗坦克」，已为快速治疗加入坦克目标步（坦克血量低于70%且无敌人以自己为目标）。',
+      )
+      return
+    }
+  }
+
+  const tr = [...fh.targetRules]
+  const first = tr[0]
+  const isEmergency =
+    typeof first === 'object' &&
+    first &&
+    first.rule === 'lowest-hp-ally' &&
+    (first.when === 'ally-hp-below' ||
+      (Array.isArray(first.whenAll) && first.whenAll.some((w) => w?.when === 'ally-hp-below')))
+  const insertAt = isEmergency ? 1 : tr.length
+  tr.splice(insertAt, 0, step)
+  fh.targetRules = tr
+  if (fh.targetRule) delete fh.targetRule
+  warnings.push(
+    '已补充：原文含「无敌人以自己为目标且坦克血量低于70%时治疗坦克」，已为快速治疗加入坦克目标步（坦克血量低于70%且无敌人以自己为目标）。',
+  )
+}
+
+/**
  * Validate and sanitize AI output against known enums.
  * @param {Object} raw - Parsed JSON from AI
  * @param {string[]} skillIds - Hero's available skill IDs
@@ -628,6 +713,10 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   }
 
   supplementBasicAttackIfMentioned(userInput, conditions, warnings)
+
+  if (heroClass === 'Priest') {
+    supplementPriestFlashHealTankHealWhenNoEnemyOnSelf(userInput, conditions, warnings)
+  }
 
   if (heroClass === 'Priest' && conditions.length > 0) {
     const fh = conditions.find((c) => c.skillId === 'flash-heal')

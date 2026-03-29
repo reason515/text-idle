@@ -214,7 +214,7 @@
 
 **主界面战术页**：选择英雄 → **AI 战术配置**（自然语言）→ **AI 解析** → **解析预览** → **应用** / **放弃**；下方为 **当前战术** 只读摘要（技能优先级、默认目标、单技能规则），可 **清空全部战术**。
 
-**自然语言 → 结构化配置**：前端调用 SiliconFlow（OpenAI 兼容接口）的 **Qwen3-8B** 模型，将玩家输入解析为 `skillPriority`、`targetRule`、`conditions`（与第二节数据模型一致）。实现见 `frontend/src/game/aiTactics.js`（系统提示词、输出校验、合并逻辑）。**校验补充**：若玩家原文同时出现 **怒气不足/法力不足…普通攻击（或普攻）** 或 **否则普通攻击**，而模型未输出 `conditions` 中的 **basic-attack**，`validateAiTactics` 会 **自动追加** `{ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] }` 并给出「已补充」类警告，避免解析预览缺少普攻目标链。
+**自然语言 → 结构化配置**：前端调用 SiliconFlow（OpenAI 兼容接口）的 **Qwen3-8B** 模型，将玩家输入解析为 `skillPriority`、`targetRule`、`conditions`（与第二节数据模型一致）。实现见 `frontend/src/game/aiTactics.js`（系统提示词、输出校验、合并逻辑）。**校验补充**：若玩家原文同时出现 **怒气不足/法力不足…普通攻击（或普攻）** 或 **否则普通攻击**，而模型未输出 `conditions` 中的 **basic-attack**，`validateAiTactics` 会 **自动追加** `{ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] }` 并给出「已补充」类警告，避免解析预览缺少普攻目标链。若原文同时出现 **无敌人以自己为目标 / 没有目标为自己的敌人**、**坦克血量低于 70%**、**快速治疗（或治疗坦克）**，而 **flash-heal** 未含任何 `tank-hp-below` 门控，会 **自动插入** 目标链一步：`{ rule: 'tank', whenAll: [ tank-hp-below 0.7, enemy-not-targeting-self ] }`（插在紧急 `ally-hp-below` 步之后），并给出「已补充」类警告，避免模型只写盾链、漏写坦克低血量治疗链。
 
 **牧师 AI 提示（易错点）**：系统提示词明确要求「治疗 / 加血」对应 **flash-heal**，「盾 / 套盾」对应 **power-word-shield**。玩家说「坦克血量低于 X% 时**治疗**」时，`tank-hp-below` 应配在 **flash-heal**（技能级 `when` 或目标链步骤），不应单独绑在 **power-word-shield** 上。`validateAiTactics` 若检测到「真言术：盾」含 `tank-hp-below` 而「快速治疗」完全未使用 `tank-hp-below`，会追加一条 **提示** 类警告（不自动改数据）。
 
