@@ -9,6 +9,7 @@ import {
   isSkillChoiceLevel,
   getNewSkillsAtLevel,
   getLevelSkillById,
+  SKILL_CHOICE_LEVELS,
 } from './warriorLevelSkills.js'
 import { getMageSkillById } from './mageSkills.js'
 import {
@@ -79,6 +80,22 @@ export function hasSkillChoiceAtLevel(hero, level) {
   if (hero.class !== 'Warrior' && hero.class !== 'Mage') return false
   const opts = getSkillChoiceOptions(hero, level)
   return opts.canEnhance || opts.newSkills.length > 0
+}
+
+/**
+ * Lowest milestone level (5, 10, ...) still needing a skill choice for this hero.
+ * Used to reopen the skill choice UI after skip or overlay close.
+ * @param {Object} hero
+ * @returns {number|null}
+ */
+export function getFirstUnresolvedSkillChoiceLevel(hero) {
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage') return null
+  const heroLevel = hero.level ?? 1
+  for (const level of SKILL_CHOICE_LEVELS) {
+    if (level > heroLevel) break
+    if (hasSkillChoiceAtLevel(hero, level)) return level
+  }
+  return null
 }
 
 /**

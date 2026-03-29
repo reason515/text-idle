@@ -984,6 +984,24 @@
           </div>
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
+            <div
+              v-if="selectedHeroUnresolvedSkillLevel != null"
+              class="detail-skill-choice-banner"
+              data-testid="skill-choice-from-detail-banner"
+            >
+              <button
+                type="button"
+                class="btn btn-sm"
+                data-testid="skill-choice-from-detail-btn"
+                @click="queueSkillChoiceFromDetail(selectedHero)"
+              >
+                继续技能选择（{{ selectedHeroUnresolvedSkillLevel }} 级）
+              </button>
+              <span class="detail-skill-choice-banner-hint tooltip-wrap has-tip">
+                若曾跳过升级时的技能窗口，可在此完成选择
+                <span class="tooltip-text tooltip-below">战士与法师在 5、10、15 级等可强化或学习新技能；关闭或跳过弹窗后仍可在此继续。</span>
+              </span>
+            </div>
             <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0">
               <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
@@ -1444,7 +1462,13 @@ function getMonsterArmorTooltip(unit) {
 }
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
 import { getPriestSkillById, tickShieldDuration } from '../game/priestSkills.js'
-import { getHeroSkillIds, hasSkillChoiceAtLevel, applyLearnNewSkill, applyEnhanceSkill } from '../game/skillChoice.js'
+import {
+  getHeroSkillIds,
+  hasSkillChoiceAtLevel,
+  getFirstUnresolvedSkillChoiceLevel,
+  applyLearnNewSkill,
+  applyEnhanceSkill,
+} from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
@@ -1621,6 +1645,25 @@ let floatNumId = 0
 const toastMessages = ref([])
 let toastId = 0
 const pendingSkillChoices = ref([])
+
+/** Milestone level (5, 10, ...) with an unfinished skill choice; uses live squad hero. */
+const selectedHeroUnresolvedSkillLevel = computed(() => {
+  const id = selectedHero.value?.id
+  if (!id) return null
+  const live = squad.value.find((h) => h.id === id)
+  return live ? getFirstUnresolvedSkillChoiceLevel(live) : null
+})
+
+function queueSkillChoiceFromDetail(hero) {
+  if (!hero?.id) return
+  const idx = squad.value.findIndex((h) => h.id === hero.id)
+  if (idx < 0) return
+  const live = squad.value[idx]
+  const level = getFirstUnresolvedSkillChoiceLevel(live)
+  if (level == null) return
+  const dedup = pendingSkillChoices.value.filter((c) => !(c.heroIndex === idx && c.level === level))
+  pendingSkillChoices.value = [{ heroIndex: idx, hero: live, level }, ...dedup]
+}
 
 function tauntCasterDisplayName(monster) {
   if (!monster?.taunt?.casterId) return ''
@@ -4976,6 +5019,22 @@ input.tactics-condition-value[type="number"] {
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
   border-radius: 6px;
+}
+.detail-skill-choice-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+}
+.detail-skill-choice-banner-hint {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  max-width: 100%;
 }
 .detail-empty-hint {
   color: var(--text-muted);

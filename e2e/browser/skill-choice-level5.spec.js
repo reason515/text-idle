@@ -1,8 +1,8 @@
 /**
- * E2E: Skill selection at level 5 multiples (Example 25).
+ * E2E: Skill selection at level 5 multiples (requirements Example 26).
  * - When hero reaches Lv 5, skill choice modal appears
  * - Player can enhance existing, learn new, or skip
- * - Game continues when skipped
+ * - Game continues when skipped; hero detail Skills tab can reopen the modal (AC11)
  */
 
 const { test, expect } = require('@playwright/test')
@@ -47,7 +47,7 @@ async function waitForSkillChoiceModal(page, levelText) {
   return skillModal
 }
 
-test.describe('Skill Choice at Level 5 (Example 25)', () => {
+test.describe('Skill Choice at Level 5 (Example 26)', () => {
   test('AC1: skill choice modal appears when hero levels to 5', async ({ page }) => {
     test.setTimeout(120000)
     const email = `skill-choice-ac1-${Date.now()}@example.com`
@@ -185,5 +185,45 @@ test.describe('Skill Choice at Level 5 (Example 25)', () => {
 
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
     await expect(page.locator('.hero-card').first()).toBeVisible()
+  })
+
+  test('AC11: after skip, reopen skill choice from hero detail Skills tab', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = `skill-choice-ac11-${Date.now()}@example.com`
+    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      if (warrior) {
+        warrior.level = 4
+        warrior.xp = 594
+        warrior.strength = 100
+        warrior.stamina = 80
+        if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
+        delete warrior.skill
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 1,
+        currentMapId: 'elwynn-forest',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true })
+    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
+
+    await page.locator('.skill-choice-modal button').filter({ hasText: '\u8df3\u8fc7' }).click()
+    await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
+
+    await page.locator('.hero-card').first().click()
+    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
+    await page.getByTestId('skill-choice-from-detail-btn').click()
+
+    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
+    await expect(skillModal).toBeVisible({ timeout: 10000 })
+    await expect(skillModal).toContainText('5 级')
   })
 })

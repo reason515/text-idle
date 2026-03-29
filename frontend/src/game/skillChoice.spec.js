@@ -7,6 +7,7 @@ import {
   getHeroSkillIds,
   getSkillChoiceOptions,
   hasSkillChoiceAtLevel,
+  getFirstUnresolvedSkillChoiceLevel,
   applyLearnNewSkill,
   applyEnhanceSkill,
 } from './skillChoice.js'
@@ -94,6 +95,35 @@ describe('skillChoice', () => {
     it('returns true for Mage at Lv 5 with initial skill', () => {
       const hero = { class: 'Mage', skill: 'frostbolt' }
       expect(hasSkillChoiceAtLevel(hero, 5)).toBe(true)
+    })
+  })
+
+  describe('getFirstUnresolvedSkillChoiceLevel', () => {
+    it('returns 5 when Warrior at Lv 5 still has a choice at milestone 5', () => {
+      const hero = { class: 'Warrior', level: 5, skill: 'heroic-strike' }
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(5)
+    })
+
+    it('returns null when Priest', () => {
+      const hero = { class: 'Priest', level: 5 }
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(null)
+    })
+
+    it('returns 10 when milestone 5 is exhausted but 10 still has options', () => {
+      const hero = {
+        class: 'Warrior',
+        level: 10,
+        skills: ['heroic-strike', 'cleave', 'whirlwind', 'taunt'],
+        skillEnhancements: {
+          'heroic-strike': { enhanceCount: 3 },
+          cleave: { enhanceCount: 3 },
+          whirlwind: { enhanceCount: 3 },
+          taunt: { enhanceCount: 3 },
+        },
+      }
+      const opts5 = getSkillChoiceOptions(hero, 5)
+      expect(opts5.canEnhance || opts5.newSkills.length).toBe(0)
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(10)
     })
   })
 

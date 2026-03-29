@@ -1053,6 +1053,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 - **Trigger level**: When a hero's level becomes **5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, or 60** (i.e., any multiple of 5).
 - **Choice window**: A skill selection modal appears; the player may choose to enhance or learn a new skill, or skip; if skipped, the game continues (same behavior as attribute point allocation after level-up).
+- **Reopen from hero detail**: On the hero detail **技能** tab, if a milestone choice is still unresolved, a **继续技能选择** entry opens the same modal (covers skip, overlay close, or accidental dismiss).
 - **Two options**:
   1. **Enhance existing skill**: Improve a skill the hero already has (e.g., higher damage coefficient, longer duration, shorter cooldown).
   2. **Learn new skill**: Pick one of 3 fixed new skills offered for that level.
@@ -1079,6 +1080,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC8 | Player closes the skill selection modal without making a choice (or skips) | Modal is dismissed | No skill is enhanced or learned; the game continues; the player can proceed with combat and other actions (same as skipping attribute allocation) |
 | AC9 | A hero reaches level 60 and triggers the final skill selection | Player makes a choice | The Lv 60 options (e.g., Bladestorm, Titan's Grip, Invincible for Warrior) are offered; after choice, the hero has at most 13 skills total |
 | AC10 | Multiple heroes are in the squad and one levels to a multiple of 5 | Level-up is triggered | The skill selection modal appears for that specific hero; the modal clearly indicates which hero is making the choice |
+| AC11 | Player skipped or closed the skill modal but the hero still has an unresolved milestone (Warrior/Mage) | Player opens that hero's detail and the **技能** tab | **继续技能选择** is shown; clicking it opens the skill selection modal for the lowest unresolved milestone (e.g., 5, then 10) |
 
 ---
 
