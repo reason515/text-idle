@@ -1459,6 +1459,27 @@ describe('combat progression and systems', () => {
       expect(tauntEntry.actorName).toBe('Tank')
     })
 
+    it('Taunt enhanced 1x: log shows tauntActionsRemaining 3', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 25,
+        strength: 15,
+        skills: ['taunt'],
+        skillEnhancements: { taunt: { enhanceCount: 1 } },
+        tactics: { skillPriority: ['taunt'], targetRule: 'first' },
+      })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 300, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.9, 0.9, 0.9])
+      const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
+      const tauntEntry = result.log.find((e) => e.skillId === 'taunt' && e.tauntApplied)
+      expect(tauntEntry).toBeDefined()
+      expect(tauntEntry.tauntActionsRemaining).toBe(3)
+    })
+
     it('AC5: damage entry has threatAmount and threatTargetName', () => {
       const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
       const monster = createMonster(

@@ -4,14 +4,22 @@
  * Used by skill choice modal when hero reaches level that is a multiple of 5.
  */
 
-/** @typedef {{ id: string, name: string, spec: string, rageCost: number, cooldown?: number, effectDesc: string, coefficient?: number, targets?: number }} LevelSkillDef */
+/** @typedef {{ id: string, name: string, spec: string, rageCost: number, cooldown?: number, effectDesc: string, coefficient?: number, targets?: number, tauntForcedActions?: number }} LevelSkillDef */
 
 /** @type {Record<number, LevelSkillDef[]>} Level -> [Arms, Fury, Protection] */
 export const WARRIOR_LEVEL_SKILLS = {
   5: [
     { id: 'cleave', name: '顺劈斩', spec: '武器', rageCost: 20, cooldown: 0, coefficient: 0.7, targets: 2, effectDesc: '对 2 个目标造成 0.7 倍物理伤害' },
     { id: 'whirlwind', name: '旋风斩', spec: '狂暴', rageCost: 25, cooldown: 2, coefficient: 0.55, targets: -1, effectDesc: '对所有敌人造成 0.55 倍物理伤害，2 回合 CD' },
-    { id: 'taunt', name: '嘲讽', spec: '防护', rageCost: 0, cooldown: 2, effectDesc: '强制目标攻击你 2 次行动，2 回合 CD' },
+    {
+      id: 'taunt',
+      name: '嘲讽',
+      spec: '防护',
+      rageCost: 0,
+      cooldown: 2,
+      tauntForcedActions: 2,
+      effectDesc: '强制目标攻击你 2 次行动，2 回合 CD',
+    },
   ],
   10: [
     { id: 'rend', name: '撕裂', spec: '武器', rageCost: 10, cooldown: 0, coefficient: 0.5, effectDesc: '0.5 倍伤害 + 流血 4 回合' },

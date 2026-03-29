@@ -605,7 +605,7 @@ Then [expected result/verifiable behavior].
 
 - **Scope**: Fixed initial trio Warrior only. Has Sunder Armor + Taunt (no Heroic Strike or Bloodthirst).
 - **Sunder Armor**: 15 Rage, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. Threat multiplier 1.5. See Example 13 AC5–AC7.
-- **Taunt**: 0 Rage, 2 round CD. Forces target monster to attack the Warrior for its next 2 actions. Threat = max(current highest, caster's) × 1.1 on target.
+- **Taunt**: 0 Rage, 2 round CD (base). Forces target monster to attack the Warrior for its next 2 actions (base). **Enhancement** (skill choice): each tier adds +1 to forced actions and +1 to CD rounds (max 3 tiers; see [05-skills.md](design/05-skills.md) 8.1.4). Threat = max(current highest, caster's) × 1.1 on target.
 - **Rage**: Same as Example 13; starts at 0; gains from dealing/taking damage.
 - **Reference**: [05-skills.md](design/05-skills.md) 8.1; [12-threat.md](design/12-threat.md).
 

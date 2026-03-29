@@ -60,8 +60,8 @@ const MAX_ENHANCE_COUNT = 3
 const PER_STACK_ARMOR_REDUCTION = 8
 
 /**
- * Get skill with enhancement params applied. Design doc 8.1.6.
- * Only initial skills (heroic-strike, bloodthirst, sunder-armor) have enhancement formulas.
+ * Get skill with enhancement params applied. Design doc 8.1.6, 8.1.4 (Taunt).
+ * Initial skills + taunt (level-unlock) have enhancement formulas.
  * @param {Object} warrior - Combat unit with skillEnhancements
  * @param {string} skillId
  * @returns {Object|null} Skill definition with enhanced params (shallow copy)
@@ -88,6 +88,12 @@ export function getSkillWithEnhancements(warrior, skillId) {
   } else if (skillId === 'sunder-armor') {
     out.sunderMaxStacks = 1 + enhanceCount
     out.effectDesc = `0.8 倍伤害，目标护甲 -8 持续 3 回合；护甲降至 0 以下时每点超额 +2% 伤害（最多 ${out.sunderMaxStacks} 层）`
+  } else if (skillId === 'taunt') {
+    const baseForced = base.tauntForcedActions ?? 2
+    const baseCd = base.cooldown ?? 2
+    out.tauntForcedActions = baseForced + enhanceCount
+    out.cooldown = baseCd + enhanceCount
+    out.effectDesc = `强制目标攻击你 ${out.tauntForcedActions} 次行动，${out.cooldown} 回合 CD`
   }
 
   return out
@@ -96,7 +102,7 @@ export function getSkillWithEnhancements(warrior, skillId) {
 /**
  * Get effectDesc for skill choice modal when showing "Enhance existing skill".
  * Shows current -> after values (e.g. "1.2x -> 1.4x physical damage to single target").
- * Only initial skills (heroic-strike, bloodthirst, sunder-armor) have enhancement preview.
+ * Initial skills + taunt have enhancement preview.
  * @param {Object} hero - Hero with skillEnhancements
  * @param {string} skillId
  * @returns {string}
@@ -128,6 +134,15 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
     const currStacks = 1 + current
     const nextStacks = 1 + next
     return `0.8 倍伤害，护甲 -8 持续 3 回合；护甲超额时 +2%/点（最多 ${currStacks} -> ${nextStacks} 层）`
+  }
+  if (skillId === 'taunt') {
+    const baseForced = base.tauntForcedActions ?? 2
+    const baseCd = base.cooldown ?? 2
+    const currF = baseForced + current
+    const nextF = baseForced + next
+    const currCd = baseCd + current
+    const nextCd = baseCd + next
+    return `${currF} 次行动、${currCd} 回合 CD -> ${nextF} 次行动、${nextCd} 回合 CD`
   }
 
   return base.effectDesc ?? ''

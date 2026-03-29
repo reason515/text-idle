@@ -421,6 +421,33 @@ describe('Example13: Sunder Armor', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Taunt enhancement (level-unlock skill)
+// ---------------------------------------------------------------------------
+
+describe('Taunt enhancement', () => {
+  it('getSkillWithEnhancements increases tauntForcedActions and cooldown per enhanceCount', () => {
+    const w1 = makeWarrior({ skillEnhancements: { taunt: { enhanceCount: 1 } } })
+    const s1 = getSkillWithEnhancements(w1, 'taunt')
+    expect(s1.tauntForcedActions).toBe(3)
+    expect(s1.cooldown).toBe(3)
+    expect(s1.effectDesc).toContain('3 次行动')
+    expect(s1.effectDesc).toContain('3 回合 CD')
+
+    const w3 = makeWarrior({ skillEnhancements: { taunt: { enhanceCount: 3 } } })
+    const s3 = getSkillWithEnhancements(w3, 'taunt')
+    expect(s3.tauntForcedActions).toBe(5)
+    expect(s3.cooldown).toBe(5)
+  })
+
+  it('getEnhancementPreviewEffectDesc shows current to next for taunt', () => {
+    const hero = makeWarrior({ skillEnhancements: {} })
+    expect(getEnhancementPreviewEffectDesc(hero, 'taunt')).toBe('2 次行动、2 回合 CD -> 3 次行动、3 回合 CD')
+    const hero2 = makeWarrior({ skillEnhancements: { taunt: { enhanceCount: 2 } } })
+    expect(getEnhancementPreviewEffectDesc(hero2, 'taunt')).toBe('4 次行动、4 回合 CD -> 5 次行动、5 回合 CD')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Debuff ticking
 // ---------------------------------------------------------------------------
 

@@ -758,7 +758,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (!target) continue
 
           if (skillId === 'taunt') {
-            tauntState[target.id] = { casterId: actor.id, actionsRemaining: 2 }
+            const tauntForced = skill.tauntForcedActions ?? 2
+            tauntState[target.id] = { casterId: actor.id, actionsRemaining: tauntForced }
             applyTauntThreatBoost(threat, target.id, actor.id, heroUnits)
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
@@ -778,7 +779,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               targetClass: target.class || null,
               targetTier: target.tier || null,
               tauntApplied: true,
-              tauntActionsRemaining: 2,
+              tauntActionsRemaining: tauntForced,
             })
             usedSkill = true
             break
