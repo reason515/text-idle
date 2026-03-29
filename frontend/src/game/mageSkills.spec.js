@@ -8,15 +8,15 @@ import {
   getMageSkillById,
   getMageSkillWithEnhancements,
   getMageEnhancementPreviewEffectDesc,
-  getFrostboltDebuff,
+  getFreezeDebuff,
   getBurnDebuff,
   getMageEffectiveResistance,
-  applyFrostboltDebuff,
+  applyFreezeDebuff,
+  consumeFreezeTurn,
   applyBurnDebuff,
   tickMageDebuffs,
   executeMageSkill,
 } from './mageSkills.js'
-import { applyDamage } from './combat.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,7 +25,7 @@ import { applyDamage } from './combat.js'
 function makeMage(overrides = {}) {
   return {
     id: 'm1',
-    name: '吉安娜·普罗德摩尔',
+    name: 'Jaina',
     side: 'hero',
     class: 'Mage',
     physAtk: 0,
@@ -70,20 +70,18 @@ function makeTarget(overrides = {}) {
 // ---------------------------------------------------------------------------
 
 describe('Mage initial skill definitions', () => {
-  it('AC1: exactly 3 initial skills are defined', () => {
-    expect(MAGE_INITIAL_SKILLS).toHaveLength(3)
+  it('AC1: exactly 2 initial skills are defined (Frost + Fire)', () => {
+    expect(MAGE_INITIAL_SKILLS).toHaveLength(2)
   })
 
-  it('AC1: skills are Arcane Blast (Arcane), Fireball (Fire), Frostbolt (Frost)', () => {
+  it('AC1: skills are Frostbolt and Fireball', () => {
     const ids = MAGE_INITIAL_SKILLS.map((s) => s.id)
-    expect(ids).toContain('arcane-blast')
-    expect(ids).toContain('fireball')
     expect(ids).toContain('frostbolt')
+    expect(ids).toContain('fireball')
 
     const specs = MAGE_INITIAL_SKILLS.map((s) => s.spec)
-    expect(specs).toContain('奥术')
-    expect(specs).toContain('火焰')
     expect(specs).toContain('冰霜')
+    expect(specs).toContain('火焰')
   })
 
   it('AC2: each skill has name, spec, manaCost, and effectDesc', () => {
@@ -96,70 +94,9 @@ describe('Mage initial skill definitions', () => {
   })
 
   it('getMageSkillById returns correct skill', () => {
-    expect(getMageSkillById('arcane-blast')?.id).toBe('arcane-blast')
     expect(getMageSkillById('fireball')?.id).toBe('fireball')
     expect(getMageSkillById('frostbolt')?.id).toBe('frostbolt')
     expect(getMageSkillById('unknown')).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Arcane Blast
-// ---------------------------------------------------------------------------
-
-describe('Arcane Blast', () => {
-  const skill = getMageSkillById('arcane-blast')
-
-  it('consumes 15 Mana, deals SpellPower * 1.2 - resistance, minimum 1', () => {
-    const mage = makeMage({ spellPower: 20, currentMP: 40 })
-    const target = makeTarget({ resistance: 5, currentHP: 40 })
-
-    const result = executeMageSkill(mage, target, skill, { isCrit: false })
-
-    expect(result.manaConsumed).toBe(15)
-    expect(result.rawDamage).toBe(Math.round(20 * 1.2)) // 24
-    expect(result.finalDamage).toBe(Math.max(1, 24 - 5)) // 19
-    expect(target.currentHP).toBe(40 - 19) // 21
-  })
-
-  it('combat log fields are set correctly', () => {
-    const mage = makeMage({ spellPower: 20, currentMP: 40 })
-    const target = makeTarget({ resistance: 5 })
-
-    const result = executeMageSkill(mage, target, skill, { isCrit: false })
-
-    expect(result.skillId).toBe('arcane-blast')
-    expect(result.skillName).toBe('奥术冲击')
-    expect(result.skillSpec).toBe('奥术')
-    expect(result.skillCoefficient).toBe(1.2)
-  })
-
-  it('crit applies 1.5x multiplier to raw damage', () => {
-    const mage = makeMage({ spellPower: 10, currentMP: 40 })
-    const target = makeTarget({ resistance: 0 })
-
-    const result = executeMageSkill(mage, target, skill, { isCrit: true })
-
-    const base = Math.round(10 * 1.2) // 12
-    const critRaw = Math.round(base * 1.5) // 18
-    expect(result.rawAfterCrit).toBe(critRaw)
-    expect(result.finalDamage).toBe(critRaw)
-  })
-
-  it('Arcane Blast enhanced 2x uses coefficient 1.6', () => {
-    const mage = makeMage({ spellPower: 10, currentMP: 40, skillEnhancements: { 'arcane-blast': { enhanceCount: 2 } } })
-    const target = makeTarget({ resistance: 0 })
-    const skillEnhanced = getMageSkillWithEnhancements(mage, 'arcane-blast')
-    const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false })
-    expect(result.skillCoefficient).toBe(1.6)
-    expect(result.rawDamage).toBe(Math.round(10 * 1.6)) // 16
-  })
-
-  it('getMageEnhancementPreviewEffectDesc shows 1.2x -> 1.4x when enhancing from 0', () => {
-    const hero = makeMage({ skillEnhancements: {} })
-    const desc = getMageEnhancementPreviewEffectDesc(hero, 'arcane-blast')
-    expect(desc).toContain('1.2')
-    expect(desc).toContain('1.4')
   })
 })
 
@@ -170,38 +107,38 @@ describe('Arcane Blast', () => {
 describe('Fireball', () => {
   const skill = getMageSkillById('fireball')
 
-  it('consumes 20 Mana, deals 1.2x damage, applies Burn debuff', () => {
+  it('consumes Mana, deals 1.3x damage, no Burn debuff', () => {
     const mage = makeMage({ spellPower: 20, currentMP: 40 })
     const target = makeTarget({ resistance: 3, currentHP: 40 })
 
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
-    expect(result.manaConsumed).toBe(20)
-    const raw = Math.round(20 * 1.2) // 24
-    const finalDmg = Math.max(1, raw - 3) // 21
+    expect(result.manaConsumed).toBe(22)
+    const raw = Math.round(20 * 1.3)
+    const finalDmg = Math.max(1, raw - 3)
     expect(result.rawDamage).toBe(raw)
     expect(result.finalDamage).toBe(finalDmg)
     expect(target.currentHP).toBe(40 - finalDmg)
 
-    const burn = getBurnDebuff(target)
-    expect(burn).not.toBeNull()
-    expect(burn.damagePerRound).toBe(Math.max(1, Math.round(20 * 0.05))) // 1
-    expect(burn.remainingRounds).toBe(3)
+    expect(getBurnDebuff(target)).toBeNull()
   })
 
-  it('Burn debuff deals damage each round (via applyDamage uses resistance)', () => {
-    const target = makeTarget({ resistance: 2, currentHP: 30, debuffs: [{ type: 'burn', damagePerRound: 3, damageType: 'magic', remainingRounds: 2 }] })
-    const result = applyDamage(3, 'magic', target)
-    expect(result.finalDamage).toBe(Math.max(1, 3 - 2)) // 1
-  })
-
-  it('Fireball enhanced 1x uses 1.3x coefficient and burnCoeff 0.07', () => {
+  it('Fireball enhanced 1x uses higher coefficient and spellCritBonus', () => {
     const mage = makeMage({ spellPower: 20, currentMP: 40, skillEnhancements: { fireball: { enhanceCount: 1 } } })
     const target = makeTarget({ resistance: 0, currentHP: 40 })
     const skillEnhanced = getMageSkillWithEnhancements(mage, 'fireball')
     const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false })
-    expect(result.skillCoefficient).toBe(1.3)
-    expect(skillEnhanced.burnCoeff).toBe(0.07)
+    expect(result.skillCoefficient).toBeCloseTo(1.35, 5)
+    expect(skillEnhanced.spellCritBonus).toBeCloseTo(0.14, 5)
+  })
+
+  it('getMageEnhancementPreviewEffectDesc shows coeff and crit for fireball', () => {
+    const hero = makeMage({ skillEnhancements: {} })
+    const desc = getMageEnhancementPreviewEffectDesc(hero, 'fireball')
+    expect(desc).toContain('1.3')
+    expect(desc).toContain('1.35')
+    expect(desc).toContain('12%')
+    expect(desc).toContain('14%')
   })
 })
 
@@ -212,60 +149,50 @@ describe('Fireball', () => {
 describe('Frostbolt', () => {
   const skill = getMageSkillById('frostbolt')
 
-  it('first application - 1.0x damage, applies Frostbolt debuff (-6 resistance, 3 rounds)', () => {
+  it('deals 0.8x damage and applies Freeze (skip 1 action)', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40 })
     const target = makeTarget({ resistance: 10, currentHP: 30 })
 
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
-    expect(result.manaConsumed).toBe(15)
-    const raw = Math.round(15 * 1.0) // 15
-    const finalDmg = Math.max(1, raw - 10) // 5
+    expect(result.manaConsumed).toBe(16)
+    const raw = Math.round(15 * 0.8)
+    const finalDmg = Math.max(1, raw - 10)
     expect(result.rawDamage).toBe(raw)
     expect(result.finalDamage).toBe(finalDmg)
     expect(result.debuffApplied).toBe(true)
     expect(result.debuffRefreshed).toBe(false)
-    expect(result.debuffResistanceReduction).toBe(6)
-    expect(result.debuffDuration).toBe(3)
+    expect(result.debuffType).toBe('freeze')
 
-    const frost = getFrostboltDebuff(target)
-    expect(frost).not.toBeNull()
-    expect(frost.resistanceReduction).toBe(6)
-    expect(frost.remainingRounds).toBe(3)
+    const fr = getFreezeDebuff(target)
+    expect(fr).not.toBeNull()
+    expect(fr.skipActions).toBe(1)
   })
 
-  it('refresh - target already has Frostbolt: 1.2x damage, duration resets to 3', () => {
+  it('refresh when already frozen refreshes skip count', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40 })
-    const target = makeTarget({ resistance: 10, currentHP: 30, debuffs: [{ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 1 }] })
+    const target = makeTarget({ resistance: 10, currentHP: 30, debuffs: [{ type: 'freeze', skipActions: 1 }] })
 
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
     expect(result.debuffApplied).toBe(false)
     expect(result.debuffRefreshed).toBe(true)
-    expect(result.skillCoefficient).toBe(1.2)
-
-    const frost = getFrostboltDebuff(target)
-    expect(frost.remainingRounds).toBe(3)
+    const fr = getFreezeDebuff(target)
+    expect(fr.skipActions).toBe(1)
   })
 
-  it('Frostbolt debuff reduces effective resistance for magic damage', () => {
-    const target = makeTarget({ resistance: 10, currentHP: 30, debuffs: [{ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 2 }] })
-
-    const result = applyDamage(15, 'magic', target)
-    expect(result.effectiveDefense).toBe(4)
-    expect(result.finalDamage).toBe(11)
+  it('consumeFreezeTurn returns true and removes one skip', () => {
+    const unit = makeTarget({ debuffs: [{ type: 'freeze', skipActions: 1 }] })
+    expect(consumeFreezeTurn(unit)).toBe(true)
+    expect(getFreezeDebuff(unit)).toBeNull()
   })
 
-  it('Frostbolt enhanced 2x allows 3 stacks', () => {
-    const mage = makeMage({ spellPower: 15, currentMP: 40, skillEnhancements: { frostbolt: { enhanceCount: 2 } } })
-    const target = makeTarget({ resistance: 10, debuffs: [{ type: 'frostbolt', stacks: 1, resistanceReduction: 6, remainingRounds: 1 }] })
+  it('Frostbolt enhanced increases coefficient', () => {
+    const mage = makeMage({ spellPower: 15, currentMP: 40, skillEnhancements: { frostbolt: { enhanceCount: 1 } } })
+    const target = makeTarget({ resistance: 0 })
     const skillEnhanced = getMageSkillWithEnhancements(mage, 'frostbolt')
     const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false })
-    expect(result.debuffRefreshed).toBe(true)
-    const frost = getFrostboltDebuff(target)
-    expect(frost.stacks).toBe(2)
-    expect(frost.resistanceReduction).toBe(12)
-    expect(frost.remainingRounds).toBe(3)
+    expect(result.skillCoefficient).toBeCloseTo(0.85, 5)
   })
 })
 
@@ -274,20 +201,21 @@ describe('Frostbolt', () => {
 // ---------------------------------------------------------------------------
 
 describe('Mage debuff ticking', () => {
-  it('tickMageDebuffs decrements remainingRounds by 1', () => {
-    const unit = makeTarget({ debuffs: [{ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 3 }] })
+  it('tickMageDebuffs decrements remainingRounds for burn', () => {
+    const unit = makeTarget({ debuffs: [{ type: 'burn', damagePerRound: 2, remainingRounds: 3 }] })
     tickMageDebuffs(unit)
     expect(unit.debuffs[0].remainingRounds).toBe(2)
   })
 
-  it('tickMageDebuffs removes debuff when remainingRounds reaches 0', () => {
-    const unit = makeTarget({ debuffs: [{ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 1 }] })
+  it('tickMageDebuffs preserves freeze debuff', () => {
+    const unit = makeTarget({ debuffs: [{ type: 'freeze', skipActions: 1 }] })
     tickMageDebuffs(unit)
-    expect(unit.debuffs).toHaveLength(0)
+    expect(unit.debuffs).toHaveLength(1)
+    expect(unit.debuffs[0].skipActions).toBe(1)
   })
 
-  it('getMageEffectiveResistance returns reduced resistance when Frostbolt is present', () => {
-    const unit = makeTarget({ resistance: 10, debuffs: [{ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 2 }] })
-    expect(getMageEffectiveResistance(unit)).toBe(4)
+  it('getMageEffectiveResistance ignores freeze', () => {
+    const unit = makeTarget({ resistance: 10, debuffs: [{ type: 'freeze', skipActions: 1 }] })
+    expect(getMageEffectiveResistance(unit)).toBe(10)
   })
 })

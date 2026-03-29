@@ -540,14 +540,14 @@ describe('heroes', () => {
   })
 
   describe('createFixedTrioSquad', () => {
-    it('returns 3 heroes: Warrior (sunder-armor, taunt), Mage (fireball, arcane-blast), Priest (flash-heal, power-word-shield)', () => {
+    it('returns 3 heroes: Warrior (sunder-armor, taunt), Mage (frostbolt, fireball), Priest (flash-heal, power-word-shield)', () => {
       const squad = createFixedTrioSquad()
       expect(squad).toHaveLength(3)
       const warrior = squad.find((h) => h.class === 'Warrior')
       const mage = squad.find((h) => h.class === 'Mage')
       const priest = squad.find((h) => h.class === 'Priest')
       expect(warrior?.skills).toEqual(['sunder-armor', 'taunt'])
-      expect(mage?.skills).toEqual(['fireball', 'arcane-blast'])
+      expect(mage?.skills).toEqual(['frostbolt', 'fireball'])
       expect(priest?.skills).toEqual(['flash-heal', 'power-word-shield'])
     })
 

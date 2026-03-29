@@ -99,7 +99,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "self-hp-above" : caster HP% > value (e.g. "自己HP高于60%")
 - "ally-hp-below" : any **living ally** (including the caster) has HP% < value — **NOT** "teammates only"; Chinese "自身或队友低于X%" maps here
 - "self-hit-this-round" : caster was hit this round (no value)
-- "target-has-debuff" : target has debuff (value: "sunder" / "frostbolt" / "burn")
+- "target-has-debuff" : target has debuff (value: "sunder" / "freeze" / "burn")
 - "ally-ot" : an ally pulled aggro from tank (no value)
 - "resource-above" : resource >= value (number, e.g. 50)
 - "resource-below" : resource < value (number)
@@ -854,7 +854,7 @@ export function conditionValueDisplay(when, value) {
     return Math.round((typeof value === 'number' ? value : def) * 100) + '%'
   }
   if (when === 'target-has-debuff') {
-    const map = { sunder: '破甲', frostbolt: '冰霜', burn: '燃烧' }
+    const map = { sunder: '破甲', freeze: '冰冻', burn: '燃烧' }
     return map[value] || String(value)
   }
   return String(value)

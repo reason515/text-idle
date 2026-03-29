@@ -284,6 +284,17 @@
                 {{ entry.rounds }} 回合后平局。
               </template>
             </div>
+            <div v-else-if="entry.type === 'actionSkipped'" class="log-entry log-cc-skip">
+              <span class="log-round">[R{{ entry.round }}]</span>
+              <span
+                class="log-actor"
+                :style="{ color: entry.actorClass ? classColor(entry.actorClass) : monsterTierColor(entry.actorTier) }"
+              >{{ entry.actorName }}</span>
+              <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">（敏捷 {{ entry.actorAgility }}）
+                <span class="tooltip-text">敏捷越高先出手</span>
+              </span>
+              <span class="log-sep">{{ entry.skipReason === 'freeze' ? '因冰冻无法行动' : '无法行动' }}</span>
+            </div>
             <div v-else-if="entry.type === 'dot'" class="log-entry log-dot">
               <div class="log-detail-box">
                 <span class="log-round">[R{{ entry.round }}]</span>
@@ -407,15 +418,21 @@
                 </div>
                 <div v-if="entry.debuffApplied" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>:
-                  <template v-if="entry.debuffArmorReduction != null"> 护甲降低 {{ entry.debuffArmorReduction }}</template>
-                  <template v-if="entry.debuffResistanceReduction != null"> 抗性降低 {{ entry.debuffResistanceReduction }}</template>
-                  <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} 伤害/回合</template>
-                  持续 {{ entry.debuffDuration }} 回合
+                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
+                  <template v-if="entry.debuffType === 'freeze'">：跳过 {{ entry.debuffFreezeActions ?? 1 }} 次行动</template>
+                  <template v-else>
+                    <span>:</span>
+                    <template v-if="entry.debuffArmorReduction != null"> 护甲降低 {{ entry.debuffArmorReduction }}</template>
+                    <template v-if="entry.debuffResistanceReduction != null"> 抗性降低 {{ entry.debuffResistanceReduction }}</template>
+                    <template v-if="entry.debuffDamagePerRound != null"> {{ entry.debuffDamagePerRound }} 伤害/回合</template>
+                    <template v-if="entry.debuffDuration != null"> 持续 {{ entry.debuffDuration }} 回合</template>
+                  </template>
                 </div>
                 <div v-if="entry.debuffRefreshed" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
-                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: '减益' }).name }}</span> 刷新（{{ entry.debuffDuration }} 回合）
+                  <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: '减益' }).name }}</span>
+                  <template v-if="entry.debuffType === 'freeze'"> 刷新（仍跳过 {{ entry.debuffFreezeActions ?? 1 }} 次行动）</template>
+                  <template v-else> 刷新（{{ entry.debuffDuration }} 回合）</template>
                 </div>
                 <div v-if="entry.threatAmount != null && entry.threatTargetName" class="log-threat">
                   仇恨 +{{ entry.threatAmount }} 对 {{ entry.threatTargetName }}

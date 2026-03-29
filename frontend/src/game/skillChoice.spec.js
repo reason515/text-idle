@@ -65,7 +65,7 @@ describe('skillChoice', () => {
     })
 
     it('returns canEnhance and newSkills for Mage at Lv 5', () => {
-      const hero = { class: 'Mage', skill: 'arcane-blast' }
+      const hero = { class: 'Mage', skill: 'frostbolt' }
       const opts = getSkillChoiceOptions(hero, 5)
       expect(opts.canEnhance).toBe(true)
       expect(opts.newSkills.length).toBe(3)
@@ -92,7 +92,7 @@ describe('skillChoice', () => {
     })
 
     it('returns true for Mage at Lv 5 with initial skill', () => {
-      const hero = { class: 'Mage', skill: 'arcane-blast' }
+      const hero = { class: 'Mage', skill: 'frostbolt' }
       expect(hasSkillChoiceAtLevel(hero, 5)).toBe(true)
     })
   })

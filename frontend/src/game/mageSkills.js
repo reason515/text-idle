@@ -1,44 +1,32 @@
 /**
  * Mage initial skill definitions and combat mechanics.
- * Three specs: Arcane (Arcane Blast), Fire (Fireball), Frost (Frostbolt).
+ * Two specs for recruitment: Frost (Frostbolt), Fire (Fireball).
  * Mana: starts full each combat; recovers per turn (Base + Spirit * k + equipment).
- *   Damage uses SpellPower; reduced by target Resistance.
+ * Damage uses SpellPower; reduced by target Resistance.
  */
+
+import { getLevelSkillById } from './mageLevelSkills.js'
+import { getEffectiveSpellPower } from './damageUtils.js'
 
 export const MAGE_INITIAL_SKILLS = [
   {
-    id: 'arcane-blast',
-    name: '奥术冲击',
-    spec: '奥术',
-    manaCost: 15,
-    coefficient: 1.2,
-    effectDesc: '对单体造成 1.2 倍法术伤害',
+    id: 'frostbolt',
+    name: '寒冰箭',
+    spec: '冰霜',
+    manaCost: 16,
+    coefficient: 0.8,
+    effectDesc: '0.8 倍法术伤害；冰冻目标，使其跳过 1 次行动',
   },
   {
     id: 'fireball',
     name: '火球术',
     spec: '火焰',
-    manaCost: 20,
-    coefficient: 1.2,
-    burnCoeff: 0.05,
-    burnDuration: 3,
-    effectDesc: '1.2 倍法术伤害；燃烧：每回合 SpellPower*0.05 持续 3 回合',
-  },
-  {
-    id: 'frostbolt',
-    name: '寒冰箭',
-    spec: '冰霜',
-    manaCost: 15,
-    baseCoefficient: 1.0,
-    refreshCoefficient: 1.2,
-    debuffResistReduction: 6,
-    debuffDuration: 3,
-    effectDesc: '1.0 倍伤害，目标抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍伤害',
+    manaCost: 22,
+    coefficient: 1.3,
+    spellCritBonus: 0.12,
+    effectDesc: '1.3 倍法术伤害；本技能额外 +12% 法术暴击率（不含持续伤害）',
   },
 ]
-
-import { getLevelSkillById } from './mageLevelSkills.js'
-import { getEffectiveSpellPower } from './damageUtils.js'
 
 /**
  * @param {string} skillId
@@ -58,7 +46,6 @@ export function getAnyMageSkillById(skillId) {
 }
 
 const MAX_ENHANCE_COUNT = 3
-const PER_STACK_RESIST_REDUCTION = 6
 
 /**
  * Get skill with enhancement params applied. Design doc 8.2.6.
@@ -78,17 +65,13 @@ export function getMageSkillWithEnhancements(mage, skillId) {
 
   const out = { ...base }
 
-  if (skillId === 'arcane-blast') {
-    out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
-    out.effectDesc = `对单体造成 ${out.coefficient} 倍法术伤害`
-  } else if (skillId === 'fireball') {
-    out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
-    out.burnCoeff = Math.min(0.11, 0.05 + enhanceCount * 0.02)
-    out.burnDuration = Math.min(4, (out.burnDuration ?? 3) + Math.min(enhanceCount, 1))
-    out.effectDesc = `${out.coefficient} 倍法术伤害；燃烧：每回合 SpellPower*${out.burnCoeff} 持续 ${out.burnDuration} 回合`
+  if (skillId === 'fireball') {
+    out.coefficient = Math.min(1.45, 1.3 + enhanceCount * 0.05)
+    out.spellCritBonus = Math.min(0.18, 0.12 + enhanceCount * 0.02)
+    out.effectDesc = `${out.coefficient} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
   } else if (skillId === 'frostbolt') {
-    out.frostboltMaxStacks = 1 + enhanceCount
-    out.effectDesc = `1.0 倍伤害，目标抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍伤害（最多 ${out.frostboltMaxStacks} 层）`
+    out.coefficient = Math.min(0.95, 0.8 + enhanceCount * 0.05)
+    out.effectDesc = `${out.coefficient} 倍法术伤害；冰冻目标，使其跳过 1 次行动`
   }
 
   return out
@@ -111,35 +94,30 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
   const next = Math.min(MAX_ENHANCE_COUNT, current + 1)
   if (next <= current) return base.effectDesc ?? ''
 
-  if (skillId === 'arcane-blast') {
-    const currCoeff = Math.min(1.8, 1.2 + current * 0.2)
-    const nextCoeff = Math.min(1.8, 1.2 + next * 0.2)
-    return `${currCoeff} -> ${nextCoeff} 倍法术伤害（单体）`
-  }
   if (skillId === 'fireball') {
-    const currCoeff = Math.min(1.5, 1.2 + current * 0.1)
-    const nextCoeff = Math.min(1.5, 1.2 + next * 0.1)
-    const currBurn = Math.min(0.11, 0.05 + current * 0.02)
-    const nextBurn = Math.min(0.11, 0.05 + next * 0.02)
-    return `${currCoeff} -> ${nextCoeff} 倍法术伤害；燃烧 SpellPower*${currBurn.toFixed(2)} -> ${nextBurn.toFixed(2)}/回合 持续 3 回合`
+    const currCoeff = Math.min(1.45, 1.3 + current * 0.05)
+    const nextCoeff = Math.min(1.45, 1.3 + next * 0.05)
+    const currCrit = Math.min(0.18, 0.12 + current * 0.02)
+    const nextCrit = Math.min(0.18, 0.12 + next * 0.02)
+    return `${currCoeff} -> ${nextCoeff} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%`
   }
   if (skillId === 'frostbolt') {
-    const currStacks = 1 + current
-    const nextStacks = 1 + next
-    return `1.0 倍伤害，抗性 -6 持续 3 回合；已有 debuff 时刷新并 1.2 倍（最多 ${currStacks} -> ${nextStacks} 层）`
+    const currCoeff = Math.min(0.95, 0.8 + current * 0.05)
+    const nextCoeff = Math.min(0.95, 0.8 + next * 0.05)
+    return `${currCoeff} -> ${nextCoeff} 倍伤害；冰冻跳过 1 次行动（不变）`
   }
 
   return base.effectDesc ?? ''
 }
 
 /**
- * Get the Frostbolt debuff from a unit, or null if absent.
+ * Get the Freeze debuff from a unit, or null if absent.
  * @param {Object} unit
  * @returns {Object|null}
  */
-export function getFrostboltDebuff(unit) {
+export function getFreezeDebuff(unit) {
   if (!Array.isArray(unit.debuffs)) return null
-  return unit.debuffs.find((d) => d.type === 'frostbolt') ?? null
+  return unit.debuffs.find((d) => d.type === 'freeze') ?? null
 }
 
 /**
@@ -153,7 +131,7 @@ export function getBurnDebuff(unit) {
 }
 
 /**
- * Sum resistance reduction from all debuffs (frostbolt, splinter, etc).
+ * Sum resistance reduction from all debuffs (splinter, etc).
  * @param {Object} unit
  * @returns {number}
  */
@@ -174,33 +152,41 @@ export function getMageEffectiveResistance(unit) {
 }
 
 /**
- * Apply or refresh the Frostbolt debuff on a target.
- * When maxStacks > 1, adds 1 stack (capped at maxStacks) and refreshes duration.
+ * Apply Freeze: target skips the next action(s). Refreshes skip count if already frozen.
  * Mutates target.debuffs.
  * @param {Object} target
- * @param {number} duration - rounds remaining
- * @param {number} perStackReduction - resistance reduction per stack (default 6)
- * @param {number} maxStacks - max stacks when enhanced (default 1)
- * @returns {{ refreshed: boolean, stacked: boolean }}
+ * @param {number} skipActions
+ * @returns {{ refreshed: boolean, applied: boolean }}
  */
-export function applyFrostboltDebuff(target, duration = 3, perStackReduction = 6, maxStacks = 1) {
+export function applyFreezeDebuff(target, skipActions = 1) {
   if (!Array.isArray(target.debuffs)) target.debuffs = []
-  const existing = target.debuffs.find((d) => d.type === 'frostbolt')
+  const existing = target.debuffs.find((d) => d.type === 'freeze')
   if (existing) {
-    existing.remainingRounds = duration
-    const currentStacks = existing.stacks ?? (Math.round((existing.resistanceReduction || 0) / perStackReduction) || 1)
-    const newStacks = Math.min(currentStacks + 1, maxStacks)
-    existing.stacks = newStacks
-    existing.resistanceReduction = perStackReduction * newStacks
-    return { refreshed: true, stacked: newStacks > currentStacks }
+    existing.skipActions = Math.max(existing.skipActions ?? 0, skipActions)
+    return { refreshed: true, applied: false }
   }
   target.debuffs.push({
-    type: 'frostbolt',
-    stacks: 1,
-    resistanceReduction: perStackReduction * 1,
-    remainingRounds: duration,
+    type: 'freeze',
+    skipActions,
   })
-  return { refreshed: false, stacked: false }
+  return { refreshed: false, applied: true }
+}
+
+/**
+ * If the unit is frozen, consume one skipped action and return true (turn should be skipped).
+ * Mutates unit.debuffs.
+ * @param {Object} unit
+ * @returns {boolean}
+ */
+export function consumeFreezeTurn(unit) {
+  if (!Array.isArray(unit.debuffs)) return false
+  const idx = unit.debuffs.findIndex((d) => d.type === 'freeze' && (d.skipActions ?? 0) > 0)
+  if (idx < 0) return false
+  const d = unit.debuffs[idx]
+  const next = (d.skipActions ?? 1) - 1
+  if (next <= 0) unit.debuffs.splice(idx, 1)
+  else unit.debuffs[idx] = { ...d, skipActions: next }
+  return true
 }
 
 /**
@@ -233,15 +219,24 @@ export function applyBurnDebuff(target, duration, burnCoeff, casterSpellPower) {
 }
 
 /**
- * Decrement all debuff durations on a unit; remove expired ones.
+ * Decrement timed debuff durations on a unit; remove expired ones.
+ * Skips debuffs that use skipActions (freeze) instead of remainingRounds.
  * Mutates unit.debuffs.
  * @param {Object} unit
  */
 export function tickMageDebuffs(unit) {
   if (!Array.isArray(unit.debuffs)) return
   unit.debuffs = unit.debuffs
-    .map((d) => ({ ...d, remainingRounds: d.remainingRounds - 1 }))
-    .filter((d) => d.remainingRounds > 0)
+    .map((d) => {
+      if (d.skipActions != null) return d
+      const rr = d.remainingRounds
+      if (rr == null) return d
+      return { ...d, remainingRounds: rr - 1 }
+    })
+    .filter((d) => {
+      if (d.skipActions != null) return true
+      return d.remainingRounds > 0
+    })
 }
 
 /**
@@ -251,7 +246,7 @@ export function tickMageDebuffs(unit) {
  * @param {Object} mage - Mage combat unit
  * @param {Object} target - Target combat unit
  * @param {Object} skill - Skill definition from MAGE_INITIAL_SKILLS
- * @param {Object} opts - { isCrit: boolean }
+ * @param {Object} opts - { isCrit: boolean, rng?: function }
  * @returns {Object} Execution result with damage, debuff info
  */
 export function executeMageSkill(mage, target, skill, opts = {}) {
@@ -260,15 +255,7 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
 
   mage.currentMP = Math.max(0, (mage.currentMP || 0) - (skill.manaCost ?? 0))
 
-  let coeff
-  let debuffResult = null
-
-  if (skill.id === 'frostbolt') {
-    const hasFrostbolt = !!getFrostboltDebuff(target)
-    coeff = hasFrostbolt ? skill.refreshCoefficient : skill.baseCoefficient
-  } else {
-    coeff = skill.coefficient
-  }
+  const coeff = skill.coefficient ?? 1
 
   const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
   const effectiveResistance = getMageEffectiveResistance(target)
@@ -278,23 +265,10 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
 
   target.currentHP = Math.max(0, (target.currentHP || 0) - finalDamage)
 
-  if (skill.id === 'fireball' && skill.burnCoeff) {
-    const duration = skill.burnDuration ?? 3
-    debuffResult = applyBurnDebuff(target, duration, skill.burnCoeff, effectiveSpellPower)
-  }
-
+  let debuffResult = null
   if (skill.id === 'frostbolt') {
-    const maxStacks = skill.frostboltMaxStacks ?? 1
-    debuffResult = applyFrostboltDebuff(
-      target,
-      skill.debuffDuration,
-      PER_STACK_RESIST_REDUCTION,
-      maxStacks
-    )
+    debuffResult = applyFreezeDebuff(target, 1)
   }
-
-  const actualDebuffResistReduction =
-    skill.id === 'frostbolt' ? (getFrostboltDebuff(target)?.resistanceReduction ?? 0) : undefined
 
   return {
     skillId: skill.id,
@@ -307,11 +281,9 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     effectiveResistance,
     isCrit,
     manaConsumed: skill.manaCost ?? 0,
-    debuffApplied: debuffResult ? (debuffResult.applied ?? !debuffResult.refreshed) : false,
-    debuffRefreshed: debuffResult?.refreshed ?? false,
-    debuffResistanceReduction: actualDebuffResistReduction,
-    debuffDuration: skill.id === 'frostbolt' ? skill.debuffDuration : undefined,
-    debuffDamagePerRound: skill.id === 'fireball' ? Math.max(1, Math.round(effectiveSpellPower * (skill.burnCoeff ?? 0))) : undefined,
-    debuffDamageType: skill.id === 'fireball' ? 'magic' : undefined,
+    debuffApplied: !!(debuffResult && debuffResult.applied),
+    debuffRefreshed: !!(debuffResult && debuffResult.refreshed),
+    debuffType: skill.id === 'frostbolt' ? 'freeze' : undefined,
+    freezeSkipActions: skill.id === 'frostbolt' ? 1 : undefined,
   }
 }

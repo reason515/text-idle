@@ -442,6 +442,13 @@ describe('Debuff ticking', () => {
     expect(() => tickDebuffs(unit)).not.toThrow()
   })
 
+  it('tickDebuffs preserves freeze debuff (skipActions)', () => {
+    const unit = makeTarget({ debuffs: [{ type: 'freeze', skipActions: 1 }] })
+    tickDebuffs(unit)
+    expect(unit.debuffs).toHaveLength(1)
+    expect(unit.debuffs[0].skipActions).toBe(1)
+  })
+
   it('getEffectiveArmor returns reduced armor when Sunder is present', () => {
     const unit = makeTarget({ armor: 10, debuffs: [{ type: 'sunder', armorReduction: 8, remainingRounds: 2 }] })
     expect(getEffectiveArmor(unit)).toBe(2)

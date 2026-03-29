@@ -121,7 +121,7 @@ async function recruitExpansionMage(page, heroName = '\u5409\u5b89\u5a1c', attrP
   await allocateAttrPoints(page, attrPoints)
   await page.locator('[data-testid="attr-alloc-step"]').getByRole('button', { name: '下一步' }).click()
   await expect(page.locator('[data-testid="skill-selection-step"]')).toBeVisible({ timeout: 5000 })
-  await page.locator('.skill-option').filter({ hasText: '奥术冲击' }).click()
+  await page.locator('.skill-option').filter({ hasText: '\u5bd2\u51b0\u7bad' }).click()
   await page.getByRole('button', { name: '下一步' }).click()
   const skillModal = page.locator('[data-testid="skill-choice-modal"]')
   const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')

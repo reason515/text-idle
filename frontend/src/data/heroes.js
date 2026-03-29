@@ -563,7 +563,7 @@ export function createExpansionCharacter(hero, opts = {}) {
 
 /**
  * Create the fixed initial trio (Warrior, Mage, Priest) per design 02-levels-monsters 1.2.0.
- * Warrior: Sunder Armor, Taunt. Mage: Fireball, Arcane Blast. Priest: Flash Heal, Power Word: Shield.
+ * Warrior: Sunder Armor, Taunt. Mage: Frostbolt, Fireball. Priest: Flash Heal, Power Word: Shield.
  * @returns {Object[]} Array of 3 character objects
  */
 export function createFixedTrioSquad() {
@@ -578,8 +578,8 @@ export function createFixedTrioSquad() {
     targetRule: 'threat-not-tank-random',
     conditions: [{ skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] }],
   }
-  const m = createCharacter(mage, { skills: ['fireball', 'arcane-blast'] })
-  m.tactics = { skillPriority: ['fireball', 'arcane-blast'], targetRule: 'lowest-hp' }
+  const m = createCharacter(mage, { skills: ['frostbolt', 'fireball'] })
+  m.tactics = { skillPriority: ['frostbolt', 'fireball'], targetRule: 'lowest-hp' }
   const p = createCharacter(priest, { skills: ['flash-heal', 'power-word-shield'] })
   p.tactics = {
     skillPriority: ['power-word-shield', 'flash-heal'],

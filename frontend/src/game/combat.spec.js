@@ -755,13 +755,13 @@ describe('combat progression and systems', () => {
     expect(shieldEntry.targetId).toBe('priest-1')
   })
 
-  it('Mage with Arcane Blast uses skill when mana sufficient', () => {
+  it('Mage with Fireball uses skill when mana sufficient', () => {
     const mage = sampleHero({
       id: 'm1',
       class: 'Mage',
       intellect: 11,
       spirit: 5,
-      skill: 'arcane-blast',
+      skill: 'fireball',
     })
     const monsters = [
       createMonster(
@@ -775,7 +775,7 @@ describe('combat progression and systems', () => {
       ),
     ]
     const result = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5, maxRounds: 15 })
-    const skillEntry = result.log.find((e) => e.skillId === 'arcane-blast')
+    const skillEntry = result.log.find((e) => e.skillId === 'fireball')
     expect(skillEntry).toBeDefined()
     expect(skillEntry.damageType).toBe('magic')
     expect(skillEntry.finalDamage).toBeGreaterThanOrEqual(1)
@@ -1335,7 +1335,7 @@ describe('combat progression and systems', () => {
           targetRule: 'lowest-hp',
         },
       })
-      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 10, skills: ['arcane-blast'] })
+      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 10, skills: ['fireball'] })
       const monster = createMonster(
         {
           id: 'm1',

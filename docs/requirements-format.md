@@ -194,7 +194,7 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | Player is on the Opening Introduction screen | Player clicks "Start Adventure" | The adventure begins with a fixed trio (Warrior, Mage, Priest); no character selection for initial squad; player is redirected to the main screen |
-| AC2 | Player has started the adventure | Player views the squad panel | The squad has 3 heroes: Warrior (tank), Mage (DPS), Priest (healer); each has 2 fixed initial skills (e.g., Warrior: Sunder Armor, Taunt; Mage: Fireball, Arcane Blast; Priest: Flash Heal, Power Word: Shield) |
+| AC2 | Player has started the adventure | Player views the squad panel | The squad has 3 heroes: Warrior (tank), Mage (DPS), Priest (healer); each has 2 fixed initial skills (e.g., Warrior: Sunder Armor, Taunt; Mage: Frostbolt, Fireball; Priest: Flash Heal, Power Word: Shield) |
 | AC3 | Player has at least 1 character in the squad | Player views the squad panel | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values |
 | AC4 | Player has fewer than 5 characters in the squad and has defeated a map boss (map 1 or 2) | Player triggers squad expansion (e.g., via recruitment UI) | Player can select another WoW-style hero to add to the squad; each class remains represented by at least one available hero; expansion heroes join at level 5 (map 1) or 10 (map 2) with full onboarding flow (Example 27) |
 | AC5 | Player has 5 characters in the squad | Player views the squad panel | All 5 slots are filled; no further recruitment is available |
@@ -218,7 +218,7 @@ Then [expected result/verifiable behavior].
   | Class | Role | Skill 1 | Skill 2 | Purpose |
   |-------|------|--------|--------|---------|
   | Warrior | Tank | Sunder Armor | Taunt | Debuff + threat; force target for 2 actions |
-  | Mage | DPS | Fireball | Arcane Blast | Fire + Arcane damage; Burn DoT |
+  | Mage | DPS | Frostbolt | Fireball | Frost freeze (skip action) + Fire burst (+spell crit on Fireball) |
   | Priest | Healer | Flash Heal | Power Word: Shield | Direct heal; absorb shield (low threat) |
 
 - **Reference**: [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0; [05-skills.md](design/05-skills.md) 3.1, 8.3.
@@ -228,7 +228,7 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | Player has started the adventure | Player views the Warrior's skill list | Warrior has Sunder Armor and Taunt; both are available in combat |
-| AC2 | Player has started the adventure | Player views the Mage's skill list | Mage has Fireball and Arcane Blast; both are available in combat |
+| AC2 | Player has started the adventure | Player views the Mage's skill list | Mage has Frostbolt and Fireball; both are available in combat |
 | AC3 | Player has started the adventure | Player views the Priest's skill list | Priest has Flash Heal and Power Word: Shield; both are available in combat |
 | AC4 | Fixed trio Warrior uses Sunder Armor in combat | Skill is used | Target gains Armor -8 debuff for 3 rounds; threat is generated (1.5x damage); combat log shows damage and debuff |
 | AC5 | Fixed trio Warrior uses Taunt on a monster | Skill is used | Monster is forced to attack the Warrior for its next 2 actions; threat is updated; combat log shows Taunt effect |
@@ -630,15 +630,14 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Fireball + Arcane Blast (no selection). Fireball: 20 MP, 1.2x damage + Burn DoT. Arcane Blast: 15 MP, 1.2x damage. At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 16 MP, 0.8x damage + Freeze (target skips next action). Fireball: 22 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
-- **Initial skills (3选1)**:
+- **Initial skills (Mage recruitment: 2选1)**:
   | Spec | Skill | English | Cost | Effect |
   |------|-------|---------|------|--------|
-  | Arcane | Arcane Blast | Arcane Blast | 15 MP | 1.2x magic damage to single target |
-  | Fire | Fireball | Fireball | 20 MP | 1.2x magic damage; apply Burn: SpellPower*0.05/turn for 3 rounds |
-  | Frost | Frostbolt | Frostbolt | 15 MP | 1.0x magic damage, target Resistance -6 for 3 rounds; if already debuffed: refresh and 1.2x damage |
+  | Frost | Frostbolt | Frostbolt | 16 MP | 0.8x magic damage; Freeze: target skips 1 action when their turn comes |
+  | Fire | Fireball | Fireball | 22 MP | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
 
 - **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
 

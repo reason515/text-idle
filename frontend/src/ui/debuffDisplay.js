@@ -12,7 +12,7 @@ export const DEBUFF_DISPLAY = {
   dazed: { name: '眩晕', short: '眩晕', isDebuff: true },
   splinter: { name: '破法', short: '破法', isDebuff: true },
   bleed: { name: '流血', short: '流血', isDebuff: true },
-  frostbolt: { name: '霜箭', short: '霜箭', isDebuff: true },
+  freeze: { name: '冰冻', short: '冰冻', isDebuff: true },
   burn: { name: '燃烧', short: '燃烧', isDebuff: true },
 }
 
@@ -72,8 +72,9 @@ export function getDebuffTip(debuff) {
   if (debuff.type === 'bleed') {
     return `每回合 ${debuff.damagePerRound ?? 0} 点伤害，持续 ${rounds} 回合`
   }
-  if (debuff.type === 'frostbolt') {
-    return `抗性降低 ${debuff.resistanceReduction ?? 6}，持续 ${rounds} 回合`
+  if (debuff.type === 'freeze') {
+    const n = debuff.skipActions ?? 1
+    return `跳过 ${n} 次行动`
   }
   if (debuff.type === 'burn') {
     return `每回合 ${debuff.damagePerRound ?? 0} 点法术伤害，持续 ${rounds} 回合`

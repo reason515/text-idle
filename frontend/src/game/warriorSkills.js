@@ -238,8 +238,16 @@ export function applySunderDebuff(target, duration = 3, perStackArmorReduction =
 export function tickDebuffs(unit) {
   if (!Array.isArray(unit.debuffs)) return
   unit.debuffs = unit.debuffs
-    .map((d) => ({ ...d, remainingRounds: d.remainingRounds - 1 }))
-    .filter((d) => d.remainingRounds > 0)
+    .map((d) => {
+      if (d.skipActions != null) return d
+      const rr = d.remainingRounds
+      if (rr == null) return d
+      return { ...d, remainingRounds: rr - 1 }
+    })
+    .filter((d) => {
+      if (d.skipActions != null) return true
+      return d.remainingRounds > 0
+    })
 }
 
 /**

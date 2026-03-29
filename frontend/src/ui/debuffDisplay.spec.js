@@ -42,10 +42,8 @@ describe('debuffDisplay', () => {
         '每回合 3 点伤害，持续 2 回合'
       )
     })
-    it('returns Frostbolt tip with resistance reduction', () => {
-      expect(getDebuffTip({ type: 'frostbolt', resistanceReduction: 6, remainingRounds: 3 })).toBe(
-        '抗性降低 6，持续 3 回合'
-      )
+    it('returns Freeze tip with skip actions', () => {
+      expect(getDebuffTip({ type: 'freeze', skipActions: 1 })).toBe('跳过 1 次行动')
     })
     it('returns Burn tip with damage per round', () => {
       expect(getDebuffTip({ type: 'burn', damagePerRound: 2, remainingRounds: 2 })).toBe(

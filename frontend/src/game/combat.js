@@ -23,6 +23,7 @@ import {
   getAnyMageSkillById,
   getMageSkillWithEnhancements,
   executeMageSkill,
+  consumeFreezeTurn,
 } from './mageSkills.js'
 import {
   getPriestSkillById,
@@ -704,6 +705,20 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     turnActedByRound[round] = []
     for (const actor of roundOrder) {
       if (actor.currentHP <= 0) continue
+      if (consumeFreezeTurn(actor)) {
+        log.push({
+          round,
+          type: 'actionSkipped',
+          skipReason: 'freeze',
+          actorId: actor.id,
+          actorName: actor.name,
+          actorClass: actor.class || null,
+          actorTier: actor.tier ?? null,
+          actorAgility: actor.agility ?? 0,
+        })
+        emitMonsterIntentChangesIfNeeded()
+        continue
+      }
       const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng, threat, tauntState, designatedTank: designatedTankUnit })
       if (!defaultTarget) break
 
@@ -908,7 +923,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           })
           if (!mageTarget) continue
 
-          const isCrit = rng() < (actor.spellCrit || 0)
+          const critBonus = skill.spellCritBonus ?? 0
+          const isCrit = rng() < Math.min(1, (actor.spellCrit || 0) + critBonus)
           const targetHPBefore = mageTarget.currentHP
           const sr = executeMageSkill(actor, mageTarget, skill, { isCrit, rng })
           if (!actor.skillCooldowns) actor.skillCooldowns = {}
@@ -944,11 +960,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (sr.debuffApplied || sr.debuffRefreshed) {
             entry.debuffApplied = sr.debuffApplied
             entry.debuffRefreshed = sr.debuffRefreshed
-            entry.debuffType = skill.id === 'frostbolt' ? 'frostbolt' : 'burn'
+            entry.debuffType = sr.debuffType ?? (skill.id === 'frostbolt' ? 'freeze' : undefined)
             if (sr.debuffResistanceReduction != null) entry.debuffResistanceReduction = sr.debuffResistanceReduction
             if (sr.debuffDuration != null) entry.debuffDuration = sr.debuffDuration
             if (sr.debuffDamagePerRound != null) entry.debuffDamagePerRound = sr.debuffDamagePerRound
             if (sr.debuffDamageType != null) entry.debuffDamageType = sr.debuffDamageType
+            if (sr.freezeSkipActions != null) entry.debuffFreezeActions = sr.freezeSkipActions
           }
           if (sr.finalDamage > 0) {
             addThreatFromDamage(threat, mageTarget.id, actor.id, sr.finalDamage, 1)
