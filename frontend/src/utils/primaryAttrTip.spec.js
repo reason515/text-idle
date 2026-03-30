@@ -27,7 +27,7 @@ describe('buildPrimaryAttrTooltipHtml', () => {
 
   it('includes class-specific armor formula for Warrior strength', () => {
     const html = buildPrimaryAttrTooltipHtml('Warrior', 'strength', 0)
-    expect(html).toContain('0.72')
+    expect(html).toContain('0.5')
     expect(html).toContain('baseAttr')
     expect(html).toContain('0.8')
   })

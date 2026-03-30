@@ -47,9 +47,9 @@ export const LEVEL_MP_PER_LEVEL = 0.75
 
 /**
  * Strength to armor: same for all classes (design: low-Str casters are already low; no extra per-class penalty).
- * Former Warrior k_Armor; matches small-number table * 0.9 scale.
+ * Tuned below old Warrior k_Armor (0.72); strength-to-armor growth reduced for balance.
  */
-export const STRENGTH_TO_ARMOR_K = 0.72
+export const STRENGTH_TO_ARMOR_K = 0.5
 
 /**
  * Class coefficients for secondary attribute formulas (design doc 2.2.2).
