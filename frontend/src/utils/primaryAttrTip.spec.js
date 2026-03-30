@@ -37,10 +37,15 @@ describe('buildPrimaryAttrTooltipHtml', () => {
     expect(html).toContain('1.4')
   })
 
-  it('includes MP formula for Mage intellect', () => {
-    const html = buildPrimaryAttrTooltipHtml('Mage', 'intellect', 0)
+  it('includes MP formula for Mage spirit', () => {
+    const html = buildPrimaryAttrTooltipHtml('Mage', 'spirit', 0)
     expect(html).toContain('2.52')
     expect(html).toContain('法力上限')
+  })
+
+  it('Mage intellect tooltip defers MP cap to Spirit', () => {
+    const html = buildPrimaryAttrTooltipHtml('Mage', 'intellect', 0)
+    expect(html).toContain('精神')
   })
 
   it('appends equipment bonus when positive', () => {

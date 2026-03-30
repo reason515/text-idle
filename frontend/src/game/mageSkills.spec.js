@@ -113,7 +113,7 @@ describe('Fireball', () => {
 
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
-    expect(result.manaConsumed).toBe(22)
+    expect(result.manaConsumed).toBe(18)
     const raw = Math.round(20 * 1.3)
     const finalDmg = Math.max(1, raw - 3)
     expect(result.rawDamage).toBe(raw)
@@ -155,7 +155,7 @@ describe('Frostbolt', () => {
 
     const result = executeMageSkill(mage, target, skill, { isCrit: false })
 
-    expect(result.manaConsumed).toBe(16)
+    expect(result.manaConsumed).toBe(13)
     const raw = Math.round(15 * 0.8)
     const finalDmg = Math.max(1, raw - 10)
     expect(result.rawDamage).toBe(raw)

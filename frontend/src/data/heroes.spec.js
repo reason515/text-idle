@@ -158,7 +158,7 @@ describe('heroes', () => {
     it('returns SpellPower, SpellCrit, Resistance, MP for Mage at Lv1', () => {
       const { values } = computeSecondaryAttributes('Mage', 1)
       expect(values.HP).toBe(19) // 10 + 4*1.8 + 1.5
-      expect(values.MP).toBe(33) // 5 + 11*2.52 + 0.75
+      expect(values.MP).toBe(18) // 5 + 5*2.52 + 0.75 (Spirit)
       expect(values.SpellPower).toMatch(/^\d+-\d+$/)
       const [sMin, sMax] = values.SpellPower.split('-').map(Number)
       expect(sMin).toBe(4)
@@ -179,7 +179,7 @@ describe('heroes', () => {
       const [spMin, spMax] = values.SpellPower.split('-').map(Number)
       expect(spMin).toBe(4)
       expect(spMax).toBe(16)
-      expect(values.MP).toBe(22) // 5 + 8*1.98 + 0.75
+      expect(values.MP).toBe(18) // 5 + 6*1.98 + 0.75 (Spirit)
     })
 
     it('returns formulas with correct structure', () => {
@@ -316,7 +316,7 @@ describe('heroes', () => {
     it('returns correct values for Druid (hybrid agility/intellect) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Druid', 1)
       expect(values.HP).toBe(32) // 10 + 7*2.88 + 1.5
-      expect(values.MP).toBe(22) // 5 + 8*1.98 + 0.75 -> 21.59 -> 22
+      expect(values.MP).toBe(20) // 5 + 7*1.98 + 0.75 (Spirit)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMinD, pMaxD] = values.PhysAtk.split('-').map(Number)
       expect(pMinD).toBe(4)
@@ -335,7 +335,7 @@ describe('heroes', () => {
     it('returns correct values for Warlock (spell-only) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Warlock', 1)
       expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5
-      expect(values.MP).toBe(31) // 5 + 10*2.52 + 0.75
+      expect(values.MP).toBe(18) // 5 + 5*2.52 + 0.75 (Spirit)
       expect(values.SpellPower).toMatch(/^\d+-\d+$/)
       const [spMinW, spMaxW] = values.SpellPower.split('-').map(Number)
       expect(spMinW).toBe(4)
@@ -376,7 +376,7 @@ describe('heroes', () => {
     it('returns correct values for Shaman (hybrid) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Shaman', 1)
       expect(values.HP).toBe(28) // 10 + 6*2.7 + 1.5
-      expect(values.MP).toBe(20) // 5 + 7*1.98 + 0.75
+      expect(values.MP).toBe(18) // 5 + 6*1.98 + 0.75 (Spirit)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMinS, pMaxS] = values.PhysAtk.split('-').map(Number)
       expect(pMinS).toBe(3)
@@ -415,7 +415,7 @@ describe('heroes', () => {
       const { values: v60 } = computeSecondaryAttributes('Mage', 60)
       const attrs = getInitialAttributes('Mage')
       expect(v60.MP).toBe(
-        Math.round(5 + attrs.intellect * 2.52 + 60 * LEVEL_MP_PER_LEVEL)
+        Math.round(5 + attrs.spirit * 2.52 + 60 * LEVEL_MP_PER_LEVEL)
       )
     })
 
@@ -449,7 +449,7 @@ describe('heroes', () => {
       const items = getResourceDisplay('Mage', 1)
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
-      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: '法力', value: 33 })
+      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: '法力', value: 18 })
     })
 
     it('returns HP and Energy for Rogue', () => {

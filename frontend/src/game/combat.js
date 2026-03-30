@@ -1,12 +1,12 @@
 import {
   getClassCritRates,
   computeHeroMaxHP,
+  computeHeroMaxMP,
   computeHeroArmor,
   computeHeroResistance,
   getPhysBaseAttr,
   getSpellBaseAttr,
   CLASS_COEFFICIENTS,
-  LEVEL_MP_PER_LEVEL,
 } from '../data/heroes.js'
 import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from './damageUtils.js'
 import {
@@ -423,21 +423,9 @@ function randomInRange(min, max, rng) {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
-function getMaxResource(heroClass, intellect, spirit, level = 1) {
-  if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
-    return 100
-  }
-  const coef = CLASS_COEFFICIENTS[heroClass] || {}
-  const kMp = coef.k_MP
-  if (kMp == null) {
-    return 100
-  }
-  return Math.round(5 + (intellect || 0) * kMp + (level || 1) * LEVEL_MP_PER_LEVEL)
-}
-
 function heroCombatStats(hero) {
   const maxHP = computeHeroMaxHP(hero)
-  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit, hero.level)
+  const maxMP = computeHeroMaxMP(hero)
   const eq = getEquipmentBonuses(hero?.equipment)
   const crit = getClassCritRates(hero.class, {
     agility: hero.agility + (eq?.agility || 0),

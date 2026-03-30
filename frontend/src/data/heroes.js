@@ -99,6 +99,24 @@ export function computeHeroMaxHP(hero) {
   return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * LEVEL_HP_PER_LEVEL)
 }
 
+/**
+ * Max MP for mana classes: 5 + Spirit * k_MP + Level * LEVEL_MP_PER_LEVEL.
+ * Warrior/Rogue/Hunter (and any class without k_MP) use 100 for the combat resource bar (rage/energy/focus).
+ */
+export function computeHeroMaxMP(hero) {
+  const heroClass = hero?.class
+  if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
+    return 100
+  }
+  const attrs = getEffectiveAttrs(hero)
+  const coef = CLASS_COEFFICIENTS[heroClass] || {}
+  const kMp = coef.k_MP
+  if (kMp == null) {
+    return 100
+  }
+  return Math.round(5 + (attrs.spirit || 0) * kMp + (hero?.level || 1) * LEVEL_MP_PER_LEVEL)
+}
+
 /** Armor for combat: round(Str * STRENGTH_TO_ARMOR_K) + equipment armor (all classes). */
 export function computeHeroArmor(hero) {
   const attrs = getEffectiveAttrs(hero)
@@ -233,9 +251,9 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
 
   // Resource (2nd position): MP for mana classes, Rage/Energy/Focus for others
   if (coef.k_MP != null) {
-    const mp = 5 + attrs.intellect * coef.k_MP + level * LEVEL_MP_PER_LEVEL
+    const mp = 5 + attrs.spirit * coef.k_MP + level * LEVEL_MP_PER_LEVEL
     values.MP = Math.round(mp)
-    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, Math.round(mp))) }
+    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, Math.round(mp))) }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
     formulaMap.Resource = { key: 'Rage', label: '怒气', value: 100, formula: '固定 100' }

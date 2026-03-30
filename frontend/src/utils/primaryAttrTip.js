@@ -82,10 +82,10 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     }
     case 'intellect': {
       const lines = [
-        '<span class="tip-purpose">智力：影响法力上限（法力职业）、法术伤害 baseAttr、法术抗性、法术暴击（若有系数）。</span>',
+        '<span class="tip-purpose">智力：影响法术伤害 baseAttr、法术抗性、法术暴击（若有系数）；法力上限由精神决定（法力职业）。</span>',
       ]
       if (isManaClass) {
-        lines.push(fmt(`法力上限 = 5 + Int * ${c.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`))
+        lines.push('<span class="tip-muted">法力上限见「精神」条目：5 + Spi × k_MP + Level。</span>')
       } else {
         lines.push('<span class="tip-muted">本职业：资源非法力，无此项法力上限公式。</span>')
       }
@@ -127,11 +127,12 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     }
     case 'spirit': {
       const lines = [
-        '<span class="tip-purpose">精神：参与法术伤害 baseAttr；法力职业战斗内每回合法力恢复与智力并列重要。</span>',
+        '<span class="tip-purpose">精神：法力上限（法力职业）、参与法术伤害 baseAttr；法力职业战斗内每回合法力恢复。</span>',
         fmt('法术 baseAttr = Int * 1.2 + Spi * 0.8'),
         `法术伤害：baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) + 装备法强`,
       ]
       if (isManaClass) {
+        lines.push(fmt(`法力上限 = 5 + Spi * ${c.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`))
         lines.push(
           fmt(
             `战斗内法力恢复/回合 = ${MANA_REGEN_BASE} + Spi * ${MANA_REGEN_SPIRIT_K} + 装备恢复`

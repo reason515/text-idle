@@ -126,9 +126,9 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 |------|----------|----------|--------------|
 | 力量 | Strength | 物理攻击力、护甲、格挡值 | 战士、圣骑士 |
 | 敏捷 | Agility | 暴击率、闪避、物理命中 | 盗贼、猎人、德鲁伊 |
-| 智力 | Intellect | 法术强度、法力上限、法术暴击 | 法师、牧师、术士、圣骑士 |
+| 智力 | Intellect | 法术强度、法术暴击、法术抗性 | 法师、牧师、术士、圣骑士 |
 | 耐力 | Stamina | 生命值上限 | 全职业（坦克尤其重要） |
-| 精神 | Spirit | 法力恢复、生命恢复（脱战） | 治疗职业 |
+| 精神 | Spirit | 法力上限（法力职业）、法力恢复、生命恢复（脱战） | 法力与治疗职业 |
 
 - **角色详情（主界面）**：主属性名称可悬浮查看提示，内容为该属性用途说明及与当前职业系数一致的公式摘要（含物理/法术 `baseAttr`、次级属性公式、法力职业每回合 MP 恢复等），与 `frontend/src/utils/primaryAttrTip.js` 及 `heroes.js` 中的实现一致，便于分配属性点前评估。
 
@@ -158,7 +158,7 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 | 次级属性 | 英文标识 | 通用公式 | 主属性来源 |
 |----------|----------|----------|------------|
 | 生命值上限 | HP | `HP = 10 + Stam * k_HP + Level * 1.5` | 耐力 |
-| 法力值上限 | MP | `MP = 5 + Int * k_MP + Level * 0.75` | 智力（仅法力职业） |
+| 法力值上限 | MP | `MP = 5 + Spi * k_MP + Level * 0.75` | 精神（仅法力职业） |
 | 物理攻击力 | PhysAtk | `PhysAtk = 5 + 主物理属性 * k_PhysAtk` | 力量或敏捷（见职业表） |
 | 法术强度 | SpellPower | `SpellPower = 5 + Int * k_SpellPower` | 智力（仅法术职业） |
 | 护甲 | Armor | `Armor = Str * STRENGTH_TO_ARMOR_K + 装备护甲`（**全职业相同**，`STRENGTH_TO_ARMOR_K = 0.72`，见 `heroes.js`） | 力量 |

@@ -1419,7 +1419,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, computeSecondaryAttributes, computeHeroMaxHP, getEffectiveAttrs } from '../data/heroes.js'
+import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, computeSecondaryAttributes, computeHeroMaxHP, computeHeroMaxMP, getEffectiveAttrs } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -1988,16 +1988,9 @@ function tryEquipFromBackpack(item) {
   return true
 }
 
-function getMaxResource(heroClass, intellect, spirit) {
-  if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
-    return 100
-  }
-  return 10 + (intellect || 0) * 3 + (spirit || 0) * 2
-}
-
 function computeHeroDisplay(hero) {
   const maxHP = computeHeroMaxHP(hero)
-  const maxMP = getMaxResource(hero.class, hero.intellect, hero.spirit)
+  const maxMP = computeHeroMaxMP(hero)
   const level = hero.level ?? 1
   const xpRequired = level >= 60 ? 0 : calculateXPRequired(level)
   // Warriors always start at 0 Rage (Rage is generated in combat, not stored)

@@ -1043,7 +1043,7 @@ describe('combat progression and systems', () => {
     expect(hResult.heroesAfter[0].maxMP).toBe(100)
 
     const mResult = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5 })
-    expect(mResult.heroesAfter[0].maxMP).toBe(Math.round(5 + 11 * 2.52 + 1 * 0.75))
+    expect(mResult.heroesAfter[0].maxMP).toBe(Math.round(5 + 5 * 2.52 + 1 * 0.75))
   })
 
   it('Example8: after victory rest phase blocks next combat until fully recovered', () => {

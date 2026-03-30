@@ -630,14 +630,14 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 16 MP, 0.8x damage + Freeze (target skips next action). Fireball: 22 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 13 MP, 0.8x damage + Freeze (target skips next action). Fireball: 18 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
 - **Initial skills (Mage recruitment: 2选1)**:
   | Spec | Skill | English | Cost | Effect |
   |------|-------|---------|------|--------|
-  | Frost | Frostbolt | Frostbolt | 16 MP | 0.8x magic damage; Freeze: target skips 1 action when their turn comes |
-  | Fire | Fireball | Fireball | 22 MP | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
+  | Frost | Frostbolt | Frostbolt | 13 MP | 0.8x magic damage; Freeze: target skips 1 action when their turn comes |
+  | Fire | Fireball | Fireball | 18 MP | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
 
 - **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
 
@@ -654,19 +654,19 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 **Design Reference (from design doc)**
 
 - **Scope**: Fixed initial trio Priest only. Expansion Priest recruitment uses the same skill pool (when Priest skill design is complete).
-- **Flash Heal**: 15 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 to all alive monsters.
-- **Power Word: Shield**: 15 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) to all alive monsters.
+- **Flash Heal**: 12 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 to all alive monsters.
+- **Power Word: Shield**: 12 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) to all alive monsters.
 - **Shield mechanics**: Damage to shielded target is absorbed first; excess goes to HP. Recasting refreshes absorb and duration. One shield per target.
-- **Mana**: Same as Mage; MP from Int/Spirit; recovers per turn. See [04-classes-attributes.md](design/04-classes-attributes.md).
+- **Mana**: Same as Mage; MP pool scales with Spirit (and level); recovers per turn. See [04-classes-attributes.md](design/04-classes-attributes.md).
 - **Reference**: [05-skills.md](design/05-skills.md) 8.3; [12-threat.md](design/12-threat.md) 3.2.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Priest has Flash Heal, 20 MP, ally has 30/50 HP | Priest uses Flash Heal on ally | 15 MP consumed; ally heals (SpellPower × 1.0); combat log shows heal amount; threat += healAmount × 0.5 to all monsters |
+| AC1 | Priest has Flash Heal, 20 MP, ally has 30/50 HP | Priest uses Flash Heal on ally | 12 MP consumed; ally heals (SpellPower × 1.0); combat log shows heal amount; threat += healAmount × 0.5 to all monsters |
 | AC2 | Priest has Flash Heal, 10 MP | Priest's turn and tactics select Flash Heal | Skill is not used (insufficient MP); Priest performs basic attack or waits |
-| AC3 | Priest has Power Word: Shield, 20 MP, ally has no shield | Priest uses Power Word: Shield on ally | 15 MP consumed; ally gains shield (absorb = SpellPower × 1.0, 3 rounds); combat log shows shield applied; threat += absorbAmount × 0.25 to all monsters |
+| AC3 | Priest has Power Word: Shield, 20 MP, ally has no shield | Priest uses Power Word: Shield on ally | 12 MP consumed; ally gains shield (absorb = SpellPower × 1.0, 3 rounds); combat log shows shield applied; threat += absorbAmount × 0.25 to all monsters |
 | AC4 | Ally has Power Word: Shield (absorb 20, 2 rounds left) | Ally receives 15 physical damage | Shield absorbs 15; shield remaining = 5; ally loses 0 HP |
 | AC5 | Ally has Power Word: Shield (absorb 8, 1 round left) | Ally receives 20 damage | Shield absorbs 8 and breaks; ally loses 12 HP |
 | AC6 | Ally has Power Word: Shield | Priest casts Power Word: Shield on same ally again | Shield is refreshed: new absorb amount and 3-round duration; previous shield replaced |
