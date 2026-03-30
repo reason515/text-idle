@@ -37,7 +37,9 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
         lines.push('<span class="tip-muted">本职业：力量不转化为面板护甲。</span>')
       }
       if (c.physAtkAttr === 'strength') {
-        lines.push(fmt('baseAttr = Str * 1.4 + Agi * 0.6'))
+        const baseAttrLine =
+          heroClass === 'Warrior' ? 'baseAttr = Str * 0.8 + Agi * 0.6' : 'baseAttr = Str * 1.4 + Agi * 0.6'
+        lines.push(fmt(baseAttrLine))
         lines.push(
           `物理伤害：baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) + 装备物攻（与副属性「物攻」一致）`
         )
@@ -69,7 +71,9 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
         lines.push(fmt('baseAttr = Agi * 1.4 + Str * 0.6'))
         lines.push(`物理伤害：baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) + 装备物攻`)
       } else if (c.physAtkAttr === 'strength') {
-        lines.push(fmt('baseAttr = Str * 1.4 + Agi * 0.6'))
+        const baseAttrLine =
+          heroClass === 'Warrior' ? 'baseAttr = Str * 0.8 + Agi * 0.6' : 'baseAttr = Str * 1.4 + Agi * 0.6'
+        lines.push(fmt(baseAttrLine))
         lines.push('主物理为力量时，敏捷仍贡献 baseAttr 中的 Agi * 0.6。')
       } else {
         lines.push(fmt('baseAttr = Str * 1.4 + Agi * 0.6'))

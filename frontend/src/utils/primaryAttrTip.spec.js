@@ -29,6 +29,12 @@ describe('buildPrimaryAttrTooltipHtml', () => {
     const html = buildPrimaryAttrTooltipHtml('Warrior', 'strength', 0)
     expect(html).toContain('0.72')
     expect(html).toContain('baseAttr')
+    expect(html).toContain('0.8')
+  })
+
+  it('Paladin strength tooltip uses Str*1.4 for baseAttr (not Warrior 0.8)', () => {
+    const html = buildPrimaryAttrTooltipHtml('Paladin', 'strength', 0)
+    expect(html).toContain('1.4')
   })
 
   it('includes MP formula for Mage intellect', () => {

@@ -502,9 +502,9 @@ describe('combat progression and systems', () => {
     }
     const unique = [...new Set(rawDamages)]
     expect(unique.length).toBeGreaterThan(1)
-    // baseRoll 4-9, physMultiplier ~4.28 (Str10 Agi9); rawDamage range 17-39 for basic, 20-47 for 1.2x skill
-    const minExpected = 17
-    const maxExpected = 47
+    // baseRoll 4-9, physMultiplier ~3.68 (Warrior Str10 Agi9); rawDamage range ~15-33 basic, ~18-40 for 1.2x skill
+    const minExpected = 15
+    const maxExpected = 40
     for (const d of rawDamages) {
       expect(d).toBeGreaterThanOrEqual(minExpected)
       expect(d).toBeLessThanOrEqual(maxExpected)

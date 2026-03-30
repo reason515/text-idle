@@ -142,8 +142,8 @@ describe('heroes', () => {
       expect(values.HP).toBe(44) // 10 + 9*3.6 + 1*1.5
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(4)
-      expect(pMax).toBe(17)
+      expect(pMin).toBe(3)
+      expect(pMax).toBe(12)
       expect(values.Armor).toBe(7.2) // 10*0.72
       expect(values.Resistance).toBe(0.5) // 2*0.27 = 0.54 -> 0.5
       expect(values.PhysCrit).toBe(6.1) // 5 + 4*0.27 = 6.08
@@ -217,8 +217,8 @@ describe('heroes', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [minVal, maxVal] = values.PhysAtk.split('-').map(Number)
-      expect(minVal).toBe(17)
-      expect(maxVal).toBe(39)
+      expect(minVal).toBe(12)
+      expect(maxVal).toBe(28)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
       expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(3-5) = 4-9')
     })
@@ -228,8 +228,8 @@ describe('heroes', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [minVal, maxVal] = values.PhysAtk.split('-').map(Number)
-      expect(minVal).toBe(39)
-      expect(maxVal).toBe(68)
+      expect(minVal).toBe(28)
+      expect(maxVal).toBe(49)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
       expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(8-12) = 9-16')
     })
@@ -248,13 +248,13 @@ describe('heroes', () => {
       expect(physAtkFormula.formula).toContain('baseRoll = unarmed(1-4) + weapon(0) = 1-4')
     })
 
-    it('PhysAtk formula shows baseAttr detail (Str*1.4+Agi*0.6 for strength class)', () => {
+    it('PhysAtk formula shows baseAttr detail (Str*0.8+Agi*0.6 for Warrior)', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
       expect(physAtkFormula.formula).toContain('baseAttr = ')
       expect(physAtkFormula.formula).toContain('Str(10)')
       expect(physAtkFormula.formula).toContain('Agi(4)')
-      expect(physAtkFormula.formula).toMatch(/Str.*1\.4.*Agi.*0\.6/)
+      expect(physAtkFormula.formula).toMatch(/Str.*0\.8.*Agi.*0\.6/)
     })
 
     it('PhysAtk formula shows baseAttr detail (Agi*1.4+Str*0.6 for agility class)', () => {
@@ -431,8 +431,8 @@ describe('heroes', () => {
       expect(values.HP).toBe(Math.round(10 + 14 * 3.6 + 2 * LEVEL_HP_PER_LEVEL))
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(6)
-      expect(pMax).toBe(23)
+      expect(pMin).toBe(4)
+      expect(pMax).toBe(16)
       expect(values.Armor).toBe(10.8) // 15*0.72
     })
   })

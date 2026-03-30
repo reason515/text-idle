@@ -30,7 +30,7 @@
 | 空手基础 | 每次攻击 roll `unarmedRoll = random(1, 4)` |
 | 武器贡献 | 有武器时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
 | 基础骰子 | `baseRoll = unarmedRoll + weaponRoll`；空手 1–4，有武器 3–5 时 4–9 |
-| 主属性乘数 | `physMultiplier = 1 + baseAttr * 0.20`；力量职业 baseAttr = Str×1.4 + Agi×0.6，敏捷职业 baseAttr = Agi×1.4 + Str×0.6 |
+| 主属性乘数 | `physMultiplier = 1 + baseAttr * 0.20`；**战士** baseAttr = Str×0.8 + Agi×0.6；其他力量主物攻职业（圣骑士）baseAttr = Str×1.4 + Agi×0.6；敏捷职业 baseAttr = Agi×1.4 + Str×0.6 |
 | 非武器加成 | 词缀、戒指等提供的 +PhysAtk 为固定值 `physAtkBonus` |
 | 法术武器 | 魔杖/权杖的 SpellPower+ 同理可为范围，每次法术伤害时随机 |
 
@@ -43,7 +43,7 @@ rawDamage = round(baseRoll * physMultiplier) + physAtkBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 ```
 
-- `baseAttr`：按职业主属性计算（力量职业 Str×1.4 + Agi×0.6，敏捷职业 Agi×1.4 + Str×0.6）
+- `baseAttr`：按职业主属性计算（**战士** Str×0.8 + Agi×0.6；其他力量主物攻职业 Str×1.4 + Agi×0.6；敏捷职业 Agi×1.4 + Str×0.6）
 - `weapon.physAtkMin/Max`：该武器实例掉落时 roll 出的上下限；无武器时 baseRoll 仅 1–4
 - `physAtkBonus`：非武器装备（词缀、戒指等）提供的固定 PhysAtk
 
@@ -51,7 +51,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 
 - 武器 tooltip 显示该实例 roll 后的「PhysAtk: 3–5」或「伤害: 3–5」（上下限均为掉落时随机结果）
 - 若有底材参考，可显示「底材范围: 2–4」（表示同类武器的可能 roll 范围）
-- 角色面板 PhysAtk 可显示为「17–39」（baseRoll 范围 × physMultiplier + physAtkBonus）
+- 角色面板 PhysAtk 可显示为「12–28」（战士、短剑 3–5 时 baseRoll 范围 × physMultiplier + physAtkBonus；职业与武器不同则数值不同）
 - 战斗日志中每次伤害为实际 roll 后的数值，便于复盘
 
 #### 2.2.3.2 法术伤害公式（与物理统一结构）
@@ -101,7 +101,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ### 2.4 属性显示与透明化
 
 - 角色面板展示：**基础属性** + **装备加成** + **Buff 加成** = **最终属性**。
-- **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：Str×1.4+Agi×0.6 或 Agi×1.4+Str×0.6；法术：Int×1.2+Spi×0.8），便于玩家理解伤害来源。
+- **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：**战士** Str×0.8+Agi×0.6；其他力量主物攻 Str×1.4+Agi×0.6；敏捷主物攻 Agi×1.4+Str×0.6；法术：Int×1.2+Spi×0.8），便于玩家理解伤害来源。
 - 战斗日志与数据统计中，可展示关键衍生数值（如实际暴击率、命中率），便于玩家验证与优化构筑。
 - **Buff/Debuff 面板提示**：角色或怪物身上存在 buff/debuff 时，在其面板上显示相应徽章；鼠标悬停可查看详细说明（名称、剩余回合、效果描述）。
 

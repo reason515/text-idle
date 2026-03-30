@@ -24,7 +24,7 @@ rawDamage = round(baseRoll * physMultiplier) + physAtkBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 ```
 
-- **baseAttr** (Str-based): `Str * 1.4 + Agi * 0.6` (Warrior, Paladin)
+- **baseAttr** (Str-based): `Str * 0.8 + Agi * 0.6` (Warrior); `Str * 1.4 + Agi * 0.6` (Paladin)
 - **baseAttr** (Agi-based): `Agi * 1.4 + Str * 0.6` (Rogue, Hunter, Druid)
 - **physAtkBonus**: Fixed PhysAtk from non-weapon (rings, affixes)
 - **SkillCoeff**: Skill coefficient (e.g., 1.2 for Heroic Strike)

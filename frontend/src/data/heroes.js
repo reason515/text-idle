@@ -107,10 +107,13 @@ export function getSpellBaseAttr(hero) {
   return (attrs.intellect || 0) * 1.2 + (attrs.spirit || 0) * 0.8
 }
 
-/** Physical damage multiplier base attr: Str*1.4+Agi*0.6 for strength, Agi*1.4+Str*0.6 for agility. Design 2.2.3.1. */
+/** Physical damage multiplier base attr: Warrior Str*0.8+Agi*0.6; other strength classes Str*1.4+Agi*0.6; Agi*1.4+Str*0.6 for agility. Design 2.2.3.1. */
 export function getPhysBaseAttr(hero) {
   const attrs = getEffectiveAttrs(hero)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
+  if (hero?.class === 'Warrior' && coef.physAtkAttr === 'strength') {
+    return (attrs.strength || 0) * 0.8 + (attrs.agility || 0) * 0.6
+  }
   if (coef.physAtkAttr === 'strength') return (attrs.strength || 0) * 1.4 + (attrs.agility || 0) * 0.6
   if (coef.physAtkAttr === 'agility') return (attrs.agility || 0) * 1.4 + (attrs.strength || 0) * 0.6
   return (attrs.strength || 0) * 1.4 + (attrs.agility || 0) * 0.6
@@ -156,10 +159,17 @@ function formulaWithValues(template, attrs, level, result) {
   return result != null ? `${s} = ${result}` : s
 }
 
-/** Build baseAttr formula string for PhysAtk (Str*1.4+Agi*0.6 or Agi*1.4+Str*0.6 per class). */
+/** Build baseAttr formula string for PhysAtk (Warrior Str*0.8+Agi*0.6; else Str*1.4+Agi*0.6 or Agi*1.4+Str*0.6). */
 function getPhysBaseAttrFormula(heroClass, attrs) {
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
-  const template = coef.physAtkAttr === 'agility' ? 'Agi * 1.4 + Str * 0.6' : 'Str * 1.4 + Agi * 0.6'
+  let template
+  if (coef.physAtkAttr === 'agility') {
+    template = 'Agi * 1.4 + Str * 0.6'
+  } else if (heroClass === 'Warrior') {
+    template = 'Str * 0.8 + Agi * 0.6'
+  } else {
+    template = 'Str * 1.4 + Agi * 0.6'
+  }
   return formulaWithValues(template, attrs, null, null)
 }
 
