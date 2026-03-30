@@ -49,6 +49,8 @@ import {
 import {
   createThreatTables,
   addThreatFromDamage,
+  addThreatFromSkillDamage,
+  computeSkillDamageThreat,
   addThreatFromHeal,
   addThreatFromShield,
   applyTauntThreatBoost,
@@ -904,9 +906,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               addThreatFromHeal(threat, alive(monsterUnits), actor.id, sr.heal)
               entry.threatHealAmount = Math.round(sr.heal * 0.5)
             }
-            const threatMult = getThreatMultiplier(skillId)
-            addThreatFromDamage(threat, target.id, actor.id, sr.finalDamage, threatMult)
-            entry.threatAmount = Math.round(sr.finalDamage * threatMult)
+            const sunderThreatOpts =
+              skillId === 'sunder-armor' && sr.debuffArmorReduction != null
+                ? { sunderArmorReduction: sr.debuffArmorReduction }
+                : {}
+            addThreatFromSkillDamage(threat, target.id, actor.id, skillId, sr.finalDamage, sunderThreatOpts)
+            entry.threatAmount = computeSkillDamageThreat(skillId, sr.finalDamage, sunderThreatOpts)
             entry.threatTargetName = target.name
             if (sr.debuffApplied || sr.debuffRefreshed) {
               entry.debuffApplied = sr.debuffApplied

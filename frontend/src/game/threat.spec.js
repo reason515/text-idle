@@ -14,6 +14,8 @@ import {
   getDesignatedTank,
   isAllyOT,
   getThreatMultiplier,
+  computeSkillDamageThreat,
+  addThreatFromSkillDamage,
 } from './threat.js'
 
 describe('threat', () => {
@@ -183,6 +185,25 @@ describe('threat', () => {
     })
     it('returns 1.0 for unknown skill', () => {
       expect(getThreatMultiplier('heroic-strike')).toBe(1.0)
+    })
+  })
+
+  describe('computeSkillDamageThreat', () => {
+    it('adds sunder debuff armor reduction to base before high-hate multiplier', () => {
+      expect(computeSkillDamageThreat('sunder-armor', 1, { sunderArmorReduction: 8 })).toBe(14)
+      expect(computeSkillDamageThreat('sunder-armor', 8, { sunderArmorReduction: 8 })).toBe(24)
+    })
+    it('matches damage-only when not sunder or no opts', () => {
+      expect(computeSkillDamageThreat('heroic-strike', 10, {})).toBe(10)
+      expect(computeSkillDamageThreat('sunder-armor', 8, {})).toBe(12)
+    })
+  })
+
+  describe('addThreatFromSkillDamage', () => {
+    it('applies sunder formula', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA])
+      addThreatFromSkillDamage(threat, 'm1', 'h1', 'sunder-armor', 1, { sunderArmorReduction: 8 })
+      expect(threat.m1.h1).toBe(14)
     })
   })
 })

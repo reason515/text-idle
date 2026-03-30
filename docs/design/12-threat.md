@@ -56,6 +56,7 @@
 |------|----------|------|
 | **普攻造成伤害** | `threat = finalDamage` | 1 伤害 = 1 仇恨（仅对受击怪物） |
 | **技能造成伤害** | `threat = finalDamage * threatMultiplier` | 见技能配置 |
+| **破甲 (Sunder Armor)** | `threat = round((finalDamage + sunderArmorReduction) * 1.5)` | `sunderArmorReduction` 为施放后目标身上破甲减甲总值（含叠层）；先与伤害相加为基数，再乘高仇恨倍率 1.5 |
 | **未命中/闪避** | `threat = 0` | 不产生仇恨 |
 
 - **目标**：仇恨仅施加于**被攻击的怪物**，不扩散至其他怪物。

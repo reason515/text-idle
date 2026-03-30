@@ -45,6 +45,39 @@ export function getThreatMultiplier(skillId) {
 }
 
 /**
+ * Threat from a skill hit: damage * multiplier, with optional Sunder Armor debuff value in the base.
+ * Sunder Armor: base = finalDamage + armorReduction from sunder debuff on target after hit (stacks count), then * 1.5.
+ * @param {string} skillId
+ * @param {number} finalDamage
+ * @param {{ sunderArmorReduction?: number }} [opts]
+ * @returns {number}
+ */
+export function computeSkillDamageThreat(skillId, finalDamage, opts = {}) {
+  const mult = getThreatMultiplier(skillId)
+  let base = finalDamage
+  if (skillId === 'sunder-armor' && opts.sunderArmorReduction != null) {
+    base = finalDamage + opts.sunderArmorReduction
+  }
+  return Math.round(base * mult)
+}
+
+/**
+ * Add threat from a skill damage line (uses computeSkillDamageThreat for Sunder).
+ * @param {Object} threat
+ * @param {string} monsterId
+ * @param {string} heroId
+ * @param {string} skillId
+ * @param {number} finalDamage
+ * @param {{ sunderArmorReduction?: number }} [opts]
+ */
+export function addThreatFromSkillDamage(threat, monsterId, heroId, skillId, finalDamage, opts = {}) {
+  const delta = computeSkillDamageThreat(skillId, finalDamage, opts)
+  if (!threat[monsterId]) threat[monsterId] = {}
+  const current = threat[monsterId][heroId] ?? 0
+  threat[monsterId][heroId] = current + delta
+}
+
+/**
  * Add threat from damage dealt to a monster.
  * @param {Object} threat - Mutable threat tables
  * @param {string} monsterId

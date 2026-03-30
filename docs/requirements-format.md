@@ -230,7 +230,7 @@ Then [expected result/verifiable behavior].
 | AC1 | Player has started the adventure | Player views the Warrior's skill list | Warrior has Sunder Armor and Taunt; both are available in combat |
 | AC2 | Player has started the adventure | Player views the Mage's skill list | Mage has Frostbolt and Fireball; both are available in combat |
 | AC3 | Player has started the adventure | Player views the Priest's skill list | Priest has Flash Heal and Power Word: Shield; both are available in combat |
-| AC4 | Fixed trio Warrior uses Sunder Armor in combat | Skill is used | Target gains Armor -8 debuff for 3 rounds; threat is generated (1.5x damage); combat log shows damage and debuff |
+| AC4 | Fixed trio Warrior uses Sunder Armor in combat | Skill is used | Target gains Armor -8 debuff for 3 rounds; threat uses (damage + sunder armor reduction) * 1.5; combat log shows damage and debuff |
 | AC5 | Fixed trio Warrior uses Taunt on a monster | Skill is used | Monster is forced to attack the Warrior for its next 2 actions; threat is updated; combat log shows Taunt effect |
 | AC6 | Fixed trio Priest uses Flash Heal on an ally | Skill is used | Ally recovers HP (SpellPower × ~1.0); threat = healAmount × 0.5 to all alive monsters; combat log shows heal |
 | AC7 | Fixed trio Priest uses Power Word: Shield on an ally | Skill is used | Ally gains a shield absorbing damage (SpellPower × ~1.0); threat = absorbAmount × 0.25 (low) to all alive monsters; combat log shows shield applied |
@@ -613,7 +613,7 @@ Then [expected result/verifiable behavior].
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Fixed trio Warrior has Sunder Armor, 20 Rage, target has no debuff | Warrior uses Sunder Armor | 15 Rage consumed; 0.8x damage; target gains Armor -8 for 3 rounds; threat += damage × 1.5 to that monster |
+| AC1 | Fixed trio Warrior has Sunder Armor, 20 Rage, target has no debuff | Warrior uses Sunder Armor | 15 Rage consumed; 0.8x damage; target gains Armor -8 for 3 rounds; threat += round((damage + sunder armor reduction on target) × 1.5) to that monster |
 | AC2 | Fixed trio Warrior has Taunt, 0 Rage, Taunt off cooldown | Warrior uses Taunt on Monster A | 0 Rage consumed; Monster A is forced to attack Warrior for 2 actions; Monster A's threat table: Warrior = max(highest, Warrior's) × 1.1 |
 | AC3 | Fixed trio Warrior has Taunt on cooldown (1 round left) | Warrior's turn | Taunt is not available; Warrior uses Sunder Armor or basic attack |
 | AC4 | Warrior has tactics [Taunt, Sunder Armor] with Taunt condition ally-ot | ally-ot is true (Mage has higher threat on one monster) | Warrior uses Taunt on that monster to pull aggro |
@@ -1235,7 +1235,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Source**: [12-threat.md](design/12-threat.md)
 - **Threat table**: Each monster maintains an independent threat table; threat values are non-negative integers, initial 0; MVP: threat does not decay.
 - **Monster target selection** (priority order): (1) If under Taunt/Challenging Shout, attack the caster; (2) Else attack the hero with highest threat on that monster; (3) If tied, random.
-- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); Healing → threat = healAmount × 0.5 to all alive monsters; Shield (Power Word: Shield) → threat = absorbAmount × 0.25 (low) to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
+- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); **Sunder Armor** → threat = round((finalDamage + sunder armor reduction on target after hit) × 1.5); Healing → threat = healAmount × 0.5 to all alive monsters; Shield (Power Word: Shield) → threat = absorbAmount × 0.25 (low) to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
 - **Taunt**: Forces target monster to attack caster for 2 actions; Challenging Shout forces all monsters for 2 rounds.
 - **Tank definition**: Hero with highest threat on the most monsters; tie-break by total threat sum.
 - **ally-ot**: True when at least one monster's highest-threat target is not the tank.
@@ -1254,7 +1254,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC6 | Monster A is under Taunt (1 action remaining) | Monster A's second action | Monster A attacks the Warrior; Taunt counter decrements to 0 |
 | AC7 | Monster A's Taunt has expired (0 actions remaining) | Monster A's next action | Monster A selects target by threat (highest threat hero) |
 | AC8 | Warrior deals 10 physical damage to Monster A with Heroic Strike (threatMultiplier 1.0) | Damage is applied | Monster A's threat table: Warrior += 10 |
-| AC9 | Warrior uses Sunder Armor, deals 8 damage (threatMultiplier 1.5) | Damage is applied | Monster A's threat table: Warrior += 12 (8 × 1.5) |
+| AC9 | Warrior uses Sunder Armor, deals 8 damage; sunder debuff armor reduction 8 on target (threatMultiplier 1.5 on combined base) | Damage is applied | Monster A's threat table: Warrior += 24 (round((8 + 8) × 1.5)) |
 | AC10 | Mage heals an ally for 15 HP | Heal is applied | All alive monsters add 7.5 threat (15 × 0.5) to the Mage |
 | AC10a | Priest uses Power Word: Shield on ally (absorb 20) | Shield is applied | All alive monsters add 5 threat (20 × 0.25, low) to the Priest |
 | AC11 | Warrior has highest threat on Monster A and Monster B; Mage has highest threat on Monster C | ally-ot is evaluated | ally-ot is true (Monster C's highest-threat target is Mage, not the tank Warrior) |
