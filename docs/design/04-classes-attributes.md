@@ -130,7 +130,7 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 | 耐力 | Stamina | 生命值上限 | 全职业（坦克尤其重要） |
 | 精神 | Spirit | 法力上限（法力职业）、法力恢复、生命恢复（脱战） | 法力与治疗职业 |
 
-- **角色详情（主界面）**：主属性名称可悬浮查看提示，内容为该属性用途说明及与当前职业系数一致的公式摘要（含物理/法术 `baseAttr`、次级属性公式、法力职业每回合 MP 恢复等），与 `frontend/src/utils/primaryAttrTip.js` 及 `heroes.js` 中的实现一致，便于分配属性点前评估。
+- **角色详情（主界面）**：主属性名称可悬浮查看提示，内容为该属性用途说明及与当前职业系数一致的公式摘要（含物理/法术 `baseAttr`、次级属性公式、法力职业每回合 MP 恢复等），与 `frontend/src/utils/primaryAttrTip.js` 及 `heroes.js` 中的实现一致，便于分配属性点前评估。法术 `baseAttr` 中智力系数：**牧师、法师** 为 0.8，**其他法术职业** 为 1.2（精神仍为 0.8）；见 [05-skills.md](./05-skills.md) 2.2.3.2。
 
 ### 2.2 次级属性与资源系统
 

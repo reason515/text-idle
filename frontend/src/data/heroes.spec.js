@@ -162,7 +162,7 @@ describe('heroes', () => {
       expect(values.SpellPower).toMatch(/^\d+-\d+$/)
       const [sMin, sMax] = values.SpellPower.split('-').map(Number)
       expect(sMin).toBe(4)
-      expect(sMax).toBe(18)
+      expect(sMax).toBe(14)
       expect(values.Resistance).toBe(7.9) // 11*0.72
       expect(values.SpellCrit).toBe(10.9) // 5 + 11*0.54
       expect(values.PhysAtk).toBe('-')
@@ -264,12 +264,18 @@ describe('heroes', () => {
       expect(physAtkFormula.formula).toMatch(/Agi.*1\.4.*Str.*0\.6/)
     })
 
-    it('SpellPower formula shows baseAttr detail (Int*1.2+Spi*0.8)', () => {
+    it('SpellPower formula shows baseAttr detail (Mage: Int*0.8+Spi*0.8)', () => {
       const { formulas } = computeSecondaryAttributes('Mage', 1)
       const spellFormula = formulas.find((f) => f.key === 'SpellPower')
       expect(spellFormula.formula).toContain('baseAttr = ')
       expect(spellFormula.formula).toContain('Int(11)')
       expect(spellFormula.formula).toContain('Spi(5)')
+      expect(spellFormula.formula).toMatch(/Int.*0\.8.*Spi.*0\.8/)
+    })
+
+    it('SpellPower formula shows Int*1.2+Spi*0.8 for Warlock (non Priest/Mage)', () => {
+      const { formulas } = computeSecondaryAttributes('Warlock', 1)
+      const spellFormula = formulas.find((f) => f.key === 'SpellPower')
       expect(spellFormula.formula).toMatch(/Int.*1\.2.*Spi.*0\.8/)
     })
 

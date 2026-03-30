@@ -38,7 +38,7 @@ rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ```
 
-- **baseAttr**: `Int * 1.2 + Spirit * 0.8` (Mage, Priest, etc.)
+- **baseAttr**: `Int * k + Spirit * 0.8` where **k = 0.8** for Priest and Mage, **k = 1.2** for other spell classes (Warlock, Paladin hybrid spell path, Druid, Shaman, etc.)
 
 ## Defense (Armor / Resistance)
 

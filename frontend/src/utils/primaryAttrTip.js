@@ -1,7 +1,13 @@
 /**
  * Primary attribute tooltips for hero detail: purpose + class-specific formulas (matches heroes.js / combat).
  */
-import { CLASS_COEFFICIENTS, LEVEL_HP_PER_LEVEL, LEVEL_MP_PER_LEVEL, STRENGTH_TO_ARMOR_K } from '../data/heroes.js'
+import {
+  CLASS_COEFFICIENTS,
+  LEVEL_HP_PER_LEVEL,
+  LEVEL_MP_PER_LEVEL,
+  STRENGTH_TO_ARMOR_K,
+  getSpellIntellectK,
+} from '../data/heroes.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
 import { formatSecondaryFormulaTip } from './formulaTip.js'
 
@@ -25,6 +31,8 @@ function brJoin(parts) {
 export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus = 0) {
   const c = CLASS_COEFFICIENTS[heroClass] || {}
   const isManaClass = c.k_MP != null
+  const spellIntK = getSpellIntellectK(heroClass)
+  const spellBaseAttrLine = `法术 baseAttr = Int * ${spellIntK} + Spi * 0.8`
 
   switch (attrKey) {
     case 'strength': {
@@ -90,12 +98,12 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
         lines.push('<span class="tip-muted">本职业：资源非法力，无此项法力上限公式。</span>')
       }
       if (c.k_SpellPower != null) {
-        lines.push(fmt('法术 baseAttr = Int * 1.2 + Spi * 0.8'))
+        lines.push(fmt(spellBaseAttrLine))
         lines.push(
           `法术伤害：baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) + 装备法强（与副属性「法强」一致）`
         )
       } else {
-        lines.push(fmt('法术 baseAttr = Int * 1.2 + Spi * 0.8'))
+        lines.push(fmt(spellBaseAttrLine))
         lines.push(
           `无面板法强系数时，战斗内法术倍率仍可能使用上述 baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) 结构。`
         )
@@ -128,7 +136,7 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     case 'spirit': {
       const lines = [
         '<span class="tip-purpose">精神：法力上限（法力职业）、参与法术伤害 baseAttr；法力职业战斗内每回合法力恢复。</span>',
-        fmt('法术 baseAttr = Int * 1.2 + Spi * 0.8'),
+        fmt(spellBaseAttrLine),
         `法术伤害：baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) + 装备法强`,
       ]
       if (isManaClass) {

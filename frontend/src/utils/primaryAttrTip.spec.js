@@ -48,6 +48,20 @@ describe('buildPrimaryAttrTooltipHtml', () => {
     expect(html).toContain('精神')
   })
 
+  it('Mage spell baseAttr tooltip uses Int coeff 0.8 (formatted tip-num)', () => {
+    const html = buildPrimaryAttrTooltipHtml('Mage', 'intellect', 0)
+    expect(html).toMatch(
+      /tip-attr-var">baseAttr<\/span>[\s\S]*?tip-num">0\.8<\/span>[\s\S]*?tip-num">0\.8<\/span>/
+    )
+  })
+
+  it('Warlock spell baseAttr tooltip keeps Int coeff 1.2', () => {
+    const html = buildPrimaryAttrTooltipHtml('Warlock', 'intellect', 0)
+    expect(html).toMatch(
+      /tip-attr-var">baseAttr<\/span>[\s\S]*?tip-num">1\.2<\/span>[\s\S]*?tip-num">0\.8<\/span>/
+    )
+  })
+
   it('appends equipment bonus when positive', () => {
     const html = buildPrimaryAttrTooltipHtml('Rogue', 'stamina', 3)
     expect(html).toContain('装备加成该属性')

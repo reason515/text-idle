@@ -51,6 +51,23 @@ export const LEVEL_MP_PER_LEVEL = 0.75
  */
 export const STRENGTH_TO_ARMOR_K = 0.5
 
+/** Default Int coefficient in spell damage baseAttr (Int*k + Spi*0.8). */
+export const SPELL_BASE_ATTR_INT_K_DEFAULT = 1.2
+/** Priest/Mage: lower Int contribution to spell multiplier baseAttr. */
+export const SPELL_BASE_ATTR_INT_K_PRIEST_MAGE = 0.8
+
+/**
+ * Intellect coefficient for spell baseAttr (spellMultiplier = 1 + baseAttr * SPELL_MULTIPLIER_K).
+ * @param {string} [heroClass]
+ * @returns {number}
+ */
+export function getSpellIntellectK(heroClass) {
+  if (heroClass === 'Priest' || heroClass === 'Mage') {
+    return SPELL_BASE_ATTR_INT_K_PRIEST_MAGE
+  }
+  return SPELL_BASE_ATTR_INT_K_DEFAULT
+}
+
 /**
  * Class coefficients for secondary attribute formulas (design doc 2.2.2).
  * k_* values are base design * 0.9 (small-number rebalance with 3 pts/level).
@@ -124,10 +141,11 @@ export function computeHeroArmor(hero) {
   return Math.round(attrs.strength * STRENGTH_TO_ARMOR_K) + eq.armor
 }
 
-/** Spell damage multiplier base attr: Int*1.2 + Spirit*0.8. Design 2.2.3.1. */
+/** Spell damage multiplier base attr: Int*k_Int + Spirit*0.8 (Priest/Mage k_Int=0.8, else 1.2). Design 2.2.3.2. */
 export function getSpellBaseAttr(hero) {
   const attrs = getEffectiveAttrs(hero)
-  return (attrs.intellect || 0) * 1.2 + (attrs.spirit || 0) * 0.8
+  const intK = getSpellIntellectK(hero?.class)
+  return (attrs.intellect || 0) * intK + (attrs.spirit || 0) * 0.8
 }
 
 /** Physical damage multiplier base attr: Warrior Str*0.8+Agi*0.6; other strength classes Str*1.4+Agi*0.6; Agi*1.4+Str*0.6 for agility. Design 2.2.3.1. */
@@ -196,9 +214,10 @@ function getPhysBaseAttrFormula(heroClass, attrs) {
   return formulaWithValues(template, attrs, null, null)
 }
 
-/** Build baseAttr formula string for SpellPower (Int*1.2+Spi*0.8). */
-function getSpellBaseAttrFormula(attrs) {
-  return formulaWithValues('Int * 1.2 + Spi * 0.8', attrs, null, null)
+/** Build baseAttr formula string for SpellPower (Int*k+Spi*0.8; k class-dependent). */
+function getSpellBaseAttrFormula(heroClass, attrs) {
+  const intK = getSpellIntellectK(heroClass)
+  return formulaWithValues(`Int * ${intK} + Spi * 0.8`, attrs, null, null)
 }
 
 /**
@@ -311,7 +330,7 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const maxVal = Math.round(baseRollMax * spellMultiplier) + spellPowerBonus
     values.SpellPower = minVal === maxVal ? minVal : `${minVal}-${maxVal}`
     const spellBaseAttrRounded = Math.round(spellBaseAttr * 10) / 10
-    const spellBaseAttrFormula = getSpellBaseAttrFormula(attrs)
+    const spellBaseAttrFormula = getSpellBaseAttrFormula(heroClass, attrs)
     const baseRollLine =
       eq.spellPowerMin != null && eq.spellPowerMax != null
         ? `baseRoll = unarmed(1-4) + weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${baseRollMinWeapon}-${baseRollMax}`

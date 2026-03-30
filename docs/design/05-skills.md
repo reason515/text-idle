@@ -63,7 +63,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 | 空手基础 | 每次施法 roll `unarmedRoll = random(1, 4)` |
 | 法杖贡献 | 有法杖时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
 | 基础骰子 | `baseRoll = unarmedRoll + weaponRoll` |
-| 主属性乘数 | `spellMultiplier = 1 + baseAttr * 0.20`；baseAttr = Int×1.2 + Spirit×0.8 |
+| 主属性乘数 | `spellMultiplier = 1 + baseAttr * 0.20`；baseAttr = Int×k + Spirit×0.8（**牧师、法师** k=0.8；其他法术职业 k=1.2） |
 | 非武器加成 | 词缀、戒指等提供的 +SpellPower 为固定值 `spellPowerBonus` |
 
 **公式**（法术伤害）：
@@ -75,7 +75,7 @@ rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ```
 
-- `baseAttr`：Int×1.2 + Spirit×0.8
+- `baseAttr`：**牧师、法师** 为 Int×0.8 + Spirit×0.8；**其他法术职业** 为 Int×1.2 + Spirit×0.8
 - `weapon.spellPowerMin/Max`：法杖实例掉落时 roll 出的上下限
 - `spellPowerBonus`：非武器装备提供的固定 SpellPower
 
@@ -101,7 +101,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ### 2.4 属性显示与透明化
 
 - 角色面板展示：**基础属性** + **装备加成** + **Buff 加成** = **最终属性**。
-- **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：**战士** Str×0.8+Agi×0.6；其他力量主物攻 Str×1.4+Agi×0.6；敏捷主物攻 Agi×1.4+Str×0.6；法术：Int×1.2+Spi×0.8），便于玩家理解伤害来源。
+- **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：**战士** Str×0.8+Agi×0.6；其他力量主物攻 Str×1.4+Agi×0.6；敏捷主物攻 Agi×1.4+Str×0.6；法术：**牧师、法师** Int×0.8+Spi×0.8，**其他法术职业** Int×1.2+Spi×0.8），便于玩家理解伤害来源。
 - 战斗日志与数据统计中，可展示关键衍生数值（如实际暴击率、命中率），便于玩家验证与优化构筑。
 - **Buff/Debuff 面板提示**：角色或怪物身上存在 buff/debuff 时，在其面板上显示相应徽章；鼠标悬停可查看详细说明（名称、剩余回合、效果描述）。
 
