@@ -421,7 +421,7 @@ Then [expected result/verifiable behavior].
 - **Battle separator**: Visual separator line between consecutive battles.
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
-- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes (HP, Resource, PhysAtk, SpellPower, Armor, Resistance, PhysCrit%, SpellCrit%, Dodge%, Hit%) with tooltip showing formula. When hero has a weapon with damage range, PhysAtk/SpellPower is displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
+- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
 - **Monster detail panel**: Similar alignment; includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 - **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 

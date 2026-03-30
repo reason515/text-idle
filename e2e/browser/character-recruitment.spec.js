@@ -264,7 +264,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(confirmRecruit).toBeVisible({ timeout: 15000 })
     await expect(confirmRecruit.getByText(/\u526f\u5c5e\u6027/)).toBeVisible({ timeout: 5000 })
     await expect(confirmRecruit.getByText('\u751f\u547d').first()).toBeVisible({ timeout: 5000 })
-    await expect(confirmRecruit.getByText('PhysAtk').first()).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruit.getByText('\u7269\u653b').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('AC5b: expansion Mage confirmation shows SpellPower and MP', async ({ page }) => {
@@ -293,7 +293,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     const confirmRecruitB = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmRecruitB).toBeVisible({ timeout: 15000 })
     await expect(confirmRecruitB.getByText(/\u526f\u5c5e\u6027/)).toBeVisible({ timeout: 5000 })
-    await expect(confirmRecruitB.getByText('SpellPower').first()).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruitB.getByText('\u6cd5\u5f3a').first()).toBeVisible({ timeout: 5000 })
     await expect(confirmRecruitB.getByText('\u6cd5\u529b').first()).toBeVisible({ timeout: 5000 })
   })
 

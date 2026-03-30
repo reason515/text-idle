@@ -163,7 +163,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const armorRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'Armor' }).filter({ hasNotText: 'Body' }).first()
+    const armorRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u62a4\u7532' }).filter({ hasNotText: 'Body' }).first()
     await expect(armorRow).toBeVisible({ timeout: 5000 })
     const armorBefore = await armorRow.locator('.detail-value').textContent()
 
@@ -172,7 +172,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
 
-    const armorAfterRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'Armor' }).filter({ hasNotText: 'Body' }).first()
+    const armorAfterRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u62a4\u7532' }).filter({ hasNotText: 'Body' }).first()
     const armorAfter = await armorAfterRow.locator('.detail-value').textContent()
     expect(parseFloat(armorAfter || '0')).toBeGreaterThan(parseFloat(armorBefore || '0'))
   })
@@ -271,7 +271,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.inventory-slot').filter({ hasText: 'Short Sword' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
 
-    const physAtkRow = page.locator('.detail-modal .detail-row').filter({ hasText: 'PhysAtk' }).first()
+    const physAtkRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
     await expect(physAtkRow).toBeVisible()
     const physAtkVal = await physAtkRow.locator('.detail-value').textContent()
     expect(physAtkVal).toMatch(/^\d+\.?\d*-\d+\.?\d*$/)

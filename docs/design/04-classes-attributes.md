@@ -167,6 +167,8 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 | 法术暴击率(%) | SpellCrit | `SpellCrit = 5 + Int * k_SpellCrit` | 智力 |
 | 闪避率(%) | Dodge | `Dodge = 5 + Agi * k_Dodge` | 敏捷 |
 | 命中率(%) | Hit | `Hit = 95 + Agi * 0.2` | 敏捷（全职业统一） |
+
+- **界面列名**：主界面角色详情、招募确认等处的次级属性行左侧使用中文标签（如生命、物攻、法强、护甲、抗性、物暴 %、法暴 %、闪避 %、命中 %；资源行为法力/怒气/能量/集中值等），与上表英文标识及代码中的 `PhysAtk` 等字段对应。
 | 格挡率(%) | Block | `Block = 装备/技能提供` | 仅持盾职业 |
 
 ##### 职业系数表（k 值）

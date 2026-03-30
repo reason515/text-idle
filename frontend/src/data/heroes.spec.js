@@ -283,6 +283,21 @@ describe('heroes', () => {
       }
     })
 
+    it('secondary formula rows use Chinese labels for display', () => {
+      const { formulas } = computeSecondaryAttributes('Warrior', 1)
+      const labelByKey = Object.fromEntries(formulas.map((f) => [f.key, f.label]))
+      expect(labelByKey.HP).toBe('生命')
+      expect(labelByKey.PhysAtk).toBe('物攻')
+      expect(labelByKey.Armor).toBe('护甲')
+      expect(labelByKey.Resistance).toBe('抗性')
+      expect(labelByKey.PhysCrit).toBe('物暴 %')
+      expect(labelByKey.Hit).toBe('命中 %')
+      const mage = computeSecondaryAttributes('Mage', 1)
+      const mageLabels = Object.fromEntries(mage.formulas.map((f) => [f.key, f.label]))
+      expect(mageLabels.SpellPower).toBe('法强')
+      expect(mageLabels.SpellCrit).toBe('法暴 %')
+    })
+
     it('returns correct values for Rogue (agility physical) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Rogue', 1)
       expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5

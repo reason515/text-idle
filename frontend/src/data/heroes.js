@@ -231,7 +231,7 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     values.Focus = 100
     formulaMap.Resource = { key: 'Focus', label: '集中值', value: 100, formula: '固定 100' }
   } else {
-    formulaMap.Resource = { key: 'Resource', label: 'Resource', value: NA, formula: NA }
+    formulaMap.Resource = { key: 'Resource', label: '资源', value: NA, formula: NA }
   }
 
   // PhysAtk: baseRoll(1-4 [+ weapon]) x (1 + baseAttr x 0.2) + eq.physAtk
@@ -340,7 +340,17 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   formulaMap.Hit = fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
 
   // Build formulas array in fixed order
-  const labels = { HP: '生命', PhysCrit: '物暴 %', SpellCrit: '法暴 %', Dodge: '闪避 %', Hit: '命中 %' }
+  const labels = {
+    HP: '生命',
+    PhysAtk: '物攻',
+    SpellPower: '法强',
+    Armor: '护甲',
+    Resistance: '抗性',
+    PhysCrit: '物暴 %',
+    SpellCrit: '法暴 %',
+    Dodge: '闪避 %',
+    Hit: '命中 %',
+  }
   const formulas = []
   for (const key of SECONDARY_ATTR_ORDER) {
     if (key === 'Resource') {
