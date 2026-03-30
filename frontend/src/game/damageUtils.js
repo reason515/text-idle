@@ -41,6 +41,31 @@ export function getEffectivePhysAtk(actor, rng) {
 }
 
 /**
+ * Min/max effective physical attack per hit (unarmed 1-4 roll), matching getEffectivePhysAtk for monsters.
+ * @param {number} [physAtk]
+ * @returns {{ min: number, max: number }}
+ */
+export function getMonsterPhysAtkEffectiveRange(physAtk) {
+  const p = physAtk ?? 0
+  if (p <= 0) return { min: 0, max: 0 }
+  const min = Math.round((PHYS_ATK_UNARMED_MIN * p) / UNARMED_ROLL_EXPECTED)
+  const max = Math.round((PHYS_ATK_UNARMED_MAX * p) / UNARMED_ROLL_EXPECTED)
+  return { min, max }
+}
+
+/**
+ * Display string for monster detail panel (e.g. "6-24" or "8" when min equals max).
+ * @param {number} [physAtk]
+ * @returns {string}
+ */
+export function formatMonsterPhysAtkRangeLabel(physAtk) {
+  const { min, max } = getMonsterPhysAtkEffectiveRange(physAtk)
+  if (min <= 0 && max <= 0) return '0'
+  if (min === max) return String(min)
+  return `${min}-${max}`
+}
+
+/**
  * Hero: baseRoll = weapon only; rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus.
  * Monster: baseRoll = unarmed(1-4); rawDamage = round(baseRoll * spellPower / 2.5). Expectation = spellPower.
  */

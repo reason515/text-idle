@@ -120,6 +120,20 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.monster-card .monster-name').first()).toBeVisible({ timeout: 5000 })
   })
 
+  test('monster detail modal shows phys atk as min-max or single value', async ({ page }) => {
+    const email = `monster-phys-range-e2e-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
+    await page.locator('.monster-card').first().click()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    const physRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
+    await expect(physRow).toBeVisible()
+    const val = (await physRow.locator('.detail-value').textContent())?.trim() ?? ''
+    expect(val).toMatch(/^\d+(-\d+)?$/)
+  })
+
   test('encounter message appears at battle start', async ({ page }) => {
     const email = `encounter-msg-e2e-${Date.now()}@example.com`
     await registerAndGoToMain(page, email)

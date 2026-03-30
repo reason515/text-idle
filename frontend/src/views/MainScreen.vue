@@ -1291,7 +1291,7 @@
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">物攻</span>
-              <span class="detail-value">{{ selectedMonster.physAtk }}</span>
+              <span class="detail-value">{{ formatMonsterPhysAtkRangeLabel(selectedMonster.physAtk) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">法强</span>
@@ -1501,6 +1501,7 @@ import {
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
+import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
 import { getCombatLogStepDelayMs } from '../game/combatPacing.js'
 

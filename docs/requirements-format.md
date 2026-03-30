@@ -422,7 +422,7 @@ Then [expected result/verifiable behavior].
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
 - **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
-- **Monster detail panel**: Similar alignment; includes Armor/Resistance with tooltip "Absorbs X damage per hit".
+- **Monster detail panel**: Similar alignment; **物攻** shows **effective min–max per hit** (same 1–4 unarmed scaling as combat, e.g. `6-24` when the underlying PhysAtk stat is 15); includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 - **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 
 **Acceptance Criteria**
@@ -448,7 +448,7 @@ Then [expected result/verifiable behavior].
 | AC17 | Combat log has many entries | Player scrolls the log | Scrollbar matches the dark-green terminal theme (thin, dark track, green thumb) |
 | AC18 | Player clicks a hero card | Hero detail modal opens | Hero name is in light text (#eeffee), class tag is in WoW class color; primary and secondary attributes are shown in separate sections with left-label right-value alignment |
 | AC19 | Player views secondary attributes in hero detail | Mouse hovers over a secondary attribute value | A tooltip shows the calculation formula with actual attribute values and result |
-| AC20 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; defense section shows Armor, Resistance with tooltip "Absorbs X damage per hit" |
+| AC20 | Player clicks a monster card | Monster detail modal opens | Stats are left-right aligned; 物攻 shows min–max effective physical attack per hit; defense section shows Armor, Resistance with tooltip "Absorbs X damage per hit" |
 | AC21 | A Warrior hero is displayed | Player views resource bar or detail panel | Resource is "Rage" with max value fixed at 100 (same for Rogue "Energy" and Hunter "Focus") |
 | AC22 | Combat is in progress | Player clicks Pause button | Combat log stops scrolling; new log entries are not displayed until Resume is clicked |
 | AC23 | Combat is paused | Player clicks Resume button | Combat log resumes scrolling and displaying new entries |

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   getEffectivePhysAtk,
   getEffectiveSpellPower,
+  getMonsterPhysAtkEffectiveRange,
+  formatMonsterPhysAtkRangeLabel,
   UNARMED_ROLL_EXPECTED,
   PHYS_ATK_UNARMED_MIN,
   PHYS_ATK_UNARMED_MAX,
@@ -93,6 +95,20 @@ describe('damageUtils', () => {
       }
       expect(getEffectiveSpellPower(hero, () => 0)).toBe(8)
       expect(getEffectiveSpellPower(hero, () => 0.99)).toBe(12)
+    })
+  })
+
+  describe('getMonsterPhysAtkEffectiveRange / formatMonsterPhysAtkRangeLabel', () => {
+    it('matches roll 1 and 4 bounds for physAtk 15', () => {
+      expect(getMonsterPhysAtkEffectiveRange(15)).toEqual({ min: 6, max: 24 })
+      expect(formatMonsterPhysAtkRangeLabel(15)).toBe('6-24')
+    })
+    it('returns 0 for non-positive physAtk', () => {
+      expect(getMonsterPhysAtkEffectiveRange(0)).toEqual({ min: 0, max: 0 })
+      expect(formatMonsterPhysAtkRangeLabel(0)).toBe('0')
+    })
+    it('treats undefined physAtk as 0', () => {
+      expect(formatMonsterPhysAtkRangeLabel(undefined)).toBe('0')
     })
   })
 
