@@ -456,6 +456,70 @@ describe('validateAiTactics supplementPriestFlashHealTankHealWhenNoEnemyOnSelf',
   })
 })
 
+describe('validateAiTactics Priest PWS self vs self-if-enemy-targeting', () => {
+  const priest = ['flash-heal', 'power-word-shield']
+
+  it('replaces self-if-enemy-targeting with self for healthy-party shield when user text omits threat', () => {
+    const user =
+      'flash heal on lowest ally when any ally below 60% HP; when all allies at or above 60%, shield self if no shield else shield lowest ally'
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.6 }],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRules: [
+            {
+              rule: 'self-if-enemy-targeting',
+              whenAll: [{ when: 'self-hp-above', value: 0.6 }, { when: 'self-no-shield' }],
+            },
+            { rule: 'lowest-hp-ally', whenAll: [{ when: 'self-hp-above', value: 0.6 }] },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest', user)
+    expect(result.tactics.conditions[1].targetRules[0].rule).toBe('self')
+    expect(result.warnings.some((w) => w.includes('\u5df2\u4fee\u6b63'))).toBe(true)
+  })
+
+  it('keeps self-if-enemy-targeting when user text mentions enemy targeting self (Chinese)', () => {
+    const user =
+      '\u6709\u654c\u4eba\u7684\u76ee\u6807\u662f\u81ea\u5df1\u65f6\u5bf9\u81ea\u5df1\u5957\u76fe\uff0c\u5168\u5458\u8840\u91cf\u8fbe\u6807\u65f6'
+    const raw = {
+      conditions: [
+        {
+          skillId: 'power-word-shield',
+          targetRules: [
+            {
+              rule: 'self-if-enemy-targeting',
+              whenAll: [{ when: 'self-hp-above', value: 0.6 }, { when: 'self-no-shield' }],
+            },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest', user)
+    expect(result.tactics.conditions[0].targetRules[0].rule).toBe('self-if-enemy-targeting')
+  })
+
+  it('converts Priest global lowest-hp to basic-attack target rule', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      targetRule: 'lowest-hp',
+      conditions: [],
+    }
+    const result = validateAiTactics(raw, priest, 'Priest')
+    expect(result.tactics.targetRule).toBeNull()
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba?.targetRule).toBe('lowest-hp')
+    expect(result.warnings.some((w) => w.includes('\u5df2\u8f6c\u6362'))).toBe(true)
+  })
+})
+
 describe('validateAiTactics Priest tank-hp-below mismatch warning', () => {
   const priest = ['flash-heal', 'power-word-shield']
 

@@ -216,6 +216,8 @@
 
 **自然语言 → 结构化配置**：前端调用 SiliconFlow（OpenAI 兼容接口）的 **Qwen3-8B** 模型，将玩家输入解析为 `skillPriority`、`targetRule`、`conditions`（与第二节数据模型一致）。实现见 `frontend/src/game/aiTactics.js`（系统提示词、输出校验、合并逻辑）。**校验补充**：若玩家原文同时出现 **怒气不足/法力不足…普通攻击（或普攻）** 或 **否则普通攻击**，而模型未输出 `conditions` 中的 **basic-attack**，`validateAiTactics` 会 **自动追加** `{ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] }` 并给出「已补充」类警告，避免解析预览缺少普攻目标链。若原文同时出现 **无敌人以自己为目标 / 没有目标为自己的敌人**、**坦克血量低于 70%**、**快速治疗（或治疗坦克）**，而 **flash-heal** 未含任何 `tank-hp-below` 门控，会 **自动插入** 目标链一步：`{ rule: 'tank', whenAll: [ tank-hp-below 0.7, enemy-not-targeting-self ] }`（插在紧急 `ally-hp-below` 步之后），并给出「已补充」类警告，避免模型只写盾链、漏写坦克低血量治疗链。
 
+**牧师专项**：若模型将 **真言术：盾** 的「全员血量达标时套自己」写成了 `self-if-enemy-targeting` + `self-hp-above` + `self-no-shield`，而玩家原文 **未** 提及被盯上 / 敌人目标是自己等，校验会把该步 **改回** `rule: self`（保留 `whenAll`），避免解析预览出现多余的「仅当被敌人盯上」。若顶层 `targetRule` 为 **`lowest-hp`**（牧师顶层枚举不含敌人规则），会 **转为** `conditions` 里 **普通攻击** 的 `targetRule: lowest-hp` 并提示「已转换」，避免「默认目标无效」类警告。
+
 **牧师 AI 提示（易错点）**：系统提示词明确要求「治疗 / 加血」对应 **flash-heal**，「盾 / 套盾」对应 **power-word-shield**。玩家说「坦克血量低于 X% 时**治疗**」时，`tank-hp-below` 应配在 **flash-heal**（技能级 `when` 或目标链步骤），不应单独绑在 **power-word-shield** 上。`validateAiTactics` 若检测到「真言术：盾」含 `tank-hp-below` 而「快速治疗」完全未使用 `tank-hp-below`，会追加一条 **提示** 类警告（不自动改数据）。
 
 **API Key**：玩家在界面中配置 SiliconFlow API Key，保存在浏览器 **localStorage**（键名由实现定义）。未配置 Key 时无法发起解析。

@@ -128,6 +128,10 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - **power-word-shield** (真言术：盾 / 盾 / 套盾 / 上盾): **absorb shield** only. If the player says "坦克血量**高**时套盾", "**盾**坦克", "给坦克**盾**", use power-word-shield. **Never** assign skill-level **when: tank-hp-below** to power-word-shield when the player clearly asked for **治疗** at low tank HP.
 - Per-step **{ "rule": "tank", "when": "tank-hp-below", "value": 0.7 }** on **flash-heal** means: heal tank when tank HP < 70%. Same step shape on **power-word-shield** only if the player asked for **盾** under that HP condition (rare); default is heal = flash-heal.
 - **"No enemy on self" + tank heal (CRITICAL)**: If the player says **没有目标是自己的敌人** / **无敌人以自己为目标** AND **坦克血量低于70%** AND **快速治疗/对坦克治疗**, **flash-heal** MUST include \`{ "rule": "tank", "whenAll": [{ "when": "tank-hp-below", "value": 0.7 }, { "when": "enemy-not-targeting-self" }] }\`. **Do NOT** output only **power-word-shield** for the tank branch — **flash-heal** must carry the tank heal step. **Do NOT omit** this step when **power-word-shield** already has \`enemy-not-targeting-self\` + tank steps.
+- **Self target for PWS: \`self\` vs \`self-if-enemy-targeting\` (CRITICAL)**:
+  - Use **\`"rule": "self"\`** when the player wants to shield **self** based on **HP% / shield buff / party-wide HP** only (e.g. "全员血量>=60%时给自己套盾", "自己身上没有盾时对自己盾"). Gates go in **whenAll** on \`self\` (e.g. **self-hp-above**, **self-no-shield**).
+  - Use **\`"rule": "self-if-enemy-targeting"\`** **only** when the player explicitly ties **self** to **being targeted** (被盯上 / 敌人目标是自己 / 有怪打我 / 被敌人盯上). **Never** put \`self-if-enemy-targeting\` on a step whose only gates are **self-hp-above** + **self-no-shield** (healthy party shield rotation) — that is **\`self\`**, not "only when targeted".
+- **Priest global \`targetRule\`**: **never** output \`"targetRule": "lowest-hp"\` at top level for Priest (invalid for ally-only enum). For **普通攻击** / **普攻** target **HP lowest enemy**, use **\`conditions\`**: \`{ "skillId": "basic-attack", "targetRule": "lowest-hp" }\` and **omit** global \`targetRule\` (or use \`lowest-hp-ally\` only if you truly mean ally default for skills that inherit default).
 
 ## Skill mapping for ${heroClass}
 ${getSkillNameMap(heroClass, skillIds)}
@@ -175,7 +179,14 @@ Use per-skill targetRules fallback chains. Do NOT change skillPriority or global
 WRONG 6 (Priest) - "no shield" mapped to debuff:
 Player: "自己身上没有真言术盾时对自己套盾"
 WRONG: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "target-has-debuff", "value": "power-word-shield" }] }] }
-CORRECT: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-no-shield" }] }] }
+CORRECT: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self", "whenAll": [{ "when": "self-no-shield" }] }] }
+Reason: No **target-has-debuff** for shield; no **self-if-enemy-targeting** unless the player said **被盯上 / 敌人打自己** — plain **self** + **self-no-shield** is enough.
+
+WRONG 6b (Priest) - fabricating "only when targeted" for healthy-party shield:
+Player: "如果我方所有英雄HP都大于等于60%，则对自己施放真言术盾；若自己身上已有真言术盾，则对我方HP最低的队友施放真言术盾" (no mention of **被盯上** / **打自己**)
+WRONG: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }, { "when": "self-no-shield" }] }, { "rule": "lowest-hp-ally", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }] }] }
+CORRECT: { "skillId": "power-word-shield", "targetRules": [{ "rule": "self", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }, { "when": "self-no-shield" }] }, { "rule": "lowest-hp-ally", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }] }] }
+Reason: **self-if-enemy-targeting** is wrong here; use **self** with gates. Pair with **flash-heal** first step \`{ "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.6 }\` for triage.
 
 WRONG 5 (Priest) - emergency triage replaces entire flash-heal or duplicates priority:
 Player (existing): flash-heal has self-hp-below 0.6 and targetRules [self-if-enemy-targeting, tank step...]; skillPriority ["flash-heal","power-word-shield"]
@@ -192,7 +203,6 @@ Player (Priest, combined triage + shield/heal branches — reference shape):
 (1) Party anyone HP<30%: flash-heal lowest. (2) If monsters target priest: PWS self when priest HP>60% and no shield; else flash-heal self when priest HP<60%. (3) If no monster targets priest: PWS tank when tank HP>70% and no shield; else flash-heal tank when tank HP<70%.
 Output: {
   "skillPriority": ["flash-heal", "power-word-shield"],
-  "targetRule": "lowest-hp",
   "conditions": [
     { "skillId": "flash-heal", "targetRules": [
       { "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.3 },
@@ -202,10 +212,12 @@ Output: {
     { "skillId": "power-word-shield", "targetRules": [
       { "rule": "self-if-enemy-targeting", "whenAll": [{ "when": "self-hp-above", "value": 0.6 }, { "when": "self-no-shield" }] },
       { "rule": "tank", "whenAll": [{ "when": "tank-hp-above", "value": 0.7 }, { "when": "tank-no-shield" }, { "when": "enemy-not-targeting-self" }] }
-    ]}
+    ]},
+    { "skillId": "basic-attack", "targetRule": "lowest-hp" }
   ],
   "explanation": "..."
 }
+Note: For Priest do **not** set global \`targetRule: "lowest-hp"\` (invalid); put **lowest-hp** on **basic-attack** in **conditions**. Here **self-if-enemy-targeting** on PWS is correct because this scenario explicitly branches on **whether monsters target the priest**.
 
 WRONG 4 (Priest) - putting "tank low HP heal" on shield instead of flash-heal:
 Player: "坦克血量低于70%时对坦克施放治疗，否则套盾" or similar where **治疗** = heal at low tank HP
@@ -597,6 +609,46 @@ function supplementPriestFlashHealTankHealWhenNoEnemyOnSelf(userInput, condition
 }
 
 /**
+ * When the model outputs self-if-enemy-targeting with self-hp-above + self-no-shield, that shape
+ * matches "shield self when party is healthy" — use rule "self", not "only when targeted".
+ * If the player text mentions being targeted / threat, keep self-if-enemy-targeting.
+ * @param {string|undefined} userInput
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function fixPriestPwsSelfTargetingWhenNoThreatInUserText(userInput, conditions, warnings) {
+  if (!userInput || typeof userInput !== 'string') return
+  const t = userInput.replace(/\s/g, '')
+  const userMentionsThreat =
+    /\u76ef\u4e0a|\u76ef\u6211|\u6253\u6211|\u654c\u4eba[^。\n]{0,12}(\u7684)?\u76ee\u6807[^。\n]{0,8}\u662f\u81ea\u5df1|\u76ee\u6807[^。\n]{0,12}\u654c\u4eba[^。\n]{0,12}\u81ea\u5df1|\u6709[^。\n]{0,8}\u654c\u4eba[^。\n]{0,12}\u76ee\u6807[^。\n]{0,8}\u81ea\u5df1|\u88ab\u654c\u4eba|\u88ab\u602a[^。\n]{0,6}(\u6253|\u76ef|\u653b\u51fb)|\u6211[^。\n]{0,6}\u88ab[^。\n]{0,8}(\u6253|\u76ef|\u653b\u51fb)|\u4ec7\u6068[^。\n]{0,12}\u81ea\u5df1/.test(
+      t,
+    )
+  if (userMentionsThreat) return
+
+  const pw = conditions.find((c) => c.skillId === 'power-word-shield')
+  if (!pw?.targetRules?.length) return
+
+  let changed = false
+  pw.targetRules = pw.targetRules.map((step) => {
+    if (typeof step !== 'object' || step === null || step.rule !== 'self-if-enemy-targeting') {
+      return step
+    }
+    const wa = step.whenAll
+    if (!Array.isArray(wa)) return step
+    const hasSelfHpAbove = wa.some((w) => w?.when === 'self-hp-above')
+    const hasSelfNoShield = wa.some((w) => w?.when === 'self-no-shield')
+    if (!hasSelfHpAbove || !hasSelfNoShield) return step
+    changed = true
+    return { ...step, rule: 'self' }
+  })
+  if (changed) {
+    warnings.push(
+      '已修正：真言术：盾「自身」步骤误用了「仅当被敌人盯上」；原文未要求被盯上时才套盾，已改为普通「自身」目标规则。',
+    )
+  }
+}
+
+/**
  * Validate and sanitize AI output against known enums.
  * @param {Object} raw - Parsed JSON from AI
  * @param {string[]} skillIds - Hero's available skill IDs
@@ -631,8 +683,11 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   }
 
   let targetRule = raw.targetRule || null
+  const priestConvertLowestHpGlobal = heroClass === 'Priest' && targetRule === 'lowest-hp'
   if (targetRule && !validTargetRules.has(targetRule)) {
-    warnings.push(`默认目标规则「${targetRule}」无效，已忽略`)
+    if (!priestConvertLowestHpGlobal) {
+      warnings.push(`默认目标规则「${targetRule}」无效，已忽略`)
+    }
     targetRule = null
   }
 
@@ -722,6 +777,15 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
 
   if (heroClass === 'Priest') {
     supplementPriestFlashHealTankHealWhenNoEnemyOnSelf(userInput, conditions, warnings)
+    fixPriestPwsSelfTargetingWhenNoThreatInUserText(userInput, conditions, warnings)
+    if (priestConvertLowestHpGlobal) {
+      if (!conditions.some((c) => c.skillId === 'basic-attack')) {
+        conditions.push({ skillId: 'basic-attack', targetRule: 'lowest-hp' })
+      }
+      warnings.push(
+        '已转换：牧师顶层不能使用「血量最低敌人」；已写入「普通攻击」的敌人目标规则（与技能优先级中的普攻兜底一致）。',
+      )
+    }
   }
 
   if (heroClass === 'Priest' && conditions.length > 0) {
