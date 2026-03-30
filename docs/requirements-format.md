@@ -811,7 +811,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | An equipment item has dropped (visible in combat log) | Player clicks or interacts with the item entry | An item detail modal opens showing: base name, quality color, slot (e.g., "Helm"), level requirement, attribute requirements, and the affix list |
-| AC2 | Player views a Magic (blue) item with a "+Armor" prefix | Player inspects the item | The affix line shows something like `Sturdy — +7 Armor [+5~18]`; player can judge it is a mid roll (7 out of 18) |
+| AC2 | Player views a Magic (blue) item with a "+Armor" prefix | Player inspects the item | The affix line shows something like `坚固 — +7 护甲 [+5~18]`; player can judge it is a mid roll (7 out of 18) |
 | AC3 | Player views a Rare (yellow) item with 4 affixes | Player inspects the item | All 4 affixes are listed, each showing current rolled value and base range; Prefix and Suffix are labeled separately |
 | AC4 | Player views a Unique item | Player inspects the item | Fixed affix values are shown with their names; no roll range brackets are shown (values never change for Unique items) |
 | AC5 | Item has level requirement 12 and the hero is level 8 | Player inspects the item | Level requirement is displayed in red, indicating it cannot be equipped yet |
@@ -980,22 +980,22 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 **Design Reference (from design doc)**
 
-- **White (Normal)**: Base name only (e.g., Cap, Leather Armor, Short Bow).
-- **Blue (Magic)**: Prefix + base + suffix; 1 affix: prefix+base or base+suffix; 2 affixes: prefix+base+of+suffix.
-- **Yellow (Rare)**: Primary prefix + base + primary suffix + ", the [Epithet]"; primary affixes = highest-tier prefix and suffix; epithet from a pool (Veteran, Champion, Glory, Bane, etc.).
+- **White (Normal)**: Base name only (e.g., 便帽, 皮甲).
+- **Blue (Magic)**: Prefix+base / base·suffix / prefix+base·suffix (middle dot; Chinese affix names).
+- **Yellow (Rare)**: Primary prefix + base · primary suffix + Chinese comma + epithet; primary affixes = highest-tier prefix and suffix; epithet from a pool (老兵, 冠军, 荣光, etc.).
 - **Unique**: Fixed preset name.
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | A Normal (white) item drops or is displayed | Item name is shown | The displayed name is the base name only (e.g., "Cap", "Leather Armor", "Short Bow"); no prefix or suffix |
-| AC2 | A Magic (blue) item has 1 prefix and 0 suffix | Item name is displayed | Format: `Prefix Base` (e.g., "Sturdy Cap", "Mighty Long Sword") |
-| AC3 | A Magic (blue) item has 0 prefix and 1 suffix | Item name is displayed | Format: `Base of Suffix` (e.g., "Cap of the Bear", "Long Sword of Striking") |
-| AC4 | A Magic (blue) item has 1 prefix and 1 suffix | Item name is displayed | Format: `Prefix Base of Suffix` (e.g., "Sturdy Cap of the Bear"); name appears in combat log, inventory, and item detail |
-| AC5 | A Rare (yellow) item has 3–6 affixes | Item name is displayed | Format: `PrimaryPrefix Base of PrimarySuffix, the [Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., Veteran, Champion, Glory) |
-| AC6 | A Rare (yellow) item is displayed | Player views the name | The name ends with ", the [Epithet]" (e.g., "Mighty Crown of the Titan, the Veteran"); clearly distinguishes from blue items which have no epithet |
-| AC7 | A Rare (yellow) item drops | Item is generated | The epithet is chosen from the configurable pool (Veteran, Champion, Glory, Bane, Favor, Warden, Sage, Storm, Flame, Frost, etc.); each yellow item gets exactly one epithet |
+| AC1 | A Normal (white) item drops or is displayed | Item name is shown | The displayed name is the base name only (e.g., "便帽", "皮甲"); no prefix or suffix |
+| AC2 | A Magic (blue) item has 1 prefix and 0 suffix | Item name is displayed | Format: `Prefix+Base` (e.g., "坚固便帽", "强力长剑") |
+| AC3 | A Magic (blue) item has 0 prefix and 1 suffix | Item name is displayed | Format: `Base·Suffix` (e.g., "便帽·熊之", "长剑·打击之") |
+| AC4 | A Magic (blue) item has 1 prefix and 1 suffix | Item name is displayed | Format: `Prefix+Base·Suffix` (e.g., "坚固便帽·熊之"); name appears in combat log, inventory, and item detail |
+| AC5 | A Rare (yellow) item has 3–6 affixes | Item name is displayed | Format: `PrimaryPrefix+Base·PrimarySuffix，[Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., 老兵, 冠军, 荣光) |
+| AC6 | A Rare (yellow) item is displayed | Player views the name | The name ends with `，[Epithet]` (e.g., "强力王冠·泰坦之，老兵"); clearly distinguishes from blue items which have no epithet |
+| AC7 | A Rare (yellow) item drops | Item is generated | The epithet is chosen from the configurable pool (老兵, 冠军, 荣光, 灾厄, 恩惠, 守御, 贤者, 风暴, 烈焰, 寒霜, etc.); each yellow item gets exactly one epithet |
 | AC8 | A Unique item is displayed | Item name is shown | The name is the fixed preset name for that Unique; it does not change based on affixes (affixes are predetermined) |
 | AC9 | Player views an item in combat log, inventory, or hero equipment slot | Item is displayed | The displayed name follows the above rules for the item's quality; color and name format together indicate quality and affix count |
 

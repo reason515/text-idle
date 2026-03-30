@@ -1569,13 +1569,23 @@ const TACTICS_TARGET_OPTIONS_ALLY = [
   { value: 'self', label: '自身' },
 ]
 
+const AFFIX_STAT_LABELS = {
+  armor: '\u62a4\u7532',
+  resistance: '\u6297\u6027',
+  strength: '\u529b\u91cf',
+  agility: '\u654f\u6377',
+  intellect: '\u667a\u529b',
+  stamina: '\u8010\u529b',
+  spirit: '\u7cbe\u795e',
+}
 function formatAffixStat(stat) {
   if (!stat) return ''
-  return stat.charAt(0).toUpperCase() + stat.slice(1)
+  return AFFIX_STAT_LABELS[stat] ?? stat
 }
 function formatAffixDisplayName(name) {
   if (!name) return ''
-  return name.startsWith('of ') ? name.slice(3) : name
+  if (name.startsWith('of ')) return name.slice(3)
+  return name
 }
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'

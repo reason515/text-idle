@@ -209,52 +209,65 @@ describe('equipment', () => {
 
   describe('formatItemDisplayName', () => {
     it('returns base name for Normal quality', () => {
-      expect(formatItemDisplayName({ baseName: 'Cap', quality: QUALITY_NORMAL })).toBe('Cap')
+      expect(formatItemDisplayName({ baseName: '\u4fbf\u5e3d', quality: QUALITY_NORMAL })).toBe(
+        '\u4fbf\u5e3d'
+      )
     })
 
-    it('returns Prefix Base for Magic with 1 prefix', () => {
+    it('returns Prefix+Base for Magic with 1 prefix', () => {
       expect(
         formatItemDisplayName({
-          baseName: 'Cap',
+          baseName: '\u4fbf\u5e3d',
           quality: QUALITY_MAGIC,
-          prefixes: [{ name: 'Sturdy' }],
+          prefixes: [{ name: '\u575a\u56fa' }],
           suffixes: [],
         })
-      ).toBe('Sturdy Cap')
+      ).toBe('\u575a\u56fa\u4fbf\u5e3d')
     })
 
-    it('returns Base of Suffix for Magic with 1 suffix', () => {
+    it('returns Base+dot+Suffix for Magic with 1 suffix (legacy of-English)', () => {
       expect(
         formatItemDisplayName({
-          baseName: 'Cap',
+          baseName: '\u4fbf\u5e3d',
           quality: QUALITY_MAGIC,
           prefixes: [],
           suffixes: [{ name: 'of the Bear' }],
         })
-      ).toBe('Cap of the Bear')
+      ).toBe('\u4fbf\u5e3d\u00b7the Bear')
     })
 
-    it('returns Prefix Base of Suffix for Magic with both', () => {
+    it('returns Prefix+Base+dot+Suffix for Magic with both (Chinese)', () => {
       expect(
         formatItemDisplayName({
-          baseName: 'Cap',
+          baseName: '\u4fbf\u5e3d',
           quality: QUALITY_MAGIC,
-          prefixes: [{ name: 'Sturdy' }],
-          suffixes: [{ name: 'of the Bear' }],
+          prefixes: [{ name: '\u575a\u56fa' }],
+          suffixes: [{ name: '\u718a\u4e4b' }],
         })
-      ).toBe('Sturdy Cap of the Bear')
+      ).toBe('\u575a\u56fa\u4fbf\u5e3d\u00b7\u718a\u4e4b')
     })
 
-    it('returns PrimaryPrefix Base of PrimarySuffix, the Epithet for Rare', () => {
+    it('returns stem+pause+epithet for Rare (Chinese)', () => {
       expect(
         formatItemDisplayName({
-          baseName: 'Crown',
+          baseName: '\u738b\u51a0',
           quality: QUALITY_RARE,
-          prefixes: [{ name: 'Mighty' }],
-          suffixes: [{ name: 'of the Titan' }],
-          epithet: 'Veteran',
+          prefixes: [{ name: '\u5f3a\u529b' }],
+          suffixes: [{ name: '\u6cf0\u5766\u4e4b' }],
+          epithet: '\u8001\u5175',
         })
-      ).toBe('Mighty Crown of the Titan, the Veteran')
+      ).toBe('\u5f3a\u529b\u738b\u51a0\u00b7\u6cf0\u5766\u4e4b\uff0c\u8001\u5175')
+    })
+
+    it('inserts space between Latin prefix and base (legacy stored items)', () => {
+      expect(
+        formatItemDisplayName({
+          baseName: 'Ring',
+          quality: QUALITY_MAGIC,
+          prefixes: [{ name: 'Strong' }],
+          suffixes: [],
+        })
+      ).toBe('Strong Ring')
     })
   })
 

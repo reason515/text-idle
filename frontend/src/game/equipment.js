@@ -45,34 +45,45 @@ const QUALITY_SHOP_RARE = 0.15
 
 /** Affix pools: { id, name, type: 'prefix'|'suffix', tier: 'normal'|'exceptional'|'elite', baseMin, baseMax } */
 const AFFIX_POOL = [
-  { id: 'sturdy', name: 'Sturdy', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'armor' },
-  { id: 'fortified', name: 'Fortified', type: 'prefix', tier: 'exceptional', baseMin: 5, baseMax: 12, stat: 'armor' },
-  { id: 'armored', name: 'Armored', type: 'prefix', tier: 'elite', baseMin: 12, baseMax: 24, stat: 'armor' },
-  { id: 'warding', name: 'Warding', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'resistance' },
-  { id: 'shielding', name: 'Shielding', type: 'prefix', tier: 'exceptional', baseMin: 5, baseMax: 12, stat: 'resistance' },
-  { id: 'warded', name: 'Warded', type: 'prefix', tier: 'elite', baseMin: 12, baseMax: 24, stat: 'resistance' },
-  { id: 'mighty', name: 'Mighty', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'strength' },
-  { id: 'strong', name: 'Strong', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'strength' },
-  { id: 'titan', name: 'Titan', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'strength' },
-  { id: 'swift', name: 'Swift', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'agility' },
-  { id: 'nimble', name: 'Nimble', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'agility' },
-  { id: 'eagle', name: 'Eagle', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'agility' },
-  { id: 'sage', name: 'Sage', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'intellect' },
-  { id: 'scholar', name: 'Scholar', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'intellect' },
-  { id: 'archmage', name: 'Archmage', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'intellect' },
-  { id: 'of-the-bear', name: 'of the Bear', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'strength' },
-  { id: 'of-the-titan', name: 'of the Titan', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'strength' },
-  { id: 'of-striking', name: 'of Striking', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'agility' },
-  { id: 'of-the-tiger', name: 'of the Tiger', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'agility' },
-  { id: 'of-the-owl', name: 'of the Owl', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'intellect' },
-  { id: 'of-the-mage', name: 'of the Mage', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'intellect' },
-  { id: 'of-stamina', name: 'of Stamina', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 4, stat: 'stamina' },
-  { id: 'of-vitality', name: 'of Vitality', type: 'suffix', tier: 'exceptional', baseMin: 4, baseMax: 10, stat: 'stamina' },
-  { id: 'of-spirit', name: 'of Spirit', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'spirit' },
+  { id: 'sturdy', name: '\u575a\u56fa', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'armor' },
+  { id: 'fortified', name: '\u5f3a\u5316', type: 'prefix', tier: 'exceptional', baseMin: 5, baseMax: 12, stat: 'armor' },
+  { id: 'armored', name: '\u91cd\u7532', type: 'prefix', tier: 'elite', baseMin: 12, baseMax: 24, stat: 'armor' },
+  { id: 'warding', name: '\u9632\u62a4', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'resistance' },
+  { id: 'shielding', name: '\u5c4f\u969c', type: 'prefix', tier: 'exceptional', baseMin: 5, baseMax: 12, stat: 'resistance' },
+  { id: 'warded', name: '\u7ed3\u754c', type: 'prefix', tier: 'elite', baseMin: 12, baseMax: 24, stat: 'resistance' },
+  { id: 'mighty', name: '\u5f3a\u529b', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'strength' },
+  { id: 'strong', name: '\u5f3a\u5065', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'strength' },
+  { id: 'titan', name: '\u6cf0\u5766', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'strength' },
+  { id: 'swift', name: '\u8fc5\u6377', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'agility' },
+  { id: 'nimble', name: '\u7075\u5de7', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'agility' },
+  { id: 'eagle', name: '\u9e70\u96bc', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'agility' },
+  { id: 'sage', name: '\u667a\u8005', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'intellect' },
+  { id: 'scholar', name: '\u5b66\u8005', type: 'prefix', tier: 'exceptional', baseMin: 4, baseMax: 8, stat: 'intellect' },
+  { id: 'archmage', name: '\u5927\u6cd5\u5e08', type: 'prefix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'intellect' },
+  { id: 'of-the-bear', name: '\u718a\u4e4b', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'strength' },
+  { id: 'of-the-titan', name: '\u6cf0\u5766\u4e4b', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'strength' },
+  { id: 'of-striking', name: '\u6253\u51fb\u4e4b', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'agility' },
+  { id: 'of-the-tiger', name: '\u864e\u4e4b', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'agility' },
+  { id: 'of-the-owl', name: '\u67ad\u4e4b', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'intellect' },
+  { id: 'of-the-mage', name: '\u6cd5\u5e08\u4e4b', type: 'suffix', tier: 'elite', baseMin: 9, baseMax: 15, stat: 'intellect' },
+  { id: 'of-stamina', name: '\u8010\u529b', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 4, stat: 'stamina' },
+  { id: 'of-vitality', name: '\u6d3b\u529b', type: 'suffix', tier: 'exceptional', baseMin: 4, baseMax: 10, stat: 'stamina' },
+  { id: 'of-spirit', name: '\u7cbe\u795e', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'spirit' },
 ]
 
 /** Epithets for Rare items */
-const EPITHET_POOL = ['Veteran', 'Champion', 'Glory', 'Bane', 'Favor', 'Warden', 'Sage', 'Storm', 'Flame', 'Frost']
+const EPITHET_POOL = [
+  '\u8001\u5175',
+  '\u51a0\u519b',
+  '\u8363\u5149',
+  '\u707e\u5384',
+  '\u6069\u60e0',
+  '\u5b88\u5fa1',
+  '\u8d24\u8005',
+  '\u98ce\u66b4',
+  '\u70c8\u7130',
+  '\u5bd2\u971c',
+]
 
 function pickRandom(list, rng) {
   if (!list.length) return null
@@ -513,14 +524,27 @@ export function generateShopItem(slotId, level, rng = Math.random) {
   return generateOneItem(lvl, 'shop', rng, slotOverride, baseKeyOverride)
 }
 
+const CJK_RE = /[\u4e00-\u9fff]/
+
+/** Join prefix + base: no space when either part has CJK (Chinese/Japanese/Korean); space for Latin-only legacy. */
+function joinPrefixBase(pre, base) {
+  if (!pre) return base || ''
+  if (!base) return pre
+  if (CJK_RE.test(pre) || CJK_RE.test(base)) return `${pre}${base}`
+  return `${pre} ${base}`
+}
+
 /**
- * Format item display name per Example 23.
- * White: base only; Blue: Prefix Base / Base of Suffix / Prefix Base of Suffix;
- * Yellow: PrimaryPrefix Base of PrimarySuffix, the [Epithet]
+ * Format item display name per Example 23 (Chinese UI).
+ * White: base only; Blue: Prefix+Base / Base+dot+Suffix / Prefix+Base+dot+Suffix;
+ * Yellow: same stem + pause + epithet (no "the").
  */
 export function formatItemDisplayName(item) {
   if (!item) return ''
   const base = item.baseName || 'Item'
+  const dot = '\u00b7'
+  const pause = '\uff0c'
+  const defaultEpithet = '\u51a0\u519b'
 
   if (item.quality === QUALITY_NORMAL || item.quality === QUALITY_UNIQUE) {
     return base
@@ -529,20 +553,25 @@ export function formatItemDisplayName(item) {
   if (item.quality === QUALITY_MAGIC) {
     const pre = item.prefixes?.[0]?.name
     const suf = item.suffixes?.[0]?.name
-    if (pre && suf) return `${pre} ${base} of ${suf.replace(/^of /, '')}`
-    if (pre) return `${pre} ${base}`
-    if (suf) return `${base} of ${suf.replace(/^of /, '')}`
+    if (pre && suf) return `${joinPrefixBase(pre, base)}${dot}${suf}`
+    if (pre) return joinPrefixBase(pre, base)
+    if (suf) {
+      const sufStem = typeof suf === 'string' && /^of\s+/i.test(suf) ? suf.replace(/^of\s+/i, '') : suf
+      return `${base}${dot}${sufStem}`
+    }
     return base
   }
 
   if (item.quality === QUALITY_RARE) {
     const pre = item.prefixes?.length ? item.prefixes[item.prefixes.length - 1].name : ''
     const suf = item.suffixes?.length ? item.suffixes[item.suffixes.length - 1].name : ''
-    const epithet = item.epithet || 'Champion'
-    if (pre && suf) return `${pre} ${base} of ${suf.replace(/^of /, '')}, the ${epithet}`
-    if (pre) return `${pre} ${base}, the ${epithet}`
-    if (suf) return `${base} of ${suf.replace(/^of /, '')}, the ${epithet}`
-    return `${base}, the ${epithet}`
+    const epithet = item.epithet || defaultEpithet
+    const sufStem =
+      typeof suf === 'string' && /^of\s+/i.test(suf) ? suf.replace(/^of\s+/i, '') : suf
+    if (pre && suf) return `${joinPrefixBase(pre, base)}${dot}${sufStem}${pause}${epithet}`
+    if (pre) return `${joinPrefixBase(pre, base)}${pause}${epithet}`
+    if (suf) return `${base}${dot}${sufStem}${pause}${epithet}`
+    return `${base}${pause}${epithet}`
   }
 
   return base
