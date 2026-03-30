@@ -1,7 +1,7 @@
 /**
  * Primary attribute tooltips for hero detail: purpose + class-specific formulas (matches heroes.js / combat).
  */
-import { CLASS_COEFFICIENTS, LEVEL_HP_PER_LEVEL, LEVEL_MP_PER_LEVEL } from '../data/heroes.js'
+import { CLASS_COEFFICIENTS, LEVEL_HP_PER_LEVEL, LEVEL_MP_PER_LEVEL, STRENGTH_TO_ARMOR_K } from '../data/heroes.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
 import { formatSecondaryFormulaTip } from './formulaTip.js'
 
@@ -29,13 +29,9 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
   switch (attrKey) {
     case 'strength': {
       const lines = [
-        '<span class="tip-purpose">力量：提升护甲（若本职业有护甲系数），并参与物理伤害倍率中的 baseAttr（力敏混合）。</span>',
+        '<span class="tip-purpose">力量：提升护甲（全职业统一 STR→护甲 系数），并参与物理伤害倍率中的 baseAttr（力敏混合）。</span>',
       ]
-      if (c.k_Armor != null) {
-        lines.push(fmt(`护甲基础 = Str * ${c.k_Armor} + 装备护甲`))
-      } else {
-        lines.push('<span class="tip-muted">本职业：力量不转化为面板护甲。</span>')
-      }
+      lines.push(fmt(`护甲基础 = Str * ${STRENGTH_TO_ARMOR_K} + 装备护甲`))
       if (c.physAtkAttr === 'strength') {
         const baseAttrLine =
           heroClass === 'Warrior' ? 'baseAttr = Str * 0.8 + Agi * 0.6' : 'baseAttr = Str * 1.4 + Agi * 0.6'

@@ -107,7 +107,7 @@ describe('heroes', () => {
   })
 
   describe('computeHeroArmor and computeHeroResistance', () => {
-    it('returns armor from Str * k_Armor for Warrior', () => {
+    it('returns armor from Str * STRENGTH_TO_ARMOR_K for Warrior', () => {
       expect(computeHeroArmor({ class: 'Warrior', strength: 10 })).toBe(7)
       expect(computeHeroArmor({ class: 'Warrior', strength: 0 })).toBe(0)
     })
@@ -117,8 +117,8 @@ describe('heroes', () => {
       expect(computeHeroArmor(hero)).toBe(7 + 5)
     })
 
-    it('returns 0 armor for Priest (no k_Armor)', () => {
-      expect(computeHeroArmor({ class: 'Priest', strength: 10 })).toBe(0)
+    it('returns same Str armor scaling for Priest as other classes', () => {
+      expect(computeHeroArmor({ class: 'Priest', strength: 10 })).toBe(7)
     })
 
     it('returns resistance from Int * k_Resistance for Mage', () => {
@@ -166,7 +166,7 @@ describe('heroes', () => {
       expect(values.Resistance).toBe(7.9) // 11*0.72
       expect(values.SpellCrit).toBe(10.9) // 5 + 11*0.54
       expect(values.PhysAtk).toBe('-')
-      expect(values.Armor).toBe('-')
+      expect(values.Armor).toBe(1.4) // 2*0.72
     })
 
     it('returns both PhysAtk and SpellPower for Paladin at Lv1', () => {
@@ -305,7 +305,7 @@ describe('heroes', () => {
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(5)
       expect(pMax).toBe(19)
-      expect(values.Armor).toBe(0.9) // 5*0.18
+      expect(values.Armor).toBe(3.6) // 5*0.72
       expect(values.Resistance).toBe(0.8) // 3*0.27
       expect(values.PhysCrit).toBe(11.9) // 5 + 11*0.63
       expect(values.Dodge).toBe(10) // 5 + 11*0.45
@@ -325,7 +325,7 @@ describe('heroes', () => {
       const [spMinD, spMaxD] = values.SpellPower.split('-').map(Number)
       expect(spMinD).toBe(4)
       expect(spMaxD).toBe(16)
-      expect(values.Armor).toBe(1.4) // 4*0.36
+      expect(values.Armor).toBe(2.9) // 4*0.72
       expect(values.Resistance).toBe(4.3) // 8*0.54
       expect(values.PhysCrit).toBe(9.3) // 5 + 8*0.54
       expect(values.SpellCrit).toBe(8.6) // 5 + 8*0.45
@@ -342,7 +342,7 @@ describe('heroes', () => {
       expect(spMaxW).toBe(17)
       expect(values.SpellCrit).toBe(10.4) // 5 + 10*0.54
       expect(values.PhysAtk).toBe('-')
-      expect(values.Armor).toBe('-')
+      expect(values.Armor).toBe(1.4) // 2*0.72
     })
 
     it('returns correct values for Hunter (physical ranged) at Lv1', () => {
@@ -352,7 +352,7 @@ describe('heroes', () => {
       const [pMinH, pMaxH] = values.PhysAtk.split('-').map(Number)
       expect(pMinH).toBe(4)
       expect(pMaxH).toBe(18)
-      expect(values.Armor).toBe(1.4) // 5*0.27
+      expect(values.Armor).toBe(3.6) // 5*0.72
       expect(values.Resistance).toBe(1.1) // 4*0.27
       expect(values.PhysCrit).toBe(10.4) // 5 + 10*0.54
       expect(values.MP).toBeUndefined()
@@ -385,7 +385,7 @@ describe('heroes', () => {
       const [spMinS, spMaxS] = values.SpellPower.split('-').map(Number)
       expect(spMinS).toBe(4)
       expect(spMaxS).toBe(15)
-      expect(values.Armor).toBe(1.1) // 4*0.27
+      expect(values.Armor).toBe(2.9) // 4*0.72
       expect(values.Resistance).toBe(3.8) // 7*0.54
       expect(values.PhysCrit).toBe(8.2) // 5 + 7*0.45
       expect(values.SpellCrit).toBe(8.2) // 5 + 7*0.45

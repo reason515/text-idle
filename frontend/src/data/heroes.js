@@ -46,21 +46,28 @@ export const LEVEL_HP_PER_LEVEL = 1.5
 export const LEVEL_MP_PER_LEVEL = 0.75
 
 /**
+ * Strength to armor: same for all classes (design: low-Str casters are already low; no extra per-class penalty).
+ * Former Warrior k_Armor; matches small-number table * 0.9 scale.
+ */
+export const STRENGTH_TO_ARMOR_K = 0.72
+
+/**
  * Class coefficients for secondary attribute formulas (design doc 2.2.2).
  * k_* values are base design * 0.9 (small-number rebalance with 3 pts/level).
- * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Armor, k_Resistance, k_PhysCrit, k_SpellCrit, k_Dodge
+ * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Resistance, k_PhysCrit, k_SpellCrit, k_Dodge
+ * Armor from strength uses STRENGTH_TO_ARMOR_K (not per-class).
  * null/- means class does not use that attribute
  */
 export const CLASS_COEFFICIENTS = {
-  Warrior: { k_HP: 3.6, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.585, k_SpellPower: null, k_Armor: 0.72, k_Resistance: 0.27, k_PhysCrit: 0.27, k_SpellCrit: null, k_Dodge: 0.18 },
-  Paladin: { k_HP: 3.15, k_MP: 1.98, physAtkAttr: 'strength', k_PhysAtk: 0.405, k_SpellPower: 0.405, k_Armor: 0.54, k_Resistance: 0.54, k_PhysCrit: 0.27, k_SpellCrit: 0.36, k_Dodge: 0.18 },
-  Priest: { k_HP: 2.25, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
-  Druid: { k_HP: 2.88, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: 0.405, k_Armor: 0.36, k_Resistance: 0.54, k_PhysCrit: 0.54, k_SpellCrit: 0.45, k_Dodge: 0.36 },
-  Mage: { k_HP: 1.8, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
-  Rogue: { k_HP: 2.52, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.495, k_SpellPower: null, k_Armor: 0.18, k_Resistance: 0.27, k_PhysCrit: 0.63, k_SpellCrit: null, k_Dodge: 0.45 },
-  Hunter: { k_HP: 2.7, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: null, k_Armor: 0.27, k_Resistance: 0.27, k_PhysCrit: 0.54, k_SpellCrit: null, k_Dodge: 0.36 },
-  Warlock: { k_HP: 2.52, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
-  Shaman: { k_HP: 2.7, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.36, k_SpellPower: 0.405, k_Armor: 0.27, k_Resistance: 0.54, k_PhysCrit: 0.45, k_SpellCrit: 0.45, k_Dodge: 0.27 },
+  Warrior: { k_HP: 3.6, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.585, k_SpellPower: null, k_Resistance: 0.27, k_PhysCrit: 0.27, k_SpellCrit: null, k_Dodge: 0.18 },
+  Paladin: { k_HP: 3.15, k_MP: 1.98, physAtkAttr: 'strength', k_PhysAtk: 0.405, k_SpellPower: 0.405, k_Resistance: 0.54, k_PhysCrit: 0.27, k_SpellCrit: 0.36, k_Dodge: 0.18 },
+  Priest: { k_HP: 2.25, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Druid: { k_HP: 2.88, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: 0.405, k_Resistance: 0.54, k_PhysCrit: 0.54, k_SpellCrit: 0.45, k_Dodge: 0.36 },
+  Mage: { k_HP: 1.8, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Rogue: { k_HP: 2.52, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.495, k_SpellPower: null, k_Resistance: 0.27, k_PhysCrit: 0.63, k_SpellCrit: null, k_Dodge: 0.45 },
+  Hunter: { k_HP: 2.7, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: null, k_Resistance: 0.27, k_PhysCrit: 0.54, k_SpellCrit: null, k_Dodge: 0.36 },
+  Warlock: { k_HP: 2.52, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Shaman: { k_HP: 2.7, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.36, k_SpellPower: 0.405, k_Resistance: 0.54, k_PhysCrit: 0.45, k_SpellCrit: 0.45, k_Dodge: 0.27 },
 }
 
 /**
@@ -92,13 +99,11 @@ export function computeHeroMaxHP(hero) {
   return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * LEVEL_HP_PER_LEVEL)
 }
 
-/** Armor for combat: Str * k_Armor + equipment armor. Returns 0 if class has no k_Armor. */
+/** Armor for combat: round(Str * STRENGTH_TO_ARMOR_K) + equipment armor (all classes). */
 export function computeHeroArmor(hero) {
   const attrs = getEffectiveAttrs(hero)
   const eq = getEquipmentBonuses(hero?.equipment)
-  const coef = CLASS_COEFFICIENTS[hero?.class] || {}
-  const k = coef.k_Armor ?? 0
-  return Math.round(attrs.strength * k) + eq.armor
+  return Math.round(attrs.strength * STRENGTH_TO_ARMOR_K) + eq.armor
 }
 
 /** Spell damage multiplier base attr: Int*1.2 + Spirit*0.8. Design 2.2.3.1. */
@@ -303,15 +308,12 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA
   }
 
-  // Armor (base + equipment)
-  if (coef.k_Armor != null) {
-    const baseArmor = attrs.strength * coef.k_Armor
+  // Armor (base + equipment): universal STRENGTH_TO_ARMOR_K
+  {
+    const baseArmor = attrs.strength * STRENGTH_TO_ARMOR_K
     values.Armor = Math.round((baseArmor + eq.armor) * 10) / 10
-    const baseFormula = formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, null)
-    formulaMap.Armor = eq.armor ? fmtFormula(baseFormula + ` + EQP(+${eq.armor}) = ${values.Armor}`) : fmtFormula(formulaWithValues(`Str * ${coef.k_Armor}`, attrs, level, values.Armor))
-  } else {
-    values.Armor = eq.armor || NA
-    formulaMap.Armor = eq.armor ? `EQP: +${eq.armor}` : NA
+    const baseFormula = formulaWithValues(`Str * ${STRENGTH_TO_ARMOR_K}`, attrs, level, null)
+    formulaMap.Armor = eq.armor ? fmtFormula(baseFormula + ` + EQP(+${eq.armor}) = ${values.Armor}`) : fmtFormula(formulaWithValues(`Str * ${STRENGTH_TO_ARMOR_K}`, attrs, level, values.Armor))
   }
 
   // Resistance (base + equipment)
