@@ -191,6 +191,25 @@ describe('combat progression and systems', () => {
     }
   })
 
+  it('elwynn L1 normal Young Wolf: maxHP ~25 after tier and level factor', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    expect(template.id).toBe('young-wolf')
+    const m = createMonster(template, { tier: 'normal', level: 1 })
+    expect(m.maxHP).toBe(25)
+  })
+
+  it('elwynn normal: L3 vs L1 gains at least +6 HP (early level scaling)', () => {
+    const pool = MAP_MONSTER_POOLS['elwynn-forest']
+    const youngWolf = pool.normal[0]
+    const trapper = pool.normal.find((t) => t.id === 'defias-trapper')
+    const w1 = createMonster(youngWolf, { tier: 'normal', level: 1 })
+    const w3 = createMonster(youngWolf, { tier: 'normal', level: 3 })
+    expect(w3.maxHP - w1.maxHP).toBeGreaterThanOrEqual(6)
+    const t1 = createMonster(trapper, { tier: 'normal', level: 1 })
+    const t3 = createMonster(trapper, { tier: 'normal', level: 3 })
+    expect(t3.maxHP - t1.maxHP).toBeGreaterThanOrEqual(6)
+  })
+
   it('buildEncounterMonsters: same-type monsters at different levels have different stats', () => {
     const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
     const low = createMonster(template, { tier: 'normal', level: 1 })
@@ -199,7 +218,7 @@ describe('combat progression and systems', () => {
     expect(high.physAtk).toBeGreaterThan(low.physAtk)
   })
 
-  it('monster level scaling: early segment is mild (L5 vs L1); L15 vs L1 catches up', () => {
+  it('monster level scaling: L5 and L15 vs L1; PF(60) matches linear ref', () => {
     const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
     const l1 = createMonster(template, { tier: 'normal', level: 1 })
     const l5 = createMonster(template, { tier: 'normal', level: 5 })

@@ -174,31 +174,31 @@ Resistance         = Base_Resistance * Factor + floor(Level * 0.5)
 **PowerFactor（分段，与「低等级裸装弱、装备成型后更强」对齐）**：实现见 `frontend/src/game/combat.js` 中 `monsterPowerFactorFromLevel`。
 
 - 参考线性强度：`LevelRef = 0.096`（由旧 `0.16` 按每级 **3** 点自由属性相对旧 **5** 点折算：`0.16 × 3/5`）。
-- **前段（Level ≤ 10）**：`PowerFactor = 1 + Level × (LevelRef × 0.5)`，前期怪物相对更弱。
-- **后段（Level > 10）**：从上一段在 Level=10 处的值起，用斜率 `LevelLate` 线性延伸，使 **Level=60** 时 `PowerFactor(60) = 1 + 60 × LevelRef`（与「满级若用线性 0.096」同强度）。
+- **前段（Level ≤ 10）**：`PowerFactor = 1 + Level × EarlyScale`，常量 `MONSTER_LEVEL_EARLY_SCALE`（当前约 `0.14`）**高于** `LevelRef×0.5`，使低等级相邻等级之间 HP 增幅更明显（例如普通怪 L1→L3 约 +6~8 HP，接近「每级一点耐力」体感）；导出见 `frontend/src/game/combat.js`。
+- **后段（Level > 10）**：从上一段在 Level=10 处的值起，用斜率 `MONSTER_LEVEL_LATE_SCALE` 线性延伸，使 **Level=60** 时 `PowerFactor(60) = 1 + 60 × LevelRef`（与「满级若用线性 0.096」同强度）。
 
 - **敏捷（出手顺序）**：与 HP/攻击**不同**，敏捷不直接乘完整 `Factor`，而用 `AgilityBlend`（约 0.4）只吸收部分等级与类型带来的强度增长，并乘 `AgilityBaseMult`（约 0.9），避免怪物几乎总先于同等级英雄出手；暴击/闪避仍走英雄侧公式，怪物敏捷主要用于排序。
 - **Armor/Resistance 等级底数**：即使 Base 为 0，高等级怪物也会获得 `floor(Level * 0.5)` 的护甲/抗性，保证随等级合理成长。
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
-| Base_* | 每类怪物的基础值 | 如 Young Wolf: Base_HP=30, Base_PhysAtk=8 |
+| Base_* | 每类怪物的基础值 | 如 Young Wolf: Base_HP=19, Base_PhysAtk=8（见 `MAP_MONSTER_POOLS`） |
 | TierMult | 类型系数：Normal≈1.15, Elite≈1.5, Boss≈2.8（普通怪略强、精英略弱，缩小差距） | 可配置 |
 | Level | 怪物等级（与队伍等级挂钩，单张地图内怪物等级在 [baseLevel+min, baseLevel+max] 范围内随机） | 1–60 |
-| LevelRef / 分段 | 等级内层强度；前缓后陡，满级与线性 `1 + Level × 0.096` 一致 | 导出常量见 `MONSTER_LEVEL_REF_SCALE` 等 |
+| LevelRef / 分段 | 等级内层强度；前段斜率单独可调（`MONSTER_LEVEL_EARLY_SCALE`），满级与线性 `1 + Level × 0.096` 一致 | 导出常量见 `MONSTER_LEVEL_REF_SCALE` 等 |
 | AgilityBlend / AgilityBaseMult | 怪物敏捷相对 HP 的软化系数 | 实现见 `frontend/src/game/combat.js`（`MONSTER_AGILITY_*`） |
 
-- **小数值原则**：1 级普通怪 HP 约 20–50，PhysAtk/SpellPower 约 5–15，与 1 级英雄量级相当；随等级与类型系数放大。
+- **小数值原则**：1 级普通怪 HP 约 20–26（含 Normal TierMult 与模板差异，典型约 25），PhysAtk/SpellPower 约 5–15，与 1 级英雄量级相当；随等级与类型系数放大。
 
-#### 2.3.6 怪物属性示例（1 级普通怪，TierMult=1）
+#### 2.3.6 怪物属性示例（1 级普通怪；实际 HP = Base_HP × TierMult × PowerFactor(1)，非 TierMult=1）
 
-| 怪物 | HP | PhysAtk | SpellPower | Agility | Armor | Resistance | 伤害类型 |
+| 怪物 | HP（约） | PhysAtk | SpellPower | Agility | Armor | Resistance | 伤害类型 |
 |------|-----|---------|------------|---------|-------|------------|----------|
 | Young Wolf | 25 | 8 | 0 | 6 | 2 | 0 | 纯物理 |
 | Kobold Miner | 22 | 6 | 0 | 4 | 1 | 0 | 纯物理 |
-| Kobold Geomancer | 20 | 0 | 10 | 5 | 0 | 3 | 纯魔法 |
-| Defias Trapper | 28 | 7 | 0 | 7 | 2 | 0 | 纯物理 |
+| Defias Trapper | 22 | 7 | 0 | 7 | 2 | 0 | 纯物理 |
 
+- 精英 1 级示例：狗头人地卜师 HP 约 36（同公式，TierMult 更高）。
 - 具体数值以实际平衡为准，此处为量级参考。
 
 ### 2.4 怪物强度调节（可配置化）

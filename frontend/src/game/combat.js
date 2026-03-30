@@ -109,31 +109,31 @@ export const MAP_MONSTER_POOLS = {
         id: 'young-wolf',
         name: '幼狼',
         damageType: 'physical',
-        base: { hp: 40, physAtk: 8, spellPower: 0, agility: 7, armor: 2, resistance: 1 },
+        base: { hp: 19, physAtk: 8, spellPower: 0, agility: 7, armor: 2, resistance: 1 },
       },
       {
         id: 'kobold-miner',
         name: '狗头人矿工',
         damageType: 'physical',
-        base: { hp: 36, physAtk: 7, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
+        base: { hp: 17, physAtk: 7, spellPower: 0, agility: 6, armor: 2, resistance: 1 },
       },
       {
         id: 'defias-trapper',
         name: '迪菲亚捕兽者',
         damageType: 'physical',
-        base: { hp: 34, physAtk: 7, spellPower: 0, agility: 8, armor: 1, resistance: 1 },
+        base: { hp: 17, physAtk: 7, spellPower: 0, agility: 8, armor: 1, resistance: 1 },
       },
       {
         id: 'forest-spider',
         name: '森林蜘蛛',
         damageType: 'physical',
-        base: { hp: 32, physAtk: 8, spellPower: 0, agility: 9, armor: 1, resistance: 1 },
+        base: { hp: 17, physAtk: 8, spellPower: 0, agility: 9, armor: 1, resistance: 1 },
       },
       {
         id: 'timber-wolf',
         name: '森林狼',
         damageType: 'physical',
-        base: { hp: 38, physAtk: 9, spellPower: 0, agility: 8, armor: 2, resistance: 0 },
+        base: { hp: 19, physAtk: 9, spellPower: 0, agility: 8, armor: 2, resistance: 0 },
       },
     ],
     elite: [
@@ -142,21 +142,21 @@ export const MAP_MONSTER_POOLS = {
         name: '狗头人地卜师',
         damageType: 'magic',
         skill: 'stone-shard',
-        base: { hp: 45, physAtk: 0, spellPower: 10, agility: 7, armor: 2, resistance: 3 },
+        base: { hp: 21, physAtk: 0, spellPower: 10, agility: 7, armor: 2, resistance: 3 },
       },
       {
         id: 'defias-smuggler',
         name: '迪菲亚走私犯',
         damageType: 'mixed',
         skill: 'blackjack',
-        base: { hp: 46, physAtk: 9, spellPower: 7, agility: 8, armor: 2, resistance: 2 },
+        base: { hp: 22, physAtk: 9, spellPower: 7, agility: 8, armor: 2, resistance: 2 },
       },
       {
         id: 'defias-cutpurse',
         name: '迪菲亚盗贼',
         damageType: 'physical',
         skill: 'swift-cut',
-        base: { hp: 42, physAtk: 10, spellPower: 0, agility: 9, armor: 2, resistance: 1 },
+        base: { hp: 20, physAtk: 10, spellPower: 0, agility: 9, armor: 2, resistance: 1 },
       },
     ],
     boss: {
@@ -164,7 +164,7 @@ export const MAP_MONSTER_POOLS = {
       name: '霍格',
       damageType: 'mixed',
         skill: 'rend',
-      base: { hp: 90, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },
+      base: { hp: 43, physAtk: 14, spellPower: 8, agility: 10, armor: 5, resistance: 5 },
     },
     levelRange: { min: -1, max: 2 },
   },
@@ -182,11 +182,15 @@ const TIER_MULTIPLIER = {
  */
 export const MONSTER_LEVEL_REF_SCALE = 0.096
 
-/** Below this level, monster power grows slowly (easier early / low gear). */
+/** Below this level, monster power uses the early per-level slope (see MONSTER_LEVEL_EARLY_SCALE). */
 export const MONSTER_LEVEL_SEGMENT_END = 10
 
-/** Early segment: half the reference slope. */
-const MONSTER_LEVEL_EARLY_SCALE = MONSTER_LEVEL_REF_SCALE * 0.5
+/**
+ * Early-game per-level slope for monster PowerFactor (Level 1..10).
+ * Higher than LevelRef*0.5 so L1->L3 HP gap is ~+6-8 for normal templates (similar to stamina feel);
+ * late segment still pins Level 60 to the linear ref budget.
+ */
+export const MONSTER_LEVEL_EARLY_SCALE = 0.14
 
 /**
  * Late segment slope chosen so Level 60 matches linear ref (1 + 60 * MONSTER_LEVEL_REF_SCALE).
@@ -197,9 +201,9 @@ export const MONSTER_LEVEL_LATE_SCALE =
 
 /**
  * Level-based multiplier for monster HP/PhysAtk/SpellPower/Armor/Res (before tier mult).
- * Segmented: weak early, catches up by max level (design: naked heroes + low-level mobs).
+ * Segmented: meaningful early steps, catches up by max level (Level 60 = linear ref).
  * @param {number} level - Monster level 1..60
- * @returns {number} typically ~1.05 at L1 to ~6.76 at L60 for the inner factor (before TierMult)
+ * @returns {number} typically ~1.14 at L1 to ~6.76 at L60 for the inner factor (before TierMult)
  */
 export function monsterPowerFactorFromLevel(level) {
   const L = Math.max(1, Math.min(60, level))
