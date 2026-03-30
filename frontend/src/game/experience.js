@@ -2,13 +2,13 @@
  * Experience and leveling system.
  * Design doc: XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
  * - XP only on victory; equal share per participating hero
- * - 5 attribute points per level-up; max level 60
+ * - 3 attribute points per level-up; max level 60
  */
 
 export const BASE_XP = 50
 export const CURVE_EXPONENT = 1.8
 export const MAX_LEVEL = 60
-export const POINTS_PER_LEVEL = 5
+export const POINTS_PER_LEVEL = 3
 
 /**
  * XP required to reach the next level from current level.

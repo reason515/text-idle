@@ -9,6 +9,7 @@ import {
   getRecruitLimit,
   getExpansionHeroLevel,
   getExpansionHeroAttributePoints,
+  monsterPowerFactorFromLevel,
   addExplorationProgress,
   deductExplorationProgress,
   unlockNextMapAfterBoss,
@@ -128,12 +129,12 @@ describe('combat progression and systems', () => {
     expect(getExpansionHeroLevel({ unlockedMapCount: 5 })).toBe(20)
   })
 
-  it('Example27: getExpansionHeroAttributePoints returns 20 for Lv5, 45 for Lv10', () => {
+  it('Example27: getExpansionHeroAttributePoints returns 12 for Lv5, 27 for Lv10 (3 per level)', () => {
     expect(getExpansionHeroAttributePoints(1)).toBe(0)
-    expect(getExpansionHeroAttributePoints(5)).toBe(20)
-    expect(getExpansionHeroAttributePoints(10)).toBe(45)
-    expect(getExpansionHeroAttributePoints(15)).toBe(70)
-    expect(getExpansionHeroAttributePoints(20)).toBe(95)
+    expect(getExpansionHeroAttributePoints(5)).toBe(12)
+    expect(getExpansionHeroAttributePoints(10)).toBe(27)
+    expect(getExpansionHeroAttributePoints(15)).toBe(42)
+    expect(getExpansionHeroAttributePoints(20)).toBe(57)
   })
 
   it('Example7: encounter size prefers squad size', () => {
@@ -198,12 +199,14 @@ describe('combat progression and systems', () => {
     expect(high.physAtk).toBeGreaterThan(low.physAtk)
   })
 
-  it('monster level scaling: level 5 vs level 1 has at least 50% stat growth (matches player 5 attr/level)', () => {
+  it('monster level scaling: early segment is mild (L5 vs L1); L15 vs L1 catches up', () => {
     const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
-    const low = createMonster(template, { tier: 'normal', level: 1 })
-    const high = createMonster(template, { tier: 'normal', level: 5 })
-    expect(high.maxHP).toBeGreaterThanOrEqual(low.maxHP * 1.5)
-    expect(high.physAtk).toBeGreaterThanOrEqual(low.physAtk * 1.5)
+    const l1 = createMonster(template, { tier: 'normal', level: 1 })
+    const l5 = createMonster(template, { tier: 'normal', level: 5 })
+    const l15 = createMonster(template, { tier: 'normal', level: 15 })
+    expect(l5.maxHP).toBeGreaterThanOrEqual(l1.maxHP * 1.1)
+    expect(l15.maxHP).toBeGreaterThanOrEqual(l1.maxHP * 1.85)
+    expect(monsterPowerFactorFromLevel(60)).toBeCloseTo(1 + 60 * 0.096, 5)
   })
 
   it('monster Agility scales slower than HP from level (turn-order balance)', () => {
@@ -1021,7 +1024,7 @@ describe('combat progression and systems', () => {
     expect(hResult.heroesAfter[0].maxMP).toBe(100)
 
     const mResult = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5 })
-    expect(mResult.heroesAfter[0].maxMP).toBe(Math.round(5 + 11 * 2.8 + 1 * 1))
+    expect(mResult.heroesAfter[0].maxMP).toBe(Math.round(5 + 11 * 2.52 + 1 * 0.75))
   })
 
   it('Example8: after victory rest phase blocks next combat until fully recovered', () => {

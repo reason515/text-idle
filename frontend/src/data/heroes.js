@@ -41,21 +41,26 @@ export function getInitialAttributes(heroClass) {
   return CLASS_INITIAL_ATTRIBUTES[heroClass] || { strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 }
 }
 
+/** Flat HP/MP per character level (secondary formulas). Tuned with small-number rebalance. */
+export const LEVEL_HP_PER_LEVEL = 1.5
+export const LEVEL_MP_PER_LEVEL = 0.75
+
 /**
- * Class coefficients for secondary attribute formulas (design doc 2.2.2)
+ * Class coefficients for secondary attribute formulas (design doc 2.2.2).
+ * k_* values are base design * 0.9 (small-number rebalance with 3 pts/level).
  * k_HP, k_MP, physAtkAttr, k_PhysAtk, k_SpellPower, k_Armor, k_Resistance, k_PhysCrit, k_SpellCrit, k_Dodge
  * null/- means class does not use that attribute
  */
 export const CLASS_COEFFICIENTS = {
-  Warrior: { k_HP: 4.0, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.65, k_SpellPower: null, k_Armor: 0.8, k_Resistance: 0.3, k_PhysCrit: 0.3, k_SpellCrit: null, k_Dodge: 0.2 },
-  Paladin: { k_HP: 3.5, k_MP: 2.2, physAtkAttr: 'strength', k_PhysAtk: 0.45, k_SpellPower: 0.45, k_Armor: 0.6, k_Resistance: 0.6, k_PhysCrit: 0.3, k_SpellCrit: 0.4, k_Dodge: 0.2 },
-  Priest: { k_HP: 2.5, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Druid: { k_HP: 3.2, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: 0.45, k_Armor: 0.4, k_Resistance: 0.6, k_PhysCrit: 0.6, k_SpellCrit: 0.5, k_Dodge: 0.4 },
-  Mage: { k_HP: 2.0, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Rogue: { k_HP: 2.8, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.55, k_SpellPower: null, k_Armor: 0.2, k_Resistance: 0.3, k_PhysCrit: 0.7, k_SpellCrit: null, k_Dodge: 0.5 },
-  Hunter: { k_HP: 3.0, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.5, k_SpellPower: null, k_Armor: 0.3, k_Resistance: 0.3, k_PhysCrit: 0.6, k_SpellCrit: null, k_Dodge: 0.4 },
-  Warlock: { k_HP: 2.8, k_MP: 2.8, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.65, k_Armor: null, k_Resistance: 0.8, k_PhysCrit: 0.3, k_SpellCrit: 0.6, k_Dodge: 0.2 },
-  Shaman: { k_HP: 3.0, k_MP: 2.2, physAtkAttr: 'agility', k_PhysAtk: 0.4, k_SpellPower: 0.45, k_Armor: 0.3, k_Resistance: 0.6, k_PhysCrit: 0.5, k_SpellCrit: 0.5, k_Dodge: 0.3 },
+  Warrior: { k_HP: 3.6, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.585, k_SpellPower: null, k_Armor: 0.72, k_Resistance: 0.27, k_PhysCrit: 0.27, k_SpellCrit: null, k_Dodge: 0.18 },
+  Paladin: { k_HP: 3.15, k_MP: 1.98, physAtkAttr: 'strength', k_PhysAtk: 0.405, k_SpellPower: 0.405, k_Armor: 0.54, k_Resistance: 0.54, k_PhysCrit: 0.27, k_SpellCrit: 0.36, k_Dodge: 0.18 },
+  Priest: { k_HP: 2.25, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Druid: { k_HP: 2.88, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: 0.405, k_Armor: 0.36, k_Resistance: 0.54, k_PhysCrit: 0.54, k_SpellCrit: 0.45, k_Dodge: 0.36 },
+  Mage: { k_HP: 1.8, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Rogue: { k_HP: 2.52, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.495, k_SpellPower: null, k_Armor: 0.18, k_Resistance: 0.27, k_PhysCrit: 0.63, k_SpellCrit: null, k_Dodge: 0.45 },
+  Hunter: { k_HP: 2.7, k_MP: null, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: null, k_Armor: 0.27, k_Resistance: 0.27, k_PhysCrit: 0.54, k_SpellCrit: null, k_Dodge: 0.36 },
+  Warlock: { k_HP: 2.52, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Armor: null, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
+  Shaman: { k_HP: 2.7, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.36, k_SpellPower: 0.405, k_Armor: 0.27, k_Resistance: 0.54, k_PhysCrit: 0.45, k_SpellCrit: 0.45, k_Dodge: 0.27 },
 }
 
 /**
@@ -75,7 +80,7 @@ export function getEffectiveAttrs(hero) {
 }
 
 /**
- * Compute max HP for a hero using design doc formula: HP = 10 + Stam * k_HP + Level * 2
+ * Compute max HP for a hero using design doc formula: HP = 10 + Stam * k_HP + Level * LEVEL_HP_PER_LEVEL
  * Includes equipment stamina bonus.
  * @param {Object} hero - Hero object with class, stamina, level, equipment
  * @returns {number} Max HP
@@ -84,7 +89,7 @@ export function computeHeroMaxHP(hero) {
   const attrs = getEffectiveAttrs(hero)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k_HP = coef.k_HP ?? 0
-  return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * 2)
+  return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * LEVEL_HP_PER_LEVEL)
 }
 
 /** Armor for combat: Str * k_Armor + equipment armor. Returns 0 if class has no k_Armor. */
@@ -207,15 +212,15 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   const formulaMap = {}
 
   // HP
-  const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * 2
+  const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * LEVEL_HP_PER_LEVEL
   values.HP = Math.round(hp)
-  formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * 2`, attrs, level, values.HP))
+  formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, values.HP))
 
   // Resource (2nd position): MP for mana classes, Rage/Energy/Focus for others
   if (coef.k_MP != null) {
-    const mp = 5 + attrs.intellect * coef.k_MP + level * 1
+    const mp = 5 + attrs.intellect * coef.k_MP + level * LEVEL_MP_PER_LEVEL
     values.MP = Math.round(mp)
-    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * 1`, attrs, level, Math.round(mp))) }
+    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Int * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, Math.round(mp))) }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
     formulaMap.Resource = { key: 'Rage', label: '怒气', value: 100, formula: '固定 100' }

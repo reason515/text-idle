@@ -1,7 +1,7 @@
 /**
  * Primary attribute tooltips for hero detail: purpose + class-specific formulas (matches heroes.js / combat).
  */
-import { CLASS_COEFFICIENTS } from '../data/heroes.js'
+import { CLASS_COEFFICIENTS, LEVEL_HP_PER_LEVEL, LEVEL_MP_PER_LEVEL } from '../data/heroes.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
 import { formatSecondaryFormulaTip } from './formulaTip.js'
 
@@ -85,7 +85,7 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
         '<span class="tip-purpose">智力：影响法力上限（法力职业）、法术伤害 baseAttr、法术抗性、法术暴击（若有系数）。</span>',
       ]
       if (isManaClass) {
-        lines.push(fmt(`法力上限 = 5 + Int * ${c.k_MP} + Level * 1`))
+        lines.push(fmt(`法力上限 = 5 + Int * ${c.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`))
       } else {
         lines.push('<span class="tip-muted">本职业：资源非法力，无此项法力上限公式。</span>')
       }
@@ -118,7 +118,7 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     case 'stamina': {
       const lines = [
         '<span class="tip-purpose">耐力：提升生命值上限（全职业）。</span>',
-        fmt(`生命 = 10 + Stam * ${c.k_HP ?? 0} + Level * 2`),
+        fmt(`生命 = 10 + Stam * ${c.k_HP ?? 0} + Level * ${LEVEL_HP_PER_LEVEL}`),
       ]
       if (equipmentBonus > 0) {
         lines.push(`<span class="tip-equip-label">装备加成该属性:</span> +${equipmentBonus}`)

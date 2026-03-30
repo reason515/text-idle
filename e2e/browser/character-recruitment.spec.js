@@ -81,7 +81,7 @@ async function allocateAttrPoints(page, n) {
 }
 
 /** Recruit an expansion Warrior (Lv5): attr alloc -> initial skill -> level choice -> confirm. */
-async function recruitExpansionWarrior(page, heroName = '\u74e6\u91cc\u5b89', attrPoints = 20) {
+async function recruitExpansionWarrior(page, heroName = '\u74e6\u91cc\u5b89', attrPoints = 12) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
@@ -103,7 +103,7 @@ async function recruitExpansionWarrior(page, heroName = '\u74e6\u91cc\u5b89', at
 }
 
 /** Recruit an expansion hero without initial skill (Hunter, Paladin, Priest, etc.): attr alloc -> confirm. */
-async function recruitExpansionOther(page, heroName, attrPoints = 20) {
+async function recruitExpansionOther(page, heroName, attrPoints = 12) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)
@@ -115,7 +115,7 @@ async function recruitExpansionOther(page, heroName, attrPoints = 20) {
 }
 
 /** Recruit an expansion Mage: same as Warrior but Mage skill options. */
-async function recruitExpansionMage(page, heroName = '\u5409\u5b89\u5a1c', attrPoints = 20) {
+async function recruitExpansionMage(page, heroName = '\u5409\u5b89\u5a1c', attrPoints = 12) {
   await page.getByRole('button', { name: new RegExp(`^${heroName}`) }).click()
   await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 3000 })
   await allocateAttrPoints(page, attrPoints)

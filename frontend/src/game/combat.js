@@ -6,6 +6,7 @@ import {
   getPhysBaseAttr,
   getSpellBaseAttr,
   CLASS_COEFFICIENTS,
+  LEVEL_MP_PER_LEVEL,
 } from '../data/heroes.js'
 import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from './damageUtils.js'
 import {
@@ -175,8 +176,40 @@ const TIER_MULTIPLIER = {
   boss: 2.8,
 }
 
-/** Per-level stat scaling. ~14% per level to match player 5 attr points impact. Was 0.08 (~7%/level). */
-const DEFAULT_LEVEL_SCALE = 0.16
+/**
+ * Reference linear scale if power were 1 + Level * r (matches 3 attr pts/level vs old 0.16 at 5 pts).
+ * Old 0.16 * (3/5) = 0.096 per level toward max level strength budget.
+ */
+export const MONSTER_LEVEL_REF_SCALE = 0.096
+
+/** Below this level, monster power grows slowly (easier early / low gear). */
+export const MONSTER_LEVEL_SEGMENT_END = 10
+
+/** Early segment: half the reference slope. */
+const MONSTER_LEVEL_EARLY_SCALE = MONSTER_LEVEL_REF_SCALE * 0.5
+
+/**
+ * Late segment slope chosen so Level 60 matches linear ref (1 + 60 * MONSTER_LEVEL_REF_SCALE).
+ */
+export const MONSTER_LEVEL_LATE_SCALE =
+  (60 * MONSTER_LEVEL_REF_SCALE - MONSTER_LEVEL_SEGMENT_END * MONSTER_LEVEL_EARLY_SCALE) /
+  (60 - MONSTER_LEVEL_SEGMENT_END)
+
+/**
+ * Level-based multiplier for monster HP/PhysAtk/SpellPower/Armor/Res (before tier mult).
+ * Segmented: weak early, catches up by max level (design: naked heroes + low-level mobs).
+ * @param {number} level - Monster level 1..60
+ * @returns {number} typically ~1.05 at L1 to ~6.76 at L60 for the inner factor (before TierMult)
+ */
+export function monsterPowerFactorFromLevel(level) {
+  const L = Math.max(1, Math.min(60, level))
+  const L0 = MONSTER_LEVEL_SEGMENT_END
+  if (L <= L0) {
+    return 1 + L * MONSTER_LEVEL_EARLY_SCALE
+  }
+  const base = 1 + L0 * MONSTER_LEVEL_EARLY_SCALE
+  return base + (L - L0) * MONSTER_LEVEL_LATE_SCALE
+}
 
 /**
  * Monster Agility (turn order) scales softer than HP/PhysAtk/SpellPower: heroes gain Agi mostly from
@@ -242,13 +275,13 @@ export function getExpansionHeroLevel(progress) {
 
 /**
  * Attribute points to allocate for expansion hero at given level.
- * 5 points per level-up: Lv5 = 20, Lv10 = 45, Lv15 = 70, Lv20 = 95.
+ * 3 points per level-up: Lv5 = 12, Lv10 = 27, Lv15 = 42, Lv20 = 57.
  * @param {number} level - Expansion hero level (5, 10, 15, or 20)
  * @returns {number}
  */
 export function getExpansionHeroAttributePoints(level) {
   if (level <= 1) return 0
-  return 5 * (level - 1)
+  return 3 * (level - 1)
 }
 
 export function addExplorationProgress(progress, killTier) {
@@ -303,9 +336,9 @@ export function generateEncounterSize(squadSize, distribution, rng = Math.random
 export function createMonster(template, options = {}) {
   const tier = options.tier ?? 'normal'
   const level = options.level ?? 1
-  const levelScale = options.levelScale ?? DEFAULT_LEVEL_SCALE
   const multiplier = TIER_MULTIPLIER[tier] ?? 1
-  const factor = multiplier * (1 + level * levelScale)
+  const powerInner = options.powerFactorOverride ?? monsterPowerFactorFromLevel(level)
+  const factor = multiplier * powerInner
   const base = template.base
   return {
     id: `${template.id}-${tier}-${level}-${Math.floor(Math.random() * 100000)}`,
@@ -390,10 +423,12 @@ function getMaxResource(heroClass, intellect, spirit, level = 1) {
   if (heroClass === 'Warrior' || heroClass === 'Rogue' || heroClass === 'Hunter') {
     return 100
   }
-  if (heroClass === 'Mage' || heroClass === 'Priest' || heroClass === 'Warlock') {
-    return Math.round(5 + (intellect || 0) * 2.8 + (level || 1) * 1)
+  const coef = CLASS_COEFFICIENTS[heroClass] || {}
+  const kMp = coef.k_MP
+  if (kMp == null) {
+    return 100
   }
-  return Math.round(5 + (intellect || 0) * 2.2 + (level || 1) * 1)
+  return Math.round(5 + (intellect || 0) * kMp + (level || 1) * LEVEL_MP_PER_LEVEL)
 }
 
 function heroCombatStats(hero) {

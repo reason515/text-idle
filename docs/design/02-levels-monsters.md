@@ -49,8 +49,8 @@
 
 | 解锁触发 | 新英雄初始等级 | 待分配属性点 | 招募流程步骤 |
 |----------|----------------|--------------|--------------|
-| 击败第 1 张地图 BOSS（如 Hogger） | 5 级 | 20 点（1→5 共 4 次升级 × 5 点） | 1. 选择英雄 2. 分配属性点 3. 选择初始技能（法师：寒冰箭 / 火球术 二选一）4. 完成 5 级技能选择（加强或学新） |
-| 击败第 2 张地图 BOSS（如 VanCleef） | 10 级 | 45 点（1→10 共 9 次升级 × 5 点） | 同上，最后完成 10 级技能选择 |
+| 击败第 1 张地图 BOSS（如 Hogger） | 5 级 | 12 点（1→5 共 4 次升级 × 3 点） | 1. 选择英雄 2. 分配属性点 3. 选择初始技能（法师：寒冰箭 / 火球术 二选一）4. 完成 5 级技能选择（加强或学新） |
+| 击败第 2 张地图 BOSS（如 VanCleef） | 10 级 | 27 点（1→10 共 9 次升级 × 3 点） | 同上，最后完成 10 级技能选择 |
 
 - **设计意图**：扩展英雄以较高等级加入，避免与当前队伍等级差距过大；玩家在招募时一次性完成「等效 1→N 级」的构筑决策，强化招募的参与感。
 - **流程顺序**：英雄选择 → 属性点分配 → 初始技能选择（法师为 2 选 1）→ 等级 N 技能选择（加强已有或学习新技能）。
@@ -161,14 +161,21 @@
 #### 2.3.5 属性公式与配置参数
 
 ```
-Factor      = TierMult * (1 + Level * LevelScale)
-HP          = Base_HP * Factor
-PhysAtk     = Base_PhysAtk * Factor
-SpellPower  = Base_SpellPower * Factor
-Agility     = max(1, round(Base_Agility * (1 + (Factor - 1) * AgilityBlend) * AgilityBaseMult))
-Armor       = Base_Armor * Factor + floor(Level * 0.5)
-Resistance  = Base_Resistance * Factor + floor(Level * 0.5)
+PowerFactor(Level) = 分段曲线，见下
+Factor             = TierMult * PowerFactor(Level)
+HP                 = Base_HP * Factor
+PhysAtk            = Base_PhysAtk * Factor
+SpellPower         = Base_SpellPower * Factor
+Agility            = max(1, round(Base_Agility * (1 + (Factor - 1) * AgilityBlend) * AgilityBaseMult))
+Armor              = Base_Armor * Factor + floor(Level * 0.5)
+Resistance         = Base_Resistance * Factor + floor(Level * 0.5)
 ```
+
+**PowerFactor（分段，与「低等级裸装弱、装备成型后更强」对齐）**：实现见 `frontend/src/game/combat.js` 中 `monsterPowerFactorFromLevel`。
+
+- 参考线性强度：`LevelRef = 0.096`（由旧 `0.16` 按每级 **3** 点自由属性相对旧 **5** 点折算：`0.16 × 3/5`）。
+- **前段（Level ≤ 10）**：`PowerFactor = 1 + Level × (LevelRef × 0.5)`，前期怪物相对更弱。
+- **后段（Level > 10）**：从上一段在 Level=10 处的值起，用斜率 `LevelLate` 线性延伸，使 **Level=60** 时 `PowerFactor(60) = 1 + 60 × LevelRef`（与「满级若用线性 0.096」同强度）。
 
 - **敏捷（出手顺序）**：与 HP/攻击**不同**，敏捷不直接乘完整 `Factor`，而用 `AgilityBlend`（约 0.4）只吸收部分等级与类型带来的强度增长，并乘 `AgilityBaseMult`（约 0.9），避免怪物几乎总先于同等级英雄出手；暴击/闪避仍走英雄侧公式，怪物敏捷主要用于排序。
 - **Armor/Resistance 等级底数**：即使 Base 为 0，高等级怪物也会获得 `floor(Level * 0.5)` 的护甲/抗性，保证随等级合理成长。
@@ -178,7 +185,7 @@ Resistance  = Base_Resistance * Factor + floor(Level * 0.5)
 | Base_* | 每类怪物的基础值 | 如 Young Wolf: Base_HP=30, Base_PhysAtk=8 |
 | TierMult | 类型系数：Normal≈1.15, Elite≈1.5, Boss≈2.8（普通怪略强、精英略弱，缩小差距） | 可配置 |
 | Level | 怪物等级（与队伍等级挂钩，单张地图内怪物等级在 [baseLevel+min, baseLevel+max] 范围内随机） | 1–60 |
-| LevelScale_* | 等级缩放系数 | 如 LevelScale=0.16（约每级 14% 提升，与玩家每级 5 属性点强度相当） |
+| LevelRef / 分段 | 等级内层强度；前缓后陡，满级与线性 `1 + Level × 0.096` 一致 | 导出常量见 `MONSTER_LEVEL_REF_SCALE` 等 |
 | AgilityBlend / AgilityBaseMult | 怪物敏捷相对 HP 的软化系数 | 实现见 `frontend/src/game/combat.js`（`MONSTER_AGILITY_*`） |
 
 - **小数值原则**：1 级普通怪 HP 约 20–50，PhysAtk/SpellPower 约 5–15，与 1 级英雄量级相当；随等级与类型系数放大。

@@ -22,6 +22,8 @@ import {
   getResourceDisplay,
   getClassCritRates,
   getEffectiveAttrs,
+  LEVEL_HP_PER_LEVEL,
+  LEVEL_MP_PER_LEVEL,
 } from './heroes.js'
 
 const storage = {}
@@ -84,8 +86,8 @@ describe('heroes', () => {
   })
 
   describe('computeHeroMaxHP', () => {
-    it('returns 48 for Warrior Lv1 with Stamina 9 (10 + 9*4 + 1*2)', () => {
-      expect(computeHeroMaxHP({ class: 'Warrior', stamina: 9, level: 1 })).toBe(48)
+    it('returns 44 for Warrior Lv1 with Stamina 9 (10 + 9*3.6 + 1*1.5)', () => {
+      expect(computeHeroMaxHP({ class: 'Warrior', stamina: 9, level: 1 })).toBe(44)
     })
 
     it('matches computeSecondaryAttributes HP for all classes at Lv1', () => {
@@ -100,19 +102,19 @@ describe('heroes', () => {
 
     it('scales with level', () => {
       const warrior = { class: 'Warrior', stamina: 9, level: 60 }
-      expect(computeHeroMaxHP(warrior)).toBe(10 + 9 * 4 + 60 * 2)
+      expect(computeHeroMaxHP(warrior)).toBe(Math.round(10 + 9 * 3.6 + 60 * LEVEL_HP_PER_LEVEL))
     })
   })
 
   describe('computeHeroArmor and computeHeroResistance', () => {
     it('returns armor from Str * k_Armor for Warrior', () => {
-      expect(computeHeroArmor({ class: 'Warrior', strength: 10 })).toBe(8)
+      expect(computeHeroArmor({ class: 'Warrior', strength: 10 })).toBe(7)
       expect(computeHeroArmor({ class: 'Warrior', strength: 0 })).toBe(0)
     })
 
     it('adds equipment armor to hero armor', () => {
       const hero = { class: 'Warrior', strength: 10, equipment: { Helm: { armor: 5, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
-      expect(computeHeroArmor(hero)).toBe(8 + 5)
+      expect(computeHeroArmor(hero)).toBe(7 + 5)
     })
 
     it('returns 0 armor for Priest (no k_Armor)', () => {
@@ -120,7 +122,7 @@ describe('heroes', () => {
     })
 
     it('returns resistance from Int * k_Resistance for Mage', () => {
-      expect(computeHeroResistance({ class: 'Mage', intellect: 11 })).toBe(9)
+      expect(computeHeroResistance({ class: 'Mage', intellect: 11 })).toBe(8)
       expect(computeHeroResistance({ class: 'Mage', intellect: 0 })).toBe(0)
     })
 
@@ -130,22 +132,22 @@ describe('heroes', () => {
 
     it('adds equipment resistance to hero resistance', () => {
       const hero = { class: 'Mage', intellect: 11, equipment: { Amulet: { armor: 0, resistance: 3, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
-      expect(computeHeroResistance(hero)).toBe(9 + 3)
+      expect(computeHeroResistance(hero)).toBe(8 + 3)
     })
   })
 
   describe('computeSecondaryAttributes', () => {
     it('returns HP, PhysAtk, Armor, Resistance, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1)
-      expect(values.HP).toBe(48) // 10 + 9*4 + 1*2 = 48
+      expect(values.HP).toBe(44) // 10 + 9*3.6 + 1*1.5
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(4)
       expect(pMax).toBe(17)
-      expect(values.Armor).toBe(8) // 10*0.8 = 8
-      expect(values.Resistance).toBe(0.6) // 2*0.3 = 0.6
-      expect(values.PhysCrit).toBe(6.2) // 5 + 4*0.3 = 6.2
-      expect(values.Dodge).toBe(5.8) // 5 + 4*0.2 = 5.8
+      expect(values.Armor).toBe(7.2) // 10*0.72
+      expect(values.Resistance).toBe(0.5) // 2*0.27 = 0.54 -> 0.5
+      expect(values.PhysCrit).toBe(6.1) // 5 + 4*0.27 = 6.08
+      expect(values.Dodge).toBe(5.7) // 5 + 4*0.18 = 5.72
       expect(values.Hit).toBe(95.8) // 95 + 4*0.2 = 95.8
       expect(values.MP).toBeUndefined()
       expect(values.SpellPower).toBe('-')
@@ -155,14 +157,14 @@ describe('heroes', () => {
 
     it('returns SpellPower, SpellCrit, Resistance, MP for Mage at Lv1', () => {
       const { values } = computeSecondaryAttributes('Mage', 1)
-      expect(values.HP).toBe(20) // 10 + 4*2 + 2 = 20
-      expect(values.MP).toBe(37) // 5 + 11*2.8 + 1 = 36.8, rounds to 37
+      expect(values.HP).toBe(19) // 10 + 4*1.8 + 1.5
+      expect(values.MP).toBe(33) // 5 + 11*2.52 + 0.75
       expect(values.SpellPower).toMatch(/^\d+-\d+$/)
       const [sMin, sMax] = values.SpellPower.split('-').map(Number)
       expect(sMin).toBe(4)
       expect(sMax).toBe(18)
-      expect(values.Resistance).toBe(8.8) // 11*0.8 = 8.8
-      expect(values.SpellCrit).toBe(11.6) // 5 + 11*0.6 = 11.6
+      expect(values.Resistance).toBe(7.9) // 11*0.72
+      expect(values.SpellCrit).toBe(10.9) // 5 + 11*0.54
       expect(values.PhysAtk).toBe('-')
       expect(values.Armor).toBe('-')
     })
@@ -177,7 +179,7 @@ describe('heroes', () => {
       const [spMin, spMax] = values.SpellPower.split('-').map(Number)
       expect(spMin).toBe(4)
       expect(spMax).toBe(16)
-      expect(values.MP).toBe(24) // 5 + 8*2.2 + 1 = 23.6, rounds to 24
+      expect(values.MP).toBe(22) // 5 + 8*1.98 + 0.75
     })
 
     it('returns formulas with correct structure', () => {
@@ -237,7 +239,7 @@ describe('heroes', () => {
       const hpFormula = formulas.find((f) => f.key === 'HP')
       expect(hpFormula.formula).toContain('Stam(9)')
       expect(hpFormula.formula).toContain('Level(1)')
-      expect(hpFormula.formula).toMatch(/= 48$/)
+      expect(hpFormula.formula).toMatch(/= 44$/)
     })
 
     it('PhysAtk formula shows baseRoll = unarmed + weapon when unarmed', () => {
@@ -283,23 +285,23 @@ describe('heroes', () => {
 
     it('returns correct values for Rogue (agility physical) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Rogue', 1)
-      expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29
+      expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(5)
       expect(pMax).toBe(19)
-      expect(values.Armor).toBe(1) // 5*0.2 = 1
-      expect(values.Resistance).toBe(0.9) // 3*0.3 = 0.9
-      expect(values.PhysCrit).toBe(12.7) // 5 + 11*0.7 = 12.7
-      expect(values.Dodge).toBe(10.5) // 5 + 11*0.5 = 10.5
+      expect(values.Armor).toBe(0.9) // 5*0.18
+      expect(values.Resistance).toBe(0.8) // 3*0.27
+      expect(values.PhysCrit).toBe(11.9) // 5 + 11*0.63
+      expect(values.Dodge).toBe(10) // 5 + 11*0.45
       expect(values.MP).toBeUndefined()
       expect(values.SpellPower).toBe('-')
     })
 
     it('returns correct values for Druid (hybrid agility/intellect) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Druid', 1)
-      expect(values.HP).toBe(34) // 10 + 7*3.2 + 2 = 34.4 -> 34
-      expect(values.MP).toBe(24) // 5 + 8*2.2 + 1 = 23.6 -> 24
+      expect(values.HP).toBe(32) // 10 + 7*2.88 + 1.5
+      expect(values.MP).toBe(22) // 5 + 8*1.98 + 0.75 -> 21.59 -> 22
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMinD, pMaxD] = values.PhysAtk.split('-').map(Number)
       expect(pMinD).toBe(4)
@@ -308,36 +310,36 @@ describe('heroes', () => {
       const [spMinD, spMaxD] = values.SpellPower.split('-').map(Number)
       expect(spMinD).toBe(4)
       expect(spMaxD).toBe(16)
-      expect(values.Armor).toBe(1.6) // 4*0.4 = 1.6
-      expect(values.Resistance).toBe(4.8) // 8*0.6 = 4.8
-      expect(values.PhysCrit).toBe(9.8) // 5 + 8*0.6 = 9.8
-      expect(values.SpellCrit).toBe(9) // 5 + 8*0.5 = 9
-      expect(values.Dodge).toBe(8.2) // 5 + 8*0.4 = 8.2
+      expect(values.Armor).toBe(1.4) // 4*0.36
+      expect(values.Resistance).toBe(4.3) // 8*0.54
+      expect(values.PhysCrit).toBe(9.3) // 5 + 8*0.54
+      expect(values.SpellCrit).toBe(8.6) // 5 + 8*0.45
+      expect(values.Dodge).toBe(7.9) // 5 + 8*0.36
     })
 
     it('returns correct values for Warlock (spell-only) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Warlock', 1)
-      expect(values.HP).toBe(29) // 10 + 6*2.8 + 2 = 28.8 -> 29
-      expect(values.MP).toBe(34) // 5 + 10*2.8 + 1 = 34
+      expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5
+      expect(values.MP).toBe(31) // 5 + 10*2.52 + 0.75
       expect(values.SpellPower).toMatch(/^\d+-\d+$/)
       const [spMinW, spMaxW] = values.SpellPower.split('-').map(Number)
       expect(spMinW).toBe(4)
       expect(spMaxW).toBe(17)
-      expect(values.SpellCrit).toBe(11) // 5 + 10*0.6 = 11
+      expect(values.SpellCrit).toBe(10.4) // 5 + 10*0.54
       expect(values.PhysAtk).toBe('-')
       expect(values.Armor).toBe('-')
     })
 
     it('returns correct values for Hunter (physical ranged) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Hunter', 1)
-      expect(values.HP).toBe(33) // 10 + 7*3 + 2 = 33
+      expect(values.HP).toBe(30) // 10 + 7*2.7 + 1.5
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMinH, pMaxH] = values.PhysAtk.split('-').map(Number)
       expect(pMinH).toBe(4)
       expect(pMaxH).toBe(18)
-      expect(values.Armor).toBe(1.5) // 5*0.3 = 1.5
-      expect(values.Resistance).toBe(1.2) // 4*0.3 = 1.2
-      expect(values.PhysCrit).toBe(11) // 5 + 10*0.6 = 11
+      expect(values.Armor).toBe(1.4) // 5*0.27
+      expect(values.Resistance).toBe(1.1) // 4*0.27
+      expect(values.PhysCrit).toBe(10.4) // 5 + 10*0.54
       expect(values.MP).toBeUndefined()
     })
 
@@ -358,8 +360,8 @@ describe('heroes', () => {
 
     it('returns correct values for Shaman (hybrid) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Shaman', 1)
-      expect(values.HP).toBe(30) // 10 + 6*3 + 2 = 30
-      expect(values.MP).toBe(21) // 5 + 7*2.2 + 1 = 21.4 -> 21
+      expect(values.HP).toBe(28) // 10 + 6*2.7 + 1.5
+      expect(values.MP).toBe(20) // 5 + 7*1.98 + 0.75
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMinS, pMaxS] = values.PhysAtk.split('-').map(Number)
       expect(pMinS).toBe(3)
@@ -368,11 +370,11 @@ describe('heroes', () => {
       const [spMinS, spMaxS] = values.SpellPower.split('-').map(Number)
       expect(spMinS).toBe(4)
       expect(spMaxS).toBe(15)
-      expect(values.Armor).toBe(1.2) // 4*0.3 = 1.2
-      expect(values.Resistance).toBe(4.2) // 7*0.6 = 4.2
-      expect(values.PhysCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
-      expect(values.SpellCrit).toBe(8.5) // 5 + 7*0.5 = 8.5
-      expect(values.Dodge).toBe(7.1) // 5 + 7*0.3 = 7.1
+      expect(values.Armor).toBe(1.1) // 4*0.27
+      expect(values.Resistance).toBe(3.8) // 7*0.54
+      expect(values.PhysCrit).toBe(8.2) // 5 + 7*0.45
+      expect(values.SpellCrit).toBe(8.2) // 5 + 7*0.45
+      expect(values.Dodge).toBe(6.9) // 5 + 7*0.27
     })
 
     it('all 9 classes produce valid secondary attributes with HP and Hit', () => {
@@ -387,32 +389,36 @@ describe('heroes', () => {
     })
 
     it('HP and MP scale with level', () => {
-      const { values: v1 } = computeSecondaryAttributes('Warrior', 1)
       const { values: v60 } = computeSecondaryAttributes('Warrior', 60)
-      expect(v60.HP).toBe(v1.HP + (60 - 1) * 2) // +2 HP per level
+      const attrs = getInitialAttributes('Warrior')
+      expect(v60.HP).toBe(
+        Math.round(10 + attrs.stamina * 3.6 + 60 * LEVEL_HP_PER_LEVEL)
+      )
     })
 
     it('MP scales with level for mana classes', () => {
-      const { values: v1 } = computeSecondaryAttributes('Mage', 1)
       const { values: v60 } = computeSecondaryAttributes('Mage', 60)
-      expect(v60.MP).toBe(v1.MP + (60 - 1) * 1) // +1 MP per level
+      const attrs = getInitialAttributes('Mage')
+      expect(v60.MP).toBe(
+        Math.round(5 + attrs.intellect * 2.52 + 60 * LEVEL_MP_PER_LEVEL)
+      )
     })
 
     it('unknown class returns base values with fallback formulas', () => {
       const { values, formulas } = computeSecondaryAttributes('Unknown', 1)
-      expect(values.HP).toBe(12) // 10 + 0*0 + 1*2 = 12 (no coef, attrs all 0)
+      expect(values.HP).toBe(12) // 10 + 0 + 1*1.5 (no k_HP)
       expect(formulas.length).toBeGreaterThan(0)
     })
 
     it('uses heroAttrs when provided for leveled hero display', () => {
       const hero = { class: 'Warrior', strength: 15, agility: 4, intellect: 2, stamina: 14, spirit: 3, level: 2 }
       const { values } = computeSecondaryAttributes('Warrior', 2, hero)
-      expect(values.HP).toBe(10 + 14 * 4 + 2 * 2)
+      expect(values.HP).toBe(Math.round(10 + 14 * 3.6 + 2 * LEVEL_HP_PER_LEVEL))
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(6)
       expect(pMax).toBe(23)
-      expect(values.Armor).toBe(12) // 15*0.8 = 12
+      expect(values.Armor).toBe(10.8) // 15*0.72
     })
   })
 
@@ -420,7 +426,7 @@ describe('heroes', () => {
     it('returns HP and Rage for Warrior', () => {
       const items = getResourceDisplay('Warrior', 1)
       expect(items).toHaveLength(2)
-      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: '生命', value: 48 })
+      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: '生命', value: 44 })
       expect(items.find((i) => i.key === 'Rage')).toEqual({ key: 'Rage', label: '怒气', value: 100 })
     })
 
@@ -428,7 +434,7 @@ describe('heroes', () => {
       const items = getResourceDisplay('Mage', 1)
       expect(items).toHaveLength(2)
       expect(items.find((i) => i.key === 'HP')).toBeDefined()
-      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: '法力', value: 37 })
+      expect(items.find((i) => i.key === 'MP')).toEqual({ key: 'MP', label: '法力', value: 33 })
     })
 
     it('returns HP and Energy for Rogue', () => {
@@ -748,14 +754,14 @@ describe('heroes', () => {
   describe('getClassCritRates', () => {
     it('returns physCrit and spellCrit as decimal values for Warrior', () => {
       const rates = getClassCritRates('Warrior', { agility: 4, intellect: 2 })
-      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.3) / 100, 6)
+      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.27) / 100, 6)
       expect(rates.spellCrit).toBe(0)
     })
 
     it('returns both crit rates for Mage', () => {
       const rates = getClassCritRates('Mage', { agility: 4, intellect: 11 })
-      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.3) / 100, 6)
-      expect(rates.spellCrit).toBeCloseTo((5 + 11 * 0.6) / 100, 6)
+      expect(rates.physCrit).toBeCloseTo((5 + 4 * 0.27) / 100, 6)
+      expect(rates.spellCrit).toBeCloseTo((5 + 11 * 0.54) / 100, 6)
     })
 
     it('returns zero spellCrit for classes without k_SpellCrit', () => {

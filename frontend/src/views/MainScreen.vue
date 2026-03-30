@@ -1432,7 +1432,7 @@ import {
   startRestPhase,
   applyRestStep,
 } from '../game/combat.js'
-import { applyXPToHeroes, calculateXPRequired, assignAttributePoint } from '../game/experience.js'
+import { applyXPToHeroes, calculateXPRequired, assignAttributePoint, POINTS_PER_LEVEL } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { TACTICS_TARGET_RULE_INHERIT } from '../game/tactics.js'
@@ -2971,7 +2971,7 @@ async function runCombatLoop() {
             heroName: heroDisplayName(hero.name),
             heroClass: hero.class,
             newLevel: hero.level,
-            pointsGained: r.levelsGained * 5,
+            pointsGained: r.levelsGained * POINTS_PER_LEVEL,
           })
           for (let l = oldLevel + 1; l <= hero.level; l += 1) {
             if (l % 5 === 0 && hasSkillChoiceAtLevel(hero, l)) {

@@ -71,7 +71,7 @@ describe('experience and leveling', () => {
       const result = applyXP(hero, 50)
       expect(hero.xp).toBe(0)
       expect(hero.level).toBe(2)
-      expect(hero.unassignedPoints).toBe(5)
+      expect(hero.unassignedPoints).toBe(3)
       expect(result.leveledUp).toBe(true)
       expect(result.levelsGained).toBe(1)
     })
@@ -81,7 +81,7 @@ describe('experience and leveling', () => {
       applyXP(hero, 75) // 50 for L1->2, 25 overflow
       expect(hero.level).toBe(2)
       expect(hero.xp).toBe(25)
-      expect(hero.unassignedPoints).toBe(5)
+      expect(hero.unassignedPoints).toBe(3)
     })
 
     it('level 60 does not gain XP', () => {
@@ -97,7 +97,7 @@ describe('experience and leveling', () => {
       applyXP(hero, 50)
       expect(hero.xp).toBe(0)
       expect(hero.level).toBe(2)
-      expect(hero.unassignedPoints).toBe(5)
+      expect(hero.unassignedPoints).toBe(3)
     })
   })
 
@@ -112,8 +112,8 @@ describe('experience and leveling', () => {
       expect(h2.level).toBe(2)
       expect(h1.xp).toBe(0)
       expect(h2.xp).toBe(0)
-      expect(h1.unassignedPoints).toBe(5)
-      expect(h2.unassignedPoints).toBe(5)
+      expect(h1.unassignedPoints).toBe(3)
+      expect(h2.unassignedPoints).toBe(3)
       expect(results).toHaveLength(2)
       expect(results.every((r) => r.leveledUp)).toBe(true)
     })
@@ -171,8 +171,8 @@ describe('experience and leveling', () => {
     it('MAX_LEVEL is 60', () => {
       expect(MAX_LEVEL).toBe(60)
     })
-    it('POINTS_PER_LEVEL is 5', () => {
-      expect(POINTS_PER_LEVEL).toBe(5)
+    it('POINTS_PER_LEVEL is 3', () => {
+      expect(POINTS_PER_LEVEL).toBe(3)
     })
   })
 })
