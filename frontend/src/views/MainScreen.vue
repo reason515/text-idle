@@ -1502,6 +1502,7 @@ import {
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
 import { unitIdMatches } from '../utils/unitId.js'
+import { getCombatLogStepDelayMs } from '../game/combatPacing.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2802,10 +2803,11 @@ async function animateCombatLog(result) {
     return
   }
 
+  const combatLogStepDelayMs = getCombatLogStepDelayMs()
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
-    await sleepMsRespectingPause(combatDelayMs(2000))
+    await sleepMsRespectingPause(combatDelayMs(combatLogStepDelayMs))
     if (!isRunning.value) return
     applyOneCombatEntry(entry)
     await scrollLog()
@@ -2824,7 +2826,7 @@ async function animateCombatLog(result) {
       currentMonsters.value = [...currentMonsters.value]
       syncSelectedUnitsFromCombat()
       await scrollLog()
-      await sleepMsRespectingPause(combatDelayMs(2000))
+      await sleepMsRespectingPause(combatDelayMs(combatLogStepDelayMs))
     }
   }
   currentActorId.value = null
