@@ -521,9 +521,9 @@ describe('combat progression and systems', () => {
     }
     const unique = [...new Set(rawDamages)]
     expect(unique.length).toBeGreaterThan(1)
-    // baseRoll 4-9, physMultiplier ~3.68 (Warrior Str10 Agi9); rawDamage range ~15-33 basic, ~18-40 for 1.2x skill
-    const minExpected = 15
-    const maxExpected = 40
+    // baseRoll 3-5 weapon only, physMultiplier ~3.68 (Warrior Str10 Agi9); basic ~11-18, Heroic Strike ~13-22
+    const minExpected = 11
+    const maxExpected = 25
     for (const d of rawDamages) {
       expect(d).toBeGreaterThanOrEqual(minExpected)
       expect(d).toBeLessThanOrEqual(maxExpected)
@@ -671,6 +671,7 @@ describe('combat progression and systems', () => {
       strength: 2,
       agility: 2,
       currentMP: 0,
+      equipment: { MainHand: { spellPowerMin: 8, spellPowerMax: 10, armor: 0, resistance: 0 } },
     })
     const monsters = [
       createMonster(
@@ -900,7 +901,14 @@ describe('combat progression and systems', () => {
 
   it('crit multiplies raw damage by CRIT_MULTIPLIER', () => {
     expect(CRIT_MULTIPLIER).toBe(1.5)
-    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const heroes = [
+      sampleHero({
+        id: 'h1',
+        agility: 9,
+        strength: 12,
+        equipment: { MainHand: { physAtkMin: 3, physAtkMax: 5, armor: 0, resistance: 0 } },
+      }),
+    ]
     const monsters = [
       createMonster(
         {
@@ -915,8 +923,8 @@ describe('combat progression and systems', () => {
     let callCount = 0
     const noCritRng = () => {
       callCount += 1
-      // R1 opener pickRandom (1) + phys rolls (2-3) + crit check (4)
-      if (callCount === 4) return 0.99
+      // R1 opener pickRandom (1) + weapon roll (2) + crit check (3); hero has no unarmed dice
+      if (callCount === 3) return 0.99
       return 0.5
     }
     const noCritResult = runAutoCombat({ heroes, monsters, rng: noCritRng })
@@ -926,7 +934,7 @@ describe('combat progression and systems', () => {
     callCount = 0
     const critRng = () => {
       callCount += 1
-      if (callCount === 4) return 0.01
+      if (callCount === 3) return 0.01
       return 0.5
     }
     const alwaysCritResult = runAutoCombat({ heroes, monsters, rng: critRng })
@@ -936,7 +944,14 @@ describe('combat progression and systems', () => {
   })
 
   it('log entries include targetDefense for damage calculation transparency', () => {
-    const heroes = [sampleHero({ id: 'h1', agility: 9, strength: 12 })]
+    const heroes = [
+      sampleHero({
+        id: 'h1',
+        agility: 9,
+        strength: 12,
+        equipment: { MainHand: { physAtkMin: 3, physAtkMax: 5, armor: 0, resistance: 0 } },
+      }),
+    ]
     const monsters = [
       createMonster(
         {
@@ -1524,6 +1539,7 @@ describe('combat progression and systems', () => {
         strength: 20,
         skills: ['bloodthirst'],
         tactics: { skillPriority: ['bloodthirst'], targetRule: 'first' },
+        equipment: { MainHand: { physAtkMin: 3, physAtkMax: 5, armor: 0, resistance: 0 } },
       })
       const monster = createMonster(
         { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 500, physAtk: 1, spellPower: 0, agility: 3, armor: 0, resistance: 0 } },

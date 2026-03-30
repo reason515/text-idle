@@ -564,7 +564,7 @@ Then [expected result/verifiable behavior].
 | AC11 | Warrior has Heroic Strike enhanced 2 times (coefficient 1.6) | Warrior uses Heroic Strike | raw = baseRoll x physMultiplier x 1.6; enhancement applies in combat |
 | AC12 | Warrior has Bloodthirst enhanced 1 time (1.3x, 20% heal) | Warrior uses Bloodthirst | raw = baseRoll x physMultiplier x 1.3; heal = finalDamage * 0.20 |
 | AC13 | Warrior has Sunder Armor enhanced 2 times (max 3 stacks) | Warrior uses Sunder Armor on target with 1 stack (effective armor 2) | 0.8x damage; excess = 6 (8 - 2), +12% damage; target gains 2nd stack (-16 armor total); duration refreshes to 3 rounds |
-| AC14 | Warrior has a weapon with PhysAtk range 3–5 (e.g., Short Sword) equipped | Warrior uses Heroic Strike multiple times in combat | Each hit rolls baseRoll = unarmed(1-4) + weapon(3-5); raw damage varies per hit; combat log shows the actual rolled damage each time |
+| AC14 | Warrior has a weapon with PhysAtk range 3–5 (e.g., Short Sword) equipped | Warrior uses Heroic Strike multiple times in combat | Each hit rolls baseRoll = weapon(3-5) only; raw damage varies per hit; combat log shows the actual rolled damage each time |
 
 ---
 
@@ -855,7 +855,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC9 | Player unequips an item from a hero | Player clicks the equipped slot (item detail appears), clicks Unequip, then confirms | The slot becomes empty; hero's secondary attributes revert to the values without that item's bonuses |
 | AC9a | Hero has an item equipped in a slot | Player clicks the equipped slot | Equipment detail modal appears with full item stats; Unequip and Close buttons are visible; player must click Unequip then Confirm to unequip |
 | AC10 | Hero has a new item equipped | Hero participates in the next combat encounter | The item's Armor/Resistance/PhysAtk/SpellPower bonuses are applied in the actual damage and defense calculations during combat |
-| AC11 | Hero equips a weapon with PhysAtk range (e.g., Short Sword 3–5) | Player views the hero detail panel | PhysAtk is displayed as a range (baseRoll 4–9 x physMultiplier); each combat hit rolls unarmed(1-4) + weapon(3-5) |
+| AC11 | Hero equips a weapon with PhysAtk range (e.g., Short Sword 3–5) | Player views the hero detail panel | PhysAtk is displayed as a range (baseRoll 3–5 x physMultiplier); each combat hit rolls weapon(3-5) only |
 | AC12 | Player has Helm and Boots in backpack | Player clicks empty Helm slot in hero detail | Backpack modal opens with title "Backpack - Equip Helm"; only Helm items are shown (Boots hidden); if no matching items, shows "No items for this slot" |
 | AC13 | Hero has Helm equipped; player has another Helm in backpack | Player opens backpack, clicks the new Helm, clicks hero to equip | A compare view appears: left column labeled "Current (Equipped)" shows the equipped Helm; right column labeled "New" shows the backpack Helm; both show level req, requirements, armor/resist/phys/spell, affixes; Confirm replaces; Cancel keeps current |
 

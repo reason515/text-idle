@@ -21,55 +21,50 @@
 
 - **直接抵消**：每点护甲/抗性 = 抵消 1 点伤害，无上限，装备可叠加。
 
-#### 2.2.3.1 物理伤害公式（空手 + 武器统一结构）
+#### 2.2.3.1 物理伤害公式（英雄：武器骰子；怪物：1–4 基础骰）
 
-**设计意图**：空手与武器使用同一套结构，空手基础伤害为范围 1–4，武器伤害叠加到该范围；主属性采用乘法加成，增加随机性与上下限差异。
+**设计意图**：英雄默认出场带武器，`baseRoll` 仅来自武器伤害范围；主属性乘法加成；词缀等为固定加算。怪物仍用 1–4 的「空手」骰与 `physAtk` 缩放，与英雄公式分离。
 
-| 概念 | 说明 |
-|------|------|
-| 空手基础 | 每次攻击 roll `unarmedRoll = random(1, 4)` |
-| 武器贡献 | 有武器时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
-| 基础骰子 | `baseRoll = unarmedRoll + weaponRoll`；空手 1–4，有武器 3–5 时 4–9 |
-| 主属性乘数 | `physMultiplier = 1 + baseAttr * 0.20`；**战士** baseAttr = Str×0.8 + Agi×0.6；其他力量主物攻职业（圣骑士）baseAttr = Str×1.4 + Agi×0.6；敏捷职业 baseAttr = Agi×1.4 + Str×0.6 |
-| 非武器加成 | 词缀、戒指等提供的 +PhysAtk 为固定值 `physAtkBonus` |
-| 法术武器 | 魔杖/权杖的 SpellPower+ 同理可为范围，每次法术伤害时随机 |
+| 概念 | 英雄 | 怪物 |
+|------|------|------|
+| 基础骰子 | `baseRoll = random(weaponMin, weaponMax)`（有武器）；无武器时为 0 | `baseRoll = random(1, 4)`，再与 `physAtk` 按期望缩放 |
+| 主属性乘数 | `physMultiplier = 1 + baseAttr * 0.20`；**战士** baseAttr = Str×0.8 + Agi×0.6；其他力量主物攻职业（圣骑士）baseAttr = Str×1.4 + Agi×0.6；敏捷职业 baseAttr = Agi×1.4 + Str×0.6 | （见实现：`getEffectivePhysAtk`） |
+| 非武器加成 | 词缀、戒指等提供的 +PhysAtk 为固定值 `physAtkBonus` | — |
 
-**公式**（物理伤害）：
+**公式**（物理伤害，英雄）：
 
 ```
-baseRoll = random(1, 4) + [有武器 ? random(weaponMin, weaponMax) : 0]
+baseRoll = [有武器 ? random(weaponMin, weaponMax) : 0]
 physMultiplier = 1 + baseAttr * 0.20
 rawDamage = round(baseRoll * physMultiplier) + physAtkBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 ```
 
 - `baseAttr`：按职业主属性计算（**战士** Str×0.8 + Agi×0.6；其他力量主物攻职业 Str×1.4 + Agi×0.6；敏捷职业 Agi×1.4 + Str×0.6）
-- `weapon.physAtkMin/Max`：该武器实例掉落时 roll 出的上下限；无武器时 baseRoll 仅 1–4
+- `weapon.physAtkMin/Max`：该武器实例掉落时 roll 出的上下限
 - `physAtkBonus`：非武器装备（词缀、戒指等）提供的固定 PhysAtk
 
 **UI 与透明化**：
 
 - 武器 tooltip 显示该实例 roll 后的「PhysAtk: 3–5」或「伤害: 3–5」（上下限均为掉落时随机结果）
 - 若有底材参考，可显示「底材范围: 2–4」（表示同类武器的可能 roll 范围）
-- 角色面板 PhysAtk 可显示为「12–28」（战士、短剑 3–5 时 baseRoll 范围 × physMultiplier + physAtkBonus；职业与武器不同则数值不同）
+- 角色面板 PhysAtk 可显示为「9–15」（战士、短剑 3–5 时 baseRoll 范围 × physMultiplier + physAtkBonus；职业与武器不同则数值不同）
 - 战斗日志中每次伤害为实际 roll 后的数值，便于复盘
 
-#### 2.2.3.2 法术伤害公式（与物理统一结构）
+#### 2.2.3.2 法术伤害公式（英雄：武器骰子；怪物：1–4 基础骰）
 
-**设计意图**：法术伤害与物理伤害采用同一套结构，空手基础 1–4，法杖贡献叠加；主属性乘法加成。
+**设计意图**：英雄侧与物理一致：法杖提供 `baseRoll`；无武器为 0。怪物侧仍用 1–4 的「空手」骰与 `spellPower` 缩放。
 
-| 概念 | 说明 |
-|------|------|
-| 空手基础 | 每次施法 roll `unarmedRoll = random(1, 4)` |
-| 法杖贡献 | 有法杖时 `weaponRoll = random(weaponMin, weaponMax)`；无武器时为 0 |
-| 基础骰子 | `baseRoll = unarmedRoll + weaponRoll` |
-| 主属性乘数 | `spellMultiplier = 1 + baseAttr * 0.20`；baseAttr = Int×k + Spirit×0.8（**牧师、法师** k=0.8；其他法术职业 k=1.2） |
-| 非武器加成 | 词缀、戒指等提供的 +SpellPower 为固定值 `spellPowerBonus` |
+| 概念 | 英雄 | 怪物 |
+|------|------|------|
+| 基础骰子 | `baseRoll = random(weaponMin, weaponMax)`（有法杖）；无武器时为 0 | `baseRoll = random(1, 4)`，再与 `spellPower` 按期望缩放 |
+| 主属性乘数 | `spellMultiplier = 1 + baseAttr * 0.20`；baseAttr = Int×k + Spirit×0.8（**牧师、法师** k=0.8；其他法术职业 k=1.2） | （见实现：`getEffectiveSpellPower`） |
+| 非武器加成 | 词缀、戒指等提供的 +SpellPower 为固定值 `spellPowerBonus` | — |
 
-**公式**（法术伤害）：
+**公式**（法术伤害，英雄）：
 
 ```
-baseRoll = random(1, 4) + [有法杖 ? random(weaponMin, weaponMax) : 0]
+baseRoll = [有法杖 ? random(weaponMin, weaponMax) : 0]
 spellMultiplier = 1 + baseAttr * 0.20
 rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)

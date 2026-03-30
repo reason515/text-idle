@@ -140,10 +140,7 @@ describe('heroes', () => {
     it('returns HP, PhysAtk, Armor, Resistance, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1)
       expect(values.HP).toBe(34) // 10 + 9*2.5 + 1*1.5
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(3)
-      expect(pMax).toBe(12)
+      expect(values.PhysAtk).toBe(0) // no weapon: baseRoll 0 (starter weapon not modeled in bare compute)
       expect(values.Armor).toBe(5) // 10*0.5
       expect(values.Resistance).toBe(0.5) // 2*0.27 = 0.54 -> 0.5
       expect(values.PhysCrit).toBe(6.1) // 5 + 4*0.27 = 6.08
@@ -159,10 +156,7 @@ describe('heroes', () => {
       const { values } = computeSecondaryAttributes('Mage', 1)
       expect(values.HP).toBe(19) // 10 + 4*1.8 + 1.5
       expect(values.MP).toBe(18) // 5 + 5*2.52 + 0.75 (Spirit)
-      expect(values.SpellPower).toMatch(/^\d+-\d+$/)
-      const [sMin, sMax] = values.SpellPower.split('-').map(Number)
-      expect(sMin).toBe(4)
-      expect(sMax).toBe(14)
+      expect(values.SpellPower).toBe(0)
       expect(values.Resistance).toBe(7.9) // 11*0.72
       expect(values.SpellCrit).toBe(10.9) // 5 + 11*0.54
       expect(values.PhysAtk).toBe('-')
@@ -171,14 +165,8 @@ describe('heroes', () => {
 
     it('returns both PhysAtk and SpellPower for Paladin at Lv1', () => {
       const { values } = computeSecondaryAttributes('Paladin', 1)
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(4)
-      expect(pMax).toBe(14)
-      expect(values.SpellPower).toMatch(/^\d+-\d+$/)
-      const [spMin, spMax] = values.SpellPower.split('-').map(Number)
-      expect(spMin).toBe(4)
-      expect(spMax).toBe(16)
+      expect(values.PhysAtk).toBe(0)
+      expect(values.SpellPower).toBe(0)
       expect(values.MP).toBe(18) // 5 + 6*1.98 + 0.75 (Spirit)
     })
 
@@ -217,10 +205,10 @@ describe('heroes', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [minVal, maxVal] = values.PhysAtk.split('-').map(Number)
-      expect(minVal).toBe(12)
-      expect(maxVal).toBe(28)
+      expect(minVal).toBe(9)
+      expect(maxVal).toBe(15)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(3-5) = 4-9')
+      expect(physAtkFormula.formula).toContain('baseRoll = weapon(3-5) = 3-5')
     })
 
     it('Warrior with TwoHand weapon damage range shows PhysAtk as min-max', () => {
@@ -228,10 +216,10 @@ describe('heroes', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [minVal, maxVal] = values.PhysAtk.split('-').map(Number)
-      expect(minVal).toBe(28)
-      expect(maxVal).toBe(49)
+      expect(minVal).toBe(25)
+      expect(maxVal).toBe(37)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('unarmed(1-4) + weapon(8-12) = 9-16')
+      expect(physAtkFormula.formula).toContain('baseRoll = weapon(8-12) = 8-12')
     })
 
     it('formulas include actual attribute values for calculation transparency', () => {
@@ -242,10 +230,10 @@ describe('heroes', () => {
       expect(hpFormula.formula).toMatch(/= 34$/)
     })
 
-    it('PhysAtk formula shows baseRoll = unarmed + weapon when unarmed', () => {
+    it('PhysAtk formula shows baseRoll = weapon(0) when no weapon', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseRoll = unarmed(1-4) + weapon(0) = 1-4')
+      expect(physAtkFormula.formula).toContain('baseRoll = weapon(0) = 0')
     })
 
     it('PhysAtk formula shows baseAttr detail (Str*0.8+Agi*0.6 for Warrior)', () => {
@@ -307,10 +295,7 @@ describe('heroes', () => {
     it('returns correct values for Rogue (agility physical) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Rogue', 1)
       expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(5)
-      expect(pMax).toBe(19)
+      expect(values.PhysAtk).toBe(0)
       expect(values.Armor).toBe(2.5) // 5*0.5
       expect(values.Resistance).toBe(0.8) // 3*0.27
       expect(values.PhysCrit).toBe(11.9) // 5 + 11*0.63
@@ -323,14 +308,8 @@ describe('heroes', () => {
       const { values } = computeSecondaryAttributes('Druid', 1)
       expect(values.HP).toBe(32) // 10 + 7*2.88 + 1.5
       expect(values.MP).toBe(20) // 5 + 7*1.98 + 0.75 (Spirit)
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMinD, pMaxD] = values.PhysAtk.split('-').map(Number)
-      expect(pMinD).toBe(4)
-      expect(pMaxD).toBe(15)
-      expect(values.SpellPower).toMatch(/^\d+-\d+$/)
-      const [spMinD, spMaxD] = values.SpellPower.split('-').map(Number)
-      expect(spMinD).toBe(4)
-      expect(spMaxD).toBe(16)
+      expect(values.PhysAtk).toBe(0)
+      expect(values.SpellPower).toBe(0)
       expect(values.Armor).toBe(2) // 4*0.5
       expect(values.Resistance).toBe(4.3) // 8*0.54
       expect(values.PhysCrit).toBe(9.3) // 5 + 8*0.54
@@ -342,10 +321,7 @@ describe('heroes', () => {
       const { values } = computeSecondaryAttributes('Warlock', 1)
       expect(values.HP).toBe(27) // 10 + 6*2.52 + 1.5
       expect(values.MP).toBe(18) // 5 + 5*2.52 + 0.75 (Spirit)
-      expect(values.SpellPower).toMatch(/^\d+-\d+$/)
-      const [spMinW, spMaxW] = values.SpellPower.split('-').map(Number)
-      expect(spMinW).toBe(4)
-      expect(spMaxW).toBe(17)
+      expect(values.SpellPower).toBe(0)
       expect(values.SpellCrit).toBe(10.4) // 5 + 10*0.54
       expect(values.PhysAtk).toBe('-')
       expect(values.Armor).toBe(1) // 2*0.5
@@ -354,10 +330,7 @@ describe('heroes', () => {
     it('returns correct values for Hunter (physical ranged) at Lv1', () => {
       const { values } = computeSecondaryAttributes('Hunter', 1)
       expect(values.HP).toBe(30) // 10 + 7*2.7 + 1.5
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMinH, pMaxH] = values.PhysAtk.split('-').map(Number)
-      expect(pMinH).toBe(4)
-      expect(pMaxH).toBe(18)
+      expect(values.PhysAtk).toBe(0)
       expect(values.Armor).toBe(2.5) // 5*0.5
       expect(values.Resistance).toBe(1.1) // 4*0.27
       expect(values.PhysCrit).toBe(10.4) // 5 + 10*0.54
@@ -383,14 +356,8 @@ describe('heroes', () => {
       const { values } = computeSecondaryAttributes('Shaman', 1)
       expect(values.HP).toBe(28) // 10 + 6*2.7 + 1.5
       expect(values.MP).toBe(18) // 5 + 6*1.98 + 0.75 (Spirit)
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMinS, pMaxS] = values.PhysAtk.split('-').map(Number)
-      expect(pMinS).toBe(3)
-      expect(pMaxS).toBe(14)
-      expect(values.SpellPower).toMatch(/^\d+-\d+$/)
-      const [spMinS, spMaxS] = values.SpellPower.split('-').map(Number)
-      expect(spMinS).toBe(4)
-      expect(spMaxS).toBe(15)
+      expect(values.PhysAtk).toBe(0)
+      expect(values.SpellPower).toBe(0)
       expect(values.Armor).toBe(2) // 4*0.5
       expect(values.Resistance).toBe(3.8) // 7*0.54
       expect(values.PhysCrit).toBe(8.2) // 5 + 7*0.45
@@ -435,10 +402,7 @@ describe('heroes', () => {
       const hero = { class: 'Warrior', strength: 15, agility: 4, intellect: 2, stamina: 14, spirit: 3, level: 2 }
       const { values } = computeSecondaryAttributes('Warrior', 2, hero)
       expect(values.HP).toBe(Math.round(10 + 14 * 2.5 + 2 * LEVEL_HP_PER_LEVEL))
-      expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
-      const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
-      expect(pMin).toBe(4)
-      expect(pMax).toBe(16)
+      expect(values.PhysAtk).toBe(0)
       expect(values.Armor).toBe(7.5) // 15*0.5
     })
   })

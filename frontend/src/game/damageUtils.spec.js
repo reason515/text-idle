@@ -61,11 +61,46 @@ describe('damageUtils', () => {
     })
   })
 
+  describe('getEffectivePhysAtk hero', () => {
+    it('uses weapon roll only (no unarmed dice)', () => {
+      const hero = {
+        side: 'hero',
+        physMultiplier: 3,
+        physAtkWeaponMin: 3,
+        physAtkWeaponMax: 5,
+        physAtkBonus: 0,
+      }
+      const rngLow = () => 0
+      const rngHigh = () => 0.999
+      expect(getEffectivePhysAtk(hero, rngLow)).toBe(9)
+      expect(getEffectivePhysAtk(hero, rngHigh)).toBe(15)
+    })
+
+    it('uses 0 base when no weapon range', () => {
+      const hero = { side: 'hero', physMultiplier: 3, physAtkBonus: 0 }
+      expect(getEffectivePhysAtk(hero, () => 0.5)).toBe(0)
+    })
+  })
+
+  describe('getEffectiveSpellPower hero', () => {
+    it('uses weapon roll only (no unarmed dice)', () => {
+      const hero = {
+        side: 'hero',
+        spellMultiplier: 2,
+        spellPowerWeaponMin: 4,
+        spellPowerWeaponMax: 6,
+        spellPowerBonus: 0,
+      }
+      expect(getEffectiveSpellPower(hero, () => 0)).toBe(8)
+      expect(getEffectiveSpellPower(hero, () => 0.99)).toBe(12)
+    })
+  })
+
   describe('constants', () => {
     it('UNARMED_ROLL_EXPECTED is 2.5', () => {
       expect(UNARMED_ROLL_EXPECTED).toBe(2.5)
     })
-    it('unarmed range is 1-4', () => {
+    it('monster unarmed range constants are 1-4', () => {
       expect(PHYS_ATK_UNARMED_MIN).toBe(1)
       expect(PHYS_ATK_UNARMED_MAX).toBe(4)
     })

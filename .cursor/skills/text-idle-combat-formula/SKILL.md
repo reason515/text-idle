@@ -17,11 +17,20 @@ Guides implementing combat damage and defense formulas per [docs/design/04-class
 
 ## Physical Damage Formula
 
+**Hero** (default: weapon equipped):
+
 ```
-baseRoll = random(1, 4) + [weapon ? random(weaponMin, weaponMax) : 0]
+baseRoll = [weapon ? random(weaponMin, weaponMax) : 0]
 physMultiplier = 1 + baseAttr * 0.20
 rawDamage = round(baseRoll * physMultiplier) + physAtkBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
+```
+
+**Monster** (still uses 1-4 unarmed roll for variance; see `damageUtils.js`):
+
+```
+baseRoll = random(1, 4)
+rawDamage = round(baseRoll * physAtk / 2.5)  // expectation ~ physAtk
 ```
 
 - **baseAttr** (Str-based): `Str * 0.8 + Agi * 0.6` (Warrior); `Str * 1.4 + Agi * 0.6` (Paladin)
@@ -31,12 +40,16 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)
 
 ## Spell Damage Formula
 
+**Hero**:
+
 ```
-baseRoll = random(1, 4) + [wand ? random(weaponMin, weaponMax) : 0]
+baseRoll = [wand ? random(weaponMin, weaponMax) : 0]
 spellMultiplier = 1 + baseAttr * 0.20
 rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ```
+
+**Monster**: same `random(1,4)` scaling pattern as physical for `physAtk`/`spellPower` in `damageUtils.js`.
 
 - **baseAttr**: `Int * k + Spirit * 0.8` where **k = 0.8** for Priest and Mage, **k = 1.2** for other spell classes (Warlock, Paladin hybrid spell path, Druid, Shaman, etc.)
 
@@ -67,13 +80,13 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ## damageUtils.js Constants
 
 ```javascript
-PHYS_ATK_UNARMED_MIN = 1, PHYS_ATK_UNARMED_MAX = 4
+PHYS_ATK_UNARMED_MIN = 1, PHYS_ATK_UNARMED_MAX = 4  // monsters only
 SPELL_UNARMED_MIN = 1, SPELL_UNARMED_MAX = 4
 PHYS_MULTIPLIER_K = 0.2, SPELL_MULTIPLIER_K = 0.2
 ```
 
-- `getEffectivePhysAtk(actor, rng)`: Returns raw phys damage (before SkillCoeff)
-- `getEffectiveSpellPower(actor, rng)`: Returns raw spell damage (before SkillCoeff)
+- `getEffectivePhysAtk(actor, rng)`: Hero: weapon roll only; monster: unarmed 1-4 scaled by `physAtk`
+- `getEffectiveSpellPower(actor, rng)`: Hero: weapon roll only; monster: unarmed 1-4 scaled by `spellPower`
 
 ## Combat Flow
 

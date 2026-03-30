@@ -241,8 +241,8 @@ describe('Example13: Heroic Strike', () => {
       skill,
       { isCrit: false, rng: rngMax }
     )
-    expect(resultMin.rawDamage).toBe(19)
-    expect(resultMax.rawDamage).toBe(43)
+    expect(resultMin.rawDamage).toBe(14)
+    expect(resultMax.rawDamage).toBe(24)
   })
 })
 
