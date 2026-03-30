@@ -59,7 +59,7 @@ export const STRENGTH_TO_ARMOR_K = 0.72
  * null/- means class does not use that attribute
  */
 export const CLASS_COEFFICIENTS = {
-  Warrior: { k_HP: 3.6, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.585, k_SpellPower: null, k_Resistance: 0.27, k_PhysCrit: 0.27, k_SpellCrit: null, k_Dodge: 0.18 },
+  Warrior: { k_HP: 2.5, k_MP: null, physAtkAttr: 'strength', k_PhysAtk: 0.585, k_SpellPower: null, k_Resistance: 0.27, k_PhysCrit: 0.27, k_SpellCrit: null, k_Dodge: 0.18 },
   Paladin: { k_HP: 3.15, k_MP: 1.98, physAtkAttr: 'strength', k_PhysAtk: 0.405, k_SpellPower: 0.405, k_Resistance: 0.54, k_PhysCrit: 0.27, k_SpellCrit: 0.36, k_Dodge: 0.18 },
   Priest: { k_HP: 2.25, k_MP: 2.52, physAtkAttr: null, k_PhysAtk: null, k_SpellPower: 0.585, k_Resistance: 0.72, k_PhysCrit: 0.27, k_SpellCrit: 0.54, k_Dodge: 0.18 },
   Druid: { k_HP: 2.88, k_MP: 1.98, physAtkAttr: 'agility', k_PhysAtk: 0.45, k_SpellPower: 0.405, k_Resistance: 0.54, k_PhysCrit: 0.54, k_SpellCrit: 0.45, k_Dodge: 0.36 },

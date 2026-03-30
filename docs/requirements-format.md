@@ -453,7 +453,7 @@ Then [expected result/verifiable behavior].
 | AC22 | Combat is in progress | Player clicks Pause button | Combat log stops scrolling; new log entries are not displayed until Resume is clicked |
 | AC23 | Combat is paused | Player clicks Resume button | Combat log resumes scrolling and displaying new entries |
 | AC24 | Player views main battle layout | Layout is displayed | Squad (left), Monsters (center-left), Combat Log (right); monsters closer to squad for easier status comparison |
-| AC25 | Player opens hero detail modal | Hero has Stamina 9, Level 1, Warrior class | HP in basic info and HP in secondary attributes both show 48 (10 + 9*4 + 1*2); values are consistent |
+| AC25 | Player opens hero detail modal | Hero has Stamina 9, Level 1, Warrior class | HP in basic info and HP in secondary attributes both show 34 (10 + 9*2.5 + 1*1.5); values are consistent |
 | AC26 | Combat log displays entries | Player views [Rx], used, on, for, (physical), (magic) | These elements use distinct colors/backgrounds for readability (e.g. #66aa88, #88bb99, #99ccaa) |
 | AC27 | Combat log displays an action | A hero or monster acts | The actor's Agility value is shown next to the actor name (e.g. "HeroName (AGI 12) used..."), so the player can see that higher agility acts first |
 | AC28 | Combat log displays a skill action | Player views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |

@@ -86,8 +86,8 @@ describe('heroes', () => {
   })
 
   describe('computeHeroMaxHP', () => {
-    it('returns 44 for Warrior Lv1 with Stamina 9 (10 + 9*3.6 + 1*1.5)', () => {
-      expect(computeHeroMaxHP({ class: 'Warrior', stamina: 9, level: 1 })).toBe(44)
+    it('returns 34 for Warrior Lv1 with Stamina 9 (10 + 9*2.5 + 1*1.5)', () => {
+      expect(computeHeroMaxHP({ class: 'Warrior', stamina: 9, level: 1 })).toBe(34)
     })
 
     it('matches computeSecondaryAttributes HP for all classes at Lv1', () => {
@@ -102,7 +102,7 @@ describe('heroes', () => {
 
     it('scales with level', () => {
       const warrior = { class: 'Warrior', stamina: 9, level: 60 }
-      expect(computeHeroMaxHP(warrior)).toBe(Math.round(10 + 9 * 3.6 + 60 * LEVEL_HP_PER_LEVEL))
+      expect(computeHeroMaxHP(warrior)).toBe(Math.round(10 + 9 * 2.5 + 60 * LEVEL_HP_PER_LEVEL))
     })
   })
 
@@ -139,7 +139,7 @@ describe('heroes', () => {
   describe('computeSecondaryAttributes', () => {
     it('returns HP, PhysAtk, Armor, Resistance, PhysCrit, Dodge, Hit for Warrior at Lv1', () => {
       const { values, formulas } = computeSecondaryAttributes('Warrior', 1)
-      expect(values.HP).toBe(44) // 10 + 9*3.6 + 1*1.5
+      expect(values.HP).toBe(34) // 10 + 9*2.5 + 1*1.5
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(3)
@@ -239,7 +239,7 @@ describe('heroes', () => {
       const hpFormula = formulas.find((f) => f.key === 'HP')
       expect(hpFormula.formula).toContain('Stam(9)')
       expect(hpFormula.formula).toContain('Level(1)')
-      expect(hpFormula.formula).toMatch(/= 44$/)
+      expect(hpFormula.formula).toMatch(/= 34$/)
     })
 
     it('PhysAtk formula shows baseRoll = unarmed + weapon when unarmed', () => {
@@ -407,7 +407,7 @@ describe('heroes', () => {
       const { values: v60 } = computeSecondaryAttributes('Warrior', 60)
       const attrs = getInitialAttributes('Warrior')
       expect(v60.HP).toBe(
-        Math.round(10 + attrs.stamina * 3.6 + 60 * LEVEL_HP_PER_LEVEL)
+        Math.round(10 + attrs.stamina * 2.5 + 60 * LEVEL_HP_PER_LEVEL)
       )
     })
 
@@ -428,7 +428,7 @@ describe('heroes', () => {
     it('uses heroAttrs when provided for leveled hero display', () => {
       const hero = { class: 'Warrior', strength: 15, agility: 4, intellect: 2, stamina: 14, spirit: 3, level: 2 }
       const { values } = computeSecondaryAttributes('Warrior', 2, hero)
-      expect(values.HP).toBe(Math.round(10 + 14 * 3.6 + 2 * LEVEL_HP_PER_LEVEL))
+      expect(values.HP).toBe(Math.round(10 + 14 * 2.5 + 2 * LEVEL_HP_PER_LEVEL))
       expect(values.PhysAtk).toMatch(/^\d+-\d+$/)
       const [pMin, pMax] = values.PhysAtk.split('-').map(Number)
       expect(pMin).toBe(4)
@@ -441,7 +441,7 @@ describe('heroes', () => {
     it('returns HP and Rage for Warrior', () => {
       const items = getResourceDisplay('Warrior', 1)
       expect(items).toHaveLength(2)
-      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: '生命', value: 44 })
+      expect(items.find((i) => i.key === 'HP')).toEqual({ key: 'HP', label: '生命', value: 34 })
       expect(items.find((i) => i.key === 'Rage')).toEqual({ key: 'Rage', label: '怒气', value: 100 })
     })
 
