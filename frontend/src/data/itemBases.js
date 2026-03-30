@@ -45,7 +45,7 @@ const BASE_ITEMS = {
   Helm: {
     normal: [
       { name: '便帽', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 3], physAtk: 0, spellPower: 0 },
-      { name: '骷髅帽', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 4], physAtk: 0, spellPower: 0 },
+      { name: '骷髅帽', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '头盔', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '全盔', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armorResistTotal: [4, 7], physAtk: 0, spellPower: 0 },
       { name: '巨盔', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armorResistTotal: [5, 8], physAtk: 0, spellPower: 0 },
@@ -71,7 +71,7 @@ const BASE_ITEMS = {
   Armor: {
     normal: [
       { name: '布甲', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
-      { name: '皮甲', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [4, 6], physAtk: 0, spellPower: 0 },
+      { name: '皮甲', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [5, 8], physAtk: 0, spellPower: 0 },
       { name: '硬皮甲', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armorResistTotal: [5, 8], physAtk: 0, spellPower: 0 },
       { name: '钉皮甲', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armorResistTotal: [7, 11], physAtk: 0, spellPower: 0 },
       { name: '锁子甲', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armorResistTotal: [9, 14], physAtk: 0, spellPower: 0 },
@@ -97,7 +97,7 @@ const BASE_ITEMS = {
   Gloves: {
     normal: [
       { name: '皮手套', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 3], physAtk: 0, spellPower: 0 },
-      { name: '重手套', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 3], physAtk: 0, spellPower: 0 },
+      { name: '重手套', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '链甲手套', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '轻护手', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armorResistTotal: [4, 6], physAtk: 0, spellPower: 0 },
       { name: '护手', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armorResistTotal: [5, 8], physAtk: 0, spellPower: 0 },
@@ -123,7 +123,7 @@ const BASE_ITEMS = {
   Boots: {
     normal: [
       { name: '靴子', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 3], physAtk: 0, spellPower: 0 },
-      { name: '重靴', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 4], physAtk: 0, spellPower: 0 },
+      { name: '重靴', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '链甲靴', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 6], physAtk: 0, spellPower: 0 },
       { name: '轻板靴', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armorResistTotal: [4, 8], physAtk: 0, spellPower: 0 },
       { name: '护胫', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armorResistTotal: [5, 10], physAtk: 0, spellPower: 0 },
@@ -149,7 +149,7 @@ const BASE_ITEMS = {
   Belt: {
     normal: [
       { name: '饰带', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 2], physAtk: 0, spellPower: 0 },
-      { name: '轻腰带', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [2, 3], physAtk: 0, spellPower: 0 },
+      { name: '轻腰带', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 4], physAtk: 0, spellPower: 0 },
       { name: '腰带', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 5], physAtk: 0, spellPower: 0 },
       { name: '重腰带', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armorResistTotal: [3, 6], physAtk: 0, spellPower: 0 },
       { name: '板甲腰带', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armorResistTotal: [4, 8], physAtk: 0, spellPower: 0 },
@@ -175,9 +175,9 @@ const BASE_ITEMS = {
   MainHand: {
     normal: [
       { name: '匕首', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 5], spellPower: 0 },
-      { name: '短剑', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 6], spellPower: 0 },
+      { name: '短剑', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 7], spellPower: 0 },
       { name: '短刀', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: 0 },
-      { name: '弯刀', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 7], spellPower: 0 },
+      { name: '弯刀', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 8], spellPower: 0 },
     ],
     exceptional: [
       { name: '刺剑', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 18], spellPower: 0 },
@@ -195,7 +195,7 @@ const BASE_ITEMS = {
   Shield: {
     normal: [
       { name: '圆盾', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: [1, 2], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [4, 6] },
-      { name: '小盾', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: [2, 3], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [5, 7] },
+      { name: '小盾', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: [2, 4], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [5, 8] },
       { name: '大盾', levelReq: 8, str: 8, agi: 0, int: 0, spi: 0, armor: [3, 5], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [6, 9] },
       { name: '鸢盾', levelReq: 12, str: 14, agi: 0, int: 0, spi: 0, armor: [4, 6], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [7, 10] },
       { name: '塔盾', levelReq: 16, str: 20, agi: 0, int: 0, spi: 0, armor: [5, 8], resistance: [0, 0], physAtk: 0, spellPower: 0, blockPct: [8, 11] },
@@ -221,7 +221,7 @@ const BASE_ITEMS = {
   OffHand: {
     normal: [
       { name: '鹰之法球', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [1, 2], spellCrit: [1, 2] },
-      { name: '神圣之球', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [1, 3], spellCrit: [1, 3] },
+      { name: '神圣之球', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [2, 4], spellCrit: [2, 4] },
       { name: '烟球', levelReq: 8, str: 0, agi: 0, int: 8, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [2, 3], spellCrit: [2, 3] },
       { name: '扣环之球', levelReq: 12, str: 0, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [2, 4], spellCrit: [2, 4] },
       { name: '杰瑞德之石', levelReq: 16, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 5], spellCrit: [3, 5] },
@@ -257,7 +257,7 @@ const BASE_ITEMS = {
   MainHand2H: {
     normal: [
       { name: '双手剑', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [4, 9], spellPower: 0 },
-      { name: '大剑', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [4, 10], spellPower: 0 },
+      { name: '大剑', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 12], spellPower: 0 },
       { name: '巨剑', levelReq: 8, str: 12, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 13], spellPower: 0 },
       { name: '混种剑', levelReq: 12, str: 20, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [8, 16], spellPower: 0 },
       { name: '焰形剑', levelReq: 16, str: 28, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [10, 19], spellPower: 0 },
@@ -283,7 +283,7 @@ const BASE_ITEMS = {
   MainHand2HBow: {
     normal: [
       { name: '短弓', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: 0 },
-      { name: '猎人之弓', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [2, 7], spellPower: 0 },
+      { name: '猎人之弓', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 8], spellPower: 0 },
       { name: '长弓', levelReq: 8, str: 0, agi: 8, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [3, 9], spellPower: 0 },
       { name: '复合弓', levelReq: 12, str: 0, agi: 14, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [5, 11], spellPower: 0 },
       { name: '长战弓', levelReq: 16, str: 0, agi: 20, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [6, 13], spellPower: 0 },
@@ -309,7 +309,7 @@ const BASE_ITEMS = {
   MainHandWand: {
     normal: [
       { name: '权杖', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [2, 6] },
-      { name: '大权杖', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [2, 7] },
+      { name: '大权杖', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 8] },
       { name: '战权杖', levelReq: 8, str: 0, agi: 0, int: 8, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [3, 9] },
       { name: '法杖', levelReq: 12, str: 0, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [5, 11] },
       { name: '紫杉法杖', levelReq: 16, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [6, 13] },
@@ -335,7 +335,7 @@ const BASE_ITEMS = {
   MainHand2HStaff: {
     normal: [
       { name: '短杖', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [4, 9] },
-      { name: '齐眉棍', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [4, 10] },
+      { name: '齐眉棍', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [5, 12] },
       { name: '扭曲之杖', levelReq: 8, str: 0, agi: 0, int: 12, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [5, 13] },
       { name: '战杖', levelReq: 12, str: 0, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [8, 16] },
       { name: '暗影之杖', levelReq: 16, str: 0, agi: 0, int: 28, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [10, 19] },

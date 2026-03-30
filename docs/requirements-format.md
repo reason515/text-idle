@@ -758,10 +758,10 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Drop rate**: Low overall (configurable); each victory rolls independently; most victories produce no equipment drop.
 - **Drop condition**: Only on **victory**; defeat grants no equipment.
 - **Item tier** (determined by monster level, not MF): Normal bases from Lv 1–20 monsters; Exceptional bases from Lv 21–40; Elite bases from Lv 41–60.
-- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–6 affixes), Unique (fixed affixes + special effect).
+- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–5 affixes), Unique (fixed affixes + special effect).
 - **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold, with a brief highlight animation when appearing to enhance the sense of surprise.
 - **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
-- **Blue vs. Yellow range rule**: Blue affix range = max(1, floor(base × 0.7)) to ceil(base × 1.3); Yellow affix range = base range (narrower, relies on count). Affix values are never +0.
+- **Blue vs. Yellow range rule**: Both Magic and Rare use the same per-affix roll band: max(1, floor(base × 0.7)) to ceil(base × 1.3). Rare differs from Magic mainly by **affix count** (3–5 vs 1–2). Affix values are never +0.
 - **Monster tier modifier**: Elite monsters have higher drop probability and higher chance of blue/yellow quality than Normal; Boss has the highest drop probability and quality chance; **Boss always drops at least 1 item with quality ≥ Magic (blue)**.
 - **Ring and Amulet quality floor**: Rings and amulets have no base stats; white quality has no value. They **only drop at Magic (blue) or higher**; if rolled as Normal, quality is upgraded to Magic.
 - **Weapon damage range at drop**: Physical/spell weapons have 下限范围 and 上限范围 (see design doc 4.3). At drop, physAtkMin and physAtkMax are rolled independently within their ranges; the weapon instance displays the rolled range (e.g., PhysAtk: 3–5).
@@ -777,10 +777,10 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | An equipment item drops | Drop is resolved | The item is listed in the combat log victory summary (same line/section as EXP and Gold rewards), showing the item's name colored by quality |
 | AC4 | A Normal (white) item drops | Item is generated | Item name is displayed in white/default color; it has no affixes; only base attributes (e.g., Armor value) are shown |
 | AC5 | A Magic (blue) item drops | Item is generated | Item name is displayed in blue; it shows 1–2 affixes with each affix displaying the rolled value and roll range (e.g., `+7 Armor [+5~18]`) |
-| AC6 | A Rare (yellow) item drops | Item is generated | Item name is displayed in yellow; it shows 3–6 affixes each with rolled value and range (narrower than blue for the same affix family) |
+| AC6 | A Rare (yellow) item drops | Item is generated | Item name is displayed in yellow; it shows 3–5 affixes each with rolled value and range (same per-affix band as blue for that affix family) |
 | AC7 | A Unique item drops | Item is generated | Item name is displayed in unique/gold color; affixes are fixed (no roll range shown, as values are predetermined) |
 | AC8 | Squad is fighting Lv 1–20 monsters (e.g., Elwynn Forest) | Equipment drops | Item base is Normal tier (e.g., Cap, Leather Armor, Short Bow); Exceptional and Elite base names do not appear |
-| AC9 | A blue item and a yellow item with the same "+Armor" affix are compared | Player views both items | Blue item roll range is wider (e.g., `[+5~18]`); yellow item roll range is narrower (e.g., `[+6~10]`); an exceptional blue roll can exceed a mediocre yellow roll |
+| AC9 | A blue item and a yellow item with the same "+Armor" affix family are compared | Player views both items | Both show the same bracket formula for that tier (e.g., `[+5~18]` from the same base); yellow typically wins on **total stats** from more affix lines, not from a narrower single line |
 | AC10 | Squad defeats an Elite monster encounter (e.g., Kobold Geomancer, Defias Smuggler) | Victory is triggered | Equipment drop probability is higher than for a Normal-only encounter; when drops occur, blue/yellow quality appears more often than in Normal encounters |
 | AC11 | Squad defeats a Boss encounter (e.g., Hogger, Edwin VanCleef) | Victory is triggered | Equipment drop probability is highest; **at least 1 dropped item has quality ≥ Magic (blue)**; if Boss would drop 0 items by roll, the system grants 1 blue item as a guaranteed reward |
 | AC12 | Squad defeats a Boss and receives multiple drops | Drops are resolved | Among the dropped items, at least one is Magic (blue), Rare (yellow), or Unique; the rest may be any quality |
@@ -803,7 +803,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Requirements highlighted red** if the inspecting hero does not meet them.
 - **Affix range transparency**: Roll range visible so player can evaluate whether the roll is near-max, mid, or low.
 - **Comparison**: When inspecting a new item while a hero has the same slot equipped, the detail view can show the current item alongside the new one.
-- **Prefix / Suffix label**: Affixes are labeled as Prefix or Suffix; each item has at most 1 Prefix and 1 Suffix per Blue item, or up to 2 Prefix + 2 Suffix for Rare items.
+- **Prefix / Suffix label**: Affixes are labeled as Prefix or Suffix; each item has at most 1 Prefix and 1 Suffix per Blue item; Rare items may have multiple prefixes and suffixes (implementation: up to 3 each, total 3–5 affixes).
 - **Item naming**: Displayed name follows the naming rules (see Example 23); item detail shows the full display name at the top.
 
 **Acceptance Criteria**
@@ -907,9 +907,9 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   - Exceptional tier: drops when monster level ≥ threshold (e.g., ≥ 21); same base families but stronger names and stats.
   - Elite tier: drops when monster level ≥ higher threshold (e.g., ≥ 41); highest stat values.
 - **Affix tier scales with item tier**: Normal items only roll Normal-tier affixes; Exceptional can roll Normal + Exceptional affixes; Elite can roll all three tiers.
-- **Affix value ranges by tier** (example: "+Armor" prefix):
-  | Affix Tier | Yellow (base) Range | Notes |
-  |------------|---------------------|-------|
+- **Affix value ranges by tier** (example: "+Armor" prefix): Design tables give a **base min/max** per affix tier; at roll time, Magic and Rare both use the same band: max(1, floor(baseMin×0.7)) through ceil(baseMax×1.3).
+  | Affix Tier | Design base (+Armor) | Notes |
+  |------------|----------------------|-------|
   | Normal | +2–5 | Low-level drops |
   | Exceptional | +5–12 | Mid-game drops |
   | Elite | +12–24 | Late-game drops |
@@ -923,8 +923,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC1 | Squad is fighting Lv 1–20 monsters (Elwynn Forest, maps 1–5) | Equipment drops | All dropped item base names are Normal tier (e.g., Cap, Leather Armor, Short Bow, Dagger); Exceptional and Elite base names do not appear |
 | AC2 | Squad is fighting Lv 21–40 monsters | Equipment drops | Items may have Exceptional tier bases (e.g., War Hat, Ghost Armor, Edge Bow); Normal bases may still appear; Elite bases do not appear |
 | AC3 | Squad is fighting Lv 41–60 monsters | Equipment drops | Items may have Elite tier bases (e.g., Shako, Dusk Shroud, Spider Bow); both lower tiers may also appear |
-| AC4 | A Normal-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Normal-tier range (e.g., `+2~5` for Yellow; Blue range: `+1~6`); Elite range values (+12~24) are not reachable from this item |
-| AC5 | An Elite-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll range shown is the Elite-tier range (e.g., `+12~24` for Yellow; Blue range: `+8~31`); significantly stronger than Normal-tier equivalents |
+| AC4 | A Normal-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll bracket is derived from the Normal-tier affix base with the shared 0.7–1.3 rule (same formula as Rare); Elite-tier affix bases (+12~24) are not reachable from this item |
+| AC5 | An Elite-tier Magic item with "+Armor" prefix drops | Player inspects the item | Roll bracket is derived from the Elite-tier affix base with the same 0.7–1.3 rule; significantly stronger than Normal-tier equivalents |
 | AC6 | Player compares a Normal-tier Cap and an Elite-tier Shako | Player views both item details | Cap (Lv 1, Armor+Resist total 2–3, each ≥1) vs. Shako (Lv 41, total 16–26, each ≥1); the tier difference is immediately visible in base stats |
 | AC7 | A Rare item drops from a Lv 25 monster | Item is generated | Item base is Exceptional tier; its affixes may be Normal-tier or Exceptional-tier rolls (not Elite-tier); affix roll ranges reflect this ceiling |
 | AC8 | Player is on Elwynn Forest (Lv 1–5 monsters) and on Westfall (Lv 6–10 monsters) | Equipment drops from each map | Items from higher-level maps have higher level requirements within the same Normal tier (e.g., Skull Cap Lv 4 on Westfall vs. Cap Lv 1 on Elwynn); stat differences are visible |
@@ -993,7 +993,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | A Magic (blue) item has 1 prefix and 0 suffix | Item name is displayed | Format: `Prefix+Base` (e.g., "坚固便帽", "强力长剑") |
 | AC3 | A Magic (blue) item has 0 prefix and 1 suffix | Item name is displayed | Format: `Base·Suffix` (e.g., "便帽·熊之", "长剑·打击之") |
 | AC4 | A Magic (blue) item has 1 prefix and 1 suffix | Item name is displayed | Format: `Prefix+Base·Suffix` (e.g., "坚固便帽·熊之"); name appears in combat log, inventory, and item detail |
-| AC5 | A Rare (yellow) item has 3–6 affixes | Item name is displayed | Format: `PrimaryPrefix+Base·PrimarySuffix，[Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., 老兵, 冠军, 荣光) |
+| AC5 | A Rare (yellow) item has 3–5 affixes | Item name is displayed | Format: `PrimaryPrefix+Base·PrimarySuffix，[Epithet]`; primary affixes are the highest-tier ones (Elite > Exceptional > Normal); epithet is from the preset pool (e.g., 老兵, 冠军, 荣光) |
 | AC6 | A Rare (yellow) item is displayed | Player views the name | The name ends with `，[Epithet]` (e.g., "强力王冠·泰坦之，老兵"); clearly distinguishes from blue items which have no epithet |
 | AC7 | A Rare (yellow) item drops | Item is generated | The epithet is chosen from the configurable pool (老兵, 冠军, 荣光, 灾厄, 恩惠, 守御, 贤者, 风暴, 烈焰, 寒霜, etc.); each yellow item gets exactly one epithet |
 | AC8 | A Unique item is displayed | Item name is shown | The name is the fixed preset name for that Unique; it does not change based on affixes (affixes are predetermined) |

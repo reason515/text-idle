@@ -138,7 +138,7 @@ describe('equipment', () => {
       }
     })
 
-    it('Rare (yellow) items have 3-6 affixes', () => {
+    it('Rare (yellow) items have 3-5 affixes', () => {
       const monsters = [{ tier: 'boss', level: 30 }]
       const rareAffixCounts = []
       for (let i = 0; i < 300; i++) {
@@ -153,7 +153,7 @@ describe('equipment', () => {
       expect(rareAffixCounts.length).toBeGreaterThan(0)
       for (const c of rareAffixCounts) {
         expect(c).toBeGreaterThanOrEqual(3)
-        expect(c).toBeLessThanOrEqual(6)
+        expect(c).toBeLessThanOrEqual(5)
       }
     })
 

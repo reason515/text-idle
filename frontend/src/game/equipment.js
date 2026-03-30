@@ -2,9 +2,9 @@
  * Equipment drop and item generation.
  * Design reference: Example 17, 21, 23 in requirements-format.md
  * - Item tier by monster level: Normal (1-20), Exceptional (21-40), Elite (41-60)
- * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-6 affix)
+ * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-5 affix)
  * - Boss always drops at least 1 item with quality >= Magic
- * - Blue affix range: 0.7-1.3 x base; Yellow: narrower base range
+ * - Magic and Rare affix range: 0.7-1.3 x base (same formula; Rare differs by affix count)
  */
 
 import {
@@ -21,7 +21,7 @@ export const QUALITY_RARE = 'rare'
 export const QUALITY_UNIQUE = 'unique'
 
 /** Drop rate config: base chance per victory; Elite/Boss multiply */
-const DROP_BASE_CHANCE = 0.12
+const DROP_BASE_CHANCE = 0.08
 const DROP_ELITE_MULT = 1.8
 const DROP_BOSS_MULT = 2.5
 
@@ -127,19 +127,16 @@ function weaponMidRollFromBase(arr) {
 }
 
 function rollInRange(baseMin, baseMax, quality, rng) {
-  if (quality === QUALITY_MAGIC) {
+  if (quality === QUALITY_MAGIC || quality === QUALITY_RARE) {
     const low = Math.max(1, Math.floor(baseMin * 0.7))
     const high = Math.ceil(baseMax * 1.3)
     return randomInRange(low, high, rng)
-  }
-  if (quality === QUALITY_RARE) {
-    return randomInRange(baseMin, baseMax, rng)
   }
   return randomInRange(baseMin, baseMax, rng)
 }
 
 function getAffixRange(baseMin, baseMax, quality) {
-  if (quality === QUALITY_MAGIC) {
+  if (quality === QUALITY_MAGIC || quality === QUALITY_RARE) {
     const low = Math.max(1, Math.floor(baseMin * 0.7))
     const high = Math.ceil(baseMax * 1.3)
     return { min: low, max: high }
@@ -300,7 +297,7 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
       item.suffixes.push({ id: s.id, name: s.name, stat: s.stat, value: val, min: range.min, max: range.max })
     }
   } else if (quality === QUALITY_RARE) {
-    const count = 3 + Math.floor(rng() * 4)
+    const count = 3 + Math.floor(rng() * 3)
     const prefixes = allowedAffixes.filter((a) => a.type === 'prefix')
     const suffixes = allowedAffixes.filter((a) => a.type === 'suffix')
     const numPrefix = Math.min(Math.ceil(count / 2), 3)
