@@ -1110,7 +1110,7 @@
                       <span class="ai-tactics-preview-val ai-tactics-rule-list">
                         <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标优先链</span>
-                          <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
+                          <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules) }}</span>
                         </span>
                         <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标</span>
@@ -1165,7 +1165,7 @@
                     <span class="ai-tactics-current-val ai-tactics-rule-list">
                       <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标优先链</span>
-                        <span class="ai-tactics-rule-value">{{ c.targetRules.map(r => targetRuleStepDisplay(r)).join(' → 找不到时 → ') }}</span>
+                        <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules) }}</span>
                       </span>
                       <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标</span>
@@ -1483,7 +1483,7 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
-import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRuleStepDisplay, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
+import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRulesChainDisplay, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'

@@ -282,6 +282,12 @@ WRONG: { "skillPriority": ["taunt", "sunder-armor"], "targetRule": "threat-not-t
 CORRECT: include **{ "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }** in **conditions** (see full example above).
 Reason: Player explicitly described **when** normal attack is used and expects **解析预览** to show **普通攻击** rules. **basic-attack** is not in **skillPriority** but must appear in **conditions** for target selection.
 
+WRONG 10 (Mage) - frost vs fireball by enemy HP% modeled as targetRules **fallback** with two **lowest-hp** steps:
+Player: "攻击HP最低的敌人；若其HP高于70%用寒冰箭否则火球术；法力不足时普通攻击"
+WRONG: { "skillPriority": ["frostbolt", "fireball"], "conditions": [{ "skillId": "frostbolt", "targetRules": ["lowest-hp", { "rule": "lowest-hp", "when": "target-hp-above", "value": 0.7 }] }, { "skillId": "fireball", "targetRules": ["lowest-hp", { "rule": "lowest-hp", "when": "target-hp-below", "value": 0.7 }] }, { "skillId": "basic-attack", "targetRule": "lowest-hp" }] }
+CORRECT: { "skillPriority": ["frostbolt", "fireball"], "targetRule": "lowest-hp", "conditions": [{ "skillId": "frostbolt", "targetRule": "lowest-hp", "when": "target-hp-above", "value": 0.7 }, { "skillId": "fireball", "targetRule": "lowest-hp", "when": "target-hp-below", "value": 0.7 }, { "skillId": "basic-attack", "targetRule": "lowest-hp" }] }
+Reason: "否则用 B" = **skill order** + **skill-level when** + **targetRule**, not a **targetRules** chain where the first step is plain **lowest-hp** (it always picks a target if any enemy exists, so the second step never runs). Add **basic-attack** in **conditions** when the player names 法力不足 + 普通攻击.
+
 Player: "给自己上盾，队友血量低于40%时治疗血最少的人"
 Output: { "conditions": [{ "skillId": "power-word-shield", "targetRule": "self" }, { "skillId": "flash-heal", "targetRule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.4 }] }
 
@@ -911,6 +917,41 @@ export function targetRuleStepDisplay(step) {
     return rulePart
   }
   return String(step)
+}
+
+/**
+ * True if this chain step has a per-step gate (when / whenAll) evaluated before picking.
+ * @param {string|{ rule?: string, when?: string, whenAll?: unknown[] }} step
+ * @returns {boolean}
+ */
+export function targetRuleStepHasGate(step) {
+  if (typeof step === 'string') return false
+  if (!step || typeof step !== 'object') return false
+  if (step.when) return true
+  if (Array.isArray(step.whenAll) && step.whenAll.length > 0) return true
+  return false
+}
+
+/**
+ * Display full targetRules chain with connectors matching engine semantics:
+ * next step runs when the previous step yields no target, or (for gated steps) when that step's gate fails.
+ * @param {(string|object)[]} steps
+ * @returns {string}
+ */
+export function targetRulesChainDisplay(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return ''
+  const out = []
+  for (let i = 0; i < steps.length; i++) {
+    if (i > 0) {
+      const next = steps[i]
+      const sep = targetRuleStepHasGate(next)
+        ? ' → 无候选或本步门控不满足时 → '
+        : ' → 找不到合法目标时 → '
+      out.push(sep)
+    }
+    out.push(targetRuleStepDisplay(steps[i]))
+  }
+  return out.join('')
 }
 
 /**

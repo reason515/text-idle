@@ -3,6 +3,8 @@ import {
   validateAiTactics,
   mergeAiTacticsApply,
   targetRuleStepDisplay,
+  targetRuleStepHasGate,
+  targetRulesChainDisplay,
   conditionEntryHasTankHpBelow,
   skillDisplayName,
 } from './aiTactics.js'
@@ -604,5 +606,43 @@ describe('targetRuleStepDisplay', () => {
   it('falls back to String() for unknown input', () => {
     expect(targetRuleStepDisplay(null)).toBe('null')
     expect(targetRuleStepDisplay(42)).toBe('42')
+  })
+})
+
+describe('targetRuleStepHasGate', () => {
+  it('is false for plain string steps', () => {
+    expect(targetRuleStepHasGate('lowest-hp')).toBe(false)
+  })
+
+  it('is true when step has when or non-empty whenAll', () => {
+    expect(targetRuleStepHasGate({ rule: 'lowest-hp', when: 'target-hp-above', value: 0.7 })).toBe(true)
+    expect(targetRuleStepHasGate({ rule: 'self-if-enemy-targeting', whenAll: [{ when: 'self-hp-below', value: 0.6 }] })).toBe(
+      true,
+    )
+  })
+
+  it('is false for object step with only rule', () => {
+    expect(targetRuleStepHasGate({ rule: 'tank' })).toBe(false)
+  })
+})
+
+describe('targetRulesChainDisplay', () => {
+  it('joins plain fallback steps with 找不到合法目标时', () => {
+    const s = targetRulesChainDisplay(['threat-not-tank-random', 'lowest-hp'])
+    expect(s).toBe('非坦克仇恨目标（随机） → 找不到合法目标时 → 血量最低的敌人')
+  })
+
+  it('uses 无候选或本步门控不满足时 before a gated step', () => {
+    const s = targetRulesChainDisplay([
+      'lowest-hp',
+      { rule: 'lowest-hp', when: 'target-hp-above', value: 0.7 },
+    ])
+    expect(s).toContain('无候选或本步门控不满足时')
+    expect(s).toContain('血量最低的敌人（目标血量高于 70%）')
+  })
+
+  it('returns empty for empty or non-array', () => {
+    expect(targetRulesChainDisplay([])).toBe('')
+    expect(targetRulesChainDisplay(null)).toBe('')
   })
 })

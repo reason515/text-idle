@@ -227,7 +227,7 @@
 
 **战斗执行（牧师快速治疗门控）**：若 `flash-heal` 的 `targetRules` **首步**为 `{ when: ally-hp-below }`（紧急抬血），则当 **任意存活己方（含牧师自身）** 生命比例低于该阈值时，**允许**在本回合尝试快速治疗，即使技能级 `when`（如 `self-hp-below`）未满足；否则仍按技能级条件判定。实现见 `checkPriestFlashHealSkillAllowed`（`frontend/src/game/tactics.js`）与牧师技能路径（`frontend/src/game/combat.js`）。
 
-**目标优先链（`targetRules`）**：技能级可配置 `targetRules: [stepA, stepB, ...]`。战斗在选目标时按顺序尝试；若某步选不到合法目标则尝试下一步；若整条链都无目标则 **跳过该技能**。用于表达「平时打 A 类目标，没有时再打 B 类」等场景。UI 摘要中展示为「目标优先链：… → 找不到时 → …」。
+**目标优先链（`targetRules`）**：技能级可配置 `targetRules: [stepA, stepB, ...]`。战斗在选目标时按顺序尝试；若某步选不到合法目标则尝试下一步；若某步带门控且门控不满足也会尝试下一步；若整条链都无目标则 **跳过该技能**。用于表达「平时打 A 类目标，没有时再打 B 类」等场景。UI 摘要中由 `targetRulesChainDisplay` 连接：下一步为**无门控**步骤时用「找不到合法目标时」，下一步带 **when / whenAll** 门控时用「无候选或本步门控不满足时」，避免误读成「找不到某一类目标」。
 
 **与 `targetRule` 并存**：若同一条 `conditions` 项同时写了 `targetRule`（单目标）和 `targetRules`（链），**战斗引擎与 `getTargetRuleChain` 以 `targetRules` 为准**（见 `frontend/src/game/tactics.js`）。`validateAiTactics` 在存在非空 `targetRules` 时会 **去掉** `targetRule`，避免旧字段残留；主界面「当前战术」展示亦 **优先显示目标优先链**，避免只显示过期的单目标。
 
