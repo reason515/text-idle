@@ -8,6 +8,22 @@
 import { getLevelSkillById } from './mageLevelSkills.js'
 import { getEffectiveSpellPower } from './damageUtils.js'
 
+/** Frostbolt: base chance to apply Freeze (skip 1 action); +5% per enhance, max 25%. */
+export const FROSTBOLT_FREEZE_CHANCE_BASE = 0.1
+export const FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE = 0.05
+export const FROSTBOLT_FREEZE_CHANCE_MAX = 0.25
+
+const MAX_ENHANCE_COUNT = 3
+
+/**
+ * @param {number} [enhanceCount]
+ * @returns {number}
+ */
+export function getFrostboltFreezeChance(enhanceCount) {
+  const c = Math.min(MAX_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
+  return Math.min(FROSTBOLT_FREEZE_CHANCE_MAX, FROSTBOLT_FREEZE_CHANCE_BASE + c * FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE)
+}
+
 export const MAGE_INITIAL_SKILLS = [
   {
     id: 'frostbolt',
@@ -15,7 +31,8 @@ export const MAGE_INITIAL_SKILLS = [
     spec: '冰霜',
     manaCost: 13,
     coefficient: 0.8,
-    effectDesc: '0.8 倍法术伤害；冰冻目标，使其跳过 1 次行动',
+    freezeChance: FROSTBOLT_FREEZE_CHANCE_BASE,
+    effectDesc: '0.8 倍法术伤害；10% 概率冰冻目标，使其跳过 1 次行动',
   },
   {
     id: 'fireball',
@@ -45,8 +62,6 @@ export function getAnyMageSkillById(skillId) {
   return getMageSkillById(skillId) ?? getLevelSkillById(skillId)
 }
 
-const MAX_ENHANCE_COUNT = 3
-
 /**
  * Get skill with enhancement params applied. Design doc 8.2.6.
  * @param {Object} mage - Combat unit with skillEnhancements
@@ -71,7 +86,9 @@ export function getMageSkillWithEnhancements(mage, skillId) {
     out.effectDesc = `${out.coefficient} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
   } else if (skillId === 'frostbolt') {
     out.coefficient = Math.min(0.95, 0.8 + enhanceCount * 0.05)
-    out.effectDesc = `${out.coefficient} 倍法术伤害；冰冻目标，使其跳过 1 次行动`
+    out.freezeChance = getFrostboltFreezeChance(enhanceCount)
+    const pct = Math.round(out.freezeChance * 100)
+    out.effectDesc = `${out.coefficient} 倍法术伤害；${pct}% 概率冰冻目标，使其跳过 1 次行动`
   }
 
   return out
@@ -104,7 +121,9 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
   if (skillId === 'frostbolt') {
     const currCoeff = Math.min(0.95, 0.8 + current * 0.05)
     const nextCoeff = Math.min(0.95, 0.8 + next * 0.05)
-    return `${currCoeff} -> ${nextCoeff} 倍伤害；冰冻跳过 1 次行动（不变）`
+    const currPct = Math.round(getFrostboltFreezeChance(current) * 100)
+    const nextPct = Math.round(getFrostboltFreezeChance(next) * 100)
+    return `${currCoeff} -> ${nextCoeff} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%`
   }
 
   return base.effectDesc ?? ''
@@ -252,6 +271,7 @@ export function tickMageDebuffs(unit) {
 export function executeMageSkill(mage, target, skill, opts = {}) {
   const { isCrit = false, rng } = opts
   const CRIT_MULTIPLIER = 1.5
+  const roll = rng ?? Math.random
 
   mage.currentMP = Math.max(0, (mage.currentMP || 0) - (skill.manaCost ?? 0))
 
@@ -266,8 +286,13 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
   target.currentHP = Math.max(0, (target.currentHP || 0) - finalDamage)
 
   let debuffResult = null
+  let freezeProcced = false
   if (skill.id === 'frostbolt') {
-    debuffResult = applyFreezeDebuff(target, 1)
+    const p = skill.freezeChance ?? FROSTBOLT_FREEZE_CHANCE_BASE
+    freezeProcced = roll() < p
+    if (freezeProcced) {
+      debuffResult = applyFreezeDebuff(target, 1)
+    }
   }
 
   return {
@@ -283,7 +308,7 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     manaConsumed: skill.manaCost ?? 0,
     debuffApplied: !!(debuffResult && debuffResult.applied),
     debuffRefreshed: !!(debuffResult && debuffResult.refreshed),
-    debuffType: skill.id === 'frostbolt' ? 'freeze' : undefined,
-    freezeSkipActions: skill.id === 'frostbolt' ? 1 : undefined,
+    debuffType: skill.id === 'frostbolt' && freezeProcced ? 'freeze' : undefined,
+    freezeSkipActions: skill.id === 'frostbolt' && freezeProcced ? 1 : undefined,
   }
 }

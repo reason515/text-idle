@@ -218,7 +218,7 @@ Then [expected result/verifiable behavior].
   | Class | Role | Skill 1 | Skill 2 | Purpose |
   |-------|------|--------|--------|---------|
   | Warrior | Tank | Sunder Armor | Taunt | Debuff + threat; force target for 2 actions |
-  | Mage | DPS | Frostbolt | Fireball | Frost freeze (skip action) + Fire burst (+spell crit on Fireball) |
+  | Mage | DPS | Frostbolt | Fireball | Frost chance-freeze (skip action) + Fire burst (+spell crit on Fireball) |
   | Priest | Healer | Flash Heal | Power Word: Shield | Direct heal; absorb shield (low threat) |
 
 - **Reference**: [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0; [05-skills.md](design/05-skills.md) 3.1, 8.3.
@@ -630,13 +630,13 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 13 MP, 0.8x damage + Freeze (target skips next action). Fireball: 18 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 13 MP, 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced). Fireball: 18 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
 - **Initial skills (Mage recruitment: 2选1)**:
   | Spec | Skill | English | Cost | Effect |
   |------|-------|---------|------|--------|
-  | Frost | Frostbolt | Frostbolt | 13 MP | 0.8x magic damage; Freeze: target skips 1 action when their turn comes |
+  | Frost | Frostbolt | Frostbolt | 13 MP | 0.8x magic damage; 10% chance to Freeze: target skips 1 action when their turn comes (higher chance when skill is enhanced) |
   | Fire | Fireball | Fireball | 18 MP | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
 
 - **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.

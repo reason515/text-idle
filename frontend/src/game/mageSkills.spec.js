@@ -16,6 +16,7 @@ import {
   applyBurnDebuff,
   tickMageDebuffs,
   executeMageSkill,
+  getFrostboltFreezeChance,
 } from './mageSkills.js'
 
 // ---------------------------------------------------------------------------
@@ -148,12 +149,20 @@ describe('Fireball', () => {
 
 describe('Frostbolt', () => {
   const skill = getMageSkillById('frostbolt')
+  /** Deterministic low roll so Freeze procs (below 10% base / enhanced cap). */
+  const rngFreezeProc = () => 0.05
 
-  it('deals 0.8x damage and applies Freeze (skip 1 action)', () => {
+  it('getFrostboltFreezeChance scales with enhance and caps at 25%', () => {
+    expect(getFrostboltFreezeChance(0)).toBeCloseTo(0.1, 5)
+    expect(getFrostboltFreezeChance(1)).toBeCloseTo(0.15, 5)
+    expect(getFrostboltFreezeChance(3)).toBeCloseTo(0.25, 5)
+  })
+
+  it('deals 0.8x damage and applies Freeze when proc succeeds (skip 1 action)', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40 })
     const target = makeTarget({ resistance: 10, currentHP: 30 })
 
-    const result = executeMageSkill(mage, target, skill, { isCrit: false })
+    const result = executeMageSkill(mage, target, skill, { isCrit: false, rng: rngFreezeProc })
 
     expect(result.manaConsumed).toBe(13)
     const raw = Math.round(15 * 0.8)
@@ -169,11 +178,23 @@ describe('Frostbolt', () => {
     expect(fr.skipActions).toBe(1)
   })
 
-  it('refresh when already frozen refreshes skip count', () => {
+  it('does not apply Freeze when proc fails', () => {
+    const mage = makeMage({ spellPower: 15, currentMP: 40 })
+    const target = makeTarget({ resistance: 10, currentHP: 30 })
+
+    const result = executeMageSkill(mage, target, skill, { isCrit: false, rng: () => 0.99 })
+
+    expect(result.debuffApplied).toBe(false)
+    expect(result.debuffRefreshed).toBe(false)
+    expect(result.debuffType).toBeUndefined()
+    expect(getFreezeDebuff(target)).toBeNull()
+  })
+
+  it('refresh when already frozen refreshes skip count when proc succeeds', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40 })
     const target = makeTarget({ resistance: 10, currentHP: 30, debuffs: [{ type: 'freeze', skipActions: 1 }] })
 
-    const result = executeMageSkill(mage, target, skill, { isCrit: false })
+    const result = executeMageSkill(mage, target, skill, { isCrit: false, rng: rngFreezeProc })
 
     expect(result.debuffApplied).toBe(false)
     expect(result.debuffRefreshed).toBe(true)
@@ -187,12 +208,22 @@ describe('Frostbolt', () => {
     expect(getFreezeDebuff(unit)).toBeNull()
   })
 
-  it('Frostbolt enhanced increases coefficient', () => {
+  it('Frostbolt enhanced increases coefficient and freeze chance', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40, skillEnhancements: { frostbolt: { enhanceCount: 1 } } })
     const target = makeTarget({ resistance: 0 })
     const skillEnhanced = getMageSkillWithEnhancements(mage, 'frostbolt')
-    const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false })
+    expect(skillEnhanced.freezeChance).toBeCloseTo(0.15, 5)
+    const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false, rng: rngFreezeProc })
     expect(result.skillCoefficient).toBeCloseTo(0.85, 5)
+  })
+
+  it('getMageEnhancementPreviewEffectDesc shows frostbolt damage and freeze chance delta', () => {
+    const hero = makeMage({ skillEnhancements: {} })
+    const desc = getMageEnhancementPreviewEffectDesc(hero, 'frostbolt')
+    expect(desc).toContain('0.8')
+    expect(desc).toContain('0.85')
+    expect(desc).toContain('10%')
+    expect(desc).toContain('15%')
   })
 })
 
