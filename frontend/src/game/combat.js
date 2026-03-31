@@ -45,6 +45,7 @@ import {
   evaluateTargetRuleStepGates,
   filterTargetsByCondition,
   pickTargetByRule,
+  tacticsConditionWhenRequiresPickedTarget,
 } from './tactics.js'
 import {
   createThreatTables,
@@ -774,17 +775,32 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
 
           const cond = conditions.find((c) => c.skillId === skillId)
-          if (cond && !checkCondition(cond, actor, null, heroUnits, monsterUnits, ctx)) continue
-          const target = pickTarget(actor, heroUnits, monsterUnits, {
-            skillId,
-            conditions,
-            rng,
-            round,
-            threat,
-            tauntState,
-            designatedTank: designatedTankUnit,
-          })
-          if (!target) continue
+          let target
+          if (cond && tacticsConditionWhenRequiresPickedTarget(cond)) {
+            target = pickTarget(actor, heroUnits, monsterUnits, {
+              skillId,
+              conditions,
+              rng,
+              round,
+              threat,
+              tauntState,
+              designatedTank: designatedTankUnit,
+            })
+            if (!target) continue
+            if (!checkCondition(cond, actor, target, heroUnits, monsterUnits, ctx)) continue
+          } else {
+            if (cond && !checkCondition(cond, actor, null, heroUnits, monsterUnits, ctx)) continue
+            target = pickTarget(actor, heroUnits, monsterUnits, {
+              skillId,
+              conditions,
+              rng,
+              round,
+              threat,
+              tauntState,
+              designatedTank: designatedTankUnit,
+            })
+            if (!target) continue
+          }
 
           if (skillId === 'taunt') {
             const tauntForced = skill.tauntForcedActions ?? 2
@@ -944,17 +960,32 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
 
           const mageCond = conditions.find((c) => c.skillId === skillId)
-          if (mageCond && !checkCondition(mageCond, actor, null, heroUnits, monsterUnits, ctx)) continue
-          const mageTarget = pickTarget(actor, heroUnits, monsterUnits, {
-            skillId,
-            conditions,
-            rng,
-            round,
-            threat,
-            tauntState,
-            designatedTank: designatedTankUnit,
-          })
-          if (!mageTarget) continue
+          let mageTarget
+          if (mageCond && tacticsConditionWhenRequiresPickedTarget(mageCond)) {
+            mageTarget = pickTarget(actor, heroUnits, monsterUnits, {
+              skillId,
+              conditions,
+              rng,
+              round,
+              threat,
+              tauntState,
+              designatedTank: designatedTankUnit,
+            })
+            if (!mageTarget) continue
+            if (!checkCondition(mageCond, actor, mageTarget, heroUnits, monsterUnits, ctx)) continue
+          } else {
+            if (mageCond && !checkCondition(mageCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+            mageTarget = pickTarget(actor, heroUnits, monsterUnits, {
+              skillId,
+              conditions,
+              rng,
+              round,
+              threat,
+              tauntState,
+              designatedTank: designatedTankUnit,
+            })
+            if (!mageTarget) continue
+          }
 
           const critBonus = skill.spellCritBonus ?? 0
           const isCrit = rng() < Math.min(1, (actor.spellCrit || 0) + critBonus)
@@ -1029,10 +1060,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             if (priestCond && !checkPriestFlashHealSkillAllowed(priestCond, actor, heroUnits, monsterUnits, ctx)) {
               continue
             }
-          } else if (priestCond && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) {
+          } else if (priestCond && !tacticsConditionWhenRequiresPickedTarget(priestCond) && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) {
             continue
           }
-          const priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
+          let priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
             skillId,
             conditions,
             rng,
@@ -1042,6 +1073,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             designatedTank: designatedTankUnit,
           })
           if (!priestTarget) continue
+          if (priestCond && tacticsConditionWhenRequiresPickedTarget(priestCond) && !checkCondition(priestCond, actor, priestTarget, heroUnits, monsterUnits, ctx)) {
+            continue
+          }
 
           if (skillId === 'flash-heal') {
             const sr = executeFlashHeal(actor, priestTarget, skill, { rng })

@@ -809,6 +809,43 @@ describe('combat progression and systems', () => {
     expect(manaBatch.updates.some((u) => u.actorId === 'm1')).toBe(true)
   })
 
+  it('Mage tactics: frostbolt target-hp-above skips when only sub-threshold enemies; fireball is used', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      agility: 99,
+      intellect: 25,
+      spirit: 10,
+      skills: ['frostbolt', 'fireball'],
+      tactics: {
+        skillPriority: ['frostbolt', 'fireball'],
+        targetRule: 'lowest-hp',
+        conditions: [
+          { skillId: 'frostbolt', when: 'target-hp-above', value: 0.6 },
+          { skillId: 'fireball', when: 'target-hp-below', value: 0.6 },
+        ],
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Low HP Mob',
+          damageType: 'physical',
+          base: { hp: 100, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    monsters[0].currentHP = 28
+    monsters[0].maxHP = 100
+    const result = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5, maxRounds: 5 })
+    const frostboltEntry = result.log.find((e) => e.actorName === 'Hero One' && e.skillId === 'frostbolt')
+    expect(frostboltEntry).toBeUndefined()
+    const fireballEntry = result.log.find((e) => e.actorName === 'Hero One' && e.skillId === 'fireball')
+    expect(fireballEntry).toBeDefined()
+  })
+
   it('Warrior with Cleave skill hits multiple targets when rage sufficient', () => {
     const warrior = sampleHero({
       id: 'w1',

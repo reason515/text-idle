@@ -12,6 +12,7 @@ import {
   filterTargetsByCondition,
   pickTargetByRule,
   isTacticsConditionInactive,
+  tacticsConditionWhenRequiresPickedTarget,
 } from './tactics.js'
 import { isAllyOT } from './threat.js'
 
@@ -157,6 +158,29 @@ describe('tactics', () => {
       const target = { currentHP: 20, maxHP: 50 }
       const cond = { when: 'target-hp-below', value: 0.3 }
       expect(checkCondition(cond, {}, target, [], [], {})).toBe(false)
+    })
+
+    it('target-hp-below fails when target is missing (must not pass as true)', () => {
+      const cond = { when: 'target-hp-below', value: 0.6 }
+      expect(checkCondition(cond, {}, null, [], [], {})).toBe(false)
+    })
+
+    it('target-hp-above fails when target is missing', () => {
+      const cond = { when: 'target-hp-above', value: 0.6 }
+      expect(checkCondition(cond, {}, null, [], [], {})).toBe(false)
+    })
+
+    it('target-has-debuff fails when target is missing', () => {
+      const cond = { when: 'target-has-debuff', value: 'sunder' }
+      expect(checkCondition(cond, {}, null, [], [], {})).toBe(false)
+    })
+
+    it('tacticsConditionWhenRequiresPickedTarget is true for target-hp and target-has-debuff when', () => {
+      expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'target-hp-below', value: 0.5 })).toBe(true)
+      expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'target-hp-above', value: 0.5 })).toBe(true)
+      expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'target-has-debuff', value: 'sunder' })).toBe(true)
+      expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'self-hp-below', value: 0.5 })).toBe(false)
+      expect(tacticsConditionWhenRequiresPickedTarget(null)).toBe(false)
     })
 
     it('self-hit-this-round passes when actor was hit', () => {

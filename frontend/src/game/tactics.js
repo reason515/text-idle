@@ -90,6 +90,18 @@ export function getConditions(actor) {
 }
 
 /**
+ * Skill-level `when` that compares the chosen target (HP, debuffs) cannot be evaluated
+ * before a target exists. Combat must pickTarget first, then checkCondition(..., target, ...).
+ * @param {TacticsCondition|null|undefined} condition
+ * @returns {boolean}
+ */
+export function tacticsConditionWhenRequiresPickedTarget(condition) {
+  if (!condition || isTacticsConditionInactive(condition)) return false
+  const w = condition.when
+  return w === 'target-hp-below' || w === 'target-hp-above' || w === 'target-has-debuff'
+}
+
+/**
  * Check if a condition passes for the given context.
  * @param {TacticsCondition} condition
  * @param {Object} actor - Acting hero
@@ -104,13 +116,17 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
 
   const { when, value } = condition
 
-  if (when === 'target-hp-below' && target) {
+  if (when === 'target-hp-below' || when === 'target-hp-above' || when === 'target-has-debuff') {
+    if (!target) return false
+  }
+
+  if (when === 'target-hp-below') {
     const threshold = typeof value === 'number' ? value : 0.3
     const ratio = (target.currentHP ?? 0) / Math.max(1, target.maxHP ?? 1)
     return ratio < threshold
   }
 
-  if (when === 'target-hp-above' && target) {
+  if (when === 'target-hp-above') {
     const threshold = typeof value === 'number' ? value : 0.5
     const ratio = (target.currentHP ?? 0) / Math.max(1, target.maxHP ?? 1)
     return ratio > threshold
@@ -137,7 +153,7 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     return !!actor.hitThisRound
   }
 
-  if (when === 'target-has-debuff' && target) {
+  if (when === 'target-has-debuff') {
     const debuffType = value === 'sunder' || value === 'sunder-armor' ? 'sunder' : (value || 'sunder')
     if (debuffType === 'sunder') {
       return !!getSunderDebuff(target)
@@ -272,6 +288,7 @@ export function evaluateTargetRuleStepGates(step, actor, heroes, monsters, ctx) 
  */
 export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, monsters, ctx) {
   if (!priestCond || isTacticsConditionInactive(priestCond)) return true
+  if (tacticsConditionWhenRequiresPickedTarget(priestCond)) return true
   const chain = priestCond.targetRules
   if (!Array.isArray(chain) || chain.length === 0) {
     return checkCondition(priestCond, actor, null, heroes, monsters, ctx)

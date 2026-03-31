@@ -122,7 +122,7 @@
 2. 按 skillPriority 顺序遍历技能：
    a. 检查资源是否足够
    b. 检查冷却
-   c. 检查 conditions 中该技能的触发条件
+   c. 检查 conditions 中该技能的触发条件：`when` 为仅依赖自身/盟友/回合/仇恨等（如 `self-hp-below`、`ally-ot`）时，在选目标**之前**判断；`when` 为 **`target-hp-below` / `target-hp-above` / `target-has-debuff`** 时，必须先按目标规则与目标池过滤**选出目标**，再对该目标判定条件（否则「目标血量」类条件无法成立）。
    d. 根据 targetRule（或技能级 targetRule）选取目标；条件涉及目标池时先过滤
    e. 若全部通过，执行该技能并结束
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
