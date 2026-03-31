@@ -287,10 +287,11 @@ export function evaluateTargetRuleStepGates(step, actor, heroes, monsters, ctx) 
  * @returns {boolean}
  */
 export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, monsters, ctx) {
-  if (!priestCond || isTacticsConditionInactive(priestCond)) return true
+  if (!priestCond) return true
   if (tacticsConditionWhenRequiresPickedTarget(priestCond)) return true
   const chain = priestCond.targetRules
   if (!Array.isArray(chain) || chain.length === 0) {
+    if (isTacticsConditionInactive(priestCond)) return true
     return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
   }
   const first = chain[0]
@@ -299,8 +300,15 @@ export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, mons
     if (th != null) {
       const emergency = { when: 'ally-hp-below', value: th }
       if (checkCondition(emergency, actor, null, heroes, monsters, ctx)) return true
+      // Emergency failed: skill-level `when` that is empty/inactive must not mean "always cast";
+      // otherwise checkCondition(priestCond) returns true and flash-heal spams lowest-hp-ally on full-HP party.
+      if (isTacticsConditionInactive(priestCond)) {
+        if (chain.length === 1) return false
+        return true
+      }
     }
   }
+  if (isTacticsConditionInactive(priestCond)) return true
   return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
 }
 

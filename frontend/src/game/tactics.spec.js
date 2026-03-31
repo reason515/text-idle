@@ -387,6 +387,26 @@ describe('tactics', () => {
       }
       expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], [], {})).toBe(false)
     })
+
+    it('blocks flash-heal when only ally-hp-below targetRules step exists, gate fails, and no skill-level when', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const ally = { id: 'a', currentHP: 500, maxHP: 500 }
+      const cond = {
+        skillId: 'flash-heal',
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.6 }],
+      }
+      expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, ally], [], {})).toBe(false)
+    })
+
+    it('allows pickTarget to try later chain steps when emergency fails and skill-level when is inactive', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const tank = { id: 't', currentHP: 100, maxHP: 100 }
+      const cond = {
+        skillId: 'flash-heal',
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.6 }, 'tank'],
+      }
+      expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], [], {})).toBe(true)
+    })
   })
 
   describe('filterTargetsByCondition', () => {
