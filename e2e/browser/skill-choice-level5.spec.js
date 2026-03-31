@@ -10,6 +10,7 @@ require('./globalHooks')
 const {
   registerToCharacterSelect,
   updateStoredState,
+  uniqueTestEmail,
 } = require('./testHelpers')
 
 async function prepareWarriorLevelChoice(page, { level = 4, xp = 594, baseSkill = 'sunder-armor' } = {}) {
@@ -50,7 +51,7 @@ async function waitForSkillChoiceModal(page, levelText) {
 test.describe('Skill Choice at Level 5 (Example 26)', () => {
   test('AC1: skill choice modal appears when hero levels to 5', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac1-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac1')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -62,7 +63,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('AC2: modal shows enhance and learn new options', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac2-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac2')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -76,7 +77,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('AC4: learn Cleave adds skill to hero', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac4-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac4')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -94,7 +95,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('AC3: enhance Sunder Armor applies enhancement (fixed trio Warrior)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac3-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac3')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -119,7 +120,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('Level 10 skill choice shows Shield Slam with Sunder crit synergy (Example 13a)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-shield-slam-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-shield-slam')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -155,7 +156,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('AC8: skip closes modal and game continues', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac8-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac8')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -189,7 +190,7 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
 
   test('AC11: after skip, reopen skill choice from hero detail Skills tab', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `skill-choice-ac11-${Date.now()}@example.com`
+    const email = uniqueTestEmail('skill-choice-ac11')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

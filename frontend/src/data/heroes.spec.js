@@ -100,6 +100,19 @@ describe('heroes', () => {
       }
     })
 
+    it('matches computeSecondaryAttributes HP when hero has equipment stamina (detail modal vs max HP)', () => {
+      const base = getInitialAttributes('Warrior')
+      const emptyEq = { armor: 0, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 }
+      const hero = {
+        class: 'Warrior',
+        ...base,
+        level: 1,
+        equipment: { Helm: { ...emptyEq, staBonus: 2 } },
+      }
+      const { values } = computeSecondaryAttributes('Warrior', 1, hero)
+      expect(values.HP).toBe(computeHeroMaxHP(hero))
+    })
+
     it('scales with level', () => {
       const warrior = { class: 'Warrior', stamina: 9, level: 60 }
       expect(computeHeroMaxHP(warrior)).toBe(Math.round(10 + 9 * 2.5 + 60 * LEVEL_HP_PER_LEVEL))

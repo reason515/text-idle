@@ -1503,7 +1503,12 @@ import { heroDisplayName } from '../game/heroDisplayName.js'
 import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
-import { getCombatLogStepDelayMs } from '../game/combatPacing.js'
+import {
+  applyCombatPacingDelayMs,
+  COMBAT_PACING_MS,
+  getCombatLogStepDelayMs,
+  isE2eFastMode,
+} from '../game/combatPacing.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2566,20 +2571,6 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function isE2eFastMode() {
-  try {
-    if (localStorage.getItem('e2eFastCombat') === '1') return true
-  } catch { /* localStorage may be unavailable */ }
-  if (typeof navigator !== 'undefined' && !!navigator.webdriver) return true
-  if (typeof location !== 'undefined' && location.search.includes('e2e=1')) return true
-  return false
-}
-
-/** When E2E fast mode, use 0ms to skip animation delays. */
-function combatDelayMs(normalMs) {
-  return isE2eFastMode() ? 0 : normalMs
-}
-
 async function sleepMsRespectingPause(ms) {
   let remaining = ms
   while (remaining > 0 && isRunning.value) {
@@ -2801,7 +2792,7 @@ async function animateCombatLog(result) {
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
-    await sleepMsRespectingPause(combatDelayMs(combatLogStepDelayMs))
+    await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     if (!isRunning.value) return
     applyOneCombatEntry(entry)
     await scrollLog()
@@ -2820,7 +2811,7 @@ async function animateCombatLog(result) {
       currentMonsters.value = [...currentMonsters.value]
       syncSelectedUnitsFromCombat()
       await scrollLog()
-      await sleepMsRespectingPause(combatDelayMs(combatLogStepDelayMs))
+      await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     }
   }
   currentActorId.value = null
@@ -2857,7 +2848,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
       complete: false,
     })
     await scrollLog()
-    await sleepMsRespectingPause(combatDelayMs(2000))
+    await sleepMsRespectingPause(applyCombatPacingDelayMs(COMBAT_PACING_MS.restStepReveal))
     if (!isRunning.value) break
   }
 
@@ -2873,7 +2864,7 @@ async function runCombatLoop() {
   let lastMapId = null
   while (isRunning.value) {
     if (squad.value.length === 0) {
-      await sleepMs(combatDelayMs(1000))
+      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.emptySquadPoll))
       continue
     }
 
@@ -2884,7 +2875,7 @@ async function runCombatLoop() {
       if (!isFirstBattle) {
         addLogEntry({ type: 'separator' })
         await scrollLog()
-        await sleepMs(combatDelayMs(300))
+        await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.betweenBattleSeparator))
       }
       const map = MAPS.find((m) => m.id === currentMapId)
       if (map?.description) {
@@ -2894,13 +2885,13 @@ async function runCombatLoop() {
           description: map.description,
         })
         await scrollLog()
-        await sleepMs(combatDelayMs(1800))
+        await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.mapDescriptionRead))
       }
       lastMapId = currentMapId
     } else if (!isFirstBattle) {
       addLogEntry({ type: 'separator' })
       await scrollLog()
-      await sleepMs(combatDelayMs(300))
+      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.betweenBattleSeparator))
     }
     isFirstBattle = false
 
@@ -2926,7 +2917,7 @@ async function runCombatLoop() {
       isBoss: isBossEncounter,
     })
     await scrollLog()
-    await sleepMs(combatDelayMs(1000))
+    await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.afterEncounterMessage))
 
     const result = runAutoCombat({ heroes: squad.value, monsters })
 
@@ -3003,17 +2994,16 @@ async function runCombatLoop() {
 
       progress.value = deductExplorationProgress(progress.value, 10)
       saveProgress()
-      await sleepMs(combatDelayMs(2000))
-      // E2E fast mode: autoRest heals in the same tick; yield so defeated UI can be observed
+      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.defeatBeforeRest))
+      // E2E fast mode: autoRest heals in the same tick; one tick is enough for DOM
       if (isE2eFastMode()) {
         await nextTick()
-        await sleepMs(150)
       }
       await autoRest(result.heroesAfter, { isDefeat: true })
     }
 
     if (!isRunning.value) break
-    await sleepMs(combatDelayMs(500))
+    await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.postBattleGap))
   }
 }
 

@@ -7,7 +7,8 @@ module.exports = defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  // Parallel spec files; each file still runs tests in order (fullyParallel: false).
+  workers: 4,
   timeout: 120000,
   reporter: 'list',
   use: {

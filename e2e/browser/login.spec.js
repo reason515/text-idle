@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
+const { uniqueTestEmail } = require('./testHelpers')
 
 test.describe('Login E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +8,7 @@ test.describe('Login E2E', () => {
   })
 
   test('AC1: correct email and password logs in, returning player goes to main', async ({ page }) => {
-    const email = `login-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('login-e2e')
     await page.goto('/register')
     await page.getByLabel('邮箱').fill(email)
     await page.getByLabel('密码（至少 8 位）').fill('password123')
@@ -33,7 +34,7 @@ test.describe('Login E2E', () => {
   })
 
   test('AC2: wrong email or password shows clear error', async ({ page }) => {
-    const email = `wrong-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('wrong-e2e')
     await page.goto('/register')
     await page.getByLabel('邮箱').fill(email)
     await page.getByLabel('密码（至少 8 位）').fill('password123')

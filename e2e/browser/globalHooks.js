@@ -1,7 +1,8 @@
 /**
  * Global hooks for E2E tests.
- * Sets e2eFastCombat so combat animations use 0ms (skip delays).
- * Uses: storageState (pre-populated), addInitScript (before each doc load), and ?e2e=1 URL fallback.
+ * Sets e2eFastCombat so frontend/src/game/combatPacing.js applyCombatPacingDelayMs() uses 0ms
+ * (production pacing constants in COMBAT_PACING_MS / getCombatLogStepDelayMs are not used).
+ * Uses: addInitScript (before each doc load); specs often also use ?e2e=1 on URLs.
  */
 const { test } = require('@playwright/test')
 

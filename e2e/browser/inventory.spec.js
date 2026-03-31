@@ -7,7 +7,9 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerAndGoToMain, updateStoredState } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 const SAMPLE_ITEM = {
   id: 'test-item-helm-1',
@@ -30,7 +32,7 @@ const SAMPLE_ITEM = {
 
 test.describe('Inventory (Example 22)', () => {
   test('backpack button opens modal and shows N/100', async ({ page }) => {
-    const email = `inv-backpack-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('inv-backpack-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -50,7 +52,7 @@ test.describe('Inventory (Example 22)', () => {
   })
 
   test('backpack with items shows count and grid', async ({ page }) => {
-    const email = `inv-count-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('inv-count-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -70,7 +72,7 @@ test.describe('Inventory (Example 22)', () => {
   })
 
   test('hover item shows tooltip with attributes and bonuses', async ({ page }) => {
-    const email = `inv-tooltip-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('inv-tooltip-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -90,7 +92,7 @@ test.describe('Inventory (Example 22)', () => {
   })
 
   test('click item opens detail modal with Slot, Level Req, Sell Price, Sell', async ({ page }) => {
-    const email = `inv-detail-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('inv-detail-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -111,7 +113,7 @@ test.describe('Inventory (Example 22)', () => {
   })
 
   test('Sell removes item and increases gold', async ({ page }) => {
-    const email = `inv-sell-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('inv-sell-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })

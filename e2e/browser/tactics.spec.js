@@ -1,10 +1,12 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerAndGoToMain, pauseCombat, updateStoredState } = require('./testHelpers')
+const { registerAndGoToMain, pauseCombat, updateStoredState,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 test.describe('Tactics configuration (AI UI)', () => {
   test('AC1: Tactics tab shows AI tactics section', async ({ page }) => {
-    const email = `tactics-ac1-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-ac1')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -19,7 +21,7 @@ test.describe('Tactics configuration (AI UI)', () => {
   })
 
   test('AC2: Current tactics summary shows after tactics tab (initial squad has default tactics)', async ({ page }) => {
-    const email = `tactics-ac2-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-ac2')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -30,7 +32,7 @@ test.describe('Tactics configuration (AI UI)', () => {
   })
 
   test('AC3: Parse without API key shows configure prompt', async ({ page }) => {
-    const email = `tactics-ac3-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-ac3')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await pauseCombat(page)
@@ -43,7 +45,7 @@ test.describe('Tactics configuration (AI UI)', () => {
   })
 
   test('Tank checkbox on squad card can be toggled; tactics tab still loads', async ({ page }) => {
-    const email = `tactics-tank-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-tank')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -64,7 +66,7 @@ test.describe('Tactics configuration (AI UI)', () => {
   })
 
   test('Priest: Skills tab and Tactics tab both work', async ({ page }) => {
-    const email = `tactics-priest-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-priest')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -84,7 +86,7 @@ test.describe('Tactics configuration (AI UI)', () => {
   })
 
   test('Example33: persisted tactics with ally-ot on Taunt show in current tactics summary', async ({ page }) => {
-    const email = `tactics-ex33-${Date.now()}@example.com`
+    const email = uniqueTestEmail('tactics-ex33')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await pauseCombat(page)

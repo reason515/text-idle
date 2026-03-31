@@ -1,10 +1,12 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { setupNewRun } = require('./testHelpers')
+const { setupNewRun,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
-    const email = `intro-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('intro-e2e')
     await page.goto('/register?e2e=1')
     await page.getByLabel('\u90ae\u7bb1').fill(email)
     await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
@@ -17,7 +19,7 @@ test.describe('Opening Introduction E2E', () => {
   })
 
   test('AC2: clicking Next shows team name step', async ({ page }) => {
-    const email = `intro-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('intro-e2e')
     await page.goto('/register?e2e=1')
     await page.getByLabel('\u90ae\u7bb1').fill(email)
     await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
@@ -32,7 +34,7 @@ test.describe('Opening Introduction E2E', () => {
   })
 
   test('AC2b: entering team name and Next shows hero preview step', async ({ page }) => {
-    const email = `intro-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('intro-e2e')
     await page.goto('/register?e2e=1')
     await page.getByLabel('\u90ae\u7bb1').fill(email)
     await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
@@ -52,7 +54,7 @@ test.describe('Opening Introduction E2E', () => {
   })
 
   test('AC3: entering team name and confirming redirects to main with fixed trio', async ({ page }) => {
-    const email = `intro-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('intro-e2e')
     await page.goto('/register?e2e=1')
     await page.getByLabel('\u90ae\u7bb1').fill(email)
     await page.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
@@ -75,7 +77,7 @@ test.describe('Opening Introduction E2E', () => {
   })
 
   test('AC4: returning player skips intro', async ({ page }) => {
-    const email = `intro-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('intro-e2e')
     await setupNewRun(page)
     await page.goto('/register?e2e=1')
     await page.getByLabel('\u90ae\u7bb1').fill(email)

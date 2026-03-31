@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
+const { uniqueTestEmail } = require('./testHelpers')
 
 test.describe('Register E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +13,7 @@ test.describe('Register E2E', () => {
   })
 
   test('AC1: valid email and password creates account and redirects to intro', async ({ page }) => {
-    const email = `e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('e2e')
     await page.getByLabel('邮箱').fill(email)
     await page.getByLabel('密码（至少 8 位）').fill('password123')
     await page.getByLabel('确认密码').fill('password123')
@@ -25,7 +26,7 @@ test.describe('Register E2E', () => {
   })
 
   test('AC2: duplicate email shows clear error', async ({ page }) => {
-    const email = `dup-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('dup-e2e')
     await page.getByLabel('邮箱').fill(email)
     await page.getByLabel('密码（至少 8 位）').fill('password123')
     await page.getByLabel('确认密码').fill('password123')
@@ -89,7 +90,7 @@ test.describe('Register E2E', () => {
       ]))
     })
 
-    const email = `e2e-clear-${Date.now()}@example.com`
+    const email = uniqueTestEmail('e2e-clear')
     await page.getByLabel('邮箱').fill(email)
     await page.getByLabel('密码（至少 8 位）').fill('password123')
     await page.getByLabel('确认密码').fill('password123')

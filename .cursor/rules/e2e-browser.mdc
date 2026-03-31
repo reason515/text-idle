@@ -14,8 +14,15 @@ alwaysApply: false
 
 ## Running
 
+- Playwright uses **4 workers** (parallel spec files; tests within a file stay ordered).
 - From repo root: `npm run e2e` (runs port release / DB reset per project script when configured).
 - If ports 8080 / 5173 are in use or running manually: `powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1` first (see `workflow.mdc`).
+
+## Combat pacing vs production
+
+- **Production** UI delays (per log line, map/encounter/rest gaps, etc.) live in [`frontend/src/game/combatPacing.js`](../../frontend/src/game/combatPacing.js): `DEFAULT_COMBAT_LOG_STEP_DELAY_MS`, `COMBAT_PACING_MS`, `getCombatLogStepDelayMs()`.
+- **E2E fast mode** is explicit: `e2eFastCombat` in `localStorage` and/or `?e2e=1` on the URL; [`globalHooks.js`](../../e2e/browser/globalHooks.js) injects the flag before each document load. `applyCombatPacingDelayMs()` then uses **0ms** so tests do not inherit production wait times.
+- Do not rely on generic browser automation signals for pacing; keep test vs live separation in `combatPacing.js` + E2E hooks.
 
 ## Implementation
 

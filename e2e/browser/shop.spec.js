@@ -8,11 +8,13 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerAndGoToMain, updateStoredState, pauseCombat } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState, pauseCombat,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 test.describe('Shop (Example 24)', () => {
   test('Shop button visible next to Backpack button', async ({ page }) => {
-    const email = `shop-btn-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('shop-btn-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -29,7 +31,7 @@ test.describe('Shop (Example 24)', () => {
   })
 
   test('Shop modal opens and shows slots with prices', async ({ page }) => {
-    const email = `shop-modal-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('shop-modal-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -43,7 +45,7 @@ test.describe('Shop (Example 24)', () => {
   })
 
   test('Buy with sufficient gold deducts gold and adds item', async ({ page }) => {
-    const email = `shop-buy-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('shop-buy-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -74,7 +76,7 @@ test.describe('Shop (Example 24)', () => {
   })
 
   test('Insufficient gold disables Buy and shows message', async ({ page }) => {
-    const email = `shop-insufficient-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('shop-insufficient-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -91,7 +93,7 @@ test.describe('Shop (Example 24)', () => {
   })
 
   test('Close shop modal returns to main screen', async ({ page }) => {
-    const email = `shop-close-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('shop-close-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })

@@ -1,12 +1,14 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 
-const { registerAndGoToMain } = require('./testHelpers')
+const { registerAndGoToMain,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
   test('AC8 & AC10: Warrior skill appears in combat log after accumulating enough Rage', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `ws13-log-${Date.now()}@example.com`
+    const email = uniqueTestEmail('ws13-log')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -27,7 +29,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
   })
 
   test('Warrior hero detail shows Skills section with Rage Cost', async ({ page }) => {
-    const email = `ws13-detail-${Date.now()}@example.com`
+    const email = uniqueTestEmail('ws13-detail')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 

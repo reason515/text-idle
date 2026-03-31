@@ -31,9 +31,9 @@ The script also clears `test-results` and resets `text-idle.db` for a fresh run.
 
 | File | Purpose |
 |------|---------|
-| [e2e/browser/playwright.config.js](../../e2e/browser/playwright.config.js) | Playwright config; baseURL localhost:5173 |
+| [e2e/browser/playwright.config.js](../../e2e/browser/playwright.config.js) | Playwright config; baseURL localhost:5173; **4 workers** (parallel spec files) |
 | [e2e/browser/globalSetup.js](../../e2e/browser/globalSetup.js) | Warms up Vite before tests |
-| [e2e/browser/globalHooks.js](../../e2e/browser/globalHooks.js) | Sets e2eFastCombat for 0ms combat delays |
+| [e2e/browser/globalHooks.js](../../e2e/browser/globalHooks.js) | Sets `e2eFastCombat` so [combatPacing.js](../../frontend/src/game/combatPacing.js) uses 0ms (`applyCombatPacingDelayMs`), separate from production `COMBAT_PACING_MS` |
 | [e2e/browser/testHelpers.js](../../e2e/browser/testHelpers.js) | Shared helpers (register, recruit, pause, etc.) |
 | [e2e/browser/*.spec.js](../../e2e/browser/) | Test specs |
 
@@ -41,6 +41,7 @@ The script also clears `test-results` and resets `text-idle.db` for a fresh run.
 
 | Helper | Purpose |
 |--------|---------|
+| `uniqueTestEmail(prefix)` | Unique register email (UUID suffix; required for parallel workers) |
 | `setupNewRun(page)` | Clear storage, set e2eFastCombat, goto /register?e2e=1 |
 | `registerToCharacterSelect(page, email, options)` | Register, complete intro, reach character-select |
 | `recruitWarrior(page, heroName, skillId)` | Click hero, optionally select skill, confirm |

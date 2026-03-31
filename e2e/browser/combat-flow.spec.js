@@ -4,11 +4,12 @@ const {
   registerAndGoToMain,
   pauseCombat,
   updateStoredState,
+  uniqueTestEmail,
 } = require('./testHelpers')
 
 test.describe('Combat Flow (Example 5-9)', () => {
   test('auto-combat loop starts after recruitment', async ({ page }) => {
-    const email = `combat-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('combat-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -21,7 +22,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('map entry description appears when entering new map', async ({ page }) => {
-    const email = `map-entry-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('map-entry-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -33,7 +34,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('hero card shows name, class, level and resource bars', async ({ page }) => {
-    const email = `hero-card-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('hero-card-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -50,7 +51,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('HP bar color reflects health: green when healthy', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `hp-color-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('hp-color-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -79,7 +80,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('hero detail modal opens with primary and secondary attributes', async ({ page }) => {
-    const email = `hero-modal-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('hero-modal-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -98,7 +99,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('map modal opens and lists maps', async ({ page }) => {
-    const email = `map-modal-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('map-modal-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -111,7 +112,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('monsters panel appears once combat starts', async ({ page }) => {
-    const email = `monster-panel-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('monster-panel-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -121,12 +122,28 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('monster detail modal shows phys atk as min-max or single value', async ({ page }) => {
-    const email = `monster-phys-range-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('monster-phys-range-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
-    await page.locator('.monster-card').first().click()
+    await pauseCombat(page)
+    await page.waitForTimeout(200)
+    // DOM re-mounts each combat tick; avoid Playwright holding a stale element handle
+    let opened = false
+    for (let i = 0; i < 20 && !opened; i++) {
+      await page.evaluate(() => {
+        const cards = Array.from(document.querySelectorAll('.monster-list .monster-card'))
+        const alive = cards.find((c) => !c.querySelector('.defeated-badge'))
+        if (alive) alive.click()
+      })
+      try {
+        await expect(page.locator('.modal-overlay').filter({ has: page.locator('.detail-modal') })).toBeVisible({ timeout: 400 })
+        opened = true
+      } catch {
+        await page.waitForTimeout(120)
+      }
+    }
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
     const physRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
     await expect(physRow).toBeVisible()
@@ -135,7 +152,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('encounter message appears at battle start', async ({ page }) => {
-    const email = `encounter-msg-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('encounter-msg-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -146,7 +163,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('combat log shows damage calculation detail', async ({ page }) => {
-    const email = `dmg-calc-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('dmg-calc-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -161,7 +178,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('combat log shows shield or heal effect line in detail', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `support-fx-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('support-fx-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -171,7 +188,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('combat log shows actor agility when character or monster acts', async ({ page }) => {
-    const email = `agi-log-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('agi-log-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -183,7 +200,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('combat log shows target HP change', async ({ page }) => {
-    const email = `target-hp-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('target-hp-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -194,7 +211,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('battle summary appears after combat ends', async ({ page }) => {
-    const email = `summary-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('summary-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -205,7 +222,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('rest phase is shown in combat log after victory', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `rest-log-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('rest-log-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -218,7 +235,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('monster area is cleared during rest phase (no previous battle monsters)', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `rest-monsters-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('rest-monsters-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -230,7 +247,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('pause button pauses combat log scrolling', async ({ page }) => {
-    const email = `pause-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('pause-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -246,7 +263,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('layout: squad left, monsters center-left, combat log right', async ({ page }) => {
-    const email = `layout-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('layout-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -262,7 +279,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {
-    const email = `hp-consistency-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('hp-consistency-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -279,19 +296,30 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    const basicHp = page.locator('.detail-section-basic').locator('.detail-row').filter({ hasText: 'HP' })
-    const basicHpText = (await basicHp.textContent()) || ''
-    const basicHpMatch = basicHpText.match(/(\d+)\s*\/\s*(\d+)/)
-    expect(basicHpMatch).not.toBeNull()
-    const basicHpValue = basicHpMatch ? basicHpMatch[2] : null
-    const secondaryHp = page.locator('.detail-section-secondary .detail-row').filter({ hasText: '\u751f\u547d' })
-    await expect(secondaryHp).toBeVisible()
-    await expect(secondaryHp).toContainText(String(basicHpValue))
+    // Read basic max HP and secondary Life in one tick (async reads can race combat ticks)
+    const hpPair = await page.evaluate(() => {
+      const basicRow = [...document.querySelectorAll('.detail-section-basic .detail-row')].find((el) =>
+        (el.textContent || '').includes('HP'),
+      )
+      const secRow = [...document.querySelectorAll('.detail-section-secondary .detail-row')].find((el) =>
+        (el.textContent || '').includes('\u751f\u547d'),
+      )
+      const bm = (basicRow?.textContent || '').match(/(\d+)\s*\/\s*(\d+)/)
+      const secText = secRow?.textContent || ''
+      const lifeNum = secText.match(/\d+/)
+      return {
+        maxFromBasic: bm ? parseInt(bm[2], 10) : null,
+        lifeFromSecondary: lifeNum ? parseInt(lifeNum[0], 10) : null,
+      }
+    })
+    expect(hpPair.maxFromBasic).not.toBeNull()
+    expect(hpPair.lifeFromSecondary).not.toBeNull()
+    expect(hpPair.maxFromBasic).toBe(hpPair.lifeFromSecondary)
     await page.getByRole('button', { name: '关闭' }).click()
   })
 
   test('no Start Encounter or Recover One Turn buttons exist', async ({ page }) => {
-    const email = `no-buttons-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('no-buttons-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -303,7 +331,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
   })
 
   test('floating damage number appears on unit panel when hit (Example 15)', async ({ page }) => {
-    const email = `float-dmg-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('float-dmg-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -315,7 +343,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('debuff badge and tooltip on monster panel when Sunder Armor is applied (Example 14)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `debuff-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('debuff-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -339,7 +367,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
   test('Example 31: Taunt appears in combat log when warrior has Taunt skill (AC4)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `taunt-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('taunt-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -365,7 +393,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
 test.describe('Threat Display (Example 32)', () => {
   test('AC4: Taunt entry shows effect text (Wolf will attack Tank for 2 actions)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `taunt-effect-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('taunt-effect-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -393,7 +421,7 @@ test.describe('Threat Display (Example 32)', () => {
 
   test('AC2: monster attack log detail shows target reason (highest threat or taunted)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `threat-display-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('threat-display-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -406,7 +434,7 @@ test.describe('Threat Display (Example 32)', () => {
 
   test('AC5: damage log detail shows Threat +N to monster', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `threat-dmg-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('threat-dmg-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -418,7 +446,7 @@ test.describe('Threat Display (Example 32)', () => {
 
 test.describe('Experience and Leveling (Example 11)', () => {
   test('hero card shows XP bar when level < 60', async ({ page }) => {
-    const email = `xp-bar-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('xp-bar-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -433,7 +461,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('victory summary shows EXP reward', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `exp-reward-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('exp-reward-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -460,7 +488,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('defeated unit shows highlighted DEFEATED line in combat log', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `defeated-log-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('defeated-log-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -485,7 +513,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('defeated hero card shows DEFEATED badge and defeated styling', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `defeated-card-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('defeated-card-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -506,12 +534,13 @@ test.describe('Experience and Leveling (Example 11)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.defeated-badge').filter({ hasText: 'DEFEATED' }).first()).toBeVisible({ timeout: 5000 })
+    await pauseCombat(page)
+    await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.defeated-badge').filter({ hasText: 'DEFEATED' }).first()).toBeVisible({ timeout: 15000 })
   })
 
   test('hero detail modal shows XP progress when level < 60', async ({ page }) => {
-    const email = `xp-modal-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('xp-modal-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -524,7 +553,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('level-up is prominently shown in combat log when hero levels up', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `levelup-log-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('levelup-log-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -554,7 +583,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
   test('attribute allocation UI appears when hero has unassigned points', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `attr-alloc-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('attr-alloc-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -563,28 +592,37 @@ test.describe('Experience and Leveling (Example 11)', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].unassignedPoints = 5
+        squad[0].level = 1
+        squad[0].xp = 0
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     }, undefined, { pauseFirst: true })
+    await pauseCombat(page)
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    await pauseCombat(page)
 
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
-    const attrAlloc = page.locator('.detail-modal .attr-alloc').first()
+    const attrAlloc = page.locator('.detail-modal .detail-section-primary.attr-alloc').first()
     await expect(attrAlloc).toBeVisible({ timeout: 5000 })
     await expect(attrAlloc).toContainText('未分配')
-    const attrBtn = page.locator('.detail-modal .attr-btn').first()
+    const attrBtn = page.locator('.detail-modal .detail-attr-col .attr-btn').first()
     await expect(attrBtn).toBeVisible()
     const beforeVal = parseInt((await attrAlloc.locator('.unassigned-val').textContent()) || '0', 10)
     expect(beforeVal).toBeGreaterThanOrEqual(1)
     await attrBtn.click()
-    await expect(attrAlloc.locator('.unassigned-val')).toHaveText(String(beforeVal - 1), { timeout: 3000 })
+    await expect.poll(async () => {
+      const t = (await attrAlloc.locator('.unassigned-val').textContent()) || '0'
+      return parseInt(t, 10)
+    }, { timeout: 5000 }).toBe(beforeVal - 1)
   })
 })
 
 test.describe('Gold System (Example 16)', () => {
   test('gold balance is displayed in top bar (AC3)', async ({ page }) => {
-    const email = `gold-display-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('gold-display-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -597,7 +635,7 @@ test.describe('Gold System (Example 16)', () => {
 
   test('gold increases after victory (AC1, AC4)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `gold-victory-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('gold-victory-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })

@@ -250,7 +250,8 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
         spirit: heroAttrs.spirit ?? baseAttrs.spirit,
       }
     : baseAttrs
-  const attrs = heroAttrs?.equipment ? getEffectiveAttrs({ ...rawAttrs, equipment: heroAttrs.equipment }) : rawAttrs
+  // Always merge equipment into attrs when hero is provided so HP/MP match computeHeroMaxHP (gear stamina, etc.)
+  const attrs = heroAttrs ? getEffectiveAttrs({ ...rawAttrs, equipment: heroAttrs.equipment }) : rawAttrs
   const eq = heroAttrs?.equipment ? getEquipmentBonuses(heroAttrs.equipment) : { armor: 0, resistance: 0, physAtk: 0, spellPower: 0 }
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}

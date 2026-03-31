@@ -7,12 +7,14 @@
 
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerAndGoToMain, updateStoredState } = require('./testHelpers')
+const { registerAndGoToMain, updateStoredState,
+  uniqueTestEmail,
+} = require('./testHelpers')
 
 test.describe('Equipment Drop (Example 17, 21, 23)', () => {
   test('victory summary shows EXP and Gold; equipment may appear when dropped', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `eq-drop-victory-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-drop-victory-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -26,7 +28,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
 
   test('defeat summary has no equipment links', async ({ page }) => {
     test.setTimeout(90000)
-    const email = `eq-drop-defeat-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-drop-defeat-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -52,7 +54,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
 
   test('boss victory drops at least 1 magic (blue) item', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `eq-drop-boss-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-drop-boss-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })

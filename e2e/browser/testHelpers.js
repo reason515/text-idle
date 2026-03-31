@@ -1,4 +1,10 @@
+const crypto = require('crypto')
 const { expect } = require('@playwright/test')
+
+/** Unique email for parallel E2E workers (avoids Date.now() collisions on /register). */
+function uniqueTestEmail(prefix) {
+  return `${prefix}-${crypto.randomUUID()}@example.com`
+}
 
 async function setupNewRun(page) {
   await page.setViewportSize({ width: 1920, height: 1080 })
@@ -70,6 +76,7 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
 }
 
 module.exports = {
+  uniqueTestEmail,
   setupNewRun,
   registerAndGoToMain,
   registerToCharacterSelect,

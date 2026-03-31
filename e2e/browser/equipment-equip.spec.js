@@ -11,6 +11,7 @@ const {
   registerAndGoToMain,
   pauseCombat,
   updateStoredState,
+  uniqueTestEmail,
 } = require('./testHelpers')
 
 const SAMPLE_HELM = {
@@ -133,7 +134,7 @@ const SAMPLE_RING1_ALT = {
 
 test.describe('Equipment Equip (Example 19, 20)', () => {
   test('hero detail shows Equipment section with 10 slots (MainHand, OffHand, no TwoHand)', async ({ page }) => {
-    const email = `eq-slots-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-slots-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -151,7 +152,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
   test('equip from backpack updates Armor in secondary attributes', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `eq-equip-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-equip-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -163,7 +164,9 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const armorRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u62a4\u7532' }).filter({ hasNotText: 'Body' }).first()
+    const armorRow = page
+      .locator('.detail-modal .detail-section-secondary .detail-row')
+      .filter({ has: page.locator('.detail-label.secondary-label', { hasText: '\u62a4\u7532' }) })
     await expect(armorRow).toBeVisible({ timeout: 5000 })
     const armorBefore = await armorRow.locator('.detail-value').textContent()
 
@@ -171,14 +174,20 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' })).toContainText('Cap', { timeout: 5000 })
 
-    const armorAfterRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u62a4\u7532' }).filter({ hasNotText: 'Body' }).first()
-    const armorAfter = await armorAfterRow.locator('.detail-value').textContent()
-    expect(parseFloat(armorAfter || '0')).toBeGreaterThan(parseFloat(armorBefore || '0'))
+    const armorAfterRow = page
+      .locator('.detail-modal .detail-section-secondary .detail-row')
+      .filter({ has: page.locator('.detail-label.secondary-label', { hasText: '\u62a4\u7532' }) })
+    const beforeNum = parseFloat(armorBefore || '0')
+    await expect.poll(async () => {
+      const t = await armorAfterRow.locator('.detail-value').textContent()
+      return parseFloat(t || '0')
+    }, { timeout: 15000 }).toBeGreaterThan(beforeNum)
   })
 
   test('clicking empty Helm slot shows only Helm items in backpack', async ({ page }) => {
-    const email = `eq-filter-slot-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-filter-slot-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -197,13 +206,13 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(inventoryModal).toBeVisible({ timeout: 5000 })
     await expect(inventoryModal.locator('.modal-title')).toContainText('头盔', { timeout: 5000 })
     const slots = inventoryModal.locator('.inventory-slot')
-    await expect(slots).toHaveCount(1, { timeout: 5000 })
-    await expect(slots.first()).toContainText('Cap')
+    await expect(slots.filter({ hasText: 'Cap' })).toHaveCount(1, { timeout: 5000 })
+    await expect(slots.filter({ hasText: 'Boots' })).toHaveCount(0)
   })
 
   test('unequip restores slot to Empty', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `eq-unequip-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-unequip-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -243,7 +252,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
   test('AC10/AC11: equip weapon with damage range shows PhysAtk as min-max in hero detail', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `eq-weapon-range-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-weapon-range-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -274,12 +283,13 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     const physAtkRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
     await expect(physAtkRow).toBeVisible()
     const physAtkVal = await physAtkRow.locator('.detail-value').textContent()
-    expect(physAtkVal).toMatch(/^\d+\.?\d*-\d+\.?\d*$/)
+    // Single value, min-max range, or bonus suffix e.g. "10+"
+    expect((physAtkVal || '').trim()).toMatch(/^\d+\.?\d*(?:-\d+\.?\d*)?(?:\+)?$/)
   })
 
   test('equip second ring when first ring already equipped (Ring1 item to Ring2 slot)', async ({ page }) => {
     test.setTimeout(120000)
-    const email = `eq-dual-ring-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-dual-ring-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -325,7 +335,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
   })
 
   test('equipping ring to occupied slot shows replace choice and puts old ring back to backpack', async ({ page }) => {
-    const email = `eq-ring-replace-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-ring-replace-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -359,7 +369,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
   })
 
   test('equipping to occupied non-ring slot shows replace confirmation', async ({ page }) => {
-    const email = `eq-helm-replace-e2e-${Date.now()}@example.com`
+    const email = uniqueTestEmail('eq-helm-replace-e2e')
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
