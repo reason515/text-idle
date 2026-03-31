@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { registerAndGoToMain, pauseCombat } = require('./testHelpers')
+const { registerAndGoToMain, pauseCombat, updateStoredState } = require('./testHelpers')
 
 test.describe('Tactics configuration (AI UI)', () => {
   test('AC1: Tactics tab shows AI tactics section', async ({ page }) => {
@@ -81,5 +81,32 @@ test.describe('Tactics configuration (AI UI)', () => {
     await expect(page.getByTestId('ai-tactics-section')).toBeVisible({ timeout: 5000 })
     await expect(page.getByTestId('ai-tactics-current')).toBeVisible()
     await page.getByRole('button', { name: '关闭' }).click()
+  })
+
+  test('Example33: persisted tactics with ally-ot on Taunt show in current tactics summary', async ({ page }) => {
+    const email = `tactics-ex33-${Date.now()}@example.com`
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await pauseCombat(page)
+
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      const w = squad.find((h) => h.class === 'Warrior') || squad[0]
+      if (w) {
+        w.tactics = {
+          skillPriority: ['taunt', 'sunder-armor'],
+          targetRule: 'first',
+          conditions: [{ skillId: 'taunt', when: 'ally-ot' }],
+        }
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+    })
+
+    const warriorCard = page.locator('.squad-col .hero-card').filter({ hasText: '\u74e6\u91cc\u5b89' }).first()
+    await expect(warriorCard).toBeVisible({ timeout: 10000 })
+    await warriorCard.click()
+    await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
+    await expect(page.getByTestId('ai-tactics-current')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.ai-tactics-current')).toContainText('\u961f\u53cb\u62a2\u5230\u4ec7\u6068', { timeout: 5000 })
   })
 })

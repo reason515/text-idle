@@ -1176,13 +1176,13 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
   - `targetRule: 'lowest-hp'`
   - `conditions`: Taunt when ally-ot; Shield Slam when target has Sunder debuff.
 - **Execution order**: Try Taunt first (if ally-ot); if skipped, try Shield Slam (only on enemies with Sunder); if skipped, try Sunder Armor (any enemy); else Heroic Strike.
-- **ally-ot**: Placeholder until threat system; when implemented, true when at least one monster's highest-threat target is not the tank.
+- **ally-ot**: True when at least one alive monster's highest-threat target is not the designated tank (requires designated tank and threat data). See [12-threat.md](design/12-threat.md).
 
 **Acceptance Criteria**
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Warrior has tactics [taunt, shield-slam, sunder-armor, heroic-strike] with Taunt condition ally-ot; threat system implemented and ally-ot is true | Warrior's turn arrives | Taunt is used (assuming resource and cooldown allow); Taunt forces target to attack the Warrior |
+| AC1 | Warrior has tactics [taunt, shield-slam, sunder-armor, heroic-strike] with Taunt condition ally-ot; ally-ot is true | Warrior's turn arrives | Taunt is used (assuming resource and cooldown allow); Taunt forces target to attack the Warrior |
 | AC2 | Warrior has same tactics; ally-ot is false; at least one enemy has Sunder Armor debuff; Warrior has 25 Rage, Shield Slam off cooldown | Warrior's turn arrives | Shield Slam is used on an enemy that has Sunder debuff; target selection (e.g., lowest-hp among Sundered enemies) follows targetRule |
 | AC3 | Warrior has same tactics; ally-ot is false; no enemy has Sunder debuff; Warrior has 20 Rage | Warrior's turn arrives | Sunder Armor is used on an enemy (e.g., lowest-hp); Sunder debuff is applied |
 | AC4 | Warrior has same tactics; ally-ot is false; one enemy has Sunder but Shield Slam is on cooldown | Warrior's turn arrives | Shield Slam is skipped; Sunder Armor is tried next; if an enemy lacks Sunder, Sunder Armor is used |
@@ -1203,7 +1203,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 - **Condition types** (from [10-tactics.md](design/10-tactics.md)): target-hp-below, target-hp-above, self-hp-below, ally-hp-below, self-hit-this-round, target-has-debuff, ally-ot, resource-above, resource-below, round-gte.
 - **target-has-debuff**: Filters target pool; if no target has the debuff, the skill is skipped.
-- **ally-ot**: Placeholder; always false until threat system.
+- **ally-ot**: Uses threat + designated tank; true when some monster's top threat is not the tank (see [12-threat.md](design/12-threat.md)).
 - **No global conditions**: Only per-skill conditions in MVP.
 
 **Acceptance Criteria**
@@ -1300,6 +1300,35 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC6a | Priest uses Power Word: Shield (absorb 20) on ally | Player views the shield log entry detail | Log detail box shows `Threat +5 to all monsters` (absorbAmount × 0.25, low threat) |
 | AC7 | Monster is targeting Tank | Player views the monster card | Monster card displays `→ Tank` or equivalent target indicator |
 | AC8 | Monster is targeting Mage | Player views the monster card | Monster card displays `→ Mage` or equivalent target indicator |
+
+---
+
+## Example 33: Tactics Engine Execution (Regression)
+
+**User Story**
+
+> As a player,  
+> I want the combat engine to follow my saved tactics (priority, conditions, target rules, and targetRules chains) consistently,  
+> So that bugs in execution are caught by automated tests and do not silently ignore my Strategize configuration.
+
+**Design Reference (from design doc)**
+
+- **Execution flow** (section 4 of [10-tactics.md](design/10-tactics.md)): resource and cooldown checks; then per-skill `when` that does **not** depend on the picked target (`self-hp-below`, `ally-ot`, `ally-hp-below` for global checks, etc.) before target selection; for `target-hp-below` / `target-hp-above` / `target-has-debuff`, pick a candidate target from the pool (after filters), then evaluate the condition.
+- **targetRules chain**: Steps run in order; each step may have a gate (`when` / `whenAll` on the step object); if a step yields no target or the gate fails, try the next step.
+- **Priest flash-heal**: `checkPriestFlashHealSkillAllowed` prevents casting on a full party when the only chain step is emergency `ally-hp-below` with no skill-level `when` (see [10-tactics.md](design/10-tactics.md) section 4, Flash Heal note).
+- **Tests**: Vitest `frontend/src/game/tactics.spec.js`, `frontend/src/game/combat.spec.js`; E2E `e2e/browser/tactics.spec.js` (persisted tactics in UI summary).
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Warrior has tactics with skillPriority [A, B, ...] | A skill is attempted each turn | Skills are tried in list order; the first skill that passes resource, cooldown, and conditions is used; if none, basic attack (per design) |
+| AC2 | A skill has `targetRules` with multiple steps | A step returns no valid target or its gate fails | The engine tries the next step in the chain before giving up on that skill |
+| AC3 | Skill has `when` that compares the chosen target (e.g. target-hp-below) | Target selection runs | A target is chosen (from the filtered pool) before the skill-level `when` is evaluated on that target |
+| AC4 | Skill has `when` that does not need a target (e.g. ally-ot, self-hp-below) | Target selection runs | That condition is evaluated before picking a target for the skill |
+| AC5 | Warrior has Taunt first in priority with condition ally-ot only; solo tank; no OT | Combat runs | Taunt is never logged as used; another skill (e.g. Sunder Armor) may be used once Rage allows |
+| AC6 | Priest flash-heal has `targetRules` with a single step `{ when: ally-hp-below }` and no skill-level `when`; all allies above threshold | Priest's turn | Flash Heal is not cast (emergency gate fails) |
+| AC7 | Target rules step object `{ rule: tank, when: tank-hp-below }` and tank HP is above threshold | That step is evaluated | Step gate fails (`evaluateTargetRuleStepGates`); chain may continue to the next step |
 
 ---
 

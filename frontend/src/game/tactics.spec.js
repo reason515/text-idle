@@ -350,6 +350,15 @@ describe('tactics', () => {
       const fullHp = { ...priest, currentHP: 100, maxHP: 100 }
       expect(evaluateTargetRuleStepGates(step, fullHp, [fullHp, tank], [], {})).toBe(false)
     })
+
+    it('Example33 AC7: single when on step object fails when tank HP above threshold', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const tankHigh = { id: 't', currentHP: 160, maxHP: 200 }
+      const step = { rule: 'tank', when: 'tank-hp-below', value: 0.7 }
+      expect(evaluateTargetRuleStepGates(step, priest, [priest, tankHigh], [], { tankId: 't' })).toBe(false)
+      const tankLow = { id: 't', currentHP: 100, maxHP: 200 }
+      expect(evaluateTargetRuleStepGates(step, priest, [priest, tankLow], [], { tankId: 't' })).toBe(true)
+    })
   })
 
   describe('getAllyHpBelowThresholdFromStep', () => {

@@ -128,6 +128,8 @@
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
 ```
 
+**回归测试（与需求文档对齐）**：`docs/requirements-format.md` Example 33 列出可验收行为；前端用 Vitest（`tactics.js` / `combat.js` 相关 `*.spec.js`）锁定条件顺序、`targetRules` 链与牧师快速治疗门控；E2E `e2e/browser/tactics.spec.js` 可校验持久化战术在「当前战术」摘要中的展示。
+
 **牧师「快速治疗」预检（与目标链首步 `ally-hp-below`）**：若 `targetRules` **仅含一步**且该步为「血量最低的队友 + `ally-hp-below`」，且**未**配置技能级 `when`，则当全队当前无人满足该血量阈值时，**不得**施放快速治疗（避免把「无技能级条件」当成始终可用，从而对满血队友施放治疗）。
 
 ---

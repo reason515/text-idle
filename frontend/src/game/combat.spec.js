@@ -1227,6 +1227,40 @@ describe('combat progression and systems', () => {
     expect(firstSkillUse.skillId).toBe('sunder-armor')
   })
 
+  it('Example33 AC5: Taunt with ally-ot only is never used when solo tank and no OT', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 15,
+      strength: 20,
+      isTank: true,
+      skills: ['taunt', 'sunder-armor'],
+      tactics: {
+        skillPriority: ['taunt', 'sunder-armor'],
+        targetRule: 'first',
+        conditions: [{ skillId: 'taunt', when: 'ally-ot' }],
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob',
+          damageType: 'physical',
+          base: { hp: 400, physAtk: 3, spellPower: 0, agility: 5, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng(Array(50).fill(0.5))
+    const result = runAutoCombat({ heroes: [warrior], monsters, rng, maxRounds: 20 })
+    const tauntUses = result.log.filter((e) => e.actorName === 'Tank' && e.skillId === 'taunt')
+    expect(tauntUses.length).toBe(0)
+    const sunderUses = result.log.filter((e) => e.actorName === 'Tank' && e.skillId === 'sunder-armor')
+    expect(sunderUses.length).toBeGreaterThan(0)
+  })
+
   it('Example28: tactics targetRule lowest-hp selects lowest-HP enemy', () => {
     const warrior = sampleHero({
       id: 'w1',
