@@ -109,37 +109,61 @@ export function addThreatFromDamage(threat, monsterId, heroId, finalDamage, mult
 }
 
 /**
- * Add threat from healing to all alive monsters.
+ * Add threat from healing only on monsters whose current attack intent targets the beneficiary
+ * (same resolution as getMonsterTargetStable: taunt > highest threat).
  * @param {Object} threat - Mutable threat tables
  * @param {Object[]} monsters - Alive monsters
+ * @param {Object[]} heroes - Alive heroes (same units as combat round)
+ * @param {Object} tauntState
+ * @param {string} beneficiaryHeroId - Hero who received the heal (may be self)
  * @param {string} healerId
  * @param {number} healAmount
+ * @returns {number} Count of monsters that received this threat
  */
-export function addThreatFromHeal(threat, monsters, healerId, healAmount) {
+export function addThreatFromHeal(threat, monsters, heroes, tauntState, beneficiaryHeroId, healerId, healAmount) {
   const amount = Math.round(healAmount * HEAL_THREAT_MULTIPLIER)
+  if (amount <= 0) return 0
+  const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+  let count = 0
   for (const m of monsters) {
     if ((m.currentHP ?? 0) <= 0) continue
+    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState)
+    if (!intent || intent.id !== beneficiaryHeroId) continue
     if (!threat[m.id]) threat[m.id] = {}
     const current = threat[m.id][healerId] ?? 0
     threat[m.id][healerId] = current + amount
+    count += 1
   }
+  return count
 }
 
 /**
  * Add threat from shield (Power Word: Shield). Design 12-threat 3.2: low threat, 0.25x.
+ * Only monsters whose current attack intent targets the beneficiary gain threat.
  * @param {Object} threat - Mutable threat tables
  * @param {Object[]} monsters - Alive monsters
+ * @param {Object[]} heroes - Alive heroes
+ * @param {Object} tauntState
+ * @param {string} beneficiaryHeroId - Hero who received the shield
  * @param {string} casterId
  * @param {number} absorbAmount
+ * @returns {number} Count of monsters that received this threat
  */
-export function addThreatFromShield(threat, monsters, casterId, absorbAmount) {
+export function addThreatFromShield(threat, monsters, heroes, tauntState, beneficiaryHeroId, casterId, absorbAmount) {
   const amount = Math.round(absorbAmount * SHIELD_THREAT_MULTIPLIER)
+  if (amount <= 0) return 0
+  const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+  let count = 0
   for (const m of monsters) {
     if ((m.currentHP ?? 0) <= 0) continue
+    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState)
+    if (!intent || intent.id !== beneficiaryHeroId) continue
     if (!threat[m.id]) threat[m.id] = {}
     const current = threat[m.id][casterId] ?? 0
     threat[m.id][casterId] = current + amount
+    count += 1
   }
+  return count
 }
 
 /**

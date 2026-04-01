@@ -232,8 +232,8 @@ Then [expected result/verifiable behavior].
 | AC3 | Player has started the adventure | Player views the Priest's skill list | Priest has Flash Heal and Power Word: Shield; both are available in combat |
 | AC4 | Fixed trio Warrior uses Sunder Armor in combat | Skill is used | Target gains Armor -8 debuff for 3 rounds; threat uses (damage + sunder armor reduction) * 1.5; combat log shows damage and debuff |
 | AC5 | Fixed trio Warrior uses Taunt on a monster | Skill is used | Monster is forced to attack the Warrior for its next 2 actions; threat is updated; combat log shows Taunt effect |
-| AC6 | Fixed trio Priest uses Flash Heal on an ally | Skill is used | Ally recovers HP (SpellPower × ~1.0); threat = healAmount × 0.5 to all alive monsters; combat log shows heal |
-| AC7 | Fixed trio Priest uses Power Word: Shield on an ally | Skill is used | Ally gains a shield absorbing damage (SpellPower × ~1.0); threat = absorbAmount × 0.25 (low) to all alive monsters; combat log shows shield applied |
+| AC6 | Fixed trio Priest uses Flash Heal on an ally | Skill is used | Ally recovers HP (SpellPower × ~1.0); threat = healAmount × 0.5 to the Priest only on monsters whose attack intent is the healed ally; combat log shows heal |
+| AC7 | Fixed trio Priest uses Power Word: Shield on an ally | Skill is used | Ally gains a shield absorbing damage (SpellPower × ~1.0); threat = absorbAmount × 0.25 (low) only on monsters whose intent is the shielded ally; combat log shows shield applied |
 | AC8 | Ally has Power Word: Shield and receives 12 damage; shield absorb is 15 | Damage is applied | Shield absorbs 12; shield remaining = 3; ally loses 0 HP |
 | AC9 | Ally has Power Word: Shield (absorb 5) and receives 12 damage | Damage is applied | Shield absorbs 5 and breaks; ally loses 7 HP |
 | AC10 | Fixed trio heroes are level 1–4 | Hero gains XP and levels | No skill selection modal appears; heroes use only their 2 fixed skills |
@@ -654,8 +654,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 **Design Reference (from design doc)**
 
 - **Scope**: Fixed initial trio Priest only. Expansion Priest recruitment uses the same skill pool (when Priest skill design is complete).
-- **Flash Heal**: 12 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 to all alive monsters.
-- **Power Word: Shield**: 12 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) to all alive monsters.
+- **Flash Heal**: 12 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 on each monster whose **attack intent** is the healed ally (or self), not on all monsters.
+- **Power Word: Shield**: 12 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) on each monster whose intent is the shielded ally; not on all monsters.
 - **Shield mechanics**: Damage to shielded target is absorbed first; excess goes to HP. Recasting refreshes absorb and duration. One shield per target.
 - **Mana**: Same as Mage; MP pool scales with Spirit (and level); recovers per turn. See [04-classes-attributes.md](design/04-classes-attributes.md).
 - **Reference**: [05-skills.md](design/05-skills.md) 8.3; [12-threat.md](design/12-threat.md) 3.2.
@@ -664,14 +664,14 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 | # | Given | When | Then |
 |---|-------|------|------|
-| AC1 | Priest has Flash Heal, 20 MP, ally has 30/50 HP | Priest uses Flash Heal on ally | 12 MP consumed; ally heals (SpellPower × 1.0); combat log shows heal amount; threat += healAmount × 0.5 to all monsters |
+| AC1 | Priest has Flash Heal, 20 MP, ally has 30/50 HP | Priest uses Flash Heal on ally | 12 MP consumed; ally heals (SpellPower × 1.0); combat log shows heal amount; threat += healAmount × 0.5 to Priest on each monster whose intent is that ally |
 | AC2 | Priest has Flash Heal, 10 MP | Priest's turn and tactics select Flash Heal | Skill is not used (insufficient MP); Priest performs basic attack or waits |
-| AC3 | Priest has Power Word: Shield, 20 MP, ally has no shield | Priest uses Power Word: Shield on ally | 12 MP consumed; ally gains shield (absorb = SpellPower × 1.0, 3 rounds); combat log shows shield applied; threat += absorbAmount × 0.25 to all monsters |
+| AC3 | Priest has Power Word: Shield, 20 MP, ally has no shield | Priest uses Power Word: Shield on ally | 12 MP consumed; ally gains shield (absorb = SpellPower × 1.0, 3 rounds); combat log shows shield applied; threat += absorbAmount × 0.25 to Priest on each monster whose intent is that ally |
 | AC4 | Ally has Power Word: Shield (absorb 20, 2 rounds left) | Ally receives 15 physical damage | Shield absorbs 15; shield remaining = 5; ally loses 0 HP |
 | AC5 | Ally has Power Word: Shield (absorb 8, 1 round left) | Ally receives 20 damage | Shield absorbs 8 and breaks; ally loses 12 HP |
 | AC6 | Ally has Power Word: Shield | Priest casts Power Word: Shield on same ally again | Shield is refreshed: new absorb amount and 3-round duration; previous shield replaced |
-| AC7 | Priest uses Power Word: Shield | Player views combat log detail | Log detail shows `Threat +N to all monsters` (N = absorbAmount × 0.25); lower than heal threat for same magnitude |
-| AC8 | Priest uses Flash Heal for 18 HP | Player views combat log detail | Log detail shows `Threat +9 to all monsters` (18 × 0.5) |
+| AC7 | Priest uses Power Word: Shield | Player views combat log detail | Log detail shows per-intent threat line (N = absorbAmount × 0.25 per eligible monster); lower than heal threat for same magnitude |
+| AC8 | Priest uses Flash Heal for 18 HP | Player views combat log detail | Log detail shows `Threat +9` with wording that it applies to each enemy whose intent is the healed ally (18 × 0.5) |
 | AC9 | Ally has shield and takes damage | Damage is applied | Combat log or floating number indicates shield absorbed X, overflow Y to HP (or shield broke) |
 | AC10 | Priest has targetRule tank for Flash Heal | Priest's turn | Priest selects the tank (highest threat on most monsters) as heal target when no other condition overrides |
 
@@ -1235,7 +1235,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Source**: [12-threat.md](design/12-threat.md)
 - **Threat table**: Each monster maintains an independent threat table; threat values are non-negative integers, initial 0; MVP: threat does not decay.
 - **Monster target selection** (priority order): (1) If under Taunt/Challenging Shout, attack the caster; (2) Else attack the hero with highest threat on that monster; (3) If tied, random.
-- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); **Sunder Armor** → threat = round((finalDamage + sunder armor reduction on target after hit) × 1.5); Healing → threat = healAmount × 0.5 to all alive monsters; Shield (Power Word: Shield) → threat = absorbAmount × 0.25 (low) to all alive monsters; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
+- **Threat generation**: Damage → threat = finalDamage × threatMultiplier (1.0 default; 1.5 for Sunder, Revenge, Shield Slam); **Sunder Armor** → threat = round((finalDamage + sunder armor reduction on target after hit) × 1.5); Healing → threat = healAmount × 0.5 on each monster whose stable attack intent is the healed ally (not all monsters); Shield (Power Word: Shield) → threat = absorbAmount × 0.25 (low) on each monster whose intent is the shielded ally; Taunt → set caster's threat = max(current highest, caster's threat) × 1.1.
 - **Taunt**: Forces target monster to attack caster for 2 actions; Challenging Shout forces all monsters for 2 rounds.
 - **Tank definition**: Hero with highest threat on the most monsters; tie-break by total threat sum.
 - **ally-ot**: True when at least one monster's highest-threat target is not the tank.
@@ -1255,8 +1255,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC7 | Monster A's Taunt has expired (0 actions remaining) | Monster A's next action | Monster A selects target by threat (highest threat hero) |
 | AC8 | Warrior deals 10 physical damage to Monster A with Heroic Strike (threatMultiplier 1.0) | Damage is applied | Monster A's threat table: Warrior += 10 |
 | AC9 | Warrior uses Sunder Armor, deals 8 damage; sunder debuff armor reduction 8 on target (threatMultiplier 1.5 on combined base) | Damage is applied | Monster A's threat table: Warrior += 24 (round((8 + 8) × 1.5)) |
-| AC10 | Mage heals an ally for 15 HP | Heal is applied | All alive monsters add 7.5 threat (15 × 0.5) to the Mage |
-| AC10a | Priest uses Power Word: Shield on ally (absorb 20) | Shield is applied | All alive monsters add 5 threat (20 × 0.25, low) to the Priest |
+| AC10 | Mage heals an ally for 15 HP | Heal is applied | Each monster whose intent is the healed ally adds 7.5 threat (15 × 0.5) to the Mage; others add 0 |
+| AC10a | Priest uses Power Word: Shield on ally (absorb 20) | Shield is applied | Each monster whose intent is the shielded ally adds 5 threat (20 × 0.25, low) to the Priest; others add 0 |
 | AC11 | Warrior has highest threat on Monster A and Monster B; Mage has highest threat on Monster C | ally-ot is evaluated | ally-ot is true (Monster C's highest-threat target is Mage, not the tank Warrior) |
 | AC12 | Warrior has highest threat on all 3 monsters | ally-ot is evaluated | ally-ot is false (all monsters target the tank) |
 | AC13 | Warrior has tactics with targetRule highest-threat; one monster attacks Warrior, one attacks Mage | Warrior's turn | Warrior selects the monster attacking Mage (the one that may OT) as target |
@@ -1283,8 +1283,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Monster attack reason**: In log detail box: `Attacking Tank (highest threat)` or `Attacking Tank (taunted)`
 - **Taunt entry**: `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions`
 - **Damage threat**: In damage log detail: `Threat +15 to Wolf`
-- **Heal threat**: In heal log detail: `Threat +8 to all monsters`
-- **Shield threat**: In shield log detail: `Threat +5 to all monsters` (absorbAmount × 0.25, low)
+- **Heal threat**: In heal log detail: `Threat +8` per eligible monster (intent targets healed ally), not to all monsters
+- **Shield threat**: In shield log detail: `Threat +5` per eligible monster (intent targets shielded ally; absorbAmount × 0.25, low)
 - **Monster card**: Show `→ Tank` or `→ Mage` next to monster name/HP to indicate current target
 
 **Acceptance Criteria**
@@ -1296,8 +1296,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | Monster attacks a hero (under Taunt) | Player views the monster attack log entry detail | Log detail box shows `Attacking Tank (taunted)` or similar |
 | AC4 | Warrior uses Taunt on a monster | Taunt is applied | Combat log shows `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions` (or equivalent names) |
 | AC5 | Hero deals damage to a monster (e.g., 15 final damage) | Player views the damage log entry detail | Log detail box shows `Threat +15 to Wolf` (or equivalent; value matches threat formula) |
-| AC6 | Hero heals an ally (e.g., 16 HP) | Player views the heal log entry detail | Log detail box shows `Threat +8 to all monsters` (healAmount × 0.5) |
-| AC6a | Priest uses Power Word: Shield (absorb 20) on ally | Player views the shield log entry detail | Log detail box shows `Threat +5 to all monsters` (absorbAmount × 0.25, low threat) |
+| AC6 | Hero heals an ally (e.g., 16 HP) | Player views the heal log entry detail | Log detail box shows `Threat +8` with intent-based wording (healAmount × 0.5 per eligible monster) |
+| AC6a | Priest uses Power Word: Shield (absorb 20) on ally | Player views the shield log entry detail | Log detail box shows `Threat +5` with intent-based wording (absorbAmount × 0.25, low threat) |
 | AC7 | Monster is targeting Tank | Player views the monster card | Monster card displays `→ Tank` or equivalent target indicator |
 | AC8 | Monster is targeting Mage | Player views the monster card | Monster card displays `→ Mage` or equivalent target indicator |
 

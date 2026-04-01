@@ -617,5 +617,5 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 - **护盾机制**：目标受到伤害时，先由护盾吸收，超出部分扣减 HP；护盾吸收量耗尽或持续回合结束则消失；同一目标同时仅能存在一个护盾（重复施放刷新吸收量与持续时间）。
 - **法力机制**：与法师类似，法力上限由精神、恢复由精神等驱动；具体公式见 [04-classes-attributes.md](./04-classes-attributes.md)。
-- **治疗仇恨**：治疗对存活怪物产生仇恨，公式见 [12-threat.md](./12-threat.md) 3.2。套盾按**低仇恨**处理：`threat = absorbAmount * 0.25`，低于治疗倍率 0.5。
+- **治疗仇恨**：治疗产生仇恨的公式见 [12-threat.md](./12-threat.md) 3.2；**仅对当前攻击意图为受治疗者（含自疗）的怪物**施加，不对敌方全体。套盾按**低仇恨**处理：`threat = absorbAmount * 0.25`，且同样**仅意图目标为受盾者的怪物**获得仇恨。
 

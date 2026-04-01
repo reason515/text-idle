@@ -62,20 +62,42 @@ describe('threat', () => {
   })
 
   describe('addThreatFromHeal', () => {
-    it('adds threat to all monsters for healer', () => {
+    it('adds threat only on monsters whose stable intent targets the beneficiary', () => {
       const threat = createThreatTables([heroA, heroB], [monsterA, monsterB])
-      addThreatFromHeal(threat, [monsterA, monsterB], 'h2', 20)
+      threat.m1.h1 = 50
+      threat.m1.h2 = 0
+      threat.m2.h1 = 5
+      threat.m2.h2 = 50
+      const n = addThreatFromHeal(threat, [monsterA, monsterB], [heroA, heroB], {}, 'h1', 'h2', 20)
+      expect(n).toBe(1)
+      expect(threat.m1.h2).toBe(10)
+      expect(threat.m2.h2).toBe(50)
+    })
+
+    it('adds threat on both monsters when both target beneficiary', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA, monsterB])
+      threat.m1.h1 = 50
+      threat.m1.h2 = 0
+      threat.m2.h1 = 60
+      threat.m2.h2 = 0
+      const n = addThreatFromHeal(threat, [monsterA, monsterB], [heroA, heroB], {}, 'h1', 'h2', 20)
+      expect(n).toBe(2)
       expect(threat.m1.h2).toBe(10)
       expect(threat.m2.h2).toBe(10)
     })
   })
 
   describe('addThreatFromShield', () => {
-    it('adds threat at 0.25x absorb amount to all monsters', () => {
+    it('adds threat at 0.25x only on monsters targeting beneficiary', () => {
       const threat = createThreatTables([heroA, heroB], [monsterA, monsterB])
-      addThreatFromShield(threat, [monsterA, monsterB], 'h2', 40)
+      threat.m1.h1 = 50
+      threat.m1.h2 = 0
+      threat.m2.h1 = 5
+      threat.m2.h2 = 50
+      const n = addThreatFromShield(threat, [monsterA, monsterB], [heroA, heroB], {}, 'h1', 'h2', 40)
+      expect(n).toBe(1)
       expect(threat.m1.h2).toBe(10)
-      expect(threat.m2.h2).toBe(10)
+      expect(threat.m2.h2).toBe(50)
     })
   })
 

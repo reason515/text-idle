@@ -428,7 +428,7 @@
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
-                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.frostboltFreezeProcced !== undefined"
+                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
@@ -488,7 +488,26 @@
                   仇恨 +{{ entry.threatAmount }} 对 {{ entry.threatTargetName }}
                 </div>
                 <div v-if="entry.threatHealAmount != null" class="log-threat">
-                  仇恨 +{{ entry.threatHealAmount }} 对所有怪物
+                  仇恨 +{{ entry.threatHealAmount }}（每名意图攻击
+                  <span
+                    :style="{
+                      color: (entry.threatBeneficiaryClass ?? entry.targetClass)
+                        ? classColor(entry.threatBeneficiaryClass ?? entry.targetClass)
+                        : 'var(--text)',
+                    }"
+                  >{{ entry.threatBeneficiaryName ?? entry.targetName }}</span>
+                  的敌人）
+                </div>
+                <div v-if="entry.threatShieldAmount != null" class="log-threat">
+                  仇恨 +{{ entry.threatShieldAmount }}（每名意图攻击
+                  <span
+                    :style="{
+                      color: (entry.threatBeneficiaryClass ?? entry.targetClass)
+                        ? classColor(entry.threatBeneficiaryClass ?? entry.targetClass)
+                        : 'var(--text)',
+                    }"
+                  >{{ entry.threatBeneficiaryName ?? entry.targetName }}</span>
+                  的敌人）
                 </div>
               </div>
             </div>

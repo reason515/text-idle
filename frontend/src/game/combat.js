@@ -934,8 +934,20 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.actorHPBefore = actorHPBefore
               entry.actorHPAfter = actor.currentHP
               entry.actorMaxHP = actor.maxHP
-              addThreatFromHeal(threat, alive(monsterUnits), actor.id, sr.heal)
-              entry.threatHealAmount = Math.round(sr.heal * 0.5)
+              const healThreatCount = addThreatFromHeal(
+                threat,
+                alive(monsterUnits),
+                alive(heroUnits),
+                tauntState,
+                actor.id,
+                actor.id,
+                sr.heal
+              )
+              entry.threatHealAmount = healThreatCount > 0 ? Math.round(sr.heal * 0.5) : null
+              if (entry.threatHealAmount != null) {
+                entry.threatBeneficiaryName = actor.name
+                entry.threatBeneficiaryClass = actor.class || null
+              }
             }
             const sunderThreatOpts =
               skillId === 'sunder-armor' && sr.debuffArmorReduction != null
@@ -1119,15 +1131,35 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               manaConsumed: sr.manaConsumed,
               manaAfter: actor.currentMP,
             }
-            addThreatFromHeal(threat, alive(monsterUnits), actor.id, sr.heal)
-            entry.threatHealAmount = Math.round(sr.heal * 0.5)
+            const healThreatCount = addThreatFromHeal(
+              threat,
+              alive(monsterUnits),
+              alive(heroUnits),
+              tauntState,
+              priestTarget.id,
+              actor.id,
+              sr.heal
+            )
+            entry.threatHealAmount = healThreatCount > 0 ? Math.round(sr.heal * 0.5) : null
+            if (entry.threatHealAmount != null) {
+              entry.threatBeneficiaryName = priestTarget.name
+              entry.threatBeneficiaryClass = priestTarget.class || null
+            }
             log.push(entry)
             usedSkill = true
             break
           }
           if (skillId === 'power-word-shield') {
             const sr = executePowerWordShield(actor, priestTarget, skill, { rng })
-            addThreatFromShield(threat, alive(monsterUnits), actor.id, sr.absorbAmount)
+            const shieldThreatCount = addThreatFromShield(
+              threat,
+              alive(monsterUnits),
+              alive(heroUnits),
+              tauntState,
+              priestTarget.id,
+              actor.id,
+              sr.absorbAmount
+            )
             log.push({
               round,
               actorId: actor.id,
@@ -1147,7 +1179,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               shieldDuration: sr.shieldDuration,
               manaConsumed: sr.manaConsumed,
               manaAfter: actor.currentMP,
-              threatShieldAmount: Math.round(sr.absorbAmount * 0.25),
+              threatShieldAmount: shieldThreatCount > 0 ? Math.round(sr.absorbAmount * 0.25) : null,
+              threatBeneficiaryName: shieldThreatCount > 0 ? priestTarget.name : undefined,
+              threatBeneficiaryClass: shieldThreatCount > 0 ? priestTarget.class || null : undefined,
             })
             usedSkill = true
             break
