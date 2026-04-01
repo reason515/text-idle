@@ -416,7 +416,7 @@ test.describe('Threat Display (Example 32)', () => {
     await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '嘲讽' }).first()).toBeVisible({ timeout: 60000 })
     await expect(page.locator('.log-calc').filter({ hasText: '2 次行动' }).first()).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.log-calc').filter({ hasText: '->' }).first()).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.log-target-intent').filter({ hasText: '嘲讽' }).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.log-target-intent').filter({ hasText: '切换目标' }).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('AC2: monster attack log detail shows target reason (highest threat or taunted)', async ({ page }) => {

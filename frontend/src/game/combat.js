@@ -62,6 +62,7 @@ import {
   isAllyOT,
   getTank,
   getDesignatedTank,
+  hasNonZeroThreatOnMonster,
 } from './threat.js'
 import { heroDisplayName } from './heroDisplayName.js'
 
@@ -679,30 +680,34 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   const threat = createThreatTables(heroUnits, monsterUnits)
   const tauntState = {}
   const monsterLastTarget = {}
+  /** Monster id -> next stable target hero id; null until taunt or non-zero threat on that monster (no fake tie-break at 0 threat). */
   const monsterIntendedTargetIds = {}
-  for (const m of alive(monsterUnits)) {
-    const next = getMonsterTargetStable(m, alive(heroUnits), threat, tauntState)
-    monsterIntendedTargetIds[m.id] = next?.id
-  }
 
   function emitMonsterIntentChangesIfNeeded(opts = {}) {
     const tauntExpiredIds = new Set(opts.tauntExpiredMonsterIds ?? [])
     const heroes = alive(heroUnits)
     for (const m of alive(monsterUnits)) {
-      const next = getMonsterTargetStable(m, heroes, threat, tauntState)
-      const nextId = next?.id ?? null
-      const prevId = monsterIntendedTargetIds[m.id]
-      if (prevId === undefined) {
-        monsterIntendedTargetIds[m.id] = nextId ?? undefined
+      const tauntActive = tauntState[m.id]?.actionsRemaining > 0
+      const hasThreat = hasNonZeroThreatOnMonster(threat, m.id, heroes)
+      const meaningful = tauntActive || hasThreat || tauntExpiredIds.has(m.id)
+
+      if (!meaningful) {
+        monsterIntendedTargetIds[m.id] = null
         continue
       }
-      if (prevId === nextId) continue
+
+      const next = getMonsterTargetStable(m, heroes, threat, tauntState)
+      const nextId = next?.id ?? null
       if (nextId == null) continue
+
+      const prevId = monsterIntendedTargetIds[m.id]
+      if (prevId === nextId) continue
+
       const reason = tauntState[m.id]?.actionsRemaining > 0 ? 'taunt' : 'threat'
       let intentDetail = reason === 'taunt' ? 'taunt' : 'threat'
       if (tauntExpiredIds.has(m.id)) intentDetail = 'taunt-ended'
       monsterIntendedTargetIds[m.id] = nextId
-      const prevHero = heroes.find((h) => h.id === prevId)
+      const prevHero = prevId != null ? heroes.find((h) => h.id === prevId) : null
       const newHero = heroes.find((h) => h.id === nextId)
       log.push({
         round,
@@ -710,7 +715,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         monsterId: m.id,
         monsterName: m.name,
         monsterTier: m.tier ?? null,
-        previousTargetId: prevId,
+        previousTargetId: prevId ?? null,
         previousTargetName: prevHero?.name ?? null,
         previousTargetClass: prevHero?.class ?? null,
         newTargetId: nextId,
@@ -1189,29 +1194,33 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const targetReason = actor.side === 'monster'
         ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
         : null
+      /** OT line is logged after the attack line so each action fully resolves before threat/target UI. */
+      let pendingOtEntry = null
       if (actor.side === 'monster') {
         const lastTargetId = monsterLastTarget[actor.id]
         if (lastTargetId != null && lastTargetId !== target.id) {
           const tank = getTank(heroUnits, monsterUnits, threat, designatedTankUnit)
           if (tank && target.id !== tank.id) {
-            const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
-            const lastTargetName = lastTarget?.name ?? 'Unknown'
-            log.push({
-              round,
-              type: 'ot',
-              monsterId: actor.id,
-              monsterName: actor.name,
-              monsterTier: actor.tier ?? null,
-              previousTargetName: lastTargetName,
-              newTargetId: target.id,
-              newTargetName: target.name,
-              newTargetClass: target.class || null,
-            })
+            const stablePreviewId = monsterIntendedTargetIds[actor.id]
+            const redundantWithIntent =
+              stablePreviewId != null && target.id === stablePreviewId
+            if (!redundantWithIntent) {
+              const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
+              const lastTargetName = lastTarget?.name ?? 'Unknown'
+              pendingOtEntry = {
+                round,
+                type: 'ot',
+                monsterId: actor.id,
+                monsterName: actor.name,
+                monsterTier: actor.tier ?? null,
+                previousTargetName: lastTargetName,
+                newTargetId: target.id,
+                newTargetName: target.name,
+                newTargetClass: target.class || null,
+              }
+            }
           }
         }
-        monsterLastTarget[actor.id] = target.id
-        const tauntDec = decrementTauntActions(tauntState, actor.id)
-        if (tauntDec.expired) tauntExpiredMonsterIds = [actor.id]
         if (action.skillId) actor.lastSkillRound = round
       }
 
@@ -1287,6 +1296,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
       }
       log.push(logEntry)
+      if (pendingOtEntry) log.push(pendingOtEntry)
+      if (actor.side === 'monster') {
+        monsterLastTarget[actor.id] = target.id
+        const tauntDec = decrementTauntActions(tauntState, actor.id)
+        if (tauntDec.expired) tauntExpiredMonsterIds = [actor.id]
+      }
       emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds })
     }
 

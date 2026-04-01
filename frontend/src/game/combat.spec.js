@@ -931,6 +931,7 @@ describe('combat progression and systems', () => {
     ]
     const result = runAutoCombat({ heroes, monsters, rng: () => 0.5 })
     for (const entry of result.log) {
+      if (!Object.prototype.hasOwnProperty.call(entry, 'finalDamage')) continue
       expect(entry).toHaveProperty('isCrit')
       expect(typeof entry.isCrit).toBe('boolean')
     }
@@ -1484,6 +1485,25 @@ describe('combat progression and systems', () => {
       }
     })
 
+    it('OT log line immediately follows that monster attack line (then intent lines)', () => {
+      const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 10 })
+      const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 15, strength: 5, intellect: 15 })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 200, physAtk: 2, spellPower: 0, agility: 10, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
+      const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 10 })
+      for (let i = 0; i < result.log.length; i++) {
+        if (result.log[i].type === 'ot') {
+          expect(i).toBeGreaterThan(0)
+          const prev = result.log[i - 1]
+          expect(prev.actorName).toBe(result.log[i].monsterName)
+          expect(prev.targetName).toBeDefined()
+        }
+      }
+    })
+
     it('AC1b: no OT when monster switches target to tank (warrior)', () => {
       const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 15 })
       const monster = createMonster(
@@ -1494,6 +1514,47 @@ describe('combat progression and systems', () => {
       const result = runAutoCombat({ heroes: [warrior], monsters: [monster], rng, maxRounds: 5 })
       const otEntries = result.log.filter((e) => e.type === 'ot')
       expect(otEntries.length).toBe(0)
+    })
+
+    it('no redundant OT when attack matches latest monsterTargetIntent for that monster', () => {
+      const priest = sampleHero({
+        id: 'p1',
+        name: 'Priest',
+        class: 'Priest',
+        agility: 28,
+        skills: ['power-word-shield'],
+        tactics: { skillPriority: ['power-word-shield'], targetRule: 'first' },
+        maxMP: 200,
+        currentMP: 200,
+      })
+      const mage = sampleHero({
+        id: 'm1',
+        name: 'Mage',
+        class: 'Mage',
+        agility: 6,
+        intellect: 25,
+        skills: ['frostbolt'],
+        tactics: { skillPriority: ['frostbolt'], targetRule: 'first' },
+        maxMP: 200,
+        currentMP: 200,
+      })
+      const monster = createMonster(
+        { id: 'w1', name: 'Wolf', damageType: 'physical', base: { hp: 900, physAtk: 4, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(120).fill(0.45))
+      const result = runAutoCombat({ heroes: [priest, mage], monsters: [monster], rng, maxRounds: 24 })
+      for (let i = 0; i < result.log.length; i++) {
+        if (result.log[i].type !== 'ot') continue
+        const ot = result.log[i]
+        const prior = result.log
+          .slice(0, i)
+          .filter((x) => x.type === 'monsterTargetIntent' && x.monsterId === ot.monsterId)
+        const lastIntent = prior[prior.length - 1]
+        if (lastIntent && lastIntent.newTargetId === ot.newTargetId) {
+          expect.fail('OT should be suppressed when it matches stable preview (same newTargetId as last intent)')
+        }
+      }
     })
 
     it('AC2: monster attack has targetReason highest-threat when not taunted', () => {
@@ -1520,10 +1581,10 @@ describe('combat progression and systems', () => {
       const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 8 })
       const intents = result.log.filter((e) => e.type === 'monsterTargetIntent')
       expect(intents.length).toBeGreaterThan(0)
-      const threatIntent = intents.find((e) => e.intentReason === 'threat')
-      expect(threatIntent).toBeDefined()
-      expect(threatIntent.newTargetName).toBe('Tank')
-      expect(threatIntent.intentDetail).toBe('threat')
+      const threatIntents = intents.filter((e) => e.intentReason === 'threat')
+      expect(threatIntents.length).toBeGreaterThan(0)
+      expect(threatIntents.some((e) => e.intentDetail === 'threat')).toBe(true)
+      expect(threatIntents.some((e) => e.newTargetName === 'Tank')).toBe(true)
     })
 
     it('monsterTargetIntent uses intentDetail taunt-ended when taunt expires and highest threat changes', () => {

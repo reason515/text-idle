@@ -331,21 +331,31 @@
                 >{{ entry.newTargetName }}</span>
                 <span class="log-ot-mark">(OT!)</span>
               </div>
-              <div class="log-ot-hint">相对上一击切换；仇恨可能来自本回合更早行动或上一回合。</div>
             </div>
-            <div v-else-if="entry.type === 'monsterTargetIntent'" class="log-entry log-target-intent">
+            <div
+              v-else-if="entry.type === 'monsterTargetIntent'"
+              class="log-entry log-target-intent"
+              :class="{ 'log-intent-taunt-ended': entry.intentDetail === 'taunt-ended' }"
+            >
               <div class="log-intent-block">
-                <span class="log-round">[R{{ entry.round }}]</span>
-                <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
-                <span class="log-sep">切换目标至</span>
-                <span
-                  class="log-target"
-                  :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
-                >{{ entry.newTargetName }}</span>
-                <span class="log-intent-mark">({{ formatMonsterIntentMark(entry) }})</span>
-              </div>
-              <div v-if="showMonsterIntentThreatHint(entry)" class="log-intent-hint">
-                含本回合更早行动与上一回合累计，非仅因紧邻上一条日志。
+                <template v-if="entry.intentDetail === 'taunt-ended'">
+                  <span class="log-round">[R{{ entry.round }}]</span>
+                  <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
+                  <span class="log-sep">嘲讽已结束，下一击目标</span>
+                  <span
+                    class="log-target"
+                    :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
+                  >{{ entry.newTargetName }}</span>
+                </template>
+                <template v-else>
+                  <span class="log-round">[R{{ entry.round }}]</span>
+                  <span :style="{ color: monsterTierColor(entry.monsterTier) }">{{ entry.monsterName }}</span>
+                  <span class="log-sep">切换目标至</span>
+                  <span
+                    class="log-target"
+                    :style="{ color: entry.newTargetClass ? classColor(entry.newTargetClass) : 'var(--text-value)' }"
+                  >{{ entry.newTargetName }}</span>
+                </template>
               </div>
             </div>
             <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
@@ -1627,23 +1637,6 @@ function formatLogActionName(entry) {
   if (entry.skillName) return entry.skillName
   if (entry.action === 'basic') return '普通攻击'
   return entry.action ?? '技能'
-}
-
-/** Combat log: monsterTargetIntent parenthesis text (see intentDetail in combat.js). */
-function formatMonsterIntentMark(entry) {
-  const d = entry.intentDetail
-  if (d === 'taunt-ended') return '嘲讽已结束，下一目标按仇恨'
-  if (d === 'taunt' || entry.intentReason === 'taunt') return '受嘲讽强制'
-  if (d === 'threat' || entry.intentReason === 'threat') return '仇恨变化，下一击预览'
-  return entry.intentReason === 'taunt' ? '嘲讽' : '仇恨'
-}
-
-function showMonsterIntentThreatHint(entry) {
-  if (entry.type !== 'monsterTargetIntent') return false
-  const d = entry.intentDetail
-  if (d === 'threat') return true
-  if (!d && entry.intentReason === 'threat') return true
-  return false
 }
 
 const router = useRouter()
@@ -4274,26 +4267,17 @@ onUnmounted(() => {
   align-items: baseline;
   gap: 0.15rem 0.25rem;
 }
-.log-ot-hint,
-.log-intent-hint {
-  width: 100%;
-  margin-top: 0.35rem;
-  margin-left: 2.5rem;
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  line-height: 1.45;
-}
 .log-target-intent .log-intent-block {
   width: 100%;
+}
+/* Taunt expired: same body line as other log rows (no muted secondary line). */
+.log-entry.log-intent-taunt-ended {
+  font-size: var(--font-base);
+  color: var(--text-value);
 }
 .log-ot .log-ot-mark {
   color: var(--warning);
   font-weight: bold;
-  margin-left: 0.25rem;
-}
-.log-target-intent .log-intent-mark {
-  color: var(--text-muted);
-  font-size: var(--font-sm);
   margin-left: 0.25rem;
 }
 .log-target-reason,

@@ -36,6 +36,23 @@ export function createThreatTables(heroes, monsters) {
 }
 
 /**
+ * True if any alive hero has threat greater than 0 on this monster.
+ * @param {Object} threat
+ * @param {string} monsterId
+ * @param {Object[]} heroes - Alive heroes (caller passes alive(heroUnits))
+ * @returns {boolean}
+ */
+export function hasNonZeroThreatOnMonster(threat, monsterId, heroes) {
+  const t = threat[monsterId]
+  if (!t) return false
+  for (const h of heroes) {
+    if ((h.currentHP ?? 0) <= 0) continue
+    if ((t[h.id] ?? 0) > 0) return true
+  }
+  return false
+}
+
+/**
  * Get threat multiplier for a skill. Design doc 12-threat.md 3.2.
  * @param {string} skillId
  * @returns {number}

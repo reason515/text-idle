@@ -16,6 +16,7 @@ import {
   getThreatMultiplier,
   computeSkillDamageThreat,
   addThreatFromSkillDamage,
+  hasNonZeroThreatOnMonster,
 } from './threat.js'
 
 describe('threat', () => {
@@ -35,6 +36,18 @@ describe('threat', () => {
       const deadHero = { ...heroB, currentHP: 0 }
       const threat = createThreatTables([heroA, deadHero], [monsterA])
       expect(threat.m1).toEqual({ h1: 0 })
+    })
+  })
+
+  describe('hasNonZeroThreatOnMonster', () => {
+    it('returns false when all entries are zero', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA])
+      expect(hasNonZeroThreatOnMonster(threat, 'm1', [heroA, heroB])).toBe(false)
+    })
+    it('returns true when any alive hero has positive threat', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA])
+      threat.m1.h1 = 1
+      expect(hasNonZeroThreatOnMonster(threat, 'm1', [heroA, heroB])).toBe(true)
     })
   })
 
