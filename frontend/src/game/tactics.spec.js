@@ -311,6 +311,13 @@ describe('tactics', () => {
       expect(checkCondition(cond, priest, null, [priest, tank], [], {})).toBe(true)
     })
 
+    it('ally-hp-below passes when an ally is exactly at the threshold (inclusive)', () => {
+      const cond = { when: 'ally-hp-below', value: 0.6 }
+      const a = { id: 'a', currentHP: 60, maxHP: 100 }
+      const b = { id: 'b', currentHP: 100, maxHP: 100 }
+      expect(checkCondition(cond, {}, null, [a, b], [], {})).toBe(true)
+    })
+
     it('enemy-targeting-self ignores dead monsters', () => {
       const cond = { when: 'enemy-targeting-self' }
       const priest = { id: 'priest', currentHP: 80, maxHP: 100 }
@@ -484,6 +491,19 @@ describe('tactics', () => {
 
     it('lowest-hp picks the one with lowest HP', () => {
       expect(pickTargetByRule(candidates, 'lowest-hp').id).toBe('b')
+    })
+
+    it('lowest-hp-ratio-ally picks the ally with lowest current HP / maxHP ratio (tie: lower current HP)', () => {
+      const mixed = [
+        { id: 'tank', currentHP: 400, maxHP: 1000 },
+        { id: 'dps', currentHP: 130, maxHP: 200 },
+      ]
+      expect(pickTargetByRule(mixed, 'lowest-hp-ratio-ally').id).toBe('tank')
+      const tie = [
+        { id: 'a', currentHP: 50, maxHP: 100 },
+        { id: 'b', currentHP: 50, maxHP: 100 },
+      ]
+      expect(pickTargetByRule(tie, 'lowest-hp-ratio-ally').id).toBe('a')
     })
 
     it('highest-hp picks the one with highest HP', () => {

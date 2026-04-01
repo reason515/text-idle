@@ -162,7 +162,11 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
 
   if (when === 'ally-hp-below') {
     const threshold = typeof value === 'number' ? value : 0.4
-    return heroes.some((h) => h.currentHP > 0 && (h.currentHP ?? 0) / Math.max(1, h.maxHP ?? 1) < threshold)
+    return heroes.some((h) => {
+      if (h.currentHP <= 0) return false
+      const ratio = (h.currentHP ?? 0) / Math.max(1, h.maxHP ?? 1)
+      return ratio <= threshold
+    })
   }
 
   if (when === 'self-hit-this-round') {
@@ -433,6 +437,20 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'lowest-hp' || targetRule === 'lowest-hp-ally') {
     return alive.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))
+  }
+
+  if (targetRule === 'lowest-hp-ratio-ally') {
+    return alive.reduce((a, b) => {
+      const ra = (a.currentHP ?? 0) / Math.max(1, a.maxHP ?? 1)
+      const rb = (b.currentHP ?? 0) / Math.max(1, b.maxHP ?? 1)
+      if (ra < rb) return a
+      if (rb < ra) return b
+      const ca = a.currentHP ?? 0
+      const cb = b.currentHP ?? 0
+      if (ca < cb) return a
+      if (cb < ca) return b
+      return a
+    })
   }
 
   if (targetRule === 'self') {

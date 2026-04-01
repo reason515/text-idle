@@ -44,6 +44,7 @@ import {
   checkPriestFlashHealSkillAllowed,
   evaluateTargetRuleStepGates,
   filterTargetsByCondition,
+  getAllyHpBelowThresholdFromStep,
   pickTargetByRule,
   tacticsConditionWhenRequiresPickedTarget,
   tacticsHpRatioWhenSkipsPreFilter,
@@ -549,7 +550,7 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
 
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
 
-function pickTarget(actor, heroes, monsters, opts = {}) {
+export function pickTarget(actor, heroes, monsters, opts = {}) {
   const { threat, tauntState, skillId, conditions, rng, designatedTank, round } = opts
   if (actor.side === 'monster') {
     return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng)
@@ -580,6 +581,22 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
     const resolved = stepRule === TACTICS_TARGET_RULE_INHERIT ? globalDefault : stepRule
     let pool = filtered
     let rule = resolved
+
+    if (targetAllies && resolved === 'lowest-hp-ally') {
+      let triageTh = typeof step === 'object' && step !== null ? getAllyHpBelowThresholdFromStep(step) : null
+      if (triageTh == null && step === 'lowest-hp-ally' && cond?.when === 'ally-hp-below') {
+        triageTh = typeof cond.value === 'number' ? cond.value : 0.4
+      }
+      if (triageTh != null) {
+        pool = pool.filter((u) => {
+          const ratio = (u.currentHP ?? 0) / Math.max(1, u.maxHP ?? 1)
+          return ratio <= triageTh
+        })
+        if (pool.length === 0) continue
+        rule = 'lowest-hp-ratio-ally'
+      }
+    }
+
     if (!targetAllies && resolved === 'sunder-first' && pool.length > 0) {
       const sunderPool = pool.filter((t) => getSunderDebuff(t))
       if (sunderPool.length > 0) pool = sunderPool

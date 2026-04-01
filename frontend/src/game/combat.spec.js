@@ -18,6 +18,7 @@ import {
   buildEncounterMonsters,
   applyDamage,
   runAutoCombat,
+  pickTarget,
   buildRoundOrder,
   startRestPhase,
   applyRestStep,
@@ -47,6 +48,64 @@ function sampleHero(overrides = {}) {
     ...overrides,
   }
 }
+
+describe('pickTarget (Priest ally-hp-below triage)', () => {
+  it('picks lowest HP ratio among allies at or below threshold (not lowest absolute HP across party)', () => {
+    const conditions = [
+      {
+        skillId: 'flash-heal',
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.6 }],
+      },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Priest',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 100,
+      maxHP: 100,
+      tactics: { conditions },
+    }
+    const tank = { id: 't1', name: 'Tank', class: 'Warrior', side: 'hero', currentHP: 400, maxHP: 1000 }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 130, maxHP: 200 }
+    const t = pickTarget(priest, [priest, tank, mage], [], {
+      skillId: 'flash-heal',
+      conditions,
+      rng: () => 0.5,
+      designatedTank: tank,
+    })
+    expect(t.id).toBe('t1')
+  })
+
+  it('legacy skill when ally-hp-below + targetRule lowest-hp-ally uses the same triage narrowing', () => {
+    const conditions = [
+      {
+        skillId: 'flash-heal',
+        when: 'ally-hp-below',
+        value: 0.6,
+        targetRule: 'lowest-hp-ally',
+      },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Priest',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 100,
+      maxHP: 100,
+      tactics: { conditions },
+    }
+    const tank = { id: 't1', name: 'Tank', class: 'Warrior', side: 'hero', currentHP: 400, maxHP: 1000 }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 130, maxHP: 200 }
+    const t = pickTarget(priest, [priest, tank, mage], [], {
+      skillId: 'flash-heal',
+      conditions,
+      rng: () => 0.5,
+      designatedTank: tank,
+    })
+    expect(t.id).toBe('t1')
+  })
+})
 
 describe('combat progression and systems', () => {
   it('Example5: starts with only first map unlocked and recruit limit 3 (fixed trio)', () => {

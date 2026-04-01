@@ -97,7 +97,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "target-hp-above" : target HP% > value
 - "self-hp-below" : caster HP% < value
 - "self-hp-above" : caster HP% > value (e.g. "自己HP高于60%")
-- "ally-hp-below" : any **living ally** (including the caster) has HP% < value — **NOT** "teammates only"; Chinese "自身或队友低于X%" maps here
+- "ally-hp-below" : any **living ally** (including the caster) has HP% **<=** value (inclusive at threshold) — **NOT** "teammates only"; Chinese "自身或队友低于X%" maps here
 - "self-hit-this-round" : caster was hit this round (no value)
 - "target-has-debuff" : target has debuff (value: "sunder" / "freeze" / "burn")
 - "ally-ot" : an ally pulled aggro from tank (no value)

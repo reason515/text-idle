@@ -76,7 +76,7 @@
 
 | 规则 ID | 说明 |
 |---------|------|
-| lowest-hp-ally | 己方 HP 最低（战术 UI：**HP 最低**，与敌方规则同名不同用） |
+| lowest-hp-ally | 己方 **当前 HP 绝对值**最低。若本步与 **`ally-hp-below` 门控**同用（技能级 `when: ally-hp-below` 或目标链步骤 `{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value }`），则先在 **HP 比例 ≤ 该阈值（含等于）** 的存活己方中，再选 **HP 比例最低** 的一名（比例相同则当前 HP 更低者优先），避免「全队有人低于阈值时却奶到比例健康但血条短」的误选。 |
 | self | 仅自己 |
 | self-if-enemy-targeting | 仅自己，但**当且仅当**至少有一个存活怪物的最高仇恨目标是当前施法者时才返回自身；否则返回 null，使目标优先链继续尝试后续规则。用于「被盯上则自保，安全时改支援」的分支逻辑。 |
 | tank | 指定坦克（战术 UI：**坦克**） |
@@ -93,7 +93,7 @@
 | target-hp-above | 目标 HP 比例 **> X**（严格高于） | 寒冰箭「高于 60%」分支 |
 | self-hp-below | 自身 HP 比例低于 X | 破釜沉舟 |
 | self-hp-above | 自身 HP 比例高于 X | 牧师：血量较高时套盾等 |
-| ally-hp-below | 任意存活己方（含施法者）HP 比例低于 X | 治疗技能 |
+| ally-hp-below | 任意存活己方（含施法者）HP 比例 **≤ X**（含等于；与 UI「低于（含）X%」一致） | 治疗技能 |
 | self-hit-this-round | 本回合受到过攻击 | 复仇 |
 | target-has-debuff | 目标有指定 debuff；同时过滤目标池 | 盾牌猛击（破甲）、深度冻结（冰霜 debuff） |
 | ally-ot | 存在至少一个怪物，其仇恨最高目标不是指定坦克（战术 UI：条件类别 **敌方**，条目 **OT**） | 嘲讽 |
