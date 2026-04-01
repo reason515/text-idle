@@ -102,6 +102,20 @@ export function tacticsConditionWhenRequiresPickedTarget(condition) {
 }
 
 /**
+ * When true, pickTarget must not pre-filter by target-hp-below/above; apply targetRule on the
+ * full enemy pool, then checkCondition validates the HP ratio. Pre-filtering would wrongly pick
+ * "lowest HP among enemies matching the ratio" instead of "the global targetRule pick, then branch skill by ratio".
+ * target-has-debuff still uses filterTargetsByCondition first.
+ * @param {TacticsCondition|null|undefined} condition
+ * @returns {boolean}
+ */
+export function tacticsHpRatioWhenSkipsPreFilter(condition) {
+  if (!condition || isTacticsConditionInactive(condition)) return false
+  const w = condition.when
+  return w === 'target-hp-below' || w === 'target-hp-above'
+}
+
+/**
  * Check if a condition passes for the given context.
  * @param {TacticsCondition} condition
  * @param {Object} actor - Acting hero
@@ -123,7 +137,9 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
   if (when === 'target-hp-below') {
     const threshold = typeof value === 'number' ? value : 0.3
     const ratio = (target.currentHP ?? 0) / Math.max(1, target.maxHP ?? 1)
-    return ratio < threshold
+    // Inclusive at threshold so pairs with target-hp-above (strict >) cover 100% with no gap;
+    // e.g. frost when >0.6 and fire when <=0.6 for the same 0.6 split.
+    return ratio <= threshold
   }
 
   if (when === 'target-hp-above') {
@@ -336,7 +352,7 @@ export function filterTargetsByCondition(targets, condition, actor, ctx) {
     const threshold = typeof condition.value === 'number' ? condition.value : 0.3
     return targets.filter((t) => {
       const ratio = (t.currentHP ?? 0) / Math.max(1, t.maxHP ?? 1)
-      return ratio < threshold
+      return ratio <= threshold
     })
   }
 

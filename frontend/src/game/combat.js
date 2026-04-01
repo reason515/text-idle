@@ -46,6 +46,7 @@ import {
   filterTargetsByCondition,
   pickTargetByRule,
   tacticsConditionWhenRequiresPickedTarget,
+  tacticsHpRatioWhenSkipsPreFilter,
 } from './tactics.js'
 import {
   createThreatTables,
@@ -555,9 +556,10 @@ function pickTarget(actor, heroes, monsters, opts = {}) {
   const chain = getTargetRuleChain(actor, skillId || '', conditionsList)
   const targetAllies = skillId && ALLY_TARGET_SKILLS.includes(skillId)
   const candidates = targetAllies ? alive(heroes) : alive(monsters)
-  let filtered = cond
-    ? filterTargetsByCondition(candidates, cond, actor, opts)
-    : candidates
+  let filtered =
+    cond && !tacticsHpRatioWhenSkipsPreFilter(cond)
+      ? filterTargetsByCondition(candidates, cond, actor, opts)
+      : candidates
   const getTankFn =
     designatedTank != null
       ? (h, m, t) => getTank(h, m, t, designatedTank)

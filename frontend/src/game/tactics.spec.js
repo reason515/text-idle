@@ -13,6 +13,7 @@ import {
   pickTargetByRule,
   isTacticsConditionInactive,
   tacticsConditionWhenRequiresPickedTarget,
+  tacticsHpRatioWhenSkipsPreFilter,
 } from './tactics.js'
 import { isAllyOT } from './threat.js'
 
@@ -160,6 +161,12 @@ describe('tactics', () => {
       expect(checkCondition(cond, {}, target, [], [], {})).toBe(false)
     })
 
+    it('target-hp-below passes when target HP ratio equals threshold (inclusive)', () => {
+      const target = { currentHP: 15, maxHP: 50 }
+      const cond = { when: 'target-hp-below', value: 0.3 }
+      expect(checkCondition(cond, {}, target, [], [], {})).toBe(true)
+    })
+
     it('target-hp-below fails when target is missing (must not pass as true)', () => {
       const cond = { when: 'target-hp-below', value: 0.6 }
       expect(checkCondition(cond, {}, null, [], [], {})).toBe(false)
@@ -181,6 +188,14 @@ describe('tactics', () => {
       expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'target-has-debuff', value: 'sunder' })).toBe(true)
       expect(tacticsConditionWhenRequiresPickedTarget({ skillId: 'x', when: 'self-hp-below', value: 0.5 })).toBe(false)
       expect(tacticsConditionWhenRequiresPickedTarget(null)).toBe(false)
+    })
+
+    it('tacticsHpRatioWhenSkipsPreFilter is true only for active target-hp-below/above', () => {
+      expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-hp-below', value: 0.5 })).toBe(true)
+      expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-hp-above', value: 0.5 })).toBe(true)
+      expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-has-debuff', value: 'sunder' })).toBe(false)
+      expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: ' ', value: 0.5 })).toBe(false)
+      expect(tacticsHpRatioWhenSkipsPreFilter(null)).toBe(false)
     })
 
     it('self-hit-this-round passes when actor was hit', () => {
@@ -443,6 +458,15 @@ describe('tactics', () => {
       ]
       const cond = { when: 'target-hp-below', value: 0.3 }
       expect(filterTargetsByCondition(targets, cond, {}, {}).map((t) => t.id)).toEqual(['b', 'c'])
+    })
+
+    it('target-hp-below filter includes ratio equal to threshold', () => {
+      const targets = [
+        { id: 'a', currentHP: 30, maxHP: 100 },
+        { id: 'b', currentHP: 31, maxHP: 100 },
+      ]
+      const cond = { when: 'target-hp-below', value: 0.3 }
+      expect(filterTargetsByCondition(targets, cond, {}, {}).map((t) => t.id)).toEqual(['a'])
     })
 
     it('returns all when no condition', () => {

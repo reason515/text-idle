@@ -89,8 +89,8 @@
 
 | 条件类型 | 说明 | 适用技能示例 |
 |----------|------|--------------|
-| target-hp-below | 目标 HP 比例低于 X | 斩杀 (30%) |
-| target-hp-above | 目标 HP 比例高于 X | — |
+| target-hp-below | 目标 HP 比例 **≤ X**（含等于；与 `target-hp-above` 的 **> X** 配对时，分界比例不会落入两条件皆假） | 斩杀 (30%)、火球「60% 及以下」分支 |
+| target-hp-above | 目标 HP 比例 **> X**（严格高于） | 寒冰箭「高于 60%」分支 |
 | self-hp-below | 自身 HP 比例低于 X | 破釜沉舟 |
 | self-hp-above | 自身 HP 比例高于 X | 牧师：血量较高时套盾等 |
 | ally-hp-below | 任意存活己方（含施法者）HP 比例低于 X | 治疗技能 |
@@ -109,6 +109,7 @@
 
 **说明**：
 
+- `target-hp-below` / `target-hp-above`：**不**先按血量比例缩小敌方候选池。引擎先在**全部存活敌方**上按该技能的 `targetRule`（或继承全局 `targetRule`）选定目标，再用该比例条件判断是否可选用该技能。这样「默认目标：血量最低」与「寒冰箭仅当目标高于 60%」组合时，是先锁定全场当前 HP 最低者，再在该目标上分支寒冰箭/火球，而不会出现「只在比例高于 60% 的怪里再取血量最低」从而误打高血线怪的情况。
 - `target-has-debuff`：先按 debuff 过滤目标池，若无有效目标则跳过该技能。**不要用此项表示「没有真言术：盾」**；无盾请用 `self-no-shield` / `tank-no-shield`。
 - `ally-ot`：依赖仇恨系统与**指定坦克**；若未指定坦克，该条件及仇恨/坦克相关目标选项不可用。
 
@@ -122,8 +123,8 @@
 2. 按 skillPriority 顺序遍历技能：
    a. 检查资源是否足够
    b. 检查冷却
-   c. 检查 conditions 中该技能的触发条件：`when` 为仅依赖自身/盟友/回合/仇恨等（如 `self-hp-below`、`ally-ot`）时，在选目标**之前**判断；`when` 为 **`target-hp-below` / `target-hp-above` / `target-has-debuff`** 时，必须先按目标规则与目标池过滤**选出目标**，再对该目标判定条件（否则「目标血量」类条件无法成立）。
-   d. 根据 targetRule（或技能级 targetRule）选取目标；条件涉及目标池时先过滤
+   c. 检查 conditions 中该技能的触发条件：`when` 为仅依赖自身/盟友/回合/仇恨等（如 `self-hp-below`、`ally-ot`）时，在选目标**之前**判断；`when` 为 **`target-hp-below` / `target-hp-above`** 时，先按 `targetRule` 在**全部存活敌方**上选出候选目标，再对该目标判定血量比例条件；`when` 为 **`target-has-debuff`** 时，先按 debuff **缩小**目标池，再按目标规则选取，最后判定。
+   d. 根据 targetRule（或技能级 targetRule）选取目标；仅 `target-has-debuff` 等需先缩小池的条件在选目标前过滤敌方池（`target-hp-below` / `target-hp-above` **不**先做比例预筛）
    e. 若全部通过，执行该技能并结束
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
 ```

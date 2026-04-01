@@ -809,6 +809,103 @@ describe('combat progression and systems', () => {
     expect(manaBatch.updates.some((u) => u.actorId === 'm1')).toBe(true)
   })
 
+  it('Mage tactics: lowest-hp + HP% skills hit global lowest HP, not a high-HP mob matching frost only', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      agility: 99,
+      intellect: 25,
+      spirit: 10,
+      skills: ['frostbolt', 'fireball'],
+      tactics: {
+        skillPriority: ['frostbolt', 'fireball'],
+        targetRule: 'lowest-hp',
+        conditions: [
+          { skillId: 'frostbolt', when: 'target-hp-above', value: 0.6 },
+          { skillId: 'fireball', when: 'target-hp-below', value: 0.6 },
+        ],
+      },
+    })
+    const highHp = createMonster(
+      {
+        id: 'm-high',
+        name: 'High HP Mob',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const lowHp = createMonster(
+      {
+        id: 'm-low',
+        name: 'Low HP Mob',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    lowHp.currentHP = 50
+    lowHp.maxHP = 500
+    const monsters = [highHp, lowHp]
+    const result = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5, maxRounds: 5 })
+    const frostOnHigh = result.log.find(
+      (e) => e.actorName === 'Hero One' && e.skillId === 'frostbolt' && e.targetName === 'High HP Mob'
+    )
+    expect(frostOnHigh).toBeUndefined()
+    const fireOnLow = result.log.find(
+      (e) => e.actorName === 'Hero One' && e.skillId === 'fireball' && e.targetName === 'Low HP Mob'
+    )
+    expect(fireOnLow).toBeDefined()
+  })
+
+  it('Mage tactics: at exact 60% HP on lowest enemy fireball is used, not basic attack', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      agility: 99,
+      intellect: 25,
+      spirit: 10,
+      skills: ['frostbolt', 'fireball'],
+      tactics: {
+        skillPriority: ['frostbolt', 'fireball'],
+        targetRule: 'lowest-hp',
+        conditions: [
+          { skillId: 'frostbolt', when: 'target-hp-above', value: 0.6 },
+          { skillId: 'fireball', when: 'target-hp-below', value: 0.6 },
+        ],
+      },
+    })
+    const mFull = createMonster(
+      {
+        id: 'm1',
+        name: 'Full',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const mSplit = createMonster(
+      {
+        id: 'm2',
+        name: 'Split',
+        damageType: 'physical',
+        base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    mSplit.currentHP = 300
+    mSplit.maxHP = 500
+    const monsters = [mFull, mSplit]
+    const result = runAutoCombat({ heroes: [mage], monsters, rng: () => 0.5, maxRounds: 5 })
+    const firstMageVsSplit = result.log.find(
+      (e) =>
+        e.actorName === 'Hero One' &&
+        e.targetName === 'Split' &&
+        (e.skillId === 'fireball' || e.skillId === 'frostbolt' || e.action === 'basic')
+    )
+    expect(firstMageVsSplit?.skillId).toBe('fireball')
+  })
+
   it('Mage tactics: frostbolt target-hp-above skips when only sub-threshold enemies; fireball is used', () => {
     const mage = sampleHero({
       id: 'm1',
