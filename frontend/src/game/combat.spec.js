@@ -1523,6 +1523,37 @@ describe('combat progression and systems', () => {
       const threatIntent = intents.find((e) => e.intentReason === 'threat')
       expect(threatIntent).toBeDefined()
       expect(threatIntent.newTargetName).toBe('Tank')
+      expect(threatIntent.intentDetail).toBe('threat')
+    })
+
+    it('monsterTargetIntent uses intentDetail taunt-ended when taunt expires and highest threat changes', () => {
+      const warrior = sampleHero({
+        id: 'w1',
+        name: 'Tank',
+        agility: 10,
+        strength: 15,
+        skills: ['taunt'],
+        tactics: { skillPriority: ['taunt'], targetRule: 'first' },
+      })
+      const mage = sampleHero({
+        id: 'm2',
+        name: 'Mage',
+        class: 'Mage',
+        agility: 30,
+        intellect: 40,
+        skills: ['frostbolt'],
+        tactics: { skillPriority: ['frostbolt'], targetRule: 'first' },
+        maxMP: 200,
+        currentMP: 200,
+      })
+      const monster = createMonster(
+        { id: 'm1', name: 'Wolf', damageType: 'physical', base: { hp: 800, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 } },
+        { tier: 'normal', level: 1 }
+      )
+      const rng = fixedRng(Array(80).fill(0.5))
+      const result = runAutoCombat({ heroes: [mage, warrior], monsters: [monster], rng, maxRounds: 8 })
+      const ended = result.log.filter((e) => e.type === 'monsterTargetIntent' && e.intentDetail === 'taunt-ended')
+      expect(ended.length).toBeGreaterThan(0)
     })
 
     it('AC3: monster attack has targetReason taunted when under Taunt', () => {

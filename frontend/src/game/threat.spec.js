@@ -129,8 +129,16 @@ describe('threat', () => {
   describe('decrementTauntActions', () => {
     it('decrements and removes when 0', () => {
       const tauntState = { m1: { casterId: 'h1', actionsRemaining: 1 } }
-      decrementTauntActions(tauntState, 'm1')
+      const r = decrementTauntActions(tauntState, 'm1')
       expect(tauntState.m1).toBeUndefined()
+      expect(r.expired).toBe(true)
+    })
+
+    it('returns expired false when taunt remains', () => {
+      const tauntState = { m1: { casterId: 'h1', actionsRemaining: 2 } }
+      const r = decrementTauntActions(tauntState, 'm1')
+      expect(tauntState.m1.actionsRemaining).toBe(1)
+      expect(r.expired).toBe(false)
     })
   })
 

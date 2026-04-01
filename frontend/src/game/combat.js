@@ -685,7 +685,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     monsterIntendedTargetIds[m.id] = next?.id
   }
 
-  function emitMonsterIntentChangesIfNeeded() {
+  function emitMonsterIntentChangesIfNeeded(opts = {}) {
+    const tauntExpiredIds = new Set(opts.tauntExpiredMonsterIds ?? [])
     const heroes = alive(heroUnits)
     for (const m of alive(monsterUnits)) {
       const next = getMonsterTargetStable(m, heroes, threat, tauntState)
@@ -698,6 +699,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (prevId === nextId) continue
       if (nextId == null) continue
       const reason = tauntState[m.id]?.actionsRemaining > 0 ? 'taunt' : 'threat'
+      let intentDetail = reason === 'taunt' ? 'taunt' : 'threat'
+      if (tauntExpiredIds.has(m.id)) intentDetail = 'taunt-ended'
       monsterIntendedTargetIds[m.id] = nextId
       const prevHero = heroes.find((h) => h.id === prevId)
       const newHero = heroes.find((h) => h.id === nextId)
@@ -714,6 +717,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         newTargetName: newHero?.name ?? '',
         newTargetClass: newHero?.class ?? null,
         intentReason: reason,
+        intentDetail,
       })
     }
   }
@@ -734,6 +738,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     }
     turnActedByRound[round] = []
     for (const actor of roundOrder) {
+      let tauntExpiredMonsterIds = []
       if (actor.currentHP <= 0) continue
       if (consumeFreezeTurn(actor)) {
         log.push({
@@ -1031,6 +1036,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             if (sr.debuffDamageType != null) entry.debuffDamageType = sr.debuffDamageType
             if (sr.freezeSkipActions != null) entry.debuffFreezeActions = sr.freezeSkipActions
           }
+          if (skill.id === 'frostbolt' && sr.freezeProcced !== undefined) {
+            entry.frostboltFreezeProcced = sr.freezeProcced
+          }
           if (sr.finalDamage > 0) {
             addThreatFromDamage(threat, mageTarget.id, actor.id, sr.finalDamage, 1)
             entry.threatAmount = sr.finalDamage
@@ -1202,7 +1210,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
         }
         monsterLastTarget[actor.id] = target.id
-        decrementTauntActions(tauntState, actor.id)
+        const tauntDec = decrementTauntActions(tauntState, actor.id)
+        if (tauntDec.expired) tauntExpiredMonsterIds = [actor.id]
         if (action.skillId) actor.lastSkillRound = round
       }
 
@@ -1278,7 +1287,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
       }
       log.push(logEntry)
-      emitMonsterIntentChangesIfNeeded()
+      emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds })
     }
 
     // Process DOT (bleed, burn, etc) at end of round

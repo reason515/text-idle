@@ -249,12 +249,17 @@ export function getMonsterTargetStable(monster, heroes, threat, tauntState) {
  * Decrement taunt actions remaining for a monster after it acts.
  * @param {Object} tauntState - Mutable
  * @param {string} monsterId
+ * @returns {{ expired: boolean }} expired true when taunt was removed this call
  */
 export function decrementTauntActions(tauntState, monsterId) {
   const t = tauntState[monsterId]
-  if (!t) return
+  if (!t) return { expired: false }
   t.actionsRemaining -= 1
-  if (t.actionsRemaining <= 0) delete tauntState[monsterId]
+  if (t.actionsRemaining <= 0) {
+    delete tauntState[monsterId]
+    return { expired: true }
+  }
+  return { expired: false }
 }
 
 /**

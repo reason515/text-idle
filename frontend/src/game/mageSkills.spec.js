@@ -122,6 +122,7 @@ describe('Fireball', () => {
     expect(target.currentHP).toBe(40 - finalDmg)
 
     expect(getBurnDebuff(target)).toBeNull()
+    expect(result.freezeProcced).toBeUndefined()
   })
 
   it('Fireball enhanced 1x uses higher coefficient and spellCritBonus', () => {
@@ -172,6 +173,7 @@ describe('Frostbolt', () => {
     expect(result.debuffApplied).toBe(true)
     expect(result.debuffRefreshed).toBe(false)
     expect(result.debuffType).toBe('freeze')
+    expect(result.freezeProcced).toBe(true)
 
     const fr = getFreezeDebuff(target)
     expect(fr).not.toBeNull()
@@ -187,6 +189,7 @@ describe('Frostbolt', () => {
     expect(result.debuffApplied).toBe(false)
     expect(result.debuffRefreshed).toBe(false)
     expect(result.debuffType).toBeUndefined()
+    expect(result.freezeProcced).toBe(false)
     expect(getFreezeDebuff(target)).toBeNull()
   })
 
@@ -198,6 +201,7 @@ describe('Frostbolt', () => {
 
     expect(result.debuffApplied).toBe(false)
     expect(result.debuffRefreshed).toBe(true)
+    expect(result.freezeProcced).toBe(true)
     const fr = getFreezeDebuff(target)
     expect(fr.skipActions).toBe(1)
   })
@@ -215,6 +219,7 @@ describe('Frostbolt', () => {
     expect(skillEnhanced.freezeChance).toBeCloseTo(0.15, 5)
     const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false, rng: rngFreezeProc })
     expect(result.skillCoefficient).toBeCloseTo(0.85, 5)
+    expect(result.freezeProcced).toBe(true)
   })
 
   it('getMageEnhancementPreviewEffectDesc shows frostbolt damage and freeze chance delta', () => {

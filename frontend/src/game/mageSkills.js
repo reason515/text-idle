@@ -310,5 +310,7 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     debuffRefreshed: !!(debuffResult && debuffResult.refreshed),
     debuffType: skill.id === 'frostbolt' && freezeProcced ? 'freeze' : undefined,
     freezeSkipActions: skill.id === 'frostbolt' && freezeProcced ? 1 : undefined,
+    /** Only set for Frostbolt: whether the Freeze roll succeeded (for battle log). */
+    freezeProcced: skill.id === 'frostbolt' ? freezeProcced : undefined,
   }
 }
