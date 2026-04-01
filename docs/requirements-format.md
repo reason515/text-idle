@@ -1279,13 +1279,14 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Source**: [12-threat.md](design/12-threat.md) 6.2
 - **Layer 1**: OT event log, monster attack target reason, Taunt effect clarification
 - **Layer 2**: Damage/heal threat hint in log detail, monster card target indicator
-- **OT event**: When a monster switches target from one hero to another, add a log entry: `[R4] Wolf switched target to Mage (OT!)`
+- **OT event**: When a monster switches target from one hero to another, add a log entry: `[R4] Wolf switched target to Mage (OT!)` (logged **immediately before** that monster's attack line for the same action, so the switch reads before the hit)
 - **Monster attack reason**: In log detail box: `Attacking Tank (highest threat)` or `Attacking Tank (taunted)`
 - **Taunt entry**: `Tank used Taunt on Wolf — Wolf will attack Tank for 2 actions`
 - **Damage threat**: In damage log detail: `Threat +15 to Wolf`
 - **Heal threat**: In heal log detail: `Threat +8` per eligible monster (intent targets healed ally), not to all monsters
 - **Shield threat**: In shield log detail: `Threat +5` per eligible monster (intent targets shielded ally; absorbAmount × 0.25, low)
 - **Monster card**: Show `→ Tank` or `→ Mage` next to monster name/HP to indicate current target
+- **Threat ties (incl. all zero)**: While the previous target is still among heroes tied for highest threat on that monster, the monster keeps that target instead of randomly switching.
 
 **Acceptance Criteria**
 

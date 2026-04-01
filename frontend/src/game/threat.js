@@ -118,16 +118,27 @@ export function addThreatFromDamage(threat, monsterId, heroId, finalDamage, mult
  * @param {string} beneficiaryHeroId - Hero who received the heal (may be self)
  * @param {string} healerId
  * @param {number} healAmount
+ * @param {Object<string, string>|null} [monsterLastTargetById] - monster id -> last hit hero id (sticky ties)
  * @returns {number} Count of monsters that received this threat
  */
-export function addThreatFromHeal(threat, monsters, heroes, tauntState, beneficiaryHeroId, healerId, healAmount) {
+export function addThreatFromHeal(
+  threat,
+  monsters,
+  heroes,
+  tauntState,
+  beneficiaryHeroId,
+  healerId,
+  healAmount,
+  monsterLastTargetById = null
+) {
   const amount = Math.round(healAmount * HEAL_THREAT_MULTIPLIER)
   if (amount <= 0) return 0
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   let count = 0
   for (const m of monsters) {
     if ((m.currentHP ?? 0) <= 0) continue
-    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState)
+    const lastId = monsterLastTargetById?.[m.id] ?? null
+    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState, lastId)
     if (!intent || intent.id !== beneficiaryHeroId) continue
     if (!threat[m.id]) threat[m.id] = {}
     const current = threat[m.id][healerId] ?? 0
@@ -147,16 +158,27 @@ export function addThreatFromHeal(threat, monsters, heroes, tauntState, benefici
  * @param {string} beneficiaryHeroId - Hero who received the shield
  * @param {string} casterId
  * @param {number} absorbAmount
+ * @param {Object<string, string>|null} [monsterLastTargetById]
  * @returns {number} Count of monsters that received this threat
  */
-export function addThreatFromShield(threat, monsters, heroes, tauntState, beneficiaryHeroId, casterId, absorbAmount) {
+export function addThreatFromShield(
+  threat,
+  monsters,
+  heroes,
+  tauntState,
+  beneficiaryHeroId,
+  casterId,
+  absorbAmount,
+  monsterLastTargetById = null
+) {
   const amount = Math.round(absorbAmount * SHIELD_THREAT_MULTIPLIER)
   if (amount <= 0) return 0
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   let count = 0
   for (const m of monsters) {
     if ((m.currentHP ?? 0) <= 0) continue
-    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState)
+    const lastId = monsterLastTargetById?.[m.id] ?? null
+    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState, lastId)
     if (!intent || intent.id !== beneficiaryHeroId) continue
     if (!threat[m.id]) threat[m.id] = {}
     const current = threat[m.id][casterId] ?? 0
@@ -188,13 +210,14 @@ export function applyTauntThreatBoost(threat, monsterId, casterId, heroes) {
 }
 
 /**
- * Get the hero with highest threat on a monster. Tie-break: random among ties.
+ * Get the hero with highest threat on a monster. Tie-break: keep previous target if tied (incl. all zero); else random.
  * @param {Object} threatTable - threat[monsterId]
  * @param {Object[]} heroes - Alive heroes
  * @param {Function} rng
+ * @param {string|null} [lastTargetId] - Hero id last hit by this monster; used when tied for max threat
  * @returns {Object|null}
  */
-export function getHighestThreatHero(threatTable, heroes, rng = Math.random) {
+export function getHighestThreatHero(threatTable, heroes, rng = Math.random, lastTargetId = null) {
   const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
   let maxThreat = -1
@@ -211,17 +234,22 @@ export function getHighestThreatHero(threatTable, heroes, rng = Math.random) {
   }
   if (candidates.length === 0) return alive[0]
   if (candidates.length === 1) return candidates[0]
+  if (lastTargetId != null) {
+    const sticky = candidates.find((h) => h.id === lastTargetId)
+    if (sticky) return sticky
+  }
   return candidates[Math.floor(rng() * candidates.length)]
 }
 
 /**
- * Same as getHighestThreatHero but deterministic tie-break (lowest hero id).
+ * Same as getHighestThreatHero but deterministic tie-break: keep previous target if tied; else lowest hero id.
  * Use for UI intent lines without consuming combat RNG.
  * @param {Object} threatTable
  * @param {Object[]} heroes
+ * @param {string|null} [lastTargetId]
  * @returns {Object|null}
  */
-export function getHighestThreatHeroStable(threatTable, heroes) {
+export function getHighestThreatHeroStable(threatTable, heroes, lastTargetId = null) {
   const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
   let maxThreat = -1
@@ -237,20 +265,26 @@ export function getHighestThreatHeroStable(threatTable, heroes) {
     }
   }
   if (candidates.length === 0) return alive[0]
+  if (candidates.length === 1) return candidates[0]
+  if (lastTargetId != null) {
+    const sticky = candidates.find((h) => h.id === lastTargetId)
+    if (sticky) return sticky
+  }
   candidates.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   return candidates[0]
 }
 
 /**
- * Get monster's attack target: Taunt override > highest threat > random.
+ * Get monster's attack target: Taunt override > highest threat > tie: keep last target if in tie set > random.
  * @param {Object} monster
  * @param {Object[]} heroes - Alive heroes
  * @param {Object} threat - Threat tables
  * @param {Object} tauntState - monsterId -> { casterId, actionsRemaining }
  * @param {Function} rng
+ * @param {string|null} [lastTargetId] - Last hero this monster hit (same combat)
  * @returns {Object|null}
  */
-export function getMonsterTarget(monster, heroes, threat, tauntState, rng = Math.random) {
+export function getMonsterTarget(monster, heroes, threat, tauntState, rng = Math.random, lastTargetId = null) {
   const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
 
@@ -261,7 +295,7 @@ export function getMonsterTarget(monster, heroes, threat, tauntState, rng = Math
   }
 
   const table = threat[monster.id] ?? {}
-  return getHighestThreatHero(table, heroes, rng)
+  return getHighestThreatHero(table, heroes, rng, lastTargetId)
 }
 
 /**
@@ -270,9 +304,10 @@ export function getMonsterTarget(monster, heroes, threat, tauntState, rng = Math
  * @param {Object[]} heroes
  * @param {Object} threat
  * @param {Object} tauntState
+ * @param {string|null} [lastTargetId]
  * @returns {Object|null}
  */
-export function getMonsterTargetStable(monster, heroes, threat, tauntState) {
+export function getMonsterTargetStable(monster, heroes, threat, tauntState, lastTargetId = null) {
   const alive = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   if (alive.length === 0) return null
 
@@ -283,7 +318,7 @@ export function getMonsterTargetStable(monster, heroes, threat, tauntState) {
   }
 
   const table = threat[monster.id] ?? {}
-  return getHighestThreatHeroStable(table, heroes)
+  return getHighestThreatHeroStable(table, heroes, lastTargetId)
 }
 
 /**

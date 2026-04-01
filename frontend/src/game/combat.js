@@ -551,9 +551,10 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
 
 export function pickTarget(actor, heroes, monsters, opts = {}) {
-  const { threat, tauntState, skillId, conditions, rng, designatedTank, round } = opts
+  const { threat, tauntState, skillId, conditions, rng, designatedTank, round, monsterLastTarget } = opts
   if (actor.side === 'monster') {
-    return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng)
+    const lastId = monsterLastTarget?.[actor.id] ?? null
+    return getMonsterTarget(actor, heroes, threat ?? {}, tauntState ?? {}, rng, lastId)
   }
   const conditionsList = conditions ?? getConditions(actor)
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
@@ -715,7 +716,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     const snap = {}
     for (const m of monsterList) {
       if ((m.currentHP ?? 0) <= 0) continue
-      const t = getMonsterTargetStable(m, heroes, threat, tauntState)
+      const lastId = monsterLastTarget[m.id] ?? null
+      const t = getMonsterTargetStable(m, heroes, threat, tauntState, lastId)
       snap[m.id] = t?.id ?? null
     }
     return snap
@@ -735,7 +737,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         continue
       }
 
-      const next = getMonsterTargetStable(m, heroes, threat, tauntState)
+      const lastId = monsterLastTarget[m.id] ?? null
+      const next = getMonsterTargetStable(m, heroes, threat, tauntState, lastId)
       const nextId = next?.id ?? null
       if (nextId == null) continue
 
@@ -801,7 +804,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         emitMonsterIntentChangesIfNeeded()
         continue
       }
-      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, { rng, threat, tauntState, designatedTank: designatedTankUnit })
+      const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, {
+        rng,
+        threat,
+        tauntState,
+        designatedTank: designatedTankUnit,
+        monsterLastTarget,
+      })
       if (!defaultTarget) break
 
       turnActedByRound[round].push(actor.id)
@@ -978,7 +987,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 tauntState,
                 actor.id,
                 actor.id,
-                sr.heal
+                sr.heal,
+                monsterLastTarget
               )
               entry.threatHealAmount = healThreatCount > 0 ? Math.round(sr.heal * 0.5) : null
               if (entry.threatHealAmount != null) {
@@ -1176,7 +1186,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               tauntState,
               priestTarget.id,
               actor.id,
-              sr.heal
+              sr.heal,
+              monsterLastTarget
             )
             entry.threatHealAmount = healThreatCount > 0 ? Math.round(sr.heal * 0.5) : null
             if (entry.threatHealAmount != null) {
@@ -1198,7 +1209,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               tauntState,
               priestTarget.id,
               actor.id,
-              sr.absorbAmount
+              sr.absorbAmount,
+              monsterLastTarget
             )
             log.push({
               round,
@@ -1273,7 +1285,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const targetReason = actor.side === 'monster'
         ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
         : null
-      /** OT line is logged after the attack line so each action fully resolves before threat/target UI. */
+      /** OT line is logged immediately before this attack so the log reads: switch target, then the hit. */
       let pendingOtEntry = null
       if (actor.side === 'monster') {
         const lastTargetId = monsterLastTarget[actor.id]
@@ -1374,8 +1386,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound
         if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
       }
-      log.push(logEntry)
       if (pendingOtEntry) log.push(pendingOtEntry)
+      log.push(logEntry)
       if (actor.side === 'monster') {
         monsterLastTarget[actor.id] = target.id
         const tauntDec = decrementTauntActions(tauntState, actor.id)

@@ -1647,7 +1647,7 @@ describe('combat progression and systems', () => {
       }
     })
 
-    it('OT log line immediately follows that monster attack line (then intent lines)', () => {
+    it('OT log line immediately precedes that monster attack line (then intent lines)', () => {
       const warrior = sampleHero({ id: 'w1', name: 'Tank', agility: 20, strength: 10 })
       const mage = sampleHero({ id: 'm1', name: 'Mage', class: 'Mage', agility: 15, strength: 5, intellect: 15 })
       const monster = createMonster(
@@ -1658,10 +1658,10 @@ describe('combat progression and systems', () => {
       const result = runAutoCombat({ heroes: [warrior, mage], monsters: [monster], rng, maxRounds: 10 })
       for (let i = 0; i < result.log.length; i++) {
         if (result.log[i].type === 'ot') {
-          expect(i).toBeGreaterThan(0)
-          const prev = result.log[i - 1]
-          expect(prev.actorName).toBe(result.log[i].monsterName)
-          expect(prev.targetName).toBeDefined()
+          const next = result.log[i + 1]
+          expect(next).toBeDefined()
+          expect(next.actorName).toBe(result.log[i].monsterName)
+          expect(next.targetId).toBe(result.log[i].newTargetId)
         }
       }
     })

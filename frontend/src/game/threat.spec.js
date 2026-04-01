@@ -123,6 +123,18 @@ describe('threat', () => {
       const r = getHighestThreatHero(table, [heroA, heroB], () => 0)
       expect(['h1', 'h2']).toContain(r.id)
     })
+
+    it('when tied keeps last target if that hero is among tied top threat', () => {
+      const table = { h1: 50, h2: 50 }
+      const r = getHighestThreatHero(table, [heroA, heroB], () => 0, 'h2')
+      expect(r.id).toBe('h2')
+    })
+
+    it('all zero threat keeps last target when in tie set', () => {
+      const table = { h1: 0, h2: 0 }
+      const r = getHighestThreatHero(table, [heroA, heroB], () => 0, 'h2')
+      expect(r.id).toBe('h2')
+    })
   })
 
   describe('getMonsterTarget', () => {
@@ -141,13 +153,27 @@ describe('threat', () => {
       const t = getMonsterTarget(monsterA, [heroA, heroB], threat, {})
       expect(t.id).toBe('h2')
     })
+
+    it('when tied uses last target sticky rule', () => {
+      const threat = createThreatTables([heroA, heroB], [monsterA])
+      threat.m1.h1 = 40
+      threat.m1.h2 = 40
+      const t = getMonsterTarget(monsterA, [heroA, heroB], threat, {}, Math.random, 'h2')
+      expect(t.id).toBe('h2')
+    })
   })
 
   describe('getHighestThreatHeroStable', () => {
-    it('breaks ties by lowest hero id', () => {
+    it('breaks ties by lowest hero id when no last target', () => {
       const table = { h1: 50, h2: 50 }
       const r = getHighestThreatHeroStable(table, [heroA, heroB])
       expect(r.id).toBe('h1')
+    })
+
+    it('when tied prefers last target when in candidate set', () => {
+      const table = { h1: 50, h2: 50 }
+      const r = getHighestThreatHeroStable(table, [heroA, heroB], 'h2')
+      expect(r.id).toBe('h2')
     })
   })
 
