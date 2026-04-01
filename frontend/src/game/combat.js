@@ -705,8 +705,25 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   /** Monster id -> next stable target hero id; null until taunt or non-zero threat on that monster (no fake tie-break at 0 threat). */
   const monsterIntendedTargetIds = {}
 
+  /**
+   * Snapshot getMonsterTargetStable per alive monster (pre threat mutation).
+   * Used after heal/shield threat so intent lines compare pre-mutation stable vs post-mutation stable.
+   * Otherwise monsterIntendedTargetIds can lag last-emitted state and skip needed monsterTargetIntent logs.
+   */
+  function snapshotStableIntentIdsForMonsters(monsterList) {
+    const heroes = alive(heroUnits)
+    const snap = {}
+    for (const m of monsterList) {
+      if ((m.currentHP ?? 0) <= 0) continue
+      const t = getMonsterTargetStable(m, heroes, threat, tauntState)
+      snap[m.id] = t?.id ?? null
+    }
+    return snap
+  }
+
   function emitMonsterIntentChangesIfNeeded(opts = {}) {
     const tauntExpiredIds = new Set(opts.tauntExpiredMonsterIds ?? [])
+    const preStableIntentIds = opts.preStableIntentIds
     const heroes = alive(heroUnits)
     for (const m of alive(monsterUnits)) {
       const tauntActive = tauntState[m.id]?.actionsRemaining > 0
@@ -722,7 +739,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const nextId = next?.id ?? null
       if (nextId == null) continue
 
-      const prevId = monsterIntendedTargetIds[m.id]
+      const prevId =
+        preStableIntentIds != null && Object.prototype.hasOwnProperty.call(preStableIntentIds, m.id)
+          ? preStableIntentIds[m.id]
+          : monsterIntendedTargetIds[m.id]
       if (prevId === nextId) continue
 
       const reason = tauntState[m.id]?.actionsRemaining > 0 ? 'taunt' : 'threat'
@@ -1148,6 +1168,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               manaConsumed: sr.manaConsumed,
               manaAfter: actor.currentMP,
             }
+            const preStableIntentIds = snapshotStableIntentIdsForMonsters(alive(monsterUnits))
             const healThreatCount = addThreatFromHeal(
               threat,
               alive(monsterUnits),
@@ -1163,11 +1184,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.threatBeneficiaryClass = priestTarget.class || null
             }
             log.push(entry)
+            emitMonsterIntentChangesIfNeeded({ preStableIntentIds })
             usedSkill = true
             break
           }
           if (skillId === 'power-word-shield') {
             const sr = executePowerWordShield(actor, priestTarget, skill, { rng })
+            const preStableIntentIds = snapshotStableIntentIdsForMonsters(alive(monsterUnits))
             const shieldThreatCount = addThreatFromShield(
               threat,
               alive(monsterUnits),
@@ -1200,12 +1223,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threatBeneficiaryName: shieldThreatCount > 0 ? priestTarget.name : undefined,
               threatBeneficiaryClass: shieldThreatCount > 0 ? priestTarget.class || null : undefined,
             })
+            emitMonsterIntentChangesIfNeeded({ preStableIntentIds })
             usedSkill = true
             break
           }
         }
         if (usedSkill) {
-          emitMonsterIntentChangesIfNeeded()
           continue
         }
       }
