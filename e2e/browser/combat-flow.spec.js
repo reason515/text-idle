@@ -131,6 +131,9 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(manaLine).toContainText(
       '\u56de\u5408\u7ed3\u675f\u6062\u590d\u6cd5\u529b'
     )
+    const manaDetail = manaLine.locator('.log-mana-regen-detail').first()
+    await expect(manaDetail).toContainText('0.8')
+    await expect(manaDetail).toContainText('\u00d7')
   })
 
   test('monster detail modal shows phys atk as min-max or single value', async ({ page }) => {

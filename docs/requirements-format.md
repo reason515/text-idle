@@ -631,7 +631,7 @@ Then [expected result/verifiable behavior].
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
 - **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 13 MP, 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced). Fireball: 18 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 5, enhance either or learn one of: Arcane Missiles, Frost Nova, Flamestrike.
-- **Mana**: Mages start combat at full MP; MP recovers per turn (Base + Spirit * k + equipment). Skills consume Mana; insufficient Mana prevents use.
+- **Mana**: Mages start combat at full MP; MP recovers per turn (Spirit * 0.8 + equipment bonus, floored; see 05-skills.md 8.2.1). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
 - **Initial skills (Mage recruitment: 2选1)**:
   | Spec | Skill | English | Cost | Effect |

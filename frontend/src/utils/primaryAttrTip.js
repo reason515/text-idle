@@ -8,11 +8,10 @@ import {
   STRENGTH_TO_ARMOR_K,
   getSpellIntellectK,
 } from '../data/heroes.js'
+import { MANA_REGEN_SPIRIT_SCALE } from '../game/manaRegenConstants.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
 import { formatSecondaryFormulaTip } from './formulaTip.js'
 
-const MANA_REGEN_BASE = 4
-const MANA_REGEN_SPIRIT_K = 1
 
 function fmt(raw) {
   return formatSecondaryFormulaTip(raw)
@@ -142,9 +141,7 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
       if (isManaClass) {
         lines.push(fmt(`法力上限 = 5 + Spi * ${c.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`))
         lines.push(
-          fmt(
-            `战斗内法力恢复/回合 = ${MANA_REGEN_BASE} + Spi * ${MANA_REGEN_SPIRIT_K} + 装备恢复`
-          )
+          fmt(`战斗内法力恢复/回合 = Spi * ${MANA_REGEN_SPIRIT_SCALE} + 装备恢复`)
         )
       } else {
         lines.push('<span class="tip-muted">本职业：非法力资源，无此项每回合 MP 恢复公式。</span>')

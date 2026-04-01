@@ -384,9 +384,17 @@
                 </div>
                 <div class="log-detail-box log-mana-regen-detail">
                   <div class="log-calc">
-                    精神 {{ u.spirit }} + 装备恢复 {{ u.equipmentRecoveryBonus ?? 0 }}，取整每回合 +{{ u.regenFloored ?? u.manaGained
-                    }}；本回合实际 +{{ u.manaGained
-                    }}<template v-if="(u.regenFloored ?? u.manaGained) > u.manaGained">（已达法力上限）</template>
+                    <template v-if="u.regenRaw != null && u.manaRegenSpiritScale != null">
+                      精神 {{ u.spirit }} × {{ u.manaRegenSpiritScale }} + 装备恢复 {{ u.equipmentRecoveryBonus ?? 0 }} = {{
+                        formatManaRegenRawDisplay(u.regenRaw)
+                      }}，向下取整每回合 +{{ u.regenFloored ?? u.manaGained }}；本回合实际 +{{ u.manaGained
+                      }}<template v-if="(u.regenFloored ?? u.manaGained) > u.manaGained">（已达法力上限）</template>
+                    </template>
+                    <template v-else>
+                      精神 {{ u.spirit }} + 装备恢复 {{ u.equipmentRecoveryBonus ?? 0 }}，取整每回合 +{{ u.regenFloored ?? u.manaGained
+                      }}；本回合实际 +{{ u.manaGained
+                      }}<template v-if="(u.regenFloored ?? u.manaGained) > u.manaGained">（已达法力上限）</template>
+                    </template>
                   </div>
                 </div>
               </template>
@@ -1654,6 +1662,11 @@ function resourceLabel(heroClass) {
 function resourceFillClass(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).fillClass
 }
+function formatManaRegenRawDisplay(n) {
+  if (n == null || !Number.isFinite(n)) return ''
+  return Number(n).toFixed(2).replace(/\.?0+$/, '')
+}
+
 function formatLogActionName(entry) {
   if (entry.skillName) return entry.skillName
   if (entry.action === 'basic') return '普通攻击'

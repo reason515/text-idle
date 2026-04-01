@@ -66,8 +66,11 @@ import {
   hasNonZeroThreatOnMonster,
 } from './threat.js'
 import { heroDisplayName } from './heroDisplayName.js'
+import { MANA_REGEN_SPIRIT_SCALE } from './manaRegenConstants.js'
 
 export const CRIT_MULTIPLIER = 1.5
+
+export { MANA_REGEN_SPIRIT_SCALE } from './manaRegenConstants.js'
 
 export const MAPS = [
   {
@@ -1343,8 +1346,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
     }
 
-    // Mage/Priest mana recovery per round: Spirit * 1 + equipment recovery bonus (no flat base)
-    const MANA_REGEN_SPIRIT_SCALE = 1
+    // Mage/Priest mana recovery per round: Spirit * MANA_REGEN_SPIRIT_SCALE + equipment recovery bonus (no flat base)
     const manaRegenUpdates = []
     for (const hero of heroUnits) {
       if (hero.currentHP <= 0) continue
@@ -1352,7 +1354,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const manaBefore = Math.min(hero.maxMP, Math.max(0, hero.currentMP || 0))
       if (manaBefore >= hero.maxMP) continue
       const regenRaw =
-        (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
+        (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus ?? 0)
       const regenFloored = Math.floor(regenRaw)
       if (regenFloored <= 0) continue
       const manaGained = Math.min(hero.maxMP - manaBefore, regenFloored)
@@ -1363,7 +1365,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorClass: hero.class,
         manaBefore,
         manaGained,
+        regenRaw,
         regenFloored,
+        manaRegenSpiritScale: MANA_REGEN_SPIRIT_SCALE,
         manaAfter: hero.currentMP,
         maxMP: hero.maxMP,
         spirit: hero.spirit || 0,

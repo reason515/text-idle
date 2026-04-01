@@ -1,7 +1,7 @@
 /**
  * Mage initial skill definitions and combat mechanics.
  * Two specs for recruitment: Frost (Frostbolt), Fire (Fireball).
- * Mana: starts full each combat; recovers per turn (Spirit * 1 + equipment).
+ * Mana: starts full each combat; recovers per turn (Spirit * 0.8 + equipment).
  * Damage uses SpellPower; reduced by target Resistance.
  */
 
