@@ -1343,16 +1343,32 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
     }
 
-    // Mage/Priest mana recovery per round (Base + Spirit * k)
-    const MANA_REGEN_BASE = 4
+    // Mage/Priest mana recovery per round: Spirit * 1 + equipment recovery bonus (no flat base)
     const MANA_REGEN_SPIRIT_SCALE = 1
     const manaRegenUpdates = []
     for (const hero of heroUnits) {
       if (hero.currentHP <= 0) continue
       if (hero.class !== 'Mage' && hero.class !== 'Priest') continue
-      const regen = MANA_REGEN_BASE + (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
-      hero.currentMP = Math.min(hero.maxMP, (hero.currentMP || 0) + Math.max(1, Math.floor(regen)))
-      manaRegenUpdates.push({ actorId: hero.id, manaAfter: hero.currentMP })
+      const manaBefore = Math.min(hero.maxMP, Math.max(0, hero.currentMP || 0))
+      if (manaBefore >= hero.maxMP) continue
+      const regenRaw =
+        (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus || 0)
+      const regenFloored = Math.floor(regenRaw)
+      if (regenFloored <= 0) continue
+      const manaGained = Math.min(hero.maxMP - manaBefore, regenFloored)
+      hero.currentMP = manaBefore + manaGained
+      manaRegenUpdates.push({
+        actorId: hero.id,
+        actorName: hero.name,
+        actorClass: hero.class,
+        manaBefore,
+        manaGained,
+        regenFloored,
+        manaAfter: hero.currentMP,
+        maxMP: hero.maxMP,
+        spirit: hero.spirit || 0,
+        equipmentRecoveryBonus: hero.equipmentRecoveryBonus || 0,
+      })
     }
     if (manaRegenUpdates.length > 0) {
       log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })

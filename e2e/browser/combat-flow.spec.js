@@ -121,6 +121,18 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.monster-card .monster-name').first()).toBeVisible({ timeout: 5000 })
   })
 
+  test('battle log shows end-of-round mana recovery for mana heroes', async ({ page }) => {
+    test.setTimeout(60000)
+    const email = uniqueTestEmail('mana-regen-log-e2e')
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    const manaLine = page.locator('.log-mana-regen-batch').first()
+    await expect(manaLine).toBeVisible({ timeout: 40000 })
+    await expect(manaLine).toContainText(
+      '\u56de\u5408\u7ed3\u675f\u6062\u590d\u6cd5\u529b'
+    )
+  })
+
   test('monster detail modal shows phys atk as min-max or single value', async ({ page }) => {
     const email = uniqueTestEmail('monster-phys-range-e2e')
     await registerAndGoToMain(page, email)

@@ -21,15 +21,15 @@ describe('priestSkills', () => {
       expect(ids).toContain('power-word-shield')
     })
 
-    it('flash-heal has manaCost 12 and coefficient 1.0', () => {
+    it('flash-heal has manaCost 8 and coefficient 1.0', () => {
       const s = getPriestSkillById('flash-heal')
-      expect(s.manaCost).toBe(12)
+      expect(s.manaCost).toBe(8)
       expect(s.coefficient).toBe(1.0)
     })
 
-    it('power-word-shield has manaCost 12, coefficient 1.0, absorbDuration 3', () => {
+    it('power-word-shield has manaCost 8, coefficient 1.0, absorbDuration 3', () => {
       const s = getPriestSkillById('power-word-shield')
-      expect(s.manaCost).toBe(12)
+      expect(s.manaCost).toBe(8)
       expect(s.coefficient).toBe(1.0)
       expect(s.absorbDuration).toBe(3)
     })
@@ -42,11 +42,11 @@ describe('priestSkills', () => {
       const skill = getPriestSkillById('flash-heal')
       const rng = vi.fn(() => 0.5)
       const result = executeFlashHeal(priest, target, skill, { rng })
-      expect(priest.currentMP).toBe(38)
+      expect(priest.currentMP).toBe(42)
       expect(target.currentHP).toBeGreaterThan(30)
       expect(target.currentHP).toBeLessThanOrEqual(100)
       expect(result.heal).toBeGreaterThan(0)
-      expect(result.manaConsumed).toBe(12)
+      expect(result.manaConsumed).toBe(8)
       expect(result.skillId).toBe('flash-heal')
     })
 
@@ -68,12 +68,12 @@ describe('priestSkills', () => {
       const skill = getPriestSkillById('power-word-shield')
       const rng = vi.fn(() => 0.5)
       const result = executePowerWordShield(priest, target, skill, { rng })
-      expect(priest.currentMP).toBe(38)
+      expect(priest.currentMP).toBe(42)
       expect(target.shield).toBeDefined()
       expect(target.shield.absorbRemaining).toBeGreaterThan(0)
       expect(target.shield.remainingRounds).toBe(3)
       expect(result.absorbAmount).toBe(target.shield.absorbRemaining)
-      expect(result.manaConsumed).toBe(12)
+      expect(result.manaConsumed).toBe(8)
     })
   })
 

@@ -1,7 +1,7 @@
 /**
  * Mage initial skill definitions and combat mechanics.
  * Two specs for recruitment: Frost (Frostbolt), Fire (Fireball).
- * Mana: starts full each combat; recovers per turn (Base + Spirit * k + equipment).
+ * Mana: starts full each combat; recovers per turn (Spirit * 1 + equipment).
  * Damage uses SpellPower; reduced by target Resistance.
  */
 
@@ -29,7 +29,7 @@ export const MAGE_INITIAL_SKILLS = [
     id: 'frostbolt',
     name: '寒冰箭',
     spec: '冰霜',
-    manaCost: 13,
+    manaCost: 9,
     coefficient: 0.8,
     freezeChance: FROSTBOLT_FREEZE_CHANCE_BASE,
     effectDesc: '0.8 倍法术伤害；10% 概率冰冻目标，使其跳过 1 次行动',
@@ -38,7 +38,7 @@ export const MAGE_INITIAL_SKILLS = [
     id: 'fireball',
     name: '火球术',
     spec: '火焰',
-    manaCost: 18,
+    manaCost: 13,
     coefficient: 1.3,
     spellCritBonus: 0.12,
     effectDesc: '1.3 倍法术伤害；本技能额外 +12% 法术暴击率（不含持续伤害）',

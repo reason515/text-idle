@@ -806,7 +806,11 @@ describe('combat progression and systems', () => {
     expect(skillEntry.manaAfter).toBeDefined()
     const manaBatch = result.log.find((e) => e.type === 'manaRegenBatch')
     expect(manaBatch).toBeDefined()
-    expect(manaBatch.updates.some((u) => u.actorId === 'm1')).toBe(true)
+    const mUp = manaBatch.updates.find((u) => u.actorId === 'm1')
+    expect(mUp).toBeDefined()
+    expect(mUp.regenFloored).toBe(5)
+    expect(mUp.manaGained).toBeGreaterThan(0)
+    expect(mUp.actorName).toBeDefined()
   })
 
   it('Mage tactics: lowest-hp + HP% skills hit global lowest HP, not a high-HP mob matching frost only', () => {

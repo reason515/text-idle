@@ -369,7 +369,28 @@
               </template>
               <template v-else>{{ entry.message }}</template>
             </div>
-            <div v-else-if="entry.type === 'manaRegenBatch'" class="log-mana-regen-sync" aria-hidden="true"></div>
+            <div v-else-if="entry.type === 'manaRegenBatch'" class="log-entry log-mana-regen-batch">
+              <template v-for="(u, uidx) in entry.updates" :key="(u.actorId || '') + '-' + entry.round + '-' + uidx">
+                <div class="log-mana-regen-line">
+                  <span class="log-round">[R{{ entry.round }}]</span>
+                  <span class="log-actor" :style="{ color: u.actorClass ? classColor(u.actorClass) : 'var(--text-value)' }">{{
+                    heroDisplayName(u.actorName)
+                  }}</span>
+                  <span class="log-sep">回合结束恢复法力</span>
+                  <span class="log-mp-regen-amt" style="color: var(--color-gold)">+{{ u.manaGained }}</span>
+                  <span class="log-sep">（当前</span>
+                  <span class="log-mp-regen-curr">{{ u.manaAfter }}/{{ u.maxMP }}</span>
+                  <span class="log-sep">）</span>
+                </div>
+                <div class="log-detail-box log-mana-regen-detail">
+                  <div class="log-calc">
+                    精神 {{ u.spirit }} + 装备恢复 {{ u.equipmentRecoveryBonus ?? 0 }}，取整每回合 +{{ u.regenFloored ?? u.manaGained
+                    }}；本回合实际 +{{ u.manaGained
+                    }}<template v-if="(u.regenFloored ?? u.manaGained) > u.manaGained">（已达法力上限）</template>
+                  </div>
+                </div>
+              </template>
+            </div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span

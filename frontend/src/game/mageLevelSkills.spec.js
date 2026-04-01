@@ -36,7 +36,7 @@ describe('mageLevelSkills', () => {
     expect(s).not.toBeNull()
     expect(s.name).toBe('奥术飞弹')
     expect(s.spec).toBe('奥术')
-    expect(s.manaCost).toBe(15)
+    expect(s.manaCost).toBe(11)
   })
 
   it('getLevelSkillById returns null for unknown', () => {
