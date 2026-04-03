@@ -13,6 +13,7 @@
 | `backend.mdc` | `**/*.go` | Go packages, `go test`, handler/service boundaries |
 | `e2e-browser.mdc` | `e2e/browser/**` | Playwright specs, helpers, port script, E2E skill |
 | `docs-sync.mdc` | `docs/design/**`, `docs/requirements-format.md`, `docs/design-change-impact.md` | Index cross-refs, formula/UI alignment, impact checklist, requirements AC |
+| `equipment-affix-sync.mdc` | `frontend/src/game/equipment.js`, `docs/design/06-equipment.md`, `equipment.spec.js` | `AFFIX_POOL` / `EPITHET_POOL` must stay aligned with doc 7.2.1 / 7.2.3 |
 | `rules.md` | - | Full human reference (Cursor loads `.mdc`, not `.md`) |
 
 Rules with `globs` apply when the active context matches those paths (e.g. editing a file under `frontend/`). Always-applied rules still apply everywhere.

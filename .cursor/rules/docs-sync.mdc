@@ -17,6 +17,7 @@ alwaysApply: false
 
 - Keep [docs/design/index.md](docs/design/index.md) navigation and module summaries accurate when adding, renaming, or removing design files.
 - Formulas, attributes, skill text, and UI behavior described in `docs/design/*.md` must stay **consistent** with implementation (`frontend/src/`, backend, tests). If the doc is authoritative, update code/tests; if the code is authoritative, update the doc in the same change set.
+- **Equipment affixes** (`AFFIX_POOL`, `EPITHET_POOL` vs [06-equipment.md](docs/design/06-equipment.md) 7.2.1 / 7.2.3): follow [equipment-affix-sync.mdc](equipment-affix-sync.mdc) whenever editing `equipment.js` or affix sections of 06-equipment.md.
 - UI appearance and tokens: [docs/design/11-ui-tokens.md](docs/design/11-ui-tokens.md) must match [frontend/src/style.css](frontend/src/style.css) when tokens change (and vice versa).
 
 ## Core flow or UX changes

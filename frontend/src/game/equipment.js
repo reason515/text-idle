@@ -5,6 +5,7 @@
  * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-5 affix)
  * - Boss always drops at least 1 item with quality >= Magic
  * - Magic and Rare affix range: 0.7-1.3 x base (same formula; Rare differs by affix count)
+ * - AFFIX_POOL is general stat affixes only (armor, resist, attributes). Section 7.3 specialized pools (physical/spell weapons, orbs, armor, shield, etc.) are not implemented.
  */
 
 import {

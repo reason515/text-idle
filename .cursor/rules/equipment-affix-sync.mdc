@@ -1,0 +1,32 @@
+---
+description: Equipment affix pools must match docs/design/06-equipment.md section 7.2.x
+globs:
+  - frontend/src/game/equipment.js
+  - docs/design/06-equipment.md
+  - frontend/src/game/equipment.spec.js
+alwaysApply: false
+---
+
+# Equipment affix documentation sync
+
+## Authoritative sources
+
+| Topic | Code (source of truth when behavior changes) | Design doc |
+|-------|---------------------------------------------|------------|
+| Droppable affix definitions | `AFFIX_POOL` in `frontend/src/game/equipment.js` | [docs/design/06-equipment.md](docs/design/06-equipment.md) **7.2.1** (full table: id, tier, type, display name, stat, base min/max) |
+| Rare item epithets | `EPITHET_POOL` in the same file | **7.2.3** |
+| Specialized / mechanic affixes (weapons, shield, orb, etc.) | Not in `AFFIX_POOL` until implemented | **7.3** (design spec; mark **未实现** until wired in code) |
+
+## Mandatory alignment
+
+- **Changing `AFFIX_POOL` or `EPITHET_POOL`** (add/remove/rename entry, change `baseMin`/`baseMax`, `stat`, `type`, `tier`, or `name` / Unicode display string): update **06-equipment.md 7.2.1 and/or 7.2.3** in the **same change set**. Update **7.5** summary counts if the totals change.
+- **Changing 7.2.1 or 7.2.3** in the design doc: update **`equipment.js`** pools to match in the **same change set**, unless the edit is explicitly a design-only proposal (then do not claim parity; label as future work).
+- **Do not** describe live-drop affix names or numeric ranges in other sections (e.g. examples in 7.2.2) as if they were implemented unless they exist in `AFFIX_POOL`.
+
+## Tests
+
+- If affix generation or display logic changes, extend or adjust `frontend/src/game/equipment.spec.js` so pools and naming stay covered.
+
+## Cross-reference
+
+- General doc/code rules: `docs-sync.mdc`. Full artifact list: `workflow.mdc` Doc and Test Sync.
