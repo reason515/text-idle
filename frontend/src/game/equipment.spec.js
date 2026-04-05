@@ -8,6 +8,10 @@ import {
   getEquipReasons,
   getEquipReasonsStructured,
   getEquipmentBonuses,
+  getWeaponAffixMode,
+  sumWeaponAffixStatsFromItem,
+  PHYS_WEAPON_AFFIX_POOL,
+  SPELL_WEAPON_AFFIX_POOL,
   itemMatchesSlot,
   QUALITY_NORMAL,
   QUALITY_MAGIC,
@@ -418,6 +422,41 @@ describe('equipment', () => {
       expect(b.physAtkMin).toBe(8)
       expect(b.physAtkMax).toBe(12)
       expect(b.physAtk).toBe(0)
+    })
+
+    it('sums weapon-only affix stats from MainHand', () => {
+      const item = {
+        physAtkMin: 3,
+        physAtkMax: 5,
+        prefixes: [{ id: 'phys-fierce-n', stat: 'physWeaponFlat', value: 4, min: 1, max: 6 }],
+        suffixes: [],
+      }
+      const b = getEquipmentBonuses({ MainHand: item })
+      expect(b.physWeaponFlat).toBe(4)
+    })
+  })
+
+  describe('weapon affix pools', () => {
+    it('PHYS_WEAPON_AFFIX_POOL has 27 entries', () => {
+      expect(PHYS_WEAPON_AFFIX_POOL.length).toBe(27)
+    })
+
+    it('SPELL_WEAPON_AFFIX_POOL has 27 entries', () => {
+      expect(SPELL_WEAPON_AFFIX_POOL.length).toBe(27)
+    })
+
+    it('getWeaponAffixMode: phys weapon vs spell weapon', () => {
+      expect(getWeaponAffixMode('MainHand', { physAtk: [1, 5], spellPower: 0 })).toBe('physical')
+      expect(getWeaponAffixMode('MainHandWand', { physAtk: 0, spellPower: [2, 6] })).toBe('spell')
+    })
+
+    it('sumWeaponAffixStatsFromItem aggregates range stats', () => {
+      const s = sumWeaponAffixStatsFromItem({
+        prefixes: [{ stat: 'addedMagicDmg', min: 3, max: 8, value: 3 }],
+        suffixes: [],
+      })
+      expect(s.addedMagicDmgMin).toBe(3)
+      expect(s.addedMagicDmgMax).toBe(8)
     })
   })
 

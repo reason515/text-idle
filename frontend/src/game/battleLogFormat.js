@@ -33,6 +33,7 @@ export function damageFormulaEquation(entry) {
 
   const defLabel = entry.damageType === 'magic' ? '抗性抵消' : '护甲抵消'
   const defVal = Math.max(0, entry.targetDefense ?? 0)
+  const mainResult = entry.primaryFinalDamage != null ? entry.primaryFinalDamage : final
 
   function appendShieldSuffix(baseLine) {
     if (entry.shieldAbsorbed == null || entry.shieldAbsorbed <= 0) return baseLine
@@ -54,14 +55,62 @@ export function damageFormulaEquation(entry) {
   if (entry.skillId && entry.skillCoefficient != null) {
     const coeff = entry.skillCoefficient
     if (entry.isCrit) {
-      return appendShieldSuffix(`攻击(${raw}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${final}`)
+      return appendShieldSuffix(`攻击(${raw}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${mainResult}`)
     }
-    return appendShieldSuffix(`攻击(${raw}) x ${coeff} - ${defLabel}(${defVal}) = ${final}`)
+    return appendShieldSuffix(`攻击(${raw}) x ${coeff} - ${defLabel}(${defVal}) = ${mainResult}`)
   }
   if (entry.isCrit) {
-    return appendShieldSuffix(`攻击(${raw}) x 1.5 - ${defLabel}(${defVal}) = ${final}`)
+    return appendShieldSuffix(`攻击(${raw}) x 1.5 - ${defLabel}(${defVal}) = ${mainResult}`)
   }
-  return appendShieldSuffix(`攻击(${raw}) - ${defLabel}(${defVal}) = ${final}`)
+  return appendShieldSuffix(`攻击(${raw}) - ${defLabel}(${defVal}) = ${mainResult}`)
+}
+
+/**
+ * Extra lines for weapon affix segments, mitigation notes, and mana after reflux (Chinese UI).
+ * @param {Object} entry - Combat log entry
+ * @returns {string[]}
+ */
+export function weaponMechanicLines(entry) {
+  if (entry == null) return []
+  const lines = []
+  if (entry.heroMitigationKind === 'physical') {
+    lines.push('护甲抵消值为穿透与无视护甲百分比之后的有效护甲')
+  } else if (entry.heroMitigationKind === 'magic') {
+    lines.push('抗性抵消值为法术穿透与无视抗性百分比之后的有效抗性')
+  }
+  if (
+    entry.primaryFinalDamage != null &&
+    entry.finalDamage != null &&
+    entry.finalDamage !== entry.primaryFinalDamage
+  ) {
+    lines.push(`合计对生命伤害 ${entry.finalDamage}`)
+  }
+  if ((entry.weaponAddedMagicDamage ?? 0) > 0) {
+    lines.push(`附加魔法伤害 ${entry.weaponAddedMagicDamage}`)
+  }
+  if ((entry.weaponArcaneFollowupDamage ?? 0) > 0) {
+    lines.push(`奥术追伤 ${entry.weaponArcaneFollowupDamage}`)
+  }
+  if ((entry.weaponLifeStealHeal ?? 0) > 0) {
+    lines.push(`生命偷取 +${entry.weaponLifeStealHeal}`)
+  }
+  if ((entry.weaponLifeOnHitHeal ?? 0) > 0) {
+    lines.push(`命中回血 +${entry.weaponLifeOnHitHeal}`)
+  }
+  if ((entry.weaponManaReflux ?? 0) > 0) {
+    lines.push(`魔力回流 +${entry.weaponManaReflux} 法力`)
+  }
+  if ((entry.weaponManaOnCast ?? 0) > 0) {
+    lines.push(`施法回蓝 +${entry.weaponManaOnCast}`)
+  }
+  if (
+    entry.weaponAffixManaAfter != null &&
+    entry.weaponAffixMaxMana != null &&
+    entry.skillId == null
+  ) {
+    lines.push(`当前法力 ${entry.weaponAffixManaAfter}/${entry.weaponAffixMaxMana}`)
+  }
+  return lines
 }
 
 /**
@@ -98,7 +147,15 @@ export function supportSkillEffectLine(entry) {
   }
   if (entry.heal != null && entry.heal > 0) {
     if (entry.finalDamage != null) {
-      return `回复自身 ${entry.heal} 点生命`
+      if (entry.healFromSkill != null && entry.healFromSkill > 0) {
+        return `回复自身 ${entry.healFromSkill} 点生命（技能）`
+      }
+      const hasWeaponHeal =
+        (entry.weaponLifeStealHeal ?? 0) > 0 || (entry.weaponLifeOnHitHeal ?? 0) > 0
+      if (!hasWeaponHeal) {
+        return `回复自身 ${entry.heal} 点生命`
+      }
+      return ''
     }
     if (entry.actorId != null && entry.targetId != null && entry.actorId === entry.targetId) {
       return `回复自身 ${entry.heal} 点生命`

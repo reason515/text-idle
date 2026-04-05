@@ -7,6 +7,14 @@
 
 import { getLevelSkillById } from './mageLevelSkills.js'
 import { getEffectiveSpellPower } from './damageUtils.js'
+import { computeMagicDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
+
+const DEFAULT_SPELL_CRIT = 1.5
+
+function randomInRange(min, max, rng) {
+  const r = rng ?? Math.random
+  return min + Math.floor(r() * (max - min + 1))
+}
 
 /** Frostbolt: base chance to apply Freeze (skip 1 action); +5% per enhance, max 25%. */
 export const FROSTBOLT_FREEZE_CHANCE_BASE = 0.1
@@ -270,20 +278,55 @@ export function tickMageDebuffs(unit) {
  */
 export function executeMageSkill(mage, target, skill, opts = {}) {
   const { isCrit = false, rng } = opts
-  const CRIT_MULTIPLIER = 1.5
   const roll = rng ?? Math.random
+  const critMult = mage.spellCritMult ?? DEFAULT_SPELL_CRIT
 
   mage.currentMP = Math.max(0, (mage.currentMP || 0) - (skill.manaCost ?? 0))
 
   const coeff = skill.coefficient ?? 1
 
   const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
-  const effectiveResistance = getMageEffectiveResistance(target)
-  const baseRaw = Math.round(effectiveSpellPower * coeff)
-  const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
-  const finalDamage = Math.max(1, rawAfterCrit - effectiveResistance)
+  const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
+  const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
+  const effectiveResistance = computeMagicDefenseAfterWeapon(target, {
+    spellPen: mage.spellPen ?? 0,
+    ignoreResistPct: mage.spellIgnoreResistPct ?? 0,
+  })
+  const mainMagicDamage = Math.max(1, rawAfterCrit - effectiveResistance)
 
-  target.currentHP = Math.max(0, (target.currentHP || 0) - finalDamage)
+  target.currentHP = Math.max(0, (target.currentHP || 0) - mainMagicDamage)
+
+  let arcaneFollowupDamage = 0
+  if (
+    mainMagicDamage > 0 &&
+    (mage.arcaneFollowupMax ?? 0) > 0 &&
+    (mage.arcaneFollowupMin ?? 0) <= (mage.arcaneFollowupMax ?? 0)
+  ) {
+    const fu = randomInRange(mage.arcaneFollowupMin, mage.arcaneFollowupMax, rng)
+    const md = applyDamageWithWeaponAffixes(fu, 'magic', target, {
+      spellPen: mage.spellPen ?? 0,
+      ignoreResistPct: mage.spellIgnoreResistPct ?? 0,
+    })
+    target.currentHP = md.nextHP
+    arcaneFollowupDamage = md.finalDamage
+  }
+
+  const finalDamage = mainMagicDamage + arcaneFollowupDamage
+
+  let manaRefluxGain = 0
+  let manaOnCastGain = 0
+  if (mainMagicDamage > 0) {
+    if (mage.manaRefluxPct) {
+      manaRefluxGain += Math.floor(mainMagicDamage * (mage.manaRefluxPct / 100))
+    }
+    if (mage.manaOnCast) {
+      manaOnCastGain += mage.manaOnCast
+    }
+    const mpGain = manaRefluxGain + manaOnCastGain
+    if (mpGain > 0) {
+      mage.currentMP = Math.min(mage.maxMP ?? 99999, (mage.currentMP || 0) + mpGain)
+    }
+  }
 
   let debuffResult = null
   let freezeProcced = false
@@ -303,7 +346,11 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     rawDamage: baseRaw,
     rawAfterCrit,
     finalDamage,
+    primaryMagicDamage: mainMagicDamage,
     effectiveResistance,
+    arcaneFollowupDamage,
+    manaRefluxGain,
+    manaOnCastGain,
     isCrit,
     manaConsumed: skill.manaCost ?? 0,
     debuffApplied: !!(debuffResult && debuffResult.applied),

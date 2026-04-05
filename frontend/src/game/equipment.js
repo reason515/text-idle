@@ -5,7 +5,7 @@
  * - Quality: Normal (white), Magic (blue 1-2 affix), Rare (yellow 3-5 affix)
  * - Boss always drops at least 1 item with quality >= Magic
  * - Magic and Rare affix range: 0.7-1.3 x base (same formula; Rare differs by affix count)
- * - AFFIX_POOL is general stat affixes only (armor, resist, attributes). Section 7.3 specialized pools (physical/spell weapons, orbs, armor, shield, etc.) are not implemented.
+ * - General AFFIX_POOL plus physical/spell weapon-only pools (7.3) merged for magic/rare weapons.
  */
 
 import {
@@ -14,6 +14,9 @@ import {
   EQUIPMENT_SLOTS,
   SLOT_LABELS,
 } from '../data/itemBases.js'
+import { PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL } from './weaponAffixPools.js'
+
+export { PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL }
 
 /** Quality identifiers */
 export const QUALITY_NORMAL = 'normal'
@@ -71,6 +74,27 @@ const AFFIX_POOL = [
   { id: 'of-vitality', name: '\u6d3b\u529b', type: 'suffix', tier: 'exceptional', baseMin: 4, baseMax: 10, stat: 'stamina' },
   { id: 'of-spirit', name: '\u7cbe\u795e', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'spirit' },
 ]
+
+const WEAPON_AFFIX_STATS = new Set([
+  'physWeaponFlat',
+  'physCritPct',
+  'physCritDmgPct',
+  'lifeStealPct',
+  'lifeOnHit',
+  'addedMagicDmg',
+  'armorPen',
+  'physDmgPct',
+  'ignoreArmorPct',
+  'spellWeaponFlat',
+  'spellCritPct',
+  'spellCritDmgPct',
+  'manaRefluxPct',
+  'manaOnCast',
+  'arcaneFollowup',
+  'spellPen',
+  'spellDmgPct',
+  'ignoreResistPct',
+])
 
 /** Epithets for Rare items */
 const EPITHET_POOL = [
@@ -143,6 +167,84 @@ function getAffixRange(baseMin, baseMax, quality) {
     return { min: low, max: high }
   }
   return { min: baseMin, max: baseMax }
+}
+
+function filterAffixesByTier(pool, itemTier) {
+  return pool.filter((a) => {
+    if (itemTier === 'normal') return a.tier === 'normal'
+    if (itemTier === 'exceptional') return a.tier === 'normal' || a.tier === 'exceptional'
+    if (itemTier === 'elite') return true
+    return a.tier === itemTier
+  })
+}
+
+/**
+ * @param {string} baseKey - MainHand, MainHand2H, etc.
+ * @param {Object} baseDef - base row from item tables
+ * @returns {'physical'|'spell'|null}
+ */
+export function getWeaponAffixMode(baseKey, baseDef) {
+  const weaponKeys = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff']
+  if (!weaponKeys.includes(baseKey) || !baseDef) return null
+  const hasPhys = Array.isArray(baseDef.physAtk) || (baseDef.physAtk || 0) > 0
+  const hasSpell = Array.isArray(baseDef.spellPower) || (baseDef.spellPower || 0) > 0
+  if (hasPhys && !hasSpell) return 'physical'
+  if (hasSpell && !hasPhys) return 'spell'
+  return null
+}
+
+function getMergedAffixPool(itemTier, baseKey, baseDef) {
+  const general = filterAffixesByTier(AFFIX_POOL, itemTier)
+  const mode = getWeaponAffixMode(baseKey, baseDef)
+  if (mode === 'physical') return general.concat(filterAffixesByTier(PHYS_WEAPON_AFFIX_POOL, itemTier))
+  if (mode === 'spell') return general.concat(filterAffixesByTier(SPELL_WEAPON_AFFIX_POOL, itemTier))
+  return general
+}
+
+function makeAffixEntry(def, quality, rng) {
+  const range = getAffixRange(def.baseMin, def.baseMax, quality)
+  const val = rollInRange(def.baseMin, def.baseMax, quality, rng)
+  return {
+    id: def.id,
+    name: def.name,
+    stat: def.stat,
+    value: val,
+    min: range.min,
+    max: range.max,
+  }
+}
+
+function pickAffixNoDup(pool, type, usedIds, rng) {
+  const candidates = pool.filter((a) => a.type === type && !usedIds.has(a.id))
+  const def = pickRandom(candidates, rng)
+  if (def) usedIds.add(def.id)
+  return def
+}
+
+function resolveBaseKeyForItem(item) {
+  if (!item?.baseName || !item.itemTier) return null
+  const candidates = [
+    'Helm',
+    'Armor',
+    'Gloves',
+    'Boots',
+    'Belt',
+    'Amulet',
+    'Ring',
+    'Shield',
+    'OffHand',
+    'MainHand',
+    'MainHand2H',
+    'MainHand2HBow',
+    'MainHandWand',
+    'MainHand2HStaff',
+  ]
+  for (const k of candidates) {
+    const bases = getBaseItemsForSlot(k)
+    const row = bases?.[item.itemTier]?.find((b) => b.name === item.baseName)
+    if (row) return k
+  }
+  return null
 }
 
 /** Get droppable slots for a given item tier (armor slots + weapons) */
@@ -272,48 +374,33 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     item.spellPower = rollBaseStat(baseDef.spellPower)
   }
 
-  const allowedAffixes = AFFIX_POOL.filter((a) => {
-    if (itemTier === 'normal') return a.tier === 'normal'
-    if (itemTier === 'exceptional') return a.tier === 'normal' || a.tier === 'exceptional'
-    if (itemTier === 'elite') return true
-    return a.tier === itemTier
-  })
+  const allowedAffixes = getMergedAffixPool(itemTier, baseKey, baseDef)
 
   if (quality === QUALITY_MAGIC) {
     const count = rng() < 0.5 ? 1 : 2
+    const usedIds = new Set()
     const prefixes = allowedAffixes.filter((a) => a.type === 'prefix')
     const suffixes = allowedAffixes.filter((a) => a.type === 'suffix')
-    let used = 0
-    if (count >= 1 && prefixes.length) {
-      const p = pickRandom(prefixes, rng)
-      const range = getAffixRange(p.baseMin, p.baseMax, quality)
-      const val = rollInRange(p.baseMin, p.baseMax, quality, rng)
-      item.prefixes.push({ id: p.id, name: p.name, stat: p.stat, value: val, min: range.min, max: range.max })
-      used++
+    if (count >= 1) {
+      const p = pickAffixNoDup(allowedAffixes, 'prefix', usedIds, rng)
+      if (p) item.prefixes.push(makeAffixEntry(p, quality, rng))
     }
-    if (count >= 2 && suffixes.length) {
-      const s = pickRandom(suffixes, rng)
-      const range = getAffixRange(s.baseMin, s.baseMax, quality)
-      const val = rollInRange(s.baseMin, s.baseMax, quality, rng)
-      item.suffixes.push({ id: s.id, name: s.name, stat: s.stat, value: val, min: range.min, max: range.max })
+    if (count >= 2) {
+      const s = pickAffixNoDup(allowedAffixes, 'suffix', usedIds, rng)
+      if (s) item.suffixes.push(makeAffixEntry(s, quality, rng))
     }
   } else if (quality === QUALITY_RARE) {
     const count = 3 + Math.floor(rng() * 3)
-    const prefixes = allowedAffixes.filter((a) => a.type === 'prefix')
-    const suffixes = allowedAffixes.filter((a) => a.type === 'suffix')
+    const usedIds = new Set()
     const numPrefix = Math.min(Math.ceil(count / 2), 3)
     const numSuffix = count - numPrefix
-    for (let i = 0; i < numPrefix && prefixes.length; i++) {
-      const p = pickRandom(prefixes, rng)
-      const range = getAffixRange(p.baseMin, p.baseMax, quality)
-      const val = rollInRange(p.baseMin, p.baseMax, quality, rng)
-      item.prefixes.push({ id: p.id, name: p.name, stat: p.stat, value: val, min: range.min, max: range.max })
+    for (let i = 0; i < numPrefix; i++) {
+      const p = pickAffixNoDup(allowedAffixes, 'prefix', usedIds, rng)
+      if (p) item.prefixes.push(makeAffixEntry(p, quality, rng))
     }
-    for (let i = 0; i < numSuffix && suffixes.length; i++) {
-      const s = pickRandom(suffixes, rng)
-      const range = getAffixRange(s.baseMin, s.baseMax, quality)
-      const val = rollInRange(s.baseMin, s.baseMax, quality, rng)
-      item.suffixes.push({ id: s.id, name: s.name, stat: s.stat, value: val, min: range.min, max: range.max })
+    for (let i = 0; i < numSuffix; i++) {
+      const s = pickAffixNoDup(allowedAffixes, 'suffix', usedIds, rng)
+      if (s) item.suffixes.push(makeAffixEntry(s, quality, rng))
     }
     item.epithet = pickRandom(EPITHET_POOL, rng)
   }
@@ -331,6 +418,7 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
 function applyAffixToItem(item, affix) {
   const stat = affix.stat
   const val = affix.value
+  if (WEAPON_AFFIX_STATS.has(stat)) return
   if (stat === 'armor') item.armor += val
   else if (stat === 'resistance') item.resistance += val
   else if (stat === 'strength') item.strBonus = (item.strBonus || 0) + val
@@ -455,18 +543,15 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
     if (guaranteed) {
       if (guaranteed.quality === QUALITY_NORMAL) {
         guaranteed.quality = QUALITY_MAGIC
-        const allowedAffixes = AFFIX_POOL.filter((a) => {
-          const t = guaranteed.itemTier
-          if (t === 'normal') return a.tier === 'normal'
-          if (t === 'exceptional') return a.tier === 'normal' || a.tier === 'exceptional'
-          return true
-        })
-        const prefixes = allowedAffixes.filter((a) => a.type === 'prefix')
-        if (prefixes.length) {
-          const p = pickRandom(prefixes, rng)
-          const range = getAffixRange(p.baseMin, p.baseMax, QUALITY_MAGIC)
-          const val = rollInRange(p.baseMin, p.baseMax, QUALITY_MAGIC, rng)
-          guaranteed.prefixes = [{ id: p.id, name: p.name, stat: p.stat, value: val, min: range.min, max: range.max }]
+        const baseKeyG = resolveBaseKeyForItem(guaranteed) ?? 'MainHand'
+        const basesG = getBaseItemsForSlot(baseKeyG)
+        const tierG = guaranteed.itemTier
+        const baseRowG = basesG?.[tierG]?.find((b) => b.name === guaranteed.baseName) ?? {}
+        const allowedAffixes = getMergedAffixPool(tierG, baseKeyG, baseRowG)
+        const usedIds = new Set()
+        const p = pickAffixNoDup(allowedAffixes, 'prefix', usedIds, rng)
+        if (p) {
+          guaranteed.prefixes = [makeAffixEntry(p, QUALITY_MAGIC, rng)]
           applyAffixToItem(guaranteed, guaranteed.prefixes[0])
         }
       }
@@ -614,11 +699,62 @@ const TWOHAND_SLOT = 'TwoHand'
 const WEAPON_SLOTS = [MAINHAND_SLOT, TWOHAND_SLOT]
 
 /**
+ * Aggregate weapon-only affix stats from an item (prefixes/suffixes).
+ * @param {Object} item
+ * @returns {Object}
+ */
+export function sumWeaponAffixStatsFromItem(item) {
+  const o = {
+    physWeaponFlat: 0,
+    physCritPct: 0,
+    physCritDmgPct: 0,
+    lifeStealPct: 0,
+    lifeOnHit: 0,
+    addedMagicDmgMin: 0,
+    addedMagicDmgMax: 0,
+    armorPen: 0,
+    physDmgPct: 0,
+    ignoreArmorPct: 0,
+    spellWeaponFlat: 0,
+    spellCritPct: 0,
+    spellCritDmgPct: 0,
+    manaRefluxPct: 0,
+    manaOnCast: 0,
+    arcaneFollowupMin: 0,
+    arcaneFollowupMax: 0,
+    spellPen: 0,
+    spellDmgPct: 0,
+    ignoreResistPct: 0,
+  }
+  if (!item) return o
+  for (const a of [...(item.prefixes || []), ...(item.suffixes || [])]) {
+    const st = a.stat
+    if (!WEAPON_AFFIX_STATS.has(st)) continue
+    if (st === 'addedMagicDmg') {
+      o.addedMagicDmgMin += a.min ?? 0
+      o.addedMagicDmgMax += a.max ?? 0
+    } else if (st === 'arcaneFollowup') {
+      o.arcaneFollowupMin += a.min ?? 0
+      o.arcaneFollowupMax += a.max ?? 0
+    } else if (o[st] !== undefined) {
+      o[st] += a.value ?? 0
+    }
+  }
+  return o
+}
+
+function mergeWeaponAffixTotals(dst, src) {
+  for (const k of Object.keys(dst)) {
+    dst[k] += src[k] || 0
+  }
+}
+
+/**
  * Sum equipment bonuses from equipped items.
  * Weapons with physAtkMin/Max contribute range; other items contribute fixed physAtk.
  * TwoHand weapons (stored in equipment.TwoHand) are treated as main-hand for damage.
  * @param {Object} equipment - { [slot]: item }
- * @returns {{ armor, resistance, physAtk, spellPower, physAtkMin, physAtkMax, spellPowerMin, spellPowerMax, strength, agility, intellect, stamina, spirit }}
+ * @returns {Object}
  */
 export function getEquipmentBonuses(equipment) {
   const out = {
@@ -635,6 +771,26 @@ export function getEquipmentBonuses(equipment) {
     intellect: 0,
     stamina: 0,
     spirit: 0,
+    physWeaponFlat: 0,
+    physCritPct: 0,
+    physCritDmgPct: 0,
+    lifeStealPct: 0,
+    lifeOnHit: 0,
+    addedMagicDmgMin: 0,
+    addedMagicDmgMax: 0,
+    armorPen: 0,
+    physDmgPct: 0,
+    ignoreArmorPct: 0,
+    spellWeaponFlat: 0,
+    spellCritPct: 0,
+    spellCritDmgPct: 0,
+    manaRefluxPct: 0,
+    manaOnCast: 0,
+    arcaneFollowupMin: 0,
+    arcaneFollowupMax: 0,
+    spellPen: 0,
+    spellDmgPct: 0,
+    ignoreResistPct: 0,
   }
   if (!equipment || typeof equipment !== 'object') return out
   for (const [slot, item] of Object.entries(equipment)) {
@@ -648,6 +804,7 @@ export function getEquipmentBonuses(equipment) {
     out.spirit += item.spiBonus || 0
 
     if (WEAPON_SLOTS.includes(slot)) {
+      mergeWeaponAffixTotals(out, sumWeaponAffixStatsFromItem(item))
       if (item.physAtkMin != null && item.physAtkMax != null) {
         out.physAtkMin = item.physAtkMin
         out.physAtkMax = item.physAtkMax

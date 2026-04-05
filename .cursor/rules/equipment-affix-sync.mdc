@@ -2,6 +2,7 @@
 description: Equipment affix pools must match docs/design/06-equipment.md section 7.2.x
 globs:
   - frontend/src/game/equipment.js
+  - frontend/src/game/weaponAffixPools.js
   - docs/design/06-equipment.md
   - frontend/src/game/equipment.spec.js
 alwaysApply: false
@@ -15,7 +16,8 @@ alwaysApply: false
 |-------|---------------------------------------------|------------|
 | Droppable affix definitions | `AFFIX_POOL` in `frontend/src/game/equipment.js` | [docs/design/06-equipment.md](docs/design/06-equipment.md) **7.2.1** (full table: id, tier, type, display name, stat, base min/max) |
 | Rare item epithets | `EPITHET_POOL` in the same file | **7.2.3** |
-| Specialized / mechanic affixes (weapons, shield, orb, etc.) | Not in `AFFIX_POOL` until implemented | **7.3** (design spec; mark **未实现** until wired in code) |
+| Physical / spell weapon-only affixes | `PHYS_WEAPON_AFFIX_POOL`, `SPELL_WEAPON_AFFIX_POOL` in `frontend/src/game/weaponAffixPools.js` (merged in `equipment.js`) | **7.3** weapon tables |
+| Other specialized affixes (orb, armor, shield, ring, etc.) | Not implemented | **7.3** (remaining subsections; mark **未实现** until wired) |
 
 ## Mandatory alignment
 

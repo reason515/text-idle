@@ -7,7 +7,59 @@ import {
   targetRulesChainDisplay,
   conditionEntryHasTankHpBelow,
   skillDisplayName,
+  parseAiTacticsResponseContent,
+  extractFirstBalancedJsonObject,
+  stripTrailingCommasInJson,
 } from './aiTactics.js'
+
+describe('parseAiTacticsResponseContent', () => {
+  it('parses strict JSON', () => {
+    const o = parseAiTacticsResponseContent('{"skillPriority":["taunt"],"explanation":"ok"}')
+    expect(o.skillPriority).toEqual(['taunt'])
+    expect(o.explanation).toBe('ok')
+  })
+
+  it('strips markdown fences', () => {
+    const raw = '```json\n{"skillPriority":[],"explanation":"x"}\n```'
+    const o = parseAiTacticsResponseContent(raw)
+    expect(o.explanation).toBe('x')
+  })
+
+  it('repairs trailing commas', () => {
+    const raw = `{
+  "skillPriority": ["sunder-armor"],
+  "conditions": [],
+}`
+    const o = parseAiTacticsResponseContent(raw)
+    expect(o.skillPriority).toEqual(['sunder-armor'])
+    expect(o.conditions).toEqual([])
+  })
+
+  it('extracts first object when model adds prose after JSON', () => {
+    const raw = `Here is the config:
+{"skillPriority":["taunt"],"explanation":"done"}
+Hope this helps.`
+    const o = parseAiTacticsResponseContent(raw)
+    expect(o.skillPriority).toEqual(['taunt'])
+  })
+
+  it('extractFirstBalancedJsonObject ignores braces inside quoted strings', () => {
+    const inner = '{"explanation":"a } b","skillPriority":[]}'
+    expect(extractFirstBalancedJsonObject(`prefix ${inner} tail`)).toBe(inner)
+  })
+
+  it('stripTrailingCommasInJson handles nested structures', () => {
+    const bad = '{"a":[1,2,],}'
+    expect(stripTrailingCommasInJson(bad)).toBe('{"a":[1,2]}')
+  })
+
+  it('repairs non-standard JSON via jsonrepair fallback', () => {
+    const raw = "{'skillPriority':['taunt'],'explanation':'ok'}"
+    const o = parseAiTacticsResponseContent(raw)
+    expect(o.skillPriority).toEqual(['taunt'])
+    expect(o.explanation).toBe('ok')
+  })
+})
 
 describe('validateAiTactics', () => {
   const priestSkills = ['flash-heal', 'power-word-shield']

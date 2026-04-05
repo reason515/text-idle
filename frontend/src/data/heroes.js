@@ -233,6 +233,52 @@ const SECONDARY_ATTR_ORDER = [
 const NA = '-'
 
 /**
+ * Weapon-only affix rows for character detail (from MainHand/TwoHand via getEquipmentBonuses).
+ * Excludes stats merged into 物攻/法强/物暴/法暴 (physWeaponFlat, spellWeaponFlat, physCritPct, spellCritPct).
+ * @param {Object} eq - getEquipmentBonuses result
+ * @returns {Array<{key: string, label: string, value: string, formula: string}>}
+ */
+export function buildWeaponSecondaryRows(eq) {
+  if (!eq) return []
+  const rows = []
+  const pushPct = (key, label, v) => {
+    if (v > 0) rows.push({ key, label, value: `+${v}%`, formula: '-' })
+  }
+  const pushNum = (key, label, v) => {
+    if (v > 0) rows.push({ key, label, value: String(v), formula: '-' })
+  }
+  if (eq.physCritDmgPct > 0) pushPct('WPhysCritDmg', '\u7269\u66b4\u4f24', eq.physCritDmgPct)
+  if (eq.spellCritDmgPct > 0) pushPct('WSpellCritDmg', '\u6cd5\u66b4\u4f24', eq.spellCritDmgPct)
+  if (eq.lifeStealPct > 0) pushPct('WLifeSteal', '\u751f\u547d\u5077\u53d6', eq.lifeStealPct)
+  if (eq.lifeOnHit > 0) pushNum('WLifeOnHit', '\u547d\u4e2d\u56de\u8840', eq.lifeOnHit)
+  if (eq.addedMagicDmgMax > 0 && (eq.addedMagicDmgMin ?? 0) <= eq.addedMagicDmgMax) {
+    rows.push({
+      key: 'WAddedMagic',
+      label: '\u9644\u52a0\u9b54\u6cd5\u4f24\u5bb3',
+      value: `${eq.addedMagicDmgMin}-${eq.addedMagicDmgMax}`,
+      formula: '-',
+    })
+  }
+  if (eq.armorPen > 0) pushNum('WArmorPen', '\u62a4\u7532\u7a7f\u900f', eq.armorPen)
+  if (eq.physDmgPct > 0) pushPct('WPhysDmgPct', '\u7269\u653b%', eq.physDmgPct)
+  if (eq.ignoreArmorPct > 0) pushPct('WIgnoreArmor', '\u65e0\u89c6\u62a4\u7532', eq.ignoreArmorPct)
+  if (eq.manaRefluxPct > 0) pushPct('WManaReflux', '\u9b54\u529b\u56de\u6d41', eq.manaRefluxPct)
+  if (eq.manaOnCast > 0) pushNum('WManaOnCast', '\u65bd\u6cd5\u56de\u84dd', eq.manaOnCast)
+  if (eq.arcaneFollowupMax > 0 && (eq.arcaneFollowupMin ?? 0) <= eq.arcaneFollowupMax) {
+    rows.push({
+      key: 'WArcaneFU',
+      label: '\u5965\u672f\u8ffd\u4f24',
+      value: `${eq.arcaneFollowupMin}-${eq.arcaneFollowupMax}`,
+      formula: '-',
+    })
+  }
+  if (eq.spellPen > 0) pushNum('WSpellPen', '\u6cd5\u672f\u7a7f\u900f', eq.spellPen)
+  if (eq.spellDmgPct > 0) pushPct('WSpellDmgPct', '\u6cd5\u672f\u4f24\u5bb3%', eq.spellDmgPct)
+  if (eq.ignoreResistPct > 0) pushPct('WIgnoreResist', '\u65e0\u89c6\u6297\u6027', eq.ignoreResistPct)
+  return rows
+}
+
+/**
  * Compute secondary attributes for a class at given level (no equipment)
  * @param {string} heroClass - The hero's class
  * @param {number} level - Character level (default 1)
@@ -280,11 +326,13 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resource = { key: 'Resource', label: '资源', value: NA, formula: NA }
   }
 
-  // PhysAtk: baseRoll(weapon) x (1 + baseAttr x 0.2) + eq.physAtk
+  // PhysAtk: baseRoll(weapon) x (1 + baseAttr x 0.2) + EQP physAtk + WPN physWeaponFlat (7.3)
   if (coef.physAtkAttr != null) {
     const baseAttr = getPhysBaseAttr({ class: heroClass, ...rawAttrs, equipment: heroAttrs?.equipment })
     const physMultiplier = 1 + baseAttr * PHYS_MULTIPLIER_K
-    const physAtkBonus = eq.physAtk ?? 0
+    const atkEq = eq.physAtk ?? 0
+    const atkWpn = eq.physWeaponFlat ?? 0
+    const physAtkBonus = atkEq + atkWpn
     const hasPhysWeapon = eq.physAtkMin != null && eq.physAtkMax != null
     const baseRollMin = hasPhysWeapon ? eq.physAtkMin : 0
     const baseRollMax = hasPhysWeapon ? eq.physAtkMax : 0
@@ -296,21 +344,31 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const baseRollLine = hasPhysWeapon
       ? `baseRoll = weapon(${eq.physAtkMin}-${eq.physAtkMax}) = ${baseRollMin}-${baseRollMax}`
       : `baseRoll = weapon(0) = 0`
+    const bonusParts = []
+    if (atkEq) bonusParts.push(`EQP +${atkEq}`)
+    if (atkWpn) bonusParts.push(`WPN +${atkWpn}`)
+    const bonusStr = bonusParts.length ? ` + ${bonusParts.join(' + ')}` : ''
     const mainFormula =
       eq.physAtkMin != null && eq.physAtkMax != null
-        ? `baseRoll x (1 + baseAttr x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
-        : `baseRoll x (1 + baseAttr x 0.2)${physAtkBonus ? ` + EQP(+${physAtkBonus})` : ''} = ${values.PhysAtk}`
+        ? `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.PhysAtk}`
+        : `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.PhysAtk}`
     formulaMap.PhysAtk = fmtFormula(`baseAttr = ${baseAttrFormula} = ${baseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
-    values.PhysAtk = eq.physAtk || NA
-    formulaMap.PhysAtk = eq.physAtk ? `EQP: +${eq.physAtk}` : NA
+    const atkEq = eq.physAtk ?? 0
+    const atkWpn = eq.physWeaponFlat ?? 0
+    const atkSum = atkEq + atkWpn
+    values.PhysAtk = atkSum > 0 ? atkSum : NA
+    formulaMap.PhysAtk =
+      atkSum > 0 ? (atkWpn ? `EQP +${atkEq}; WPN +${atkWpn}` : `EQP: +${atkEq}`) : NA
   }
 
-  // SpellPower: baseRoll(weapon) x (1 + baseAttr x 0.2) + eq.spellPower
+  // SpellPower: baseRoll(weapon) x (1 + baseAttr x 0.2) + EQP spellPower + WPN spellWeaponFlat (7.3)
   if (coef.k_SpellPower != null) {
     const spellBaseAttr = getSpellBaseAttr({ class: heroClass, ...rawAttrs, equipment: heroAttrs?.equipment })
     const spellMultiplier = 1 + spellBaseAttr * SPELL_MULTIPLIER_K
-    const spellPowerBonus = eq.spellPower ?? 0
+    const spEq = eq.spellPower ?? 0
+    const spWpn = eq.spellWeaponFlat ?? 0
+    const spellPowerBonus = spEq + spWpn
     const hasSpellWeapon = eq.spellPowerMin != null && eq.spellPowerMax != null
     const baseRollMin = hasSpellWeapon ? eq.spellPowerMin : 0
     const baseRollMax = hasSpellWeapon ? eq.spellPowerMax : 0
@@ -322,14 +380,22 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const baseRollLine = hasSpellWeapon
       ? `baseRoll = weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${baseRollMin}-${baseRollMax}`
       : `baseRoll = weapon(0) = 0`
+    const bonusParts = []
+    if (spEq) bonusParts.push(`EQP +${spEq}`)
+    if (spWpn) bonusParts.push(`WPN +${spWpn}`)
+    const bonusStr = bonusParts.length ? ` + ${bonusParts.join(' + ')}` : ''
     const mainFormula =
       eq.spellPowerMin != null && eq.spellPowerMax != null
-        ? `baseRoll x (1 + baseAttr x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
-        : `baseRoll x (1 + baseAttr x 0.2)${spellPowerBonus ? ` + EQP(+${spellPowerBonus})` : ''} = ${values.SpellPower}`
+        ? `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.SpellPower}`
+        : `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.SpellPower}`
     formulaMap.SpellPower = fmtFormula(`baseAttr = ${spellBaseAttrFormula} = ${spellBaseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
-    values.SpellPower = eq.spellPower || NA
-    formulaMap.SpellPower = eq.spellPower ? `EQP: +${eq.spellPower}` : NA
+    const spEq = eq.spellPower ?? 0
+    const spWpn = eq.spellWeaponFlat ?? 0
+    const spSum = spEq + spWpn
+    values.SpellPower = spSum > 0 ? spSum : NA
+    formulaMap.SpellPower =
+      spSum > 0 ? (spWpn ? `EQP +${spEq}; WPN +${spWpn}` : `EQP: +${spEq}`) : NA
   }
 
   // Armor (base + equipment): universal STRENGTH_TO_ARMOR_K
@@ -351,16 +417,29 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     formulaMap.Resistance = eq.resistance ? `EQP: +${eq.resistance}` : NA
   }
 
-  // PhysCrit
-  const physCrit = 5 + attrs.agility * (coef.k_PhysCrit || 0)
-  values.PhysCrit = Math.round(physCrit * 10) / 10
-  formulaMap.PhysCrit = fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, values.PhysCrit))
+  // PhysCrit: base + WPN physCritPct (7.3 weapon)
+  const physCritBase = 5 + attrs.agility * (coef.k_PhysCrit || 0)
+  const wpnPhysCritPct = eq.physCritPct ?? 0
+  values.PhysCrit = Math.round((physCritBase + wpnPhysCritPct) * 10) / 10
+  formulaMap.PhysCrit = wpnPhysCritPct
+    ? fmtFormula(
+        `${formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, physCritBase)} + WPN(+${wpnPhysCritPct}%) = ${values.PhysCrit}`,
+      )
+    : fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, values.PhysCrit))
 
-  // SpellCrit (all classes, N/A when null)
+  // SpellCrit: base + WPN spellCritPct (7.3 weapon)
   if (coef.k_SpellCrit != null) {
-    const spellCrit = 5 + attrs.intellect * coef.k_SpellCrit
-    values.SpellCrit = Math.round(spellCrit * 10) / 10
-    formulaMap.SpellCrit = fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, values.SpellCrit))
+    const spellCritBase = 5 + attrs.intellect * coef.k_SpellCrit
+    const wpnSpellCritPct = eq.spellCritPct ?? 0
+    values.SpellCrit = Math.round((spellCritBase + wpnSpellCritPct) * 10) / 10
+    formulaMap.SpellCrit = wpnSpellCritPct
+      ? fmtFormula(
+          `${formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, spellCritBase)} + WPN(+${wpnSpellCritPct}%) = ${values.SpellCrit}`,
+        )
+      : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, values.SpellCrit))
+  } else if ((eq.spellCritPct ?? 0) > 0) {
+    values.SpellCrit = eq.spellCritPct
+    formulaMap.SpellCrit = fmtFormula(`WPN(+${eq.spellCritPct}%)`)
   } else {
     formulaMap.SpellCrit = NA
   }
@@ -402,7 +481,9 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     }
   }
 
-  return { values, formulas }
+  const weaponSecondary = buildWeaponSecondaryRows(eq)
+
+  return { values, formulas, weaponSecondary }
 }
 
 /**

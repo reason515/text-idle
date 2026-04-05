@@ -1001,6 +1001,30 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 24b: Physical and Spell Weapon Affixes
+
+**User Story**
+
+> As a player,
+> I want physical and spell weapons to roll affixes that match their base type (physAtk vs spellPower),
+> So that weapon drops and shop gambles can specialize my build with weapon-only mechanics (life steal, mana reflux, penetration, etc.).
+
+**Design Reference**
+
+- **Source**: `docs/design/06-equipment.md` section 7.3 (physical weapon table + spell weapon table).
+- **Code**: `frontend/src/game/weaponAffixPools.js` (two pools of 27 entries each); merged with `AFFIX_POOL` in `equipment.js` for magic/rare weapons only when `getWeaponAffixMode` matches the base (`physical` or `spell`).
+- **Combat**: Penetration, percent ignore, crit mult bonuses, on-hit healing/mana, added magic damage, and arcane follow-up are applied in `weaponAffixDamage.js`, `combat.js` (basic attack), `warriorSkills.js`, and `mageSkills.js`.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | A generated **physical** weapon (blue or yellow) | Item is inspected | Prefix/suffix `stat` values are only from general `AFFIX_POOL` and/or `PHYS_WEAPON_AFFIX_POOL` (never spell-only stats such as `manaRefluxPct` or `spellPen`) |
+| AC2 | A generated **spell** weapon (wand or staff, blue or yellow) | Item is inspected | Affix stats are only from general pool and/or `SPELL_WEAPON_AFFIX_POOL` (never `lifeStealPct` or `armorPen` from weapon-only phys table) |
+| AC3 | Hero equips a weapon with weapon-only affixes | Combat resolves a hit | `getEquipmentBonuses` exposes aggregated weapon fields; physical hits use armor penetration/ignore for that hit; magic skills use spell penetration/ignore as implemented |
+
+---
+
 ## Example 25: Shop (Gambling) System
 
 **User Story**

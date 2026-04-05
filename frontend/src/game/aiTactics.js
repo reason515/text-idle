@@ -3,6 +3,8 @@
  * Calls SiliconFlow (Qwen3-8B) to convert player rules into structured tactics.
  */
 
+import { jsonrepair } from 'jsonrepair'
+
 const API_URL = 'https://api.siliconflow.cn/v1/chat/completions'
 const MODEL = 'Qwen/Qwen3-8B'
 
@@ -24,6 +26,96 @@ export function setApiKey(key) {
 
 export function hasApiKey() {
   return apiKey.length > 0
+}
+
+/**
+ * Extract the first top-level `{ ... }` substring, respecting JSON string escaping
+ * so braces inside "explanation" do not break depth counting.
+ * @param {string} s
+ * @returns {string|null}
+ */
+export function extractFirstBalancedJsonObject(s) {
+  const start = s.indexOf('{')
+  if (start < 0) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < s.length; i++) {
+    const c = s[i]
+    if (inString) {
+      if (escape) {
+        escape = false
+        continue
+      }
+      if (c === '\\') {
+        escape = true
+        continue
+      }
+      if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') {
+      inString = true
+      continue
+    }
+    if (c === '{') depth++
+    else if (c === '}') {
+      depth--
+      if (depth === 0) return s.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+/**
+ * Remove trailing commas before } or ] (common invalid JSON from LLMs).
+ * @param {string} text
+ * @returns {string}
+ */
+export function stripTrailingCommasInJson(text) {
+  let out = text
+  let prev
+  do {
+    prev = out
+    out = out.replace(/,(\s*[}\]])/g, '$1')
+  } while (out !== prev)
+  return out
+}
+
+/**
+ * Parse model message content into a tactics object. Tries strict JSON, then
+ * balanced-object extraction and trailing-comma repair.
+ * @param {string} content
+ * @returns {Object}
+ */
+export function parseAiTacticsResponseContent(content) {
+  const fenced = content.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/m, '').trim()
+  const balancedFromFenced = extractFirstBalancedJsonObject(fenced)
+  const balancedFromRaw = extractFirstBalancedJsonObject(content)
+  // Prefer balanced { ... } first so jsonrepair is not applied to prose+JSON blobs (can mis-repair).
+  const slices = [
+    ...new Set([balancedFromFenced, balancedFromRaw, fenced].filter(Boolean)),
+  ]
+
+  const errors = []
+  for (const slice of slices) {
+    const variants = [slice, stripTrailingCommasInJson(slice)]
+    for (const v of variants) {
+      try {
+        return JSON.parse(v)
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e))
+      }
+      try {
+        return JSON.parse(jsonrepair(v))
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e))
+      }
+    }
+  }
+
+  const hint = errors.length ? errors[errors.length - 1] : 'unknown'
+  throw new Error(`AI 返回格式异常，请重试或简化描述。(${hint})`)
 }
 
 function buildSystemPrompt(heroClass, skillIds, existingTactics) {
@@ -75,6 +167,10 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
   ],
   "explanation": "<1-2 sentence Chinese summary>"
 }
+
+## JSON string safety (MANDATORY)
+- The response uses JSON mode: output must be one valid JSON object only.
+- Never place an unescaped ASCII double-quote character (U+0022) inside any string value (especially "explanation"). Rephrase summaries without inner quotes, or use Chinese punctuation. If you must quote a substring, escape as \\".
 
 ## targetRule values: enemy targeting (Warrior, Mage)
 - "lowest-hp" : 血量最低的敌人
@@ -870,6 +966,7 @@ export async function parseNaturalLanguageTactics(userInput, heroClass, skillIds
       ],
       temperature: 0.1,
       max_tokens: 1024,
+      response_format: { type: 'json_object' },
     }),
     signal,
   })
@@ -884,15 +981,7 @@ export async function parseNaturalLanguageTactics(userInput, heroClass, skillIds
   const content = data.choices?.[0]?.message?.content
   if (!content) throw new Error('AI 返回为空，请重试')
 
-  let parsed
-  try {
-    const jsonStr = content.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
-    parsed = JSON.parse(jsonStr)
-  } catch {
-    const match = content.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error('AI 返回格式异常，请重试：' + content.slice(0, 200))
-    parsed = JSON.parse(match[0])
-  }
+  const parsed = parseAiTacticsResponseContent(content)
 
   return validateAiTactics(parsed, skillIds, heroClass, userInput)
 }

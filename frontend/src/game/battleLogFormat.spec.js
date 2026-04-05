@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from './battleLogFormat.js'
+import {
+  damageFormulaEquation,
+  supportSkillEffectLine,
+  netDamageToHp,
+  weaponMechanicLines,
+} from './battleLogFormat.js'
 
 describe('damageFormulaEquation', () => {
   it('returns empty for shield entry without raw/final damage numbers', () => {
@@ -19,6 +24,18 @@ describe('damageFormulaEquation', () => {
       damageFormulaEquation({
         rawDamage: 100,
         finalDamage: 80,
+        damageType: 'physical',
+        targetDefense: 20,
+      }),
+    ).toBe('攻击(100) - 护甲抵消(20) = 80')
+  })
+
+  it('uses primaryFinalDamage for main line when weapon segments split total', () => {
+    expect(
+      damageFormulaEquation({
+        rawDamage: 100,
+        finalDamage: 88,
+        primaryFinalDamage: 80,
         damageType: 'physical',
         targetDefense: 20,
       }),
@@ -128,6 +145,36 @@ describe('damageFormulaEquation DOT', () => {
   })
 })
 
+describe('weaponMechanicLines', () => {
+  it('returns lines for weapon affix segments and mitigation hint', () => {
+    const lines = weaponMechanicLines({
+      heroMitigationKind: 'physical',
+      primaryFinalDamage: 10,
+      finalDamage: 15,
+      weaponAddedMagicDamage: 5,
+      weaponLifeStealHeal: 2,
+      weaponLifeOnHitHeal: 1,
+    })
+    expect(lines.some((l) => l.includes('有效护甲'))).toBe(true)
+    expect(lines).toContain('合计对生命伤害 15')
+    expect(lines).toContain('附加魔法伤害 5')
+    expect(lines).toContain('生命偷取 +2')
+    expect(lines).toContain('命中回血 +1')
+  })
+
+  it('returns mana lines for mage basic after weapon reflux', () => {
+    const lines = weaponMechanicLines({
+      weaponManaReflux: 3,
+      weaponManaOnCast: 1,
+      weaponAffixManaAfter: 90,
+      weaponAffixMaxMana: 100,
+    })
+    expect(lines).toContain('魔力回流 +3 法力')
+    expect(lines).toContain('施法回蓝 +1')
+    expect(lines).toContain('当前法力 90/100')
+  })
+})
+
 describe('supportSkillEffectLine', () => {
   it('returns empty when not shield or heal', () => {
     expect(supportSkillEffectLine({ skillId: 'taunt' })).toBe('')
@@ -172,5 +219,29 @@ describe('supportSkillEffectLine', () => {
         targetId: 'm',
       }),
     ).toBe('回复自身 8 点生命')
+  })
+
+  it('formats skill-only heal when healFromSkill is set', () => {
+    expect(
+      supportSkillEffectLine({
+        heal: 20,
+        healFromSkill: 12,
+        finalDamage: 100,
+        actorId: 'w',
+        targetId: 'm',
+      }),
+    ).toBe('回复自身 12 点生命（技能）')
+  })
+
+  it('returns empty when heal is only from weapon affix on a damage skill', () => {
+    expect(
+      supportSkillEffectLine({
+        heal: 5,
+        finalDamage: 100,
+        weaponLifeStealHeal: 5,
+        actorId: 'w',
+        targetId: 'm',
+      }),
+    ).toBe('')
   })
 })

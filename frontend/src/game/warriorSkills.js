@@ -38,6 +38,14 @@ export const WARRIOR_INITIAL_SKILLS = [
 
 import { getLevelSkillById } from './warriorLevelSkills.js'
 import { getEffectivePhysAtk } from './damageUtils.js'
+import { computePhysicalDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
+
+const DEFAULT_CRIT = 1.5
+
+function randomInRange(min, max, rng) {
+  const r = rng ?? Math.random
+  return min + Math.floor(r() * (max - min + 1))
+}
 
 /**
  * @param {string} skillId
@@ -277,7 +285,7 @@ export function tickDebuffs(unit) {
  */
 export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   let { isCrit = false, rng } = opts
-  const CRIT_MULTIPLIER = 1.5
+  const critMult = warrior.physCritMult ?? DEFAULT_CRIT
 
   // Shield Slam: guaranteed crit when target has Sunder Armor debuff (design doc 8.1.4)
   if (skill.id === 'shield-slam' && getSunderDebuff(target)) {
@@ -289,7 +297,13 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   const coeff = skill.coefficient ?? (skill.baseCoefficient ?? 0.8)
   const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
   const armorBefore = getEffectiveArmor(target)
-  let baseRaw = Math.round(effectivePhysAtk * coeff)
+  const mitigationArmor = computePhysicalDefenseAfterWeapon(target, {
+    armorPen: warrior.physArmorPen ?? 0,
+    ignoreArmorPct: warrior.physIgnoreArmorPct ?? 0,
+  })
+  let baseRaw = Math.round(
+    effectivePhysAtk * coeff * (1 + (warrior.physDmgPct || 0) / 100)
+  )
 
   let debuffResult = null
   let sunderExcessDamage = 0
@@ -306,16 +320,50 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   const excessPercent = (skill.excessDamagePercent ?? 0) / 100
   const damageMultiplier = 1 + sunderExcessDamage * excessPercent
   const rawAfterExcess = Math.round(baseRaw * damageMultiplier)
-  const rawAfterCrit = isCrit ? Math.round(rawAfterExcess * CRIT_MULTIPLIER) : rawAfterExcess
-  const finalDamage = Math.max(1, rawAfterCrit - armorBefore)
+  const rawAfterCrit = isCrit ? Math.round(rawAfterExcess * critMult) : rawAfterExcess
+  const physFinalDamage = Math.max(1, rawAfterCrit - mitigationArmor)
 
-  target.currentHP = Math.max(0, (target.currentHP || 0) - finalDamage)
+  target.currentHP = Math.max(0, (target.currentHP || 0) - physFinalDamage)
 
-  let heal = 0
-  if (skill.id === 'bloodthirst' && skill.healPercent) {
-    heal = Math.floor(finalDamage * skill.healPercent)
-    warrior.currentHP = Math.min(warrior.maxHP ?? warrior.currentHP + heal, (warrior.currentHP || 0) + heal)
+  let weaponAddedMagic = 0
+  if (
+    physFinalDamage > 0 &&
+    (warrior.addedMagicDmgMax ?? 0) > 0 &&
+    (warrior.addedMagicDmgMin ?? 0) <= (warrior.addedMagicDmgMax ?? 0)
+  ) {
+    const roll = randomInRange(warrior.addedMagicDmgMin, warrior.addedMagicDmgMax, rng)
+    const md = applyDamageWithWeaponAffixes(roll, 'magic', target, { spellPen: 0, ignoreResistPct: 0 })
+    target.currentHP = md.nextHP
+    weaponAddedMagic = md.finalDamage
   }
+
+  const finalDamage = physFinalDamage + weaponAddedMagic
+
+  let healFromSkill = 0
+  if (skill.id === 'bloodthirst' && skill.healPercent) {
+    healFromSkill = Math.floor(finalDamage * skill.healPercent)
+    warrior.currentHP = Math.min(
+      warrior.maxHP ?? warrior.currentHP + healFromSkill,
+      (warrior.currentHP || 0) + healFromSkill,
+    )
+  }
+
+  let weaponLifeStealHeal = 0
+  let weaponLifeOnHitHeal = 0
+  if (physFinalDamage > 0) {
+    if (warrior.lifeStealPct) {
+      weaponLifeStealHeal += Math.floor(physFinalDamage * (warrior.lifeStealPct / 100))
+    }
+    if (warrior.lifeOnHit) {
+      weaponLifeOnHitHeal += warrior.lifeOnHit
+    }
+    const lsTotal = weaponLifeStealHeal + weaponLifeOnHitHeal
+    if (lsTotal > 0) {
+      warrior.currentHP = Math.min(warrior.maxHP ?? 99999, (warrior.currentHP || 0) + lsTotal)
+    }
+  }
+
+  const heal = healFromSkill + weaponLifeStealHeal + weaponLifeOnHitHeal
 
   const actualDebuffArmorReduction =
     skill.id === 'sunder-armor' ? (getSunderDebuff(target)?.armorReduction ?? 0) : undefined
@@ -331,11 +379,16 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     rawDamage: skill.id === 'sunder-armor' ? rawAfterExcess : baseRaw,
     rawAfterCrit,
     finalDamage,
-    effectiveArmor: armorBefore,
+    effectiveArmor: mitigationArmor,
     isCrit,
     rageConsumed: skill.rageCost,
     rageGained,
     heal,
+    healFromSkill,
+    weaponLifeStealHeal,
+    weaponLifeOnHitHeal,
+    primaryPhysDamage: physFinalDamage,
+    weaponAddedMagicDamage: weaponAddedMagic,
     debuffApplied: debuffResult ? !debuffResult.refreshed : false,
     debuffRefreshed: debuffResult ? debuffResult.refreshed : false,
     debuffArmorReduction: actualDebuffArmorReduction,
@@ -353,7 +406,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
  */
 export function executeCleave(warrior, targets, skill, opts = {}) {
   const { isCrit = false, rng } = opts
-  const CRIT_MULTIPLIER = 1.5
+  const critMult = warrior.physCritMult ?? DEFAULT_CRIT
   const maxTargets = Math.min(skill.targets ?? 2, targets.length) || 1
   const toHit = targets.slice(0, maxTargets)
 
@@ -361,18 +414,60 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
 
   const coeff = skill.coefficient ?? 0.7
   let totalDamage = 0
+  let weaponLifeStealHealTotal = 0
+  let weaponLifeOnHitHealTotal = 0
+  let weaponAddedMagicDamageTotal = 0
   const hits = []
 
   for (const target of toHit) {
     const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
     const targetHPBefore = target.currentHP ?? 0
-    const effectiveArmor = getEffectiveArmor(target)
-    const baseRaw = Math.round(effectivePhysAtk * coeff)
-    const rawAfterCrit = isCrit ? Math.round(baseRaw * CRIT_MULTIPLIER) : baseRaw
-    const finalDamage = Math.max(1, rawAfterCrit - effectiveArmor)
-    target.currentHP = Math.max(0, targetHPBefore - finalDamage)
-    totalDamage += finalDamage
-    hits.push({ target, targetId: target.id, targetName: target.name, baseRaw, finalDamage, effectiveArmor, targetHPBefore })
+    const baseRaw = Math.round(effectivePhysAtk * coeff * (1 + (warrior.physDmgPct || 0) / 100))
+    const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
+    const effectiveArmor = computePhysicalDefenseAfterWeapon(target, {
+      armorPen: warrior.physArmorPen ?? 0,
+      ignoreArmorPct: warrior.physIgnoreArmorPct ?? 0,
+    })
+    let physFinal = Math.max(1, rawAfterCrit - effectiveArmor)
+    target.currentHP = Math.max(0, targetHPBefore - physFinal)
+    let hitTotal = physFinal
+    let hitWeaponAddedMagic = 0
+    if (
+      physFinal > 0 &&
+      (warrior.addedMagicDmgMax ?? 0) > 0 &&
+      (warrior.addedMagicDmgMin ?? 0) <= (warrior.addedMagicDmgMax ?? 0)
+    ) {
+      const roll = randomInRange(warrior.addedMagicDmgMin, warrior.addedMagicDmgMax, rng)
+      const md = applyDamageWithWeaponAffixes(roll, 'magic', target, { spellPen: 0, ignoreResistPct: 0 })
+      target.currentHP = md.nextHP
+      hitWeaponAddedMagic = md.finalDamage
+      hitTotal += hitWeaponAddedMagic
+      weaponAddedMagicDamageTotal += hitWeaponAddedMagic
+    }
+    if (physFinal > 0) {
+      let lsPct = 0
+      if (warrior.lifeStealPct) lsPct += Math.floor(physFinal * (warrior.lifeStealPct / 100))
+      let lsHit = 0
+      if (warrior.lifeOnHit) lsHit += warrior.lifeOnHit
+      weaponLifeStealHealTotal += lsPct
+      weaponLifeOnHitHealTotal += lsHit
+      const ls = lsPct + lsHit
+      if (ls > 0) {
+        warrior.currentHP = Math.min(warrior.maxHP ?? 99999, (warrior.currentHP || 0) + ls)
+      }
+    }
+    totalDamage += hitTotal
+    hits.push({
+      target,
+      targetId: target.id,
+      targetName: target.name,
+      baseRaw,
+      physFinalDamage: physFinal,
+      finalDamage: hitTotal,
+      effectiveArmor,
+      targetHPBefore,
+      weaponAddedMagicDamage: hitWeaponAddedMagic,
+    })
   }
 
   const rageGained = rageFromAttack(isCrit)
@@ -388,5 +483,8 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
     hits,
     totalDamage,
     targetCount: hits.length,
+    weaponLifeStealHeal: weaponLifeStealHealTotal,
+    weaponLifeOnHitHeal: weaponLifeOnHitHealTotal,
+    weaponAddedMagicDamageTotal,
   }
 }

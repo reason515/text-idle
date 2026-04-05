@@ -169,6 +169,7 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 | 命中率(%) | Hit | `Hit = 95 + Agi * 0.2` | 敏捷（全职业统一） |
 
 - **界面列名**：主界面角色详情、招募确认等处的次级属性行左侧使用中文标签（如生命、物攻、法强、护甲、抗性、物暴 %、法暴 %、闪避 %、命中 %；资源行为法力/怒气/能量/集中值等），与上表英文标识及代码中的 `PhysAtk` 等字段对应。
+- **武器专有（7.3）与面板**：主手/双手武器上的平直物攻/法强（`physWeaponFlat` / `spellWeaponFlat`）与武器暴击率（`physCritPct` / `spellCritPct`）**合并进**上述「物攻」「法强」「物暴 %」「法暴 %」的数值与公式（标注 `EQP` / `WPN`）。其余武器专有效果（物暴伤、法暴伤、生命偷取、命中回血、附加魔法伤害、护甲穿透、物攻%、无视护甲%、魔力回流、施法回蓝、奥术追伤、法术穿透、法术伤害%、无视抗性% 等）在角色详情 **副属性** 区块下另设 **「武器」** 分组行展示，实现见 `heroes.js` 中 `buildWeaponSecondaryRows` 与 `computeSecondaryAttributes` 的 `weaponSecondary`。
 | 格挡率(%) | Block | `Block = 装备/技能提供` | 仅持盾职业 |
 
 ##### 职业系数表（k 值）

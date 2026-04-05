@@ -428,7 +428,7 @@
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
-                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined"
+                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || weaponMechanicLines(entry).length || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
@@ -439,6 +439,13 @@
                 </div>
                 <div v-if="damageFormulaEquation(entry)" class="log-calc">
                   {{ damageFormulaEquation(entry) }}
+                </div>
+                <div
+                  v-for="(wm, wmIdx) in weaponMechanicLines(entry)"
+                  :key="'wm-' + entry.round + '-' + (entry.actorId ?? '') + '-' + wmIdx"
+                  class="log-calc"
+                >
+                  {{ wm }}
                 </div>
                 <div v-if="supportSkillEffectLine(entry)" class="log-calc">
                   {{ supportSkillEffectLine(entry) }}
@@ -462,7 +469,10 @@
                   >{{ entry.targetName }}</span>
                   生命: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPBefore, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPBefore }}</span> -> <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.targetHPAfter, maxHP: entry.targetMaxHP })) }">{{ entry.targetHPAfter }}/{{ entry.targetMaxHP }}</span>
                 </div>
-                <div v-if="entry.heal > 0 && entry.actorHPAfter != null" class="log-target-hp">
+                <div
+                  v-if="(entry.heal > 0 || (entry.weaponLifeStealHeal ?? 0) > 0 || (entry.weaponLifeOnHitHeal ?? 0) > 0) && entry.actorHPAfter != null"
+                  class="log-target-hp"
+                >
                   <span :style="{ color: entry.actorClass ? classColor(entry.actorClass) : 'var(--text)' }">{{ entry.actorName }}</span>
                   生命: <span :style="{ color: hpBarColor(hpPct({ currentHP: entry.actorHPAfter, maxHP: entry.actorMaxHP })) }">{{ entry.actorHPAfter }}/{{ entry.actorMaxHP }}</span>
                 </div>
@@ -838,13 +848,13 @@
             <div class="affix-list">
               <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
-                <span class="affix-num">+{{ p.value }}</span>
+                <span class="affix-num">+{{ formatAffixValue(p) }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
               <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
-                <span class="affix-num">+{{ s.value }}</span>
+                <span class="affix-num">+{{ formatAffixValue(s) }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
                 <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
               </div>
@@ -992,6 +1002,20 @@
               <div class="detail-section detail-section-secondary">
                 <div v-for="attr in heroSecondaryAttrs" :key="attr.key" class="detail-row">
                   <span class="detail-label secondary-label" :class="{ 'secondary-label-rage': attr.key === 'Resource' && selectedHero.class === 'Warrior' }">{{ attr.label }}</span>
+                  <span class="detail-value">
+                    <span
+                      class="tooltip-wrap"
+                      :class="{ 'has-tip': attr.formula && attr.formula !== '-' }"
+                      @mouseenter="(e) => attr.formula && attr.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(attr.formula))"
+                      @mouseleave="hideFormulaTooltip"
+                    >
+                      {{ attr.value }}
+                    </span>
+                  </span>
+                </div>
+                <div v-if="heroWeaponSecondaryAttrs.length" class="detail-sep-line detail-sep-weapon">武器</div>
+                <div v-for="attr in heroWeaponSecondaryAttrs" :key="'w-' + attr.key" class="detail-row">
+                  <span class="detail-label secondary-label">{{ attr.label }}</span>
                   <span class="detail-value">
                     <span
                       class="tooltip-wrap"
@@ -1308,13 +1332,13 @@
             <div class="affix-list">
               <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
-                <span class="affix-num">+{{ p.value }}</span>
+                <span class="affix-num">+{{ formatAffixValue(p) }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
               <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
-                <span class="affix-num">+{{ s.value }}</span>
+                <span class="affix-num">+{{ formatAffixValue(s) }}</span>
                 <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
                 <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
               </div>
@@ -1569,7 +1593,12 @@ import {
   itemMatchesSlot,
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
-import { damageFormulaEquation, supportSkillEffectLine, netDamageToHp } from '../game/battleLogFormat.js'
+import {
+  damageFormulaEquation,
+  supportSkillEffectLine,
+  netDamageToHp,
+  weaponMechanicLines,
+} from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
 import {
@@ -1653,10 +1682,48 @@ const AFFIX_STAT_LABELS = {
   intellect: '\u667a\u529b',
   stamina: '\u8010\u529b',
   spirit: '\u7cbe\u795e',
+  physWeaponFlat: '\u7269\u653b',
+  physCritPct: '\u7269\u66b4\u7387',
+  physCritDmgPct: '\u7269\u66b4\u4f24',
+  lifeStealPct: '\u751f\u547d\u5077\u53d6',
+  lifeOnHit: '\u547d\u4e2d\u56de\u8840',
+  addedMagicDmg: '\u9644\u52a0\u9b54\u6cd5\u4f24\u5bb3',
+  armorPen: '\u62a4\u7532\u7a7f\u900f',
+  physDmgPct: '\u7269\u653b%',
+  ignoreArmorPct: '\u65e0\u89c6\u62a4\u7532%',
+  spellWeaponFlat: '\u6cd5\u5f3a',
+  spellCritPct: '\u6cd5\u672f\u66b4\u7387',
+  spellCritDmgPct: '\u6cd5\u672f\u66b4\u4f24',
+  manaRefluxPct: '\u9b54\u529b\u56de\u6d41',
+  manaOnCast: '\u65bd\u6cd5\u56de\u84dd',
+  arcaneFollowup: '\u5965\u672f\u8ffd\u4f24',
+  spellPen: '\u6cd5\u672f\u7a7f\u900f',
+  spellDmgPct: '\u6cd5\u672f\u4f24\u5bb3%',
+  ignoreResistPct: '\u65e0\u89c6\u6297\u6027%',
 }
 function formatAffixStat(stat) {
   if (!stat) return ''
   return AFFIX_STAT_LABELS[stat] ?? stat
+}
+function formatAffixValue(affix) {
+  if (!affix) return ''
+  const pctStats = new Set([
+    'physCritPct',
+    'physCritDmgPct',
+    'lifeStealPct',
+    'physDmgPct',
+    'ignoreArmorPct',
+    'spellCritPct',
+    'spellCritDmgPct',
+    'manaRefluxPct',
+    'spellDmgPct',
+    'ignoreResistPct',
+  ])
+  if (pctStats.has(affix.stat)) return `${affix.value}%`
+  if (affix.stat === 'addedMagicDmg' || affix.stat === 'arcaneFollowup') {
+    return `${affix.min}-${affix.max}`
+  }
+  return String(affix.value ?? '')
 }
 function formatAffixDisplayName(name) {
   if (!name) return ''
@@ -1828,6 +1895,17 @@ const heroSecondaryAttrs = computed(() => {
     selectedHero.value.level || 1,
     selectedHero.value
   ).formulas
+})
+
+const heroWeaponSecondaryAttrs = computed(() => {
+  inventoryVersion.value
+  if (!selectedHero.value) return []
+  const r = computeSecondaryAttributes(
+    selectedHero.value.class,
+    selectedHero.value.level || 1,
+    selectedHero.value
+  )
+  return r.weaponSecondary ?? []
 })
 
 function isMapUnlocked(mapId) {
@@ -5153,6 +5231,11 @@ input.tactics-condition-value[type="number"] {
   padding-top: 0.3rem;
   margin-top: 0.1rem;
   margin-bottom: 0.3rem;
+}
+.detail-sep-weapon {
+  border-top-color: var(--border-dark);
+  font-size: var(--font-xs);
+  margin-top: 0.35rem;
 }
 .val-hp { color: var(--color-hp); }
 .detail-hp-val { /* color from inline hpBarColor by injury level */ }

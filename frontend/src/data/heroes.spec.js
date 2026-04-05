@@ -16,6 +16,7 @@ import {
   createFixedTrioSquad,
   createExpansionCharacter,
   computeSecondaryAttributes,
+  buildWeaponSecondaryRows,
   computeHeroMaxHP,
   computeHeroArmor,
   computeHeroResistance,
@@ -211,6 +212,47 @@ describe('heroes', () => {
       const { formulas } = computeSecondaryAttributes('Priest', 1, hero)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
       expect(physAtkFormula.formula).toMatch(/EQP: \+4/)
+    })
+
+    it('Warrior with weapon affix merges PhysCrit and shows weapon-only rows', () => {
+      const hero = {
+        class: 'Warrior',
+        strength: 10,
+        agility: 4,
+        intellect: 2,
+        stamina: 9,
+        spirit: 3,
+        level: 1,
+        equipment: {
+          MainHand: {
+            physAtkMin: 3,
+            physAtkMax: 5,
+            armor: 0,
+            resistance: 0,
+            prefixes: [{ stat: 'physCritPct', value: 3 }],
+            suffixes: [{ stat: 'lifeStealPct', value: 2 }],
+          },
+        },
+      }
+      const { values, formulas, weaponSecondary } = computeSecondaryAttributes('Warrior', 1, hero)
+      expect(values.PhysCrit).toBe(9.1)
+      const physCritF = formulas.find((f) => f.key === 'PhysCrit')
+      expect(physCritF.formula).toContain('WPN(+3%)')
+      const ls = weaponSecondary.find((w) => w.key === 'WLifeSteal')
+      expect(ls?.value).toBe('+2%')
+    })
+
+    it('buildWeaponSecondaryRows omits merged stats and lists ranges', () => {
+      const rows = buildWeaponSecondaryRows({
+        lifeStealPct: 1,
+        addedMagicDmgMin: 1,
+        addedMagicDmgMax: 4,
+        arcaneFollowupMin: 2,
+        arcaneFollowupMax: 6,
+      })
+      expect(rows.find((r) => r.key === 'WLifeSteal')).toBeTruthy()
+      expect(rows.find((r) => r.key === 'WAddedMagic')?.value).toBe('1-4')
+      expect(rows.find((r) => r.key === 'WArcaneFU')?.value).toBe('2-6')
     })
 
     it('Warrior with weapon damage range shows PhysAtk as min-max', () => {
