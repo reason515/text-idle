@@ -374,16 +374,30 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    const helm2 = { ...SAMPLE_HELM, id: 'test-helm-2', armor: 5, resistance: 3 }
-    await updateStoredState(page, ({ helm1, helm2 }) => {
+    const helm1 = {
+      ...SAMPLE_HELM,
+      prefixes: [
+        { id: 'e2e-affix-str', name: 'Sturdy', stat: 'strength', value: 2, min: 1, max: 4 },
+      ],
+    }
+    const helm2 = {
+      ...SAMPLE_HELM,
+      id: 'test-helm-2',
+      armor: 5,
+      resistance: 3,
+      prefixes: [
+        { id: 'e2e-affix-int', name: 'Sage', stat: 'intellect', value: 3, min: 2, max: 5 },
+      ],
+    }
+    await updateStoredState(page, ({ helm1: h1, helm2: h2 }) => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].equipment = squad[0].equipment || {}
-        squad[0].equipment.Helm = { ...helm1 }
+        squad[0].equipment.Helm = { ...h1 }
       }
       localStorage.setItem('squad', JSON.stringify(squad))
-      localStorage.setItem('playerInventory', JSON.stringify([helm2]))
-    }, { helm1: SAMPLE_HELM, helm2 }, { pauseFirst: true, safePath: '/main' })
+      localStorage.setItem('playerInventory', JSON.stringify([h2]))
+    }, { helm1, helm2 }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
     await page.waitForTimeout(200)
 
@@ -395,6 +409,9 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.item-compare-section')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.item-compare-label').filter({ hasText: '\u5f53\u524d' })).toBeVisible()
     await expect(page.locator('.item-compare-label').filter({ hasText: '\u65b0\u88c5\u5907' })).toBeVisible()
+    const compareCols = page.locator('.item-compare-col')
+    await expect(compareCols.first().locator('.item-compare-affix-stat')).toContainText('\u529b\u91cf')
+    await expect(compareCols.nth(1).locator('.item-compare-affix-stat')).toContainText('\u667a\u529b')
     await expect(page.locator('.equip-replace-hint')).toContainText('背包')
     await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible({ timeout: 5000 })

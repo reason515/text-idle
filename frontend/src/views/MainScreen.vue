@@ -752,8 +752,30 @@
                       <span class="item-compare-detail-label">法强</span>
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null ? (replaceCompareCurrent.spellPowerMin + '-' + replaceCompareCurrent.spellPowerMax) : replaceCompareCurrent.spellPower }}</span>
                     </div>
-                    <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
-                    <div v-for="s in (replaceCompareCurrent.suffixes || [])" :key="'cs-' + s.id" class="item-compare-affix">{{ formatAffixDisplayName(s.name) }} +{{ s.value }}</div>
+                    <div
+                      v-if="(replaceCompareCurrent.prefixes?.length || 0) + (replaceCompareCurrent.suffixes?.length || 0) > 0"
+                      class="detail-sep-line item-compare-sep"
+                    >词缀</div>
+                    <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
+                      <span class="item-compare-detail-label item-compare-affix-label">
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
+                        <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                      </span>
+                      <span class="item-compare-detail-value item-compare-affix-val">
+                        <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
+                        <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
+                      </span>
+                    </div>
+                    <div v-for="s in (replaceCompareCurrent.suffixes || [])" :key="'cs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
+                      <span class="item-compare-detail-label item-compare-affix-label">
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
+                        <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                      </span>
+                      <span class="item-compare-detail-value item-compare-affix-val">
+                        <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
+                        <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div class="item-compare-col">
@@ -791,8 +813,30 @@
                       <span class="item-compare-detail-label">法强</span>
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
                     </div>
-                    <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-affix">{{ formatAffixDisplayName(p.name) }} +{{ p.value }}</div>
-                    <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ns-' + s.id" class="item-compare-affix">{{ formatAffixDisplayName(s.name) }} +{{ s.value }}</div>
+                    <div
+                      v-if="(equipReplacePending.item.prefixes?.length || 0) + (equipReplacePending.item.suffixes?.length || 0) > 0"
+                      class="detail-sep-line item-compare-sep"
+                    >词缀</div>
+                    <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-detail-row item-compare-affix-row">
+                      <span class="item-compare-detail-label item-compare-affix-label">
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
+                        <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                      </span>
+                      <span class="item-compare-detail-value item-compare-affix-val">
+                        <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
+                        <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
+                      </span>
+                    </div>
+                    <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ns-' + s.id" class="item-compare-detail-row item-compare-affix-row">
+                      <span class="item-compare-detail-label item-compare-affix-label">
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
+                        <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                      </span>
+                      <span class="item-compare-detail-value item-compare-affix-val">
+                        <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
+                        <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1704,6 +1748,12 @@ const AFFIX_STAT_LABELS = {
 function formatAffixStat(stat) {
   if (!stat) return ''
   return AFFIX_STAT_LABELS[stat] ?? stat
+}
+function formatAffixStatLinePrimary(affix) {
+  if (!affix) return ''
+  const statLabel = formatAffixStat(affix.stat)
+  if (statLabel) return statLabel
+  return formatAffixDisplayName(affix.name)
 }
 function formatAffixValue(affix) {
   if (!affix) return ''
@@ -3530,11 +3580,57 @@ onUnmounted(() => {
 .item-compare-col { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
 .item-compare-label { font-size: var(--font-sm); font-weight: 600; color: var(--text-label); text-transform: uppercase; }
 .item-compare-item { font-weight: 500; }
-.item-compare-stats { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--font-base-sm); }
-.item-compare-detail-row { display: flex; gap: 0.5rem; }
-.item-compare-detail-label { color: var(--text-label); min-width: 3.5rem; }
-.item-compare-detail-value { flex: 1; }
-.item-compare-affix { font-size: var(--font-s); color: var(--text-muted); }
+.item-compare-stats { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--font-base-sm); min-width: 0; }
+.item-compare-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.item-compare-detail-label {
+  color: var(--text-label);
+  flex: 1;
+  min-width: 0;
+}
+.item-compare-detail-value {
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-value);
+}
+.item-compare-sep {
+  margin-top: 0.15rem;
+  margin-bottom: 0.1rem;
+}
+.item-compare-affix-row {
+  align-items: flex-start;
+}
+.item-compare-affix-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+.item-compare-affix-stat {
+  line-height: 1.25;
+}
+.item-compare-affix-name {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.item-compare-affix-val {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+}
+.item-compare-affix-num {
+  color: var(--text-value);
+}
+.item-compare-affix-range {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
 .item-compare-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 @media (max-width: 480px) {
   .item-compare-columns { grid-template-columns: 1fr; }
