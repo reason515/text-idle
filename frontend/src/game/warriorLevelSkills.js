@@ -1,10 +1,10 @@
 /**
- * Warrior skills unlocked at level 5, 10, 15, ... 60.
- * Design doc: 8.1.4, 8.1.5 - one skill per spec (Arms, Fury, Protection) per level.
- * Used by skill choice modal when hero reaches level that is a multiple of 5.
+ * Warrior skills by legacy tier (5, 10, 15, ... 60).
+ * New skills are offered only at learn milestones 10, 20, ... 60; each maps to a tier row below.
+ * Design doc: 8.1.4, 8.1.5.
  */
 
-/** @typedef {{ id: string, name: string, spec: string, rageCost: number, cooldown?: number, effectDesc: string, coefficient?: number, targets?: number, tauntForcedActions?: number }} LevelSkillDef */
+/** @typedef {{ id: string, name: string, spec: string, rageCost: number, cooldown?: number, effectDesc: string, coefficient?: number, targets?: number, damageReductionPct?: number, stanceDuration?: number }} LevelSkillDef */
 
 /** @type {Record<number, LevelSkillDef[]>} Level -> [Arms, Fury, Protection] */
 export const WARRIOR_LEVEL_SKILLS = {
@@ -12,13 +12,14 @@ export const WARRIOR_LEVEL_SKILLS = {
     { id: 'cleave', name: '顺劈斩', spec: '武器', rageCost: 20, cooldown: 0, coefficient: 0.7, targets: 2, effectDesc: '对 2 个目标造成 0.7 倍物理伤害' },
     { id: 'whirlwind', name: '旋风斩', spec: '狂暴', rageCost: 25, cooldown: 2, coefficient: 0.55, targets: -1, effectDesc: '对所有敌人造成 0.55 倍物理伤害，2 回合 CD' },
     {
-      id: 'taunt',
-      name: '嘲讽',
+      id: 'defensive-stance',
+      name: '防御姿态',
       spec: '防护',
-      rageCost: 0,
-      cooldown: 2,
-      tauntForcedActions: 2,
-      effectDesc: '强制目标攻击你 2 次行动，2 回合 CD',
+      rageCost: 10,
+      cooldown: 4,
+      damageReductionPct: 12,
+      stanceDuration: 3,
+      effectDesc: '自身受到伤害 -12%，持续 3 回合，4 回合 CD',
     },
   ],
   10: [
@@ -78,27 +79,27 @@ export const WARRIOR_LEVEL_SKILLS = {
   ],
 }
 
-/** Levels that trigger skill choice (5, 10, 15, ... 60) */
-export const SKILL_CHOICE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
-
-/**
- * Check if a level triggers skill choice.
- * @param {number} level
- * @returns {boolean}
- */
-export function isSkillChoiceLevel(level) {
-  return level >= 5 && level <= 60 && level % 5 === 0
+/** Learn milestone (10, 20, ... 60) -> legacy tier key in WARRIOR_LEVEL_SKILLS */
+export const LEARN_MILESTONE_TO_POOL_KEY = {
+  10: 5,
+  20: 15,
+  30: 25,
+  40: 35,
+  50: 45,
+  60: 60,
 }
 
 /**
- * Get the 3 new skills offered at a given level for a class.
+ * Get the 3 new skills offered at a learn milestone for Warrior.
  * @param {string} heroClass - e.g. 'Warrior'
- * @param {number} level - 5, 10, 15, ...
- * @returns {LevelSkillDef[]} Empty if class/level not supported
+ * @param {number} level - Hero level at a learn milestone (10, 20, ... 60)
+ * @returns {LevelSkillDef[]} Empty if not a learn milestone or wrong class
  */
 export function getNewSkillsAtLevel(heroClass, level) {
   if (heroClass !== 'Warrior') return []
-  return WARRIOR_LEVEL_SKILLS[level] ?? []
+  const poolKey = LEARN_MILESTONE_TO_POOL_KEY[level]
+  if (poolKey == null) return []
+  return WARRIOR_LEVEL_SKILLS[poolKey] ?? []
 }
 
 /**

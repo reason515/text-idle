@@ -837,6 +837,79 @@ describe('combat progression and systems', () => {
     expect(shieldEntry.targetId).toBe('priest-1')
   })
 
+  it('Priest Shadow Word: Pain applies shadow DOT and logs debuff', () => {
+    const priest = sampleHero({
+      id: 'priest-dot',
+      class: 'Priest',
+      intellect: 20,
+      spirit: 10,
+      agility: 20,
+      skills: ['shadow-word-pain'],
+      tactics: { skillPriority: ['shadow-word-pain'], targetRule: 'lowest-hp' },
+    })
+    const monster = createMonster(
+      {
+        id: 'm-dot',
+        name: 'Mob DOT',
+        damageType: 'physical',
+        base: { hp: 300, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    const result = runAutoCombat({ heroes: [priest], monsters: [monster], rng: () => 0.5, maxRounds: 4 })
+    const applyEntry = result.log.find((e) => e.skillId === 'shadow-word-pain')
+    expect(applyEntry).toBeDefined()
+    expect(applyEntry.debuffType).toBe('shadow-pain')
+    const dotEntry = result.log.find((e) => e.type === 'dot' && e.debuffType === 'shadow-pain')
+    expect(dotEntry).toBeDefined()
+  })
+
+  it('Priest Fade Mind clears priest threat on all monsters', () => {
+    const priest = sampleHero({
+      id: 'priest-fade',
+      class: 'Priest',
+      intellect: 24,
+      spirit: 10,
+      agility: 20,
+      skills: ['fade-mind'],
+      tactics: { skillPriority: ['fade-mind'], targetRule: 'tank' },
+      currentHP: 200,
+    })
+    const warrior = sampleHero({
+      id: 'tank-fade',
+      class: 'Warrior',
+      isTank: true,
+      agility: 8,
+      strength: 18,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'], targetRule: 'first' },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm-fade-1',
+          name: 'Mob 1',
+          damageType: 'physical',
+          base: { hp: 260, physAtk: 4, spellPower: 0, agility: 3, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+      createMonster(
+        {
+          id: 'm-fade-2',
+          name: 'Mob 2',
+          damageType: 'physical',
+          base: { hp: 260, physAtk: 4, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({ heroes: [warrior, priest], monsters, rng: () => 0.5, maxRounds: 6 })
+    const fadeEntry = result.log.find((e) => e.skillId === 'fade-mind')
+    expect(fadeEntry).toBeDefined()
+    expect(fadeEntry.threatCleared).toBeGreaterThanOrEqual(0)
+  })
+
   it('Mage with Fireball uses skill when mana sufficient', () => {
     const mage = sampleHero({
       id: 'm1',

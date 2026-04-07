@@ -6,8 +6,14 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   PRIEST_INITIAL_SKILLS,
   getPriestSkillById,
+  getAnyPriestSkillById,
+  getPriestSkillWithEnhancements,
+  getPriestEnhancementPreviewEffectDesc,
   executeFlashHeal,
+  executeGreaterHeal,
   executePowerWordShield,
+  executeShadowWordPain,
+  isPriestAllyTargetSkill,
   getShieldBuff,
   applyDamageToShieldedUnit,
   tickShieldDuration,
@@ -32,6 +38,29 @@ describe('priestSkills', () => {
       expect(s.manaCost).toBe(8)
       expect(s.coefficient).toBe(1.0)
       expect(s.absorbDuration).toBe(3)
+    })
+  })
+
+  describe('enhancement formulas', () => {
+    it('flash-heal enhancement raises coefficient and mana cost', () => {
+      const priest = { skillEnhancements: { 'flash-heal': { enhanceCount: 2 } } }
+      const s = getPriestSkillWithEnhancements(priest, 'flash-heal')
+      expect(s.coefficient).toBe(1.2)
+      expect(s.manaCost).toBe(10)
+    })
+
+    it('power-word-shield enhancement raises coefficient, duration and mana cost', () => {
+      const priest = { skillEnhancements: { 'power-word-shield': { enhanceCount: 3 } } }
+      const s = getPriestSkillWithEnhancements(priest, 'power-word-shield')
+      expect(s.coefficient).toBe(1.3)
+      expect(s.absorbDuration).toBe(6)
+      expect(s.manaCost).toBe(11)
+    })
+
+    it('getPriestEnhancementPreviewEffectDesc returns numeric preview for initial skills', () => {
+      const hero = { skillEnhancements: { 'flash-heal': { enhanceCount: 1 } } }
+      expect(getPriestEnhancementPreviewEffectDesc(hero, 'flash-heal')).toContain('1.1 -> 1.2')
+      expect(getPriestEnhancementPreviewEffectDesc(hero, 'power-word-shield')).toContain('1 -> 1.1')
     })
   })
 
@@ -74,6 +103,40 @@ describe('priestSkills', () => {
       expect(target.shield.remainingRounds).toBe(3)
       expect(result.absorbAmount).toBe(target.shield.absorbRemaining)
       expect(result.manaConsumed).toBe(8)
+    })
+  })
+
+  describe('level priest skills', () => {
+    it('executeGreaterHeal heals more and consumes mana', () => {
+      const priest = { currentMP: 50, intellect: 10, spirit: 9 }
+      const target = { currentHP: 20, maxHP: 100 }
+      const skill = getAnyPriestSkillById('greater-heal')
+      const rng = vi.fn(() => 0.5)
+      const result = executeGreaterHeal(priest, target, skill, { rng })
+      expect(result.heal).toBeGreaterThan(0)
+      expect(priest.currentMP).toBe(32)
+      expect(result.manaConsumed).toBe(18)
+    })
+
+    it('executeShadowWordPain deals damage and applies debuff', () => {
+      const priest = { currentMP: 50, intellect: 10, spirit: 9 }
+      const target = { currentHP: 90, maxHP: 100, debuffs: [] }
+      const skill = getAnyPriestSkillById('shadow-word-pain')
+      const rng = vi.fn(() => 0.5)
+      const result = executeShadowWordPain(priest, target, skill, { rng })
+      expect(result.finalDamage).toBeGreaterThan(0)
+      expect(target.currentHP).toBeLessThan(90)
+      expect(target.debuffs.some((d) => d.type === 'shadow-pain')).toBe(true)
+      expect(result.debuffDuration).toBe(4)
+      expect(priest.currentMP).toBe(40)
+    })
+
+    it('isPriestAllyTargetSkill identifies ally and enemy skill target types', () => {
+      expect(isPriestAllyTargetSkill('flash-heal')).toBe(true)
+      expect(isPriestAllyTargetSkill('greater-heal')).toBe(true)
+      expect(isPriestAllyTargetSkill('power-word-shield')).toBe(true)
+      expect(isPriestAllyTargetSkill('shadow-word-pain')).toBe(false)
+      expect(isPriestAllyTargetSkill('fade-mind')).toBe(false)
     })
   })
 

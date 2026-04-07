@@ -21,6 +21,11 @@ export const FROSTBOLT_FREEZE_CHANCE_BASE = 0.1
 export const FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE = 0.05
 export const FROSTBOLT_FREEZE_CHANCE_MAX = 0.25
 
+/** Frost Nova: per-enemy independent freeze roll; enhanced raises chance for every enemy. */
+export const FROST_NOVA_FREEZE_CHANCE_BASE = 0.25
+export const FROST_NOVA_FREEZE_CHANCE_PER_ENHANCE = 0.05
+export const FROST_NOVA_FREEZE_CHANCE_MAX = 0.4
+
 const MAX_ENHANCE_COUNT = 3
 
 /**
@@ -30,6 +35,18 @@ const MAX_ENHANCE_COUNT = 3
 export function getFrostboltFreezeChance(enhanceCount) {
   const c = Math.min(MAX_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
   return Math.min(FROSTBOLT_FREEZE_CHANCE_MAX, FROSTBOLT_FREEZE_CHANCE_BASE + c * FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE)
+}
+
+/**
+ * @param {number} [enhanceCount]
+ * @returns {number}
+ */
+export function getFrostNovaFreezeChance(enhanceCount) {
+  const c = Math.min(MAX_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
+  return Math.min(
+    FROST_NOVA_FREEZE_CHANCE_MAX,
+    FROST_NOVA_FREEZE_CHANCE_BASE + c * FROST_NOVA_FREEZE_CHANCE_PER_ENHANCE
+  )
 }
 
 export const MAGE_INITIAL_SKILLS = [
@@ -97,6 +114,11 @@ export function getMageSkillWithEnhancements(mage, skillId) {
     out.freezeChance = getFrostboltFreezeChance(enhanceCount)
     const pct = Math.round(out.freezeChance * 100)
     out.effectDesc = `${out.coefficient} 倍法术伤害；${pct}% 概率冰冻目标，使其跳过 1 次行动`
+  } else if (skillId === 'frost-nova') {
+    out.freezeChance = getFrostNovaFreezeChance(enhanceCount)
+    const coeff = out.coefficient ?? 0.5
+    const pct = Math.round(out.freezeChance * 100)
+    out.effectDesc = `对所有敌人 ${coeff} 倍法术伤害；每名敌人 ${pct}% 概率冰冻 1 次行动（独立判定）；2 回合 CD`
   }
 
   return out
@@ -132,6 +154,12 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
     const currPct = Math.round(getFrostboltFreezeChance(current) * 100)
     const nextPct = Math.round(getFrostboltFreezeChance(next) * 100)
     return `${currCoeff} -> ${nextCoeff} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%`
+  }
+  if (skillId === 'frost-nova') {
+    const coeff = base.coefficient ?? 0.5
+    const currPct = Math.round(getFrostNovaFreezeChance(current) * 100)
+    const nextPct = Math.round(getFrostNovaFreezeChance(next) * 100)
+    return `${coeff} 倍群体伤害；每名冰冻概率 ${currPct}% -> ${nextPct}%`
   }
 
   return base.effectDesc ?? ''
@@ -264,6 +292,110 @@ export function tickMageDebuffs(unit) {
       if (d.skipActions != null) return true
       return d.remainingRounds > 0
     })
+}
+
+/**
+ * Frost Nova: AOE magic damage to all given monsters; each enemy gets an independent freeze roll (skip 1 action).
+ * Mutates mage.currentMP, each monster.currentHP/debuffs.
+ * @param {Object} mage
+ * @param {Object[]} monsters - Alive enemy units
+ * @param {Object} skill - Frost Nova skill def (coefficient, freezeChance, manaCost)
+ * @param {Object} opts - { isCrit: boolean, rng?: function }
+ */
+export function executeFrostNova(mage, monsters, skill, opts = {}) {
+  const { isCrit = false, rng } = opts
+  const roll = rng ?? Math.random
+  const critMult = mage.spellCritMult ?? DEFAULT_SPELL_CRIT
+  const coeff = skill.coefficient ?? 0.5
+  const freezeChance = skill.freezeChance ?? FROST_NOVA_FREEZE_CHANCE_BASE
+
+  const manaCost = skill.manaCost ?? 0
+  mage.currentMP = Math.max(0, (mage.currentMP || 0) - manaCost)
+
+  const hits = []
+  let totalMainMagic = 0
+  let totalDamage = 0
+
+  for (const target of monsters) {
+    if ((target.currentHP ?? 0) <= 0) continue
+
+    const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
+    const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
+    const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
+    const effectiveResistance = computeMagicDefenseAfterWeapon(target, {
+      spellPen: mage.spellPen ?? 0,
+      ignoreResistPct: mage.spellIgnoreResistPct ?? 0,
+    })
+    const mainMagicDamage = Math.max(1, rawAfterCrit - effectiveResistance)
+    totalMainMagic += mainMagicDamage
+
+    target.currentHP = Math.max(0, (target.currentHP || 0) - mainMagicDamage)
+
+    let arcaneFollowupDamage = 0
+    if (
+      mainMagicDamage > 0 &&
+      (mage.arcaneFollowupMax ?? 0) > 0 &&
+      (mage.arcaneFollowupMin ?? 0) <= (mage.arcaneFollowupMax ?? 0)
+    ) {
+      const fu = randomInRange(mage.arcaneFollowupMin, mage.arcaneFollowupMax, rng)
+      const md = applyDamageWithWeaponAffixes(fu, 'magic', target, {
+        spellPen: mage.spellPen ?? 0,
+        ignoreResistPct: mage.spellIgnoreResistPct ?? 0,
+      })
+      target.currentHP = md.nextHP
+      arcaneFollowupDamage = md.finalDamage
+    }
+
+    const finalDamage = mainMagicDamage + arcaneFollowupDamage
+    totalDamage += finalDamage
+
+    const freezeProcced = roll() < freezeChance
+    if (freezeProcced) {
+      applyFreezeDebuff(target, 1)
+    }
+
+    hits.push({
+      targetId: target.id,
+      targetName: target.name,
+      targetClass: target.class ?? null,
+      targetTier: target.tier ?? null,
+      rawDamage: baseRaw,
+      finalDamage,
+      primaryMagicDamage: mainMagicDamage,
+      effectiveResistance,
+      arcaneFollowupDamage,
+      freezeProcced,
+    })
+  }
+
+  let manaRefluxGain = 0
+  let manaOnCastGain = 0
+  if (totalMainMagic > 0) {
+    if (mage.manaRefluxPct) {
+      manaRefluxGain += Math.floor(totalMainMagic * (mage.manaRefluxPct / 100))
+    }
+    if (mage.manaOnCast) {
+      manaOnCastGain += mage.manaOnCast
+    }
+    const mpGain = manaRefluxGain + manaOnCastGain
+    if (mpGain > 0) {
+      mage.currentMP = Math.min(mage.maxMP ?? 99999, (mage.currentMP || 0) + mpGain)
+    }
+  }
+
+  return {
+    skillId: skill.id,
+    skillName: skill.name,
+    skillSpec: skill.spec,
+    skillCoefficient: coeff,
+    hits,
+    totalDamage,
+    rawDamage: hits[0]?.rawDamage ?? 0,
+    isCrit,
+    manaConsumed: manaCost,
+    manaRefluxGain,
+    manaOnCastGain,
+  }
 }
 
 /**

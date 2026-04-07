@@ -37,6 +37,19 @@ export const WARRIOR_INITIAL_SKILLS = [
 ]
 
 import { getLevelSkillById } from './warriorLevelSkills.js'
+
+/** Taunt is an initial skill for the fixed trio / Protection start; not in WARRIOR_INITIAL_SKILLS (recruitment 3-pick-1). */
+const WARRIOR_STANDALONE_SKILLS = [
+  {
+    id: 'taunt',
+    name: '嘲讽',
+    spec: '防护',
+    rageCost: 0,
+    cooldown: 2,
+    tauntForcedActions: 2,
+    effectDesc: '强制目标攻击你 2 次行动，2 回合 CD',
+  },
+]
 import { getEffectivePhysAtk } from './damageUtils.js'
 import { computePhysicalDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
 
@@ -61,6 +74,8 @@ export function getWarriorSkillById(skillId) {
  * @returns {Object|null}
  */
 export function getAnyWarriorSkillById(skillId) {
+  const standalone = WARRIOR_STANDALONE_SKILLS.find((s) => s.id === skillId)
+  if (standalone) return standalone
   return getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
 }
 
@@ -68,8 +83,8 @@ const MAX_ENHANCE_COUNT = 3
 const PER_STACK_ARMOR_REDUCTION = 8
 
 /**
- * Get skill with enhancement params applied. Design doc 8.1.6, 8.1.4 (Taunt).
- * Initial skills + taunt (level-unlock) have enhancement formulas.
+ * Get skill with enhancement params applied. Design doc 8.1.6, 8.1.4 (Defensive Stance, Taunt initial).
+ * Initial skills + standalone Taunt + Defensive Stance have enhancement formulas.
  * @param {Object} warrior - Combat unit with skillEnhancements
  * @param {string} skillId
  * @returns {Object|null} Skill definition with enhanced params (shallow copy)
@@ -94,14 +109,21 @@ export function getSkillWithEnhancements(warrior, skillId) {
     out.healPercent = Math.min(0.3, 0.15 + enhanceCount * 0.05)
     out.effectDesc = `${out.coefficient} 倍物理伤害；治疗造成伤害的 ${Math.round(out.healPercent * 100)}%`
   } else if (skillId === 'sunder-armor') {
+    const baseRage = base.rageCost ?? 15
     out.sunderMaxStacks = 1 + enhanceCount
-    out.effectDesc = `0.8 倍伤害，目标护甲 -8 持续 3 回合；护甲降至 0 以下时每点超额 +2% 伤害（最多 ${out.sunderMaxStacks} 层）`
+    out.rageCost = Math.max(1, baseRage - enhanceCount)
+    out.effectDesc = `${out.rageCost} 怒气，0.8 倍伤害，目标护甲 -8 持续 3 回合；护甲降至 0 以下时每点超额 +2% 伤害（最多 ${out.sunderMaxStacks} 层）`
   } else if (skillId === 'taunt') {
     const baseForced = base.tauntForcedActions ?? 2
     const baseCd = base.cooldown ?? 2
     out.tauntForcedActions = baseForced + enhanceCount
     out.cooldown = baseCd + enhanceCount
     out.effectDesc = `强制目标攻击你 ${out.tauntForcedActions} 次行动，${out.cooldown} 回合 CD`
+  } else if (skillId === 'defensive-stance') {
+    const basePct = base.damageReductionPct ?? 12
+    out.damageReductionPct = Math.min(21, basePct + enhanceCount * 3)
+    out.stanceDuration = base.stanceDuration ?? 3
+    out.effectDesc = `自身受到伤害 -${out.damageReductionPct}%，持续 ${out.stanceDuration} 回合，${out.cooldown ?? 4} 回合 CD`
   }
 
   return out
@@ -110,7 +132,7 @@ export function getSkillWithEnhancements(warrior, skillId) {
 /**
  * Get effectDesc for skill choice modal when showing "Enhance existing skill".
  * Shows current -> after values (e.g. "1.2x -> 1.4x physical damage to single target").
- * Initial skills + taunt have enhancement preview.
+ * Initial skills + taunt + defensive-stance have enhancement preview.
  * @param {Object} hero - Hero with skillEnhancements
  * @param {string} skillId
  * @returns {string}
@@ -139,9 +161,12 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
     return `${currCoeff} -> ${nextCoeff} 倍物理伤害；治疗 ${currHeal}% -> ${nextHeal}%`
   }
   if (skillId === 'sunder-armor') {
+    const baseRage = base.rageCost ?? 15
     const currStacks = 1 + current
     const nextStacks = 1 + next
-    return `0.8 倍伤害，护甲 -8 持续 3 回合；护甲超额时 +2%/点（最多 ${currStacks} -> ${nextStacks} 层）`
+    const currRage = Math.max(1, baseRage - current)
+    const nextRage = Math.max(1, baseRage - next)
+    return `${currRage} -> ${nextRage} 怒气；最多 ${currStacks} -> ${nextStacks} 层，护甲超额 +2%/点`
   }
   if (skillId === 'taunt') {
     const baseForced = base.tauntForcedActions ?? 2
@@ -151,6 +176,12 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
     const currCd = baseCd + current
     const nextCd = baseCd + next
     return `${currF} 次行动、${currCd} 回合 CD -> ${nextF} 次行动、${nextCd} 回合 CD`
+  }
+  if (skillId === 'defensive-stance') {
+    const basePct = base.damageReductionPct ?? 12
+    const currPct = Math.min(21, basePct + current * 3)
+    const nextPct = Math.min(21, basePct + next * 3)
+    return `减伤 ${currPct}% -> ${nextPct}%`
   }
 
   return base.effectDesc ?? ''
@@ -271,6 +302,38 @@ export function tickDebuffs(unit) {
       if (d.skipActions != null) return true
       return d.remainingRounds > 0
     })
+}
+
+/**
+ * Tick hero buffs (e.g. Defensive Stance) at end of round. Mutates unit.buffs.
+ * @param {Object} unit
+ */
+export function tickHeroBuffs(unit) {
+  if (unit.side !== 'hero' || !Array.isArray(unit.buffs)) return
+  unit.buffs = unit.buffs
+    .map((b) => {
+      const rr = b.remainingRounds
+      if (rr == null) return b
+      return { ...b, remainingRounds: rr - 1 }
+    })
+    .filter((b) => (b.remainingRounds ?? 0) > 0)
+}
+
+/**
+ * Apply Defensive Stance damage reduction after armor/resistance. Mutates nothing.
+ * @param {Object} hero - Combat unit
+ * @param {number} finalDamage - Damage after defense
+ * @returns {{ finalDamage: number, stanceMitigated: number }}
+ */
+export function applyDefensiveStanceToIncomingDamage(hero, finalDamage) {
+  if (finalDamage <= 0) return { finalDamage, stanceMitigated: 0 }
+  const buff = (hero.buffs || []).find(
+    (b) => b.type === 'defensive-stance' && (b.remainingRounds ?? 0) > 0 && (b.damageReductionPct ?? 0) > 0
+  )
+  if (!buff) return { finalDamage, stanceMitigated: 0 }
+  const pct = Math.min(100, buff.damageReductionPct)
+  const after = Math.max(1, Math.round(finalDamage * (1 - pct / 100)))
+  return { finalDamage: after, stanceMitigated: finalDamage - after }
 }
 
 /**

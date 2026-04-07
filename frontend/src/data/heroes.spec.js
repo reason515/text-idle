@@ -660,6 +660,19 @@ describe('heroes', () => {
       })
       expect(character.skills).toEqual(['heroic-strike', 'cleave'])
     })
+
+    it('creates expansion hero with skills and skillEnhancements from recruitment staging', () => {
+      const hero = { id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }
+      const character = createExpansionCharacter(hero, {
+        level: 5,
+        allocatedAttrs: getInitialAttributes('Warrior'),
+        skillId: 'heroic-strike',
+        skills: ['heroic-strike'],
+        skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } },
+      })
+      expect(character.skills).toEqual(['heroic-strike'])
+      expect(character.skillEnhancements).toEqual({ 'heroic-strike': { enhanceCount: 1 } })
+    })
   })
 
   describe('addHeroToSquad', () => {

@@ -12,6 +12,7 @@ import {
   getEffectiveArmor,
   applySunderDebuff,
   tickDebuffs,
+  applyDefensiveStanceToIncomingDamage,
   executeWarriorSkill,
 } from './warriorSkills.js'
 import { runAutoCombat, applyDamage } from './combat.js'
@@ -374,6 +375,30 @@ describe('Example13: Sunder Armor', () => {
     expect(skill.effectDesc).toContain('+2%')
   })
 
+  it('Sunder Armor enhancement reduces rage cost by 1 per tier (min 1)', () => {
+    expect(getSkillWithEnhancements(makeWarrior({}), 'sunder-armor').rageCost).toBe(15)
+    expect(
+      getSkillWithEnhancements(
+        makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 1 } } }),
+        'sunder-armor'
+      ).rageCost
+    ).toBe(14)
+    expect(
+      getSkillWithEnhancements(
+        makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 3 } } }),
+        'sunder-armor'
+      ).rageCost
+    ).toBe(12)
+  })
+
+  it('executeWarriorSkill uses enhanced rage cost for Sunder Armor', () => {
+    const warrior = makeWarrior({ physAtk: 12, currentMP: 20, skillEnhancements: { 'sunder-armor': { enhanceCount: 1 } } })
+    const skillWithEnhance = getSkillWithEnhancements(warrior, 'sunder-armor')
+    const target = makeTarget({ armor: 10, currentHP: 30 })
+    const result = executeWarriorSkill(warrior, target, skillWithEnhance, { isCrit: false })
+    expect(result.rageConsumed).toBe(14)
+  })
+
   it('AC13: Sunder Armor enhanced 2x allows 3 stacks, adds layer and refreshes; excess +12% when armor 2', () => {
     const warrior = makeWarrior({ physAtk: 12, currentMP: 40, skillEnhancements: { 'sunder-armor': { enhanceCount: 2 } } })
     const target = makeTarget({ armor: 10, debuffs: [{ type: 'sunder', stacks: 1, armorReduction: 8, remainingRounds: 1 }] })
@@ -421,7 +446,7 @@ describe('Example13: Sunder Armor', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Taunt enhancement (level-unlock skill)
+// Taunt enhancement (standalone initial skill)
 // ---------------------------------------------------------------------------
 
 describe('Taunt enhancement', () => {
@@ -444,6 +469,24 @@ describe('Taunt enhancement', () => {
     expect(getEnhancementPreviewEffectDesc(hero, 'taunt')).toBe('2 次行动、2 回合 CD -> 3 次行动、3 回合 CD')
     const hero2 = makeWarrior({ skillEnhancements: { taunt: { enhanceCount: 2 } } })
     expect(getEnhancementPreviewEffectDesc(hero2, 'taunt')).toBe('4 次行动、4 回合 CD -> 5 次行动、5 回合 CD')
+  })
+})
+
+describe('Defensive Stance enhancement', () => {
+  it('getSkillWithEnhancements increases damageReductionPct per enhanceCount', () => {
+    const w1 = makeWarrior({ skillEnhancements: { 'defensive-stance': { enhanceCount: 1 } } })
+    const s1 = getSkillWithEnhancements(w1, 'defensive-stance')
+    expect(s1.damageReductionPct).toBe(15)
+    const w3 = makeWarrior({ skillEnhancements: { 'defensive-stance': { enhanceCount: 3 } } })
+    const s3 = getSkillWithEnhancements(w3, 'defensive-stance')
+    expect(s3.damageReductionPct).toBe(21)
+  })
+
+  it('applyDefensiveStanceToIncomingDamage reduces final damage', () => {
+    const hero = { side: 'hero', buffs: [{ type: 'defensive-stance', remainingRounds: 2, damageReductionPct: 12 }] }
+    const r = applyDefensiveStanceToIncomingDamage(hero, 100)
+    expect(r.finalDamage).toBe(88)
+    expect(r.stanceMitigated).toBe(12)
   })
 })
 

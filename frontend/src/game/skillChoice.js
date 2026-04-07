@@ -1,21 +1,21 @@
 /**
- * Skill choice logic when hero reaches level 5, 10, 15, ... 60.
- * Design doc: 4.2, 4.3 - enhance existing or learn new; 3 fixed options per level.
+ * Skill choice when hero hits a milestone: multiples of 3 (enhance) and/or 10 (learn new).
+ * Design doc: 4.2, 4.3 - enhance existing or learn new; learn pools map to legacy tier rows.
  * Non-blocking: player may skip; game continues.
  */
 
 import { getWarriorSkillById } from './warriorSkills.js'
-import {
-  isSkillChoiceLevel,
-  getNewSkillsAtLevel,
-  getLevelSkillById,
-  SKILL_CHOICE_LEVELS,
-} from './warriorLevelSkills.js'
+import { getNewSkillsAtLevel, getLevelSkillById } from './warriorLevelSkills.js'
 import { getMageSkillById } from './mageSkills.js'
 import {
   getMageNewSkillsAtLevel,
   getLevelSkillById as getMageLevelSkillById,
 } from './mageLevelSkills.js'
+import { getAnyPriestSkillById } from './priestSkills.js'
+import {
+  getPriestNewSkillsAtLevel,
+  getPriestLevelSkillById,
+} from './priestLevelSkills.js'
 
 /**
  * Get hero's skill ids (supports both legacy 'skill' and 'skills' array).
@@ -34,10 +34,36 @@ export function getHeroSkillIds(hero) {
 
 const MAX_ENHANCE_COUNT = 3
 
+/** Sorted levels where a skill choice may occur (3..60: every 3; plus 10,20,...,60). */
+export const SKILL_MILESTONE_LEVELS = (() => {
+  const set = new Set()
+  for (let n = 3; n <= 60; n += 1) {
+    if (n % 3 === 0) set.add(n)
+    if (n >= 10 && n % 10 === 0) set.add(n)
+  }
+  return [...set].sort((a, b) => a - b)
+})()
+
+/**
+ * @param {number} level
+ * @returns {boolean}
+ */
+export function isSkillMilestoneLevel(level) {
+  return level >= 3 && level <= 60 && (level % 3 === 0 || (level >= 10 && level % 10 === 0))
+}
+
+function isEnhanceMilestone(level) {
+  return level >= 3 && level <= 60 && level % 3 === 0
+}
+
+function isLearnMilestone(level) {
+  return level >= 10 && level <= 60 && level % 10 === 0
+}
+
 /**
  * Get options for skill choice at a given level.
  * @param {Object} hero - Hero object
- * @param {number} level - New level (5, 10, 15, ...)
+ * @param {number} level - Milestone level (e.g. 3, 6, 10, 30)
  * @returns {{ canEnhance: boolean, enhanceableSkillIds: string[], newSkills: Array<{id:string,name:string,spec:string,effectDesc:string,rageCost?:number,manaCost?:number}> }}
  */
 export function getSkillChoiceOptions(hero, level) {
@@ -46,18 +72,19 @@ export function getSkillChoiceOptions(hero, level) {
     (id) => (hero.skillEnhancements?.[id]?.enhanceCount ?? 0) < MAX_ENHANCE_COUNT
   )
   const existingSet = new Set(existingIds)
-  const levelSkills =
-    hero.class === 'Warrior'
-      ? getNewSkillsAtLevel(hero.class, level)
-      : hero.class === 'Mage'
-        ? getMageNewSkillsAtLevel(hero.class, level)
-        : []
-  const unlearned = levelSkills.filter((s) => !existingSet.has(s.id))
 
-  return {
-    canEnhance: enhanceableSkillIds.length > 0,
-    enhanceableSkillIds,
-    newSkills: unlearned.map((s) => ({
+  const canEnhance = isEnhanceMilestone(level) && enhanceableSkillIds.length > 0
+
+  let newSkills = []
+  if (isLearnMilestone(level) && (hero.class === 'Warrior' || hero.class === 'Mage' || hero.class === 'Priest')) {
+    const levelSkills =
+      hero.class === 'Warrior'
+        ? getNewSkillsAtLevel(hero.class, level)
+        : hero.class === 'Mage'
+          ? getMageNewSkillsAtLevel(hero.class, level)
+          : getPriestNewSkillsAtLevel(hero.class, level)
+    const unlearned = levelSkills.filter((s) => !existingSet.has(s.id))
+    newSkills = unlearned.map((s) => ({
       id: s.id,
       name: s.name,
       spec: s.spec,
@@ -65,7 +92,13 @@ export function getSkillChoiceOptions(hero, level) {
       rageCost: s.rageCost,
       manaCost: s.manaCost,
       cooldown: s.cooldown,
-    })),
+    }))
+  }
+
+  return {
+    canEnhance,
+    enhanceableSkillIds: canEnhance ? enhanceableSkillIds : [],
+    newSkills,
   }
 }
 
@@ -76,22 +109,22 @@ export function getSkillChoiceOptions(hero, level) {
  * @returns {boolean}
  */
 export function hasSkillChoiceAtLevel(hero, level) {
-  if (!isSkillChoiceLevel(level)) return false
-  if (hero.class !== 'Warrior' && hero.class !== 'Mage') return false
+  if (!isSkillMilestoneLevel(level)) return false
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest') return false
   const opts = getSkillChoiceOptions(hero, level)
   return opts.canEnhance || opts.newSkills.length > 0
 }
 
 /**
- * Lowest milestone level (5, 10, ...) still needing a skill choice for this hero.
+ * Lowest milestone level still needing a skill choice for this hero.
  * Used to reopen the skill choice UI after skip or overlay close.
  * @param {Object} hero
  * @returns {number|null}
  */
 export function getFirstUnresolvedSkillChoiceLevel(hero) {
-  if (hero.class !== 'Warrior' && hero.class !== 'Mage') return null
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest') return null
   const heroLevel = hero.level ?? 1
-  for (const level of SKILL_CHOICE_LEVELS) {
+  for (const level of SKILL_MILESTONE_LEVELS) {
     if (level > heroLevel) break
     if (hasSkillChoiceAtLevel(hero, level)) return level
   }
@@ -111,6 +144,8 @@ export function applyLearnNewSkill(hero, skillId, level) {
       ? getNewSkillsAtLevel(hero.class, level)
       : hero.class === 'Mage'
         ? getMageNewSkillsAtLevel(hero.class, level)
+        : hero.class === 'Priest'
+          ? getPriestNewSkillsAtLevel(hero.class, level)
         : []
   const def = levelSkills.find((s) => s.id === skillId)
   if (!def) return false
@@ -145,6 +180,8 @@ export function applyEnhanceSkill(hero, skillId) {
       ? (getWarriorSkillById(skillId) ?? getLevelSkillById(skillId))
       : hero.class === 'Mage'
         ? (getMageSkillById(skillId) ?? getMageLevelSkillById(skillId))
+        : hero.class === 'Priest'
+          ? (getAnyPriestSkillById(skillId) ?? getPriestLevelSkillById(skillId))
         : null
   if (!def) return false
 

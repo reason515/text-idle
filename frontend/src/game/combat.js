@@ -16,6 +16,8 @@ import {
   getEffectiveArmor,
   getEffectiveResistance,
   tickDebuffs,
+  tickHeroBuffs,
+  applyDefensiveStanceToIncomingDamage,
   executeWarriorSkill,
   executeCleave,
   getSunderDebuff,
@@ -24,12 +26,16 @@ import {
   getAnyMageSkillById,
   getMageSkillWithEnhancements,
   executeMageSkill,
+  executeFrostNova,
   consumeFreezeTurn,
 } from './mageSkills.js'
 import {
-  getPriestSkillById,
+  getAnyPriestSkillById,
+  getPriestSkillWithEnhancements,
   executeFlashHeal,
+  executeGreaterHeal,
   executePowerWordShield,
+  executeShadowWordPain,
   applyDamageToShieldedUnit,
 } from './priestSkills.js'
 import { getHeroSkillIds } from './skillChoice.js'
@@ -501,6 +507,7 @@ function heroCombatStats(hero) {
     skills: getHeroSkillIds(hero),
     skillEnhancements: hero.skillEnhancements ?? {},
     debuffs: [],
+    buffs: [],
     tactics: hero.tactics ?? null,
     hitThisRound: false,
     skillCooldowns: {},
@@ -577,7 +584,7 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
   return orderUnitsByAgility(all, rng)
 }
 
-const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield']
+const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal']
 
 export function pickTarget(actor, heroes, monsters, opts = {}) {
   const { threat, tauntState, skillId, conditions, rng, designatedTank, round, monsterLastTarget } = opts
@@ -864,6 +871,40 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
 
+          if (skillId === 'defensive-stance') {
+            const dsCond = conditions.find((c) => c.skillId === skillId)
+            if (dsCond && !checkCondition(dsCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+            actor.currentMP = Math.max(0, (actor.currentMP || 0) - (skill.rageCost ?? 0))
+            if (!actor.buffs) actor.buffs = []
+            actor.buffs = actor.buffs.filter((b) => b.type !== 'defensive-stance')
+            actor.buffs.push({
+              type: 'defensive-stance',
+              remainingRounds: skill.stanceDuration ?? 3,
+              damageReductionPct: skill.damageReductionPct ?? 12,
+            })
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: 'defensive-stance',
+              skillName: '防御姿态',
+              skillSpec: '防护',
+              defensiveStanceApplied: true,
+              defensiveStancePct: skill.damageReductionPct ?? 12,
+              defensiveStanceRounds: skill.stanceDuration ?? 3,
+              rageConsumed: skill.rageCost ?? 0,
+              rageAfter: actor.currentMP,
+            })
+            usedSkill = true
+            break
+          }
+
           const cond = conditions.find((c) => c.skillId === skillId)
           let target
           if (cond && tacticsConditionWhenRequiresPickedTarget(cond)) {
@@ -1119,6 +1160,81 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
           const critBonus = skill.spellCritBonus ?? 0
           const isCrit = rng() < Math.min(1, (actor.spellCrit || 0) + critBonus)
+
+          if (skillId === 'frost-nova') {
+            const aliveMonsters = alive(monsterUnits)
+            if (aliveMonsters.length === 0) continue
+            const sr = executeFrostNova(actor, aliveMonsters, skill, { isCrit, rng })
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            const firstHit = sr.hits[0]
+            let targetHPBefore = mageTarget.currentHP
+            let targetHPAfter = mageTarget.currentHP
+            if (firstHit) {
+              const m0 = aliveMonsters.find((m) => m.id === firstHit.targetId)
+              if (m0) {
+                targetHPAfter = m0.currentHP
+                targetHPBefore = targetHPAfter + firstHit.finalDamage
+              }
+            }
+            const entry = {
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: firstHit?.targetId ?? mageTarget.id,
+              targetName: firstHit?.targetName ?? mageTarget.name,
+              targetClass: (firstHit?.targetClass ?? mageTarget.class) || null,
+              targetTier: (firstHit?.targetTier ?? mageTarget.tier) || null,
+              damageType: 'magic',
+              rawDamage: sr.rawDamage,
+              isCrit,
+              finalDamage: sr.totalDamage,
+              absorbed: 0,
+              targetDefense: firstHit?.effectiveResistance ?? 0,
+              targetHPBefore,
+              targetHPAfter,
+              targetMaxHP: mageTarget.maxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              cleaveTargets: sr.hits.length,
+              frostNovaHits: sr.hits.map((h) => ({
+                targetId: h.targetId,
+                targetName: h.targetName,
+                freezeProcced: h.freezeProcced,
+                finalDamage: h.finalDamage,
+              })),
+            }
+            if (sr.manaRefluxGain > 0) entry.weaponManaReflux = sr.manaRefluxGain
+            if (sr.manaOnCastGain > 0) entry.weaponManaOnCast = sr.manaOnCastGain
+            const mhMag = heroMitigationNoteKind(actor, 'magic')
+            if (mhMag) entry.heroMitigationKind = mhMag
+            if (sr.hits.some((h) => h.freezeProcced)) {
+              entry.debuffApplied = true
+              entry.debuffType = 'freeze'
+              entry.debuffFreezeActions = 1
+            }
+            for (const h of sr.hits) {
+              if (h.finalDamage > 0) {
+                addThreatFromDamage(threat, h.targetId, actor.id, h.finalDamage, 1)
+              }
+            }
+            if (firstHit && firstHit.finalDamage > 0) {
+              entry.threatAmount = firstHit.finalDamage
+              entry.threatTargetName = firstHit.targetName
+            }
+            log.push(entry)
+            usedSkill = true
+            break
+          }
+
           const targetHPBefore = mageTarget.currentHP
           const sr = executeMageSkill(actor, mageTarget, skill, { isCrit, rng })
           if (!actor.skillCooldowns) actor.skillCooldowns = {}
@@ -1187,12 +1303,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         }
       }
 
-      // Priest skill path: Flash Heal, Power Word: Shield (ally targets)
+      // Priest skill path: ally heals/shield + threat utility + shadow DOT
       const priestSkillPriority = getSkillPriority(actor)
       if (actor.side === 'hero' && actor.class === 'Priest' && priestSkillPriority.length > 0) {
         let usedSkill = false
         for (const skillId of priestSkillPriority) {
-          const skill = getPriestSkillById(skillId)
+          const skill = getPriestSkillWithEnhancements(actor, skillId) ?? getAnyPriestSkillById(skillId)
           const manaCost = skill?.manaCost ?? 999
           if (!skill || manaCost > (actor.currentMP || 0)) continue
 
@@ -1204,22 +1320,30 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           } else if (priestCond && !tacticsConditionWhenRequiresPickedTarget(priestCond) && !checkCondition(priestCond, actor, null, heroUnits, monsterUnits, ctx)) {
             continue
           }
-          let priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
-            skillId,
-            conditions,
-            rng,
-            round,
-            threat,
-            tauntState,
-            designatedTank: designatedTankUnit,
-          })
-          if (!priestTarget) continue
+          let priestTarget = null
+          if (skillId === 'fade-mind') {
+            priestTarget = actor
+          } else {
+            priestTarget = pickTarget(actor, heroUnits, monsterUnits, {
+              skillId,
+              conditions,
+              rng,
+              round,
+              threat,
+              tauntState,
+              designatedTank: designatedTankUnit,
+            })
+            if (!priestTarget) continue
+          }
           if (priestCond && tacticsConditionWhenRequiresPickedTarget(priestCond) && !checkCondition(priestCond, actor, priestTarget, heroUnits, monsterUnits, ctx)) {
             continue
           }
 
-          if (skillId === 'flash-heal') {
-            const sr = executeFlashHeal(actor, priestTarget, skill, { rng })
+          if (skillId === 'flash-heal' || skillId === 'greater-heal') {
+            const sr =
+              skillId === 'greater-heal'
+                ? executeGreaterHeal(actor, priestTarget, skill, { rng })
+                : executeFlashHeal(actor, priestTarget, skill, { rng })
             const entry = {
               round,
               actorId: actor.id,
@@ -1303,6 +1427,77 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             usedSkill = true
             break
           }
+          if (skillId === 'fade-mind') {
+            let cleared = 0
+            for (const m of alive(monsterUnits)) {
+              if (!threat[m.id]) continue
+              const before = threat[m.id][actor.id] ?? 0
+              if (before > 0) cleared += before
+              threat[m.id][actor.id] = 0
+            }
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: skill.id,
+              skillName: skill.name,
+              skillSpec: skill.spec,
+              targetId: actor.id,
+              targetName: actor.name,
+              targetClass: actor.class || null,
+              targetTier: null,
+              manaConsumed: skill.manaCost ?? 0,
+              manaAfter: actor.currentMP,
+              threatCleared: cleared,
+            })
+            emitMonsterIntentChangesIfNeeded()
+            usedSkill = true
+            break
+          }
+          if (skillId === 'shadow-word-pain') {
+            const sr = executeShadowWordPain(actor, priestTarget, skill, { rng })
+            if (sr.finalDamage > 0) {
+              addThreatFromDamage(threat, priestTarget.id, actor.id, sr.finalDamage, 1)
+            }
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: priestTarget.id,
+              targetName: priestTarget.name,
+              targetClass: priestTarget.class || null,
+              targetTier: priestTarget.tier || null,
+              damageType: 'magic',
+              finalDamage: sr.finalDamage,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              debuffApplied: sr.debuffApplied,
+              debuffRefreshed: sr.debuffRefreshed,
+              debuffType: sr.debuffType,
+              debuffDuration: sr.debuffDuration,
+              debuffDamagePerRound: sr.debuffDamagePerRound,
+              debuffDamageType: sr.debuffDamageType,
+              threatAmount: sr.finalDamage > 0 ? sr.finalDamage : null,
+              threatTargetName: sr.finalDamage > 0 ? priestTarget.name : null,
+            })
+            emitMonsterIntentChangesIfNeeded()
+            usedSkill = true
+            break
+          }
         }
         if (usedSkill) {
           continue
@@ -1348,10 +1543,21 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           : actor.side === 'hero' && action.damageType === 'magic'
             ? { spellPen: actor.spellPen ?? 0, ignoreResistPct: actor.spellIgnoreResistPct ?? 0 }
             : {}
-      const damage =
+      let damage =
         actor.side === 'hero'
           ? applyDamageWithWeaponAffixes(rawAfterCrit, action.damageType, target, weaponOpts)
           : applyDamage(rawAfterCrit, action.damageType, target)
+      if (target.side === 'hero') {
+        const ds = applyDefensiveStanceToIncomingDamage(target, damage.finalDamage)
+        if (ds.stanceMitigated > 0) {
+          damage = {
+            ...damage,
+            finalDamage: ds.finalDamage,
+            nextHP: Math.max(0, (target.currentHP || 0) - ds.finalDamage),
+            defensiveStanceMitigated: ds.stanceMitigated,
+          }
+        }
+      }
       if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
         const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
         damage.absorbedByShield = shieldResult.absorbed
@@ -1585,10 +1791,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     for (const unit of [...heroUnits, ...monsterUnits]) {
       if (unit.currentHP <= 0) continue
       const dotDebuffs = (unit.debuffs || []).filter(
-        (d) => (d.type === 'bleed' || d.type === 'burn') && d.damagePerRound > 0
+        (d) => (d.type === 'bleed' || d.type === 'burn' || d.type === 'shadow-pain') && d.damagePerRound > 0
       )
       for (const d of dotDebuffs) {
-        const dotDamage = d.damagePerRound
+        let dotDamage = d.damagePerRound
+        if (unit.side === 'hero') {
+          dotDamage = applyDefensiveStanceToIncomingDamage(unit, dotDamage).finalDamage
+        }
         const hpBefore = unit.currentHP
         const sr = applyDamageToShieldedUnit(unit, dotDamage)
         log.push({
@@ -1659,6 +1868,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     // Tick debuffs at end of each round
     for (const unit of [...heroUnits, ...monsterUnits]) {
       tickDebuffs(unit)
+    }
+    for (const unit of heroUnits) {
+      tickHeroBuffs(unit)
     }
 
     round += 1

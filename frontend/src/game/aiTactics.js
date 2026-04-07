@@ -416,6 +416,7 @@ export const SKILL_NAME_MAP = {
     'bloodthirst': '嗜血',
     'cleave': '顺劈斩',
     'whirlwind': '旋风斩',
+    'defensive-stance': '防御姿态',
     'rend': '撕裂',
     'raging-strike': '狂怒打击',
     'shield-slam': '盾牌猛击',

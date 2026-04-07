@@ -1,7 +1,7 @@
 /**
- * Mage skills unlocked at level 5, 10, 15, ... 60.
- * Design doc: 8.2.4, 8.2.5 - one skill per spec (Arcane, Frost, Fire) per level.
- * Used by skill choice modal when hero reaches level that is a multiple of 5.
+ * Mage skills by legacy tier (5, 10, 15, ... 60).
+ * New skills at learn milestones 10, 20, ... 60 map to tier rows below.
+ * Design doc: 8.2.4, 8.2.5.
  */
 
 /** @typedef {{ id: string, name: string, spec: string, manaCost: number, cooldown?: number, effectDesc: string, coefficient?: number, targets?: number }} MageLevelSkillDef */
@@ -10,7 +10,17 @@
 export const MAGE_LEVEL_SKILLS = {
   5: [
     { id: 'arcane-missiles', name: '奥术飞弹', spec: '奥术', manaCost: 11, cooldown: 0, coefficient: 1.0, effectDesc: '1.0 倍伤害，恢复造成伤害 10% 的法力' },
-    { id: 'frost-nova', name: '冰霜新星', spec: '冰霜', manaCost: 11, cooldown: 2, coefficient: 0.5, targets: -1, effectDesc: '对所有造成 0.5 倍伤害，-20% 敏捷 2 回合，2 回合 CD' },
+    {
+      id: 'frost-nova',
+      name: '冰霜新星',
+      spec: '冰霜',
+      manaCost: 11,
+      cooldown: 2,
+      coefficient: 0.5,
+      targets: -1,
+      freezeChance: 0.25,
+      effectDesc: '对所有敌人 0.5 倍法术伤害；每名敌人 25% 概率冰冻 1 次行动（独立判定）；2 回合 CD',
+    },
     { id: 'flamestrike', name: '烈焰风暴', spec: '火焰', manaCost: 14, cooldown: 2, coefficient: 0.55, targets: -1, effectDesc: '对所有造成 0.55 倍伤害 + 燃烧 2 回合，2 回合 CD' },
   ],
   10: [
@@ -70,18 +80,27 @@ export const MAGE_LEVEL_SKILLS = {
   ],
 }
 
-/** Levels that trigger skill choice (5, 10, 15, ... 60) */
-export const MAGE_SKILL_CHOICE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+/** Learn milestone (10, 20, ... 60) -> legacy tier key in MAGE_LEVEL_SKILLS */
+export const MAGE_LEARN_MILESTONE_TO_POOL_KEY = {
+  10: 5,
+  20: 15,
+  30: 25,
+  40: 35,
+  50: 45,
+  60: 60,
+}
 
 /**
- * Get the 3 new skills offered at a given level for Mage.
+ * Get the 3 new skills offered at a learn milestone for Mage.
  * @param {string} heroClass - e.g. 'Mage'
- * @param {number} level - 5, 10, 15, ...
- * @returns {MageLevelSkillDef[]} Empty if class/level not supported
+ * @param {number} level - Hero level at a learn milestone (10, 20, ... 60)
+ * @returns {MageLevelSkillDef[]} Empty if not a learn milestone or wrong class
  */
 export function getMageNewSkillsAtLevel(heroClass, level) {
   if (heroClass !== 'Mage') return []
-  return MAGE_LEVEL_SKILLS[level] ?? []
+  const poolKey = MAGE_LEARN_MILESTONE_TO_POOL_KEY[level]
+  if (poolKey == null) return []
+  return MAGE_LEVEL_SKILLS[poolKey] ?? []
 }
 
 /**

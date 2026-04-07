@@ -8,6 +8,8 @@ import {
   getSkillChoiceOptions,
   hasSkillChoiceAtLevel,
   getFirstUnresolvedSkillChoiceLevel,
+  isSkillMilestoneLevel,
+  SKILL_MILESTONE_LEVELS,
   applyLearnNewSkill,
   applyEnhanceSkill,
 } from './skillChoice.js'
@@ -29,108 +31,141 @@ describe('skillChoice', () => {
     })
   })
 
+  describe('isSkillMilestoneLevel / SKILL_MILESTONE_LEVELS', () => {
+    it('includes 3 (enhance) and 10 (learn) but not 5', () => {
+      expect(isSkillMilestoneLevel(3)).toBe(true)
+      expect(isSkillMilestoneLevel(5)).toBe(false)
+      expect(isSkillMilestoneLevel(10)).toBe(true)
+      expect(SKILL_MILESTONE_LEVELS).toContain(3)
+      expect(SKILL_MILESTONE_LEVELS).toContain(10)
+    })
+  })
+
   describe('getSkillChoiceOptions', () => {
-    it('returns canEnhance and newSkills for Warrior at Lv 5', () => {
+    it('at Lv3 Warrior: enhance only (no new skill pool)', () => {
       const hero = { class: 'Warrior', skill: 'heroic-strike' }
-      const opts = getSkillChoiceOptions(hero, 5)
+      const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.canEnhance).toBe(true)
+      expect(opts.newSkills.length).toBe(0)
+    })
+
+    it('at Lv10 Warrior: learn pool from tier 5 row (10 is not a enhance milestone)', () => {
+      const hero = { class: 'Warrior', skill: 'heroic-strike' }
+      const opts = getSkillChoiceOptions(hero, 10)
+      expect(opts.canEnhance).toBe(false)
       expect(opts.newSkills.length).toBe(3)
       expect(opts.newSkills.map((s) => s.id)).toContain('cleave')
     })
 
-    it('excludes already learned skills from newSkills', () => {
+    it('at Lv30 Warrior: both enhance (3 multiple) and learn', () => {
+      const hero = { class: 'Warrior', skill: 'heroic-strike' }
+      const opts = getSkillChoiceOptions(hero, 30)
+      expect(opts.canEnhance).toBe(true)
+      expect(opts.newSkills.length).toBeGreaterThan(0)
+    })
+
+    it('excludes already learned skills from newSkills at learn milestone', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike', 'cleave'] }
-      const opts = getSkillChoiceOptions(hero, 5)
+      const opts = getSkillChoiceOptions(hero, 10)
       expect(opts.newSkills.map((s) => s.id)).not.toContain('cleave')
       expect(opts.newSkills.length).toBe(2)
     })
 
     it('returns enhanceableSkillIds (skills with enhanceCount < 3)', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } }
-      const opts = getSkillChoiceOptions(hero, 5)
+      const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.enhanceableSkillIds).toContain('heroic-strike')
       expect(opts.canEnhance).toBe(true)
     })
 
     it('excludes skills at max enhance (3) from enhanceableSkillIds', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 3 } } }
-      const opts = getSkillChoiceOptions(hero, 5)
+      const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.enhanceableSkillIds).not.toContain('heroic-strike')
       expect(opts.canEnhance).toBe(false)
     })
 
-    it('canEnhance false when no existing skills', () => {
+    it('canEnhance false when no existing skills at enhance milestone', () => {
       const hero = { class: 'Warrior' }
-      const opts = getSkillChoiceOptions(hero, 5)
+      const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.canEnhance).toBe(false)
     })
 
-    it('returns canEnhance and newSkills for Mage at Lv 5', () => {
+    it('returns learn pool for Mage at Lv10 (no enhance-only at 10)', () => {
       const hero = { class: 'Mage', skill: 'frostbolt' }
-      const opts = getSkillChoiceOptions(hero, 5)
-      expect(opts.canEnhance).toBe(true)
+      const opts = getSkillChoiceOptions(hero, 10)
+      expect(opts.canEnhance).toBe(false)
       expect(opts.newSkills.length).toBe(3)
-      expect(opts.newSkills.map((s) => s.id)).toContain('arcane-missiles')
       expect(opts.newSkills.map((s) => s.id)).toContain('frost-nova')
-      expect(opts.newSkills.map((s) => s.id)).toContain('flamestrike')
     })
   })
 
   describe('hasSkillChoiceAtLevel', () => {
-    it('returns true for Warrior at Lv 5 with initial skill', () => {
+    it('returns true for Warrior at Lv3 with initial skill', () => {
       const hero = { class: 'Warrior', skill: 'heroic-strike' }
-      expect(hasSkillChoiceAtLevel(hero, 5)).toBe(true)
+      expect(hasSkillChoiceAtLevel(hero, 3)).toBe(true)
     })
 
-    it('returns false for non-5x level', () => {
+    it('returns false at Lv5 (not a milestone)', () => {
       const hero = { class: 'Warrior', skill: 'heroic-strike' }
-      expect(hasSkillChoiceAtLevel(hero, 6)).toBe(false)
-    })
-
-    it('returns false for class without skill choice (e.g. Priest)', () => {
-      const hero = { class: 'Priest' }
       expect(hasSkillChoiceAtLevel(hero, 5)).toBe(false)
     })
 
-    it('returns true for Mage at Lv 5 with initial skill', () => {
+    it('returns true for Priest at Lv3 with initial skill', () => {
+      const hero = { class: 'Priest', skill: 'flash-heal' }
+      expect(hasSkillChoiceAtLevel(hero, 3)).toBe(true)
+    })
+
+    it('returns true for Mage at Lv3 with initial skill', () => {
       const hero = { class: 'Mage', skill: 'frostbolt' }
-      expect(hasSkillChoiceAtLevel(hero, 5)).toBe(true)
+      expect(hasSkillChoiceAtLevel(hero, 3)).toBe(true)
     })
   })
 
   describe('getFirstUnresolvedSkillChoiceLevel', () => {
-    it('returns 5 when Warrior at Lv 5 still has a choice at milestone 5', () => {
+    it('returns 3 when Warrior at Lv5 still has milestone 3 unresolved', () => {
       const hero = { class: 'Warrior', level: 5, skill: 'heroic-strike' }
-      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(5)
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)
     })
 
-    it('returns null when Priest', () => {
-      const hero = { class: 'Priest', level: 5 }
-      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(null)
+    it('returns 3 when Priest at Lv5 still has milestone 3 unresolved', () => {
+      const hero = { class: 'Priest', level: 5, skill: 'flash-heal' }
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)
     })
 
-    it('returns 10 when milestone 5 is exhausted but 10 still has options', () => {
+    it('returns 10 when lower milestones resolved but 10 still has learn options', () => {
       const hero = {
         class: 'Warrior',
         level: 10,
-        skills: ['heroic-strike', 'cleave', 'whirlwind', 'taunt'],
+        skills: ['heroic-strike'],
         skillEnhancements: {
           'heroic-strike': { enhanceCount: 3 },
-          cleave: { enhanceCount: 3 },
-          whirlwind: { enhanceCount: 3 },
-          taunt: { enhanceCount: 3 },
         },
       }
-      const opts5 = getSkillChoiceOptions(hero, 5)
-      expect(opts5.canEnhance || opts5.newSkills.length).toBe(0)
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(10)
+    })
+
+    it('returns 20 when L10 pool learned and every known skill is max-enhanced', () => {
+      const hero = {
+        class: 'Warrior',
+        level: 20,
+        skills: ['sunder-armor', 'taunt', 'cleave', 'whirlwind', 'defensive-stance'],
+        skillEnhancements: {
+          'sunder-armor': { enhanceCount: 3 },
+          taunt: { enhanceCount: 3 },
+          cleave: { enhanceCount: 3 },
+          whirlwind: { enhanceCount: 3 },
+          'defensive-stance': { enhanceCount: 3 },
+        },
+      }
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(20)
     })
   })
 
   describe('applyLearnNewSkill', () => {
-    it('adds new skill to hero', () => {
+    it('adds new skill to hero at learn milestone 10', () => {
       const hero = { class: 'Warrior', skill: 'heroic-strike' }
-      const ok = applyLearnNewSkill(hero, 'cleave', 5)
+      const ok = applyLearnNewSkill(hero, 'cleave', 10)
       expect(ok).toBe(true)
       expect(hero.skills).toContain('heroic-strike')
       expect(hero.skills).toContain('cleave')
@@ -139,12 +174,19 @@ describe('skillChoice', () => {
 
     it('returns false for invalid skill id', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike'] }
-      expect(applyLearnNewSkill(hero, 'unknown', 5)).toBe(false)
+      expect(applyLearnNewSkill(hero, 'unknown', 10)).toBe(false)
     })
 
     it('returns false when skill already learned', () => {
       const hero = { class: 'Warrior', skills: ['cleave'] }
-      expect(applyLearnNewSkill(hero, 'cleave', 5)).toBe(false)
+      expect(applyLearnNewSkill(hero, 'cleave', 10)).toBe(false)
+    })
+
+    it('adds Priest Lv10 new skill', () => {
+      const hero = { class: 'Priest', skills: ['flash-heal', 'power-word-shield'] }
+      const ok = applyLearnNewSkill(hero, 'greater-heal', 10)
+      expect(ok).toBe(true)
+      expect(hero.skills).toContain('greater-heal')
     })
   })
 

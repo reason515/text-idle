@@ -5,7 +5,7 @@
         <span :style="{ color: classColor(hero?.class) }">{{ heroDisplayName(hero?.name) }}</span>
         <span> 达到 {{ level }} 级 — 技能选择</span>
       </div>
-      <p class="skill-choice-subtitle">强化已有技能或学习新技能。可跳过，游戏继续。</p>
+      <p class="skill-choice-subtitle">{{ choiceSubtitle }}</p>
 
       <div v-if="options.canEnhance" class="skill-choice-section">
         <h3 class="section-label">强化已有技能</h3>
@@ -72,12 +72,13 @@ import { ref, computed, watch } from 'vue'
 import { CLASS_COLORS } from '../data/heroes.js'
 import { getAnyWarriorSkillById, getEnhancementPreviewEffectDesc } from '../game/warriorSkills.js'
 import { getAnyMageSkillById, getMageEnhancementPreviewEffectDesc } from '../game/mageSkills.js'
+import { getAnyPriestSkillById, getPriestEnhancementPreviewEffectDesc } from '../game/priestSkills.js'
 import { getSkillChoiceOptions } from '../game/skillChoice.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 
 const props = defineProps({
   hero: { type: Object, default: null },
-  level: { type: Number, default: 5 },
+  level: { type: Number, default: 3 },
 })
 
 const emit = defineEmits(['skip', 'enhance', 'learn'])
@@ -93,6 +94,22 @@ const options = computed(() => {
   return getSkillChoiceOptions(props.hero, props.level)
 })
 
+const choiceSubtitle = computed(() => {
+  const o = options.value
+  const hasEnh = o.canEnhance
+  const hasLearn = o.newSkills.length > 0
+  if (hasEnh && hasLearn) {
+    return '本等级可同时强化已有技能或学习一项新技能（确认时二选一）。可跳过，稍后可在角色详情技能页继续。'
+  }
+  if (hasEnh) {
+    return '本等级为强化里程碑：可强化一项已有技能。可跳过，游戏继续。'
+  }
+  if (hasLearn) {
+    return '本等级为学新里程碑：可从下列新技能中选学一项。可跳过，游戏继续。'
+  }
+  return '当前无可选强化或学新。可跳过。'
+})
+
 /** Normalize skill id from string or { id } object (backward compat). */
 function normalizeSkillId(skillIdOrObj) {
   if (typeof skillIdOrObj === 'string') return skillIdOrObj
@@ -105,6 +122,9 @@ function getSkillDisplay(skillId) {
   const heroClass = props.hero?.class
   if (heroClass === 'Mage') {
     return getAnyMageSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', manaCost: null }
+  }
+  if (heroClass === 'Priest') {
+    return getAnyPriestSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', manaCost: null }
   }
   return getAnyWarriorSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', rageCost: null }
 }
@@ -120,6 +140,9 @@ function getEnhanceEffectDesc(skillId) {
   if (props.hero) {
     if (props.hero.class === 'Mage') {
       const preview = getMageEnhancementPreviewEffectDesc(props.hero, id)
+      if (preview) return preview
+    } else if (props.hero.class === 'Priest') {
+      const preview = getPriestEnhancementPreviewEffectDesc(props.hero, id)
       if (preview) return preview
     } else {
       const preview = getEnhancementPreviewEffectDesc(props.hero, id)

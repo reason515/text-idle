@@ -428,7 +428,7 @@
                 <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
               </template>
               <div
-                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || weaponMechanicLines(entry).length || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined"
+                v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || weaponMechanicLines(entry).length || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined || (entry.skillId === 'frost-nova' && entry.frostNovaHits?.length)"
                 class="log-detail-box"
               >
                 <div v-if="entry.targetReason" class="log-target-reason">
@@ -452,6 +452,11 @@
                 </div>
                 <div v-if="entry.skillId === 'frostbolt' && entry.frostboltFreezeProcced !== undefined" class="log-calc">
                   {{ entry.frostboltFreezeProcced ? '已触发冰冻' : '未触发冰冻' }}
+                </div>
+                <div v-if="entry.skillId === 'frost-nova' && entry.frostNovaHits?.length" class="log-calc">
+                  <span v-for="(h, hIdx) in entry.frostNovaHits" :key="'fn-' + hIdx">
+                    {{ h.targetName }}：{{ h.freezeProcced ? '已冰冻' : '未冰冻' }}<span v-if="hIdx < entry.frostNovaHits.length - 1">；</span>
+                  </span>
                 </div>
                 <div v-if="entry.tauntApplied" class="log-calc">
                   持续({{ entry.tauntActionsRemaining ?? 2 }} 次行动):
@@ -1598,7 +1603,13 @@ function getMonsterArmorTooltip(unit) {
   return `Absorbs ${effective} physical damage per hit`
 }
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
-import { getPriestSkillById, tickShieldDuration } from '../game/priestSkills.js'
+import {
+  getPriestSkillById,
+  getAnyPriestSkillById,
+  getPriestSkillWithEnhancements,
+  isPriestAllyTargetSkill,
+  tickShieldDuration,
+} from '../game/priestSkills.js'
 import {
   getHeroSkillIds,
   hasSkillChoiceAtLevel,
@@ -1854,7 +1865,7 @@ const toastMessages = ref([])
 let toastId = 0
 const pendingSkillChoices = ref([])
 
-/** Milestone level (5, 10, ...) with an unfinished skill choice; uses live squad hero. */
+/** Milestone level with an unfinished skill choice; uses live squad hero. */
 const selectedHeroUnresolvedSkillLevel = computed(() => {
   const id = selectedHero.value?.id
   if (!id) return null
@@ -2400,7 +2411,7 @@ function tacticsDefaultTargetOptions() {
 }
 
 function skillTargetsAllies(skillId, hero) {
-  return hero?.class === 'Priest' && getPriestSkillById(skillId) != null
+  return hero?.class === 'Priest' && isPriestAllyTargetSkill(skillId)
 }
 
 function showWarriorTankTargetFallback(hero, skillId) {
@@ -2694,11 +2705,12 @@ function getHeroSkillDisplay(skillId, hero = null) {
     return enhanced ?? base
   }
   if (heroClass === 'Priest') {
-    const base = getPriestSkillById(skillId)
+    const base = getAnyPriestSkillById(skillId)
     if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
-    return base
+    const enhanced = hero ? getPriestSkillWithEnhancements(hero, skillId) : null
+    return enhanced ?? base
   }
-  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? getPriestSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
+  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? getAnyPriestSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
 }
 
 function getPrimaryAttrFullTip(attrKey) {
@@ -3163,7 +3175,7 @@ async function runCombatLoop() {
             pointsGained: r.levelsGained * POINTS_PER_LEVEL,
           })
           for (let l = oldLevel + 1; l <= hero.level; l += 1) {
-            if (l % 5 === 0 && hasSkillChoiceAtLevel(hero, l)) {
+            if (hasSkillChoiceAtLevel(hero, l)) {
               pendingSkillChoices.value.push({ heroIndex: i, hero: squad.value[i], level: l })
             }
           }

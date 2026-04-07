@@ -1,8 +1,7 @@
 /**
- * E2E: Skill selection at level 5 multiples (requirements Example 26).
- * - When hero reaches Lv 5, skill choice modal appears
- * - Player can enhance existing, learn new, or skip
- * - Game continues when skipped; hero detail Skills tab can reopen the modal (AC11)
+ * E2E: Skill milestones (every 3 = enhance; every 10 = learn new pool).
+ * - First modal at Lv 3 (enhance only)
+ * - Learn new (e.g. Cleave) at Lv 10 from first learn pool
  */
 
 const { test, expect } = require('@playwright/test')
@@ -13,7 +12,7 @@ const {
   uniqueTestEmail,
 } = require('./testHelpers')
 
-async function prepareWarriorLevelChoice(page, { level = 4, xp = 594, baseSkill = 'sunder-armor' } = {}) {
+async function prepareWarriorFirstMilestone(page, { level = 2, xp = 173, baseSkill = 'sunder-armor' } = {}) {
   await updateStoredState(page, ({ level, xp, baseSkill }) => {
     const squad = JSON.parse(localStorage.getItem('squad') || '[]')
     const warrior = squad.find((h) => h.class === 'Warrior')
@@ -48,79 +47,35 @@ async function waitForSkillChoiceModal(page, levelText) {
   return skillModal
 }
 
-test.describe('Skill Choice at Level 5 (Example 26)', () => {
-  test('AC1: skill choice modal appears when hero levels to 5', async ({ page }) => {
+test.describe('Skill choice milestones', () => {
+  test('AC1: skill choice modal appears when hero levels to 3', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac1')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await prepareWarriorLevelChoice(page)
-    const skillModal = await waitForSkillChoiceModal(page, '5 级')
-    await expect(skillModal).toContainText('5 级')
-    await expect(skillModal).toContainText('技能选择')
+    await prepareWarriorFirstMilestone(page)
+    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
+    await expect(skillModal).toContainText('3 \u7ea7')
+    await expect(skillModal).toContainText('\u6280\u80fd\u9009\u62e9')
   })
 
-  test('AC2: modal shows enhance and learn new options', async ({ page }) => {
+  test('AC2: at Lv3 modal shows enhance only (no learn-new row for tier skills)', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac2')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await prepareWarriorLevelChoice(page)
-    const skillModal = await waitForSkillChoiceModal(page, '5 级')
+    await prepareWarriorFirstMilestone(page)
+    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
 
-    await expect(skillModal.filter({ hasText: '强化已有技能' })).toBeVisible()
-    await expect(skillModal.filter({ hasText: '学习新技能' })).toBeVisible()
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '顺劈斩' })).toBeVisible()
+    await expect(skillModal.filter({ hasText: '\u5f3a\u5316\u5df2\u6709\u6280\u80fd' })).toBeVisible()
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' })).toHaveCount(0)
   })
 
-  test('AC4: learn Cleave adds skill to hero', async ({ page }) => {
+  test('AC4: learn Cleave at Lv10 adds skill to hero', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac4')
-    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await prepareWarriorLevelChoice(page)
-    const skillModal = await waitForSkillChoiceModal(page, '5 级')
-
-    await skillModal.locator('.skill-option').filter({ hasText: '顺劈斩' }).click()
-    await skillModal.getByRole('button', { name: '确认' }).click()
-
-    await expect(skillModal).not.toBeVisible()
-    await page.locator('.hero-card').first().click()
-    await page.getByRole('button', { name: '技能' }).click()
-    await expect(page.locator('.detail-section').filter({ hasText: '顺劈斩' })).toBeVisible()
-  })
-
-  test('AC3: enhance Sunder Armor applies enhancement (fixed trio Warrior)', async ({ page }) => {
-    test.setTimeout(120000)
-    const email = uniqueTestEmail('skill-choice-ac3')
-    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await prepareWarriorLevelChoice(page)
-    const skillModal = await waitForSkillChoiceModal(page, '5 级')
-
-    const sunderOption = skillModal.locator('.skill-option').filter({ hasText: '破甲' }).first()
-    await expect(sunderOption.locator('.skill-option-desc')).toContainText('1 -> 2')
-
-    await sunderOption.click()
-    await skillModal.getByRole('button', { name: '确认' }).click()
-
-    await expect(skillModal).not.toBeVisible()
-    const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
-    const warrior = squadAfter.find((h) => h.class === 'Warrior')
-    expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
-
-    await page.locator('.hero-card').first().click()
-    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
-    await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
-  })
-
-  test('Level 10 skill choice shows Shield Slam with Sunder crit synergy (Example 13a)', async ({ page }) => {
-    test.setTimeout(120000)
-    const email = uniqueTestEmail('skill-choice-shield-slam')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
@@ -145,13 +100,126 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
       }))
     }, undefined, { pauseFirst: true })
 
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
-    await expect(page.locator('.skill-choice-modal')).toContainText('10 级')
+    const skillModal = await waitForSkillChoiceModal(page, '10 \u7ea7')
+    await expect(skillModal).toContainText('10 \u7ea7')
 
-    const shieldSlamOption = page.locator('.skill-choice-modal .skill-option').filter({ hasText: '盾牌猛击' })
-    await expect(shieldSlamOption).toBeVisible()
-    await expect(shieldSlamOption).toContainText('破甲')
+    await skillModal.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' }).click()
+    await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
+
+    await expect(skillModal).not.toBeVisible()
+    await page.locator('.hero-card').first().click()
+    await page.getByRole('button', { name: '\u6280\u80fd' }).click()
+    await expect(page.locator('.detail-section').filter({ hasText: '\u987a\u5288\u65a9' })).toBeVisible()
+  })
+
+  test('Priest Lv10 learn pool shows Greater Heal / Fade Mind / Shadow Word: Pain', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = uniqueTestEmail('skill-choice-priest-l10')
+    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      const priest = squad.find((h) => h.class === 'Priest')
+      if (priest) {
+        priest.level = 10
+        priest.xp = 0
+        priest.skills = ['flash-heal', 'power-word-shield']
+        delete priest.skill
+        priest.skillEnhancements = {
+          'flash-heal': { enhanceCount: 3 },
+          'power-word-shield': { enhanceCount: 3 },
+        }
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 1,
+        currentMapId: 'elwynn-forest',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true })
+
+    await page.locator('.hero-card').filter({ hasText: '\u5b89\u5ea6\u56e0' }).first().click()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await page.getByTestId('skill-choice-from-detail-btn').click()
+
+    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
+    await expect(skillModal).toBeVisible({ timeout: 10000 })
+    await expect(skillModal).toContainText('10 \u7ea7')
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u5f3a\u6548\u6cbb\u7597' })).toBeVisible()
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u5fc3\u7075\u9041\u5f71' })).toBeVisible()
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u6697\u8a00\u672f\uff1a\u75db' })).toBeVisible()
+  })
+
+  test('AC3: enhance Sunder Armor applies enhancement (fixed trio Warrior)', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = uniqueTestEmail('skill-choice-ac3')
+    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await prepareWarriorFirstMilestone(page)
+    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
+
+    const sunderOption = skillModal.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first()
+    await expect(sunderOption.locator('.skill-option-desc')).toContainText('1 -> 2')
+
+    await sunderOption.click()
+    await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
+
+    await expect(skillModal).not.toBeVisible()
+    const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
+    const warrior = squadAfter.find((h) => h.class === 'Warrior')
+    expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
+
+    await page.locator('.hero-card').first().click()
+    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
+  })
+
+  test('Level 20 learn pool shows legacy tier 15 skills (Thunder Clap, not Shield Slam)', async ({ page }) => {
+    test.setTimeout(60000)
+    const email = uniqueTestEmail('skill-choice-l20-pool')
+    await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    // L10 pool complete + all known skills max-enhanced => first unresolved milestone is 20 (cannot rely on 19->20 XP in one fight).
+    await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      if (warrior) {
+        warrior.level = 20
+        warrior.xp = 0
+        warrior.skills = ['sunder-armor', 'taunt', 'cleave', 'whirlwind', 'defensive-stance']
+        delete warrior.skill
+        warrior.skillEnhancements = {
+          'sunder-armor': { enhanceCount: 3 },
+          taunt: { enhanceCount: 3 },
+          cleave: { enhanceCount: 3 },
+          whirlwind: { enhanceCount: 3 },
+          'defensive-stance': { enhanceCount: 3 },
+        }
+        localStorage.setItem('squad', JSON.stringify(squad))
+      }
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 1,
+        currentMapId: 'elwynn-forest',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true })
+
+    await page.locator('.hero-card').first().click()
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await page.getByTestId('skill-choice-from-detail-btn').click()
+
+    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
+    await expect(skillModal).toBeVisible({ timeout: 10000 })
+    await expect(skillModal).toContainText('20 \u7ea7')
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u96f7\u9706\u4e00\u51fb' })).toBeVisible()
+    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u76fe\u724c\u731b\u51fb' })).toHaveCount(0)
   })
 
   test('AC8: skip closes modal and game continues', async ({ page }) => {
@@ -164,8 +232,8 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const warrior = squad.find((h) => h.class === 'Warrior')
       if (warrior) {
-        warrior.level = 4
-        warrior.xp = 594
+        warrior.level = 2
+        warrior.xp = 173
         warrior.strength = 100
         warrior.stamina = 80
         if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
@@ -198,8 +266,8 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const warrior = squad.find((h) => h.class === 'Warrior')
       if (warrior) {
-        warrior.level = 4
-        warrior.xp = 594
+        warrior.level = 2
+        warrior.xp = 173
         warrior.strength = 100
         warrior.stamina = 80
         if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
@@ -220,11 +288,11 @@ test.describe('Skill Choice at Level 5 (Example 26)', () => {
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
 
     await page.locator('.hero-card').first().click()
-    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
+    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
     await page.getByTestId('skill-choice-from-detail-btn').click()
 
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
     await expect(skillModal).toBeVisible({ timeout: 10000 })
-    await expect(skillModal).toContainText('5 级')
+    await expect(skillModal).toContainText('3 \u7ea7')
   })
 })

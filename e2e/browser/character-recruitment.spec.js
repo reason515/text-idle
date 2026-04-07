@@ -334,7 +334,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(utherCard).toContainText(/Lv\.?\s*5/)
   })
 
-  test('Example27 AC10: fixed trio Warrior enhance at level 5 shows enhanced skill in detail', async ({ page }) => {
+  test('Example27 AC10: fixed trio Warrior enhance at level 3 shows enhanced skill in detail', async ({ page }) => {
     test.setTimeout(90000)
     const email = uniqueTestEmail('expand-enhance-e2e')
     await registerAndCompleteIntro(page, email)
@@ -342,8 +342,17 @@ test.describe('Character Recruitment (Example 4)', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const warrior = squad.find((h) => h.class === 'Warrior')
       if (warrior) {
-        warrior.level = 4
-        warrior.xp = 594
+        warrior.level = 2
+        warrior.xp = 173
+        warrior.strength = 150
+        warrior.stamina = 120
+        warrior.agility = 80
+        warrior.intellect = 20
+        warrior.spirit = 20
+        warrior.maxHP = 500
+        warrior.currentHP = 500
+        if (!warrior.skills) warrior.skills = [warrior.skill || 'sunder-armor', 'taunt']
+        delete warrior.skill
         localStorage.setItem('squad', JSON.stringify(squad))
       }
       localStorage.setItem('combatProgress', JSON.stringify({
@@ -356,6 +365,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
     await expect(skillModal).toBeVisible({ timeout: 30000 })
+    await expect(skillModal).toContainText('3 \u7ea7')
     await skillModal.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first().click()
     await skillModal.getByRole('button', { name: '确认' }).click()
     await expect(skillModal).not.toBeVisible()

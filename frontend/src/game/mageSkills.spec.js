@@ -16,8 +16,11 @@ import {
   applyBurnDebuff,
   tickMageDebuffs,
   executeMageSkill,
+  executeFrostNova,
   getFrostboltFreezeChance,
+  getFrostNovaFreezeChance,
 } from './mageSkills.js'
+import { getLevelSkillById } from './mageLevelSkills.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -141,6 +144,43 @@ describe('Fireball', () => {
     expect(desc).toContain('1.35')
     expect(desc).toContain('12%')
     expect(desc).toContain('14%')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Frost Nova
+// ---------------------------------------------------------------------------
+
+describe('Frost Nova', () => {
+  it('getFrostNovaFreezeChance scales and caps at 40%', () => {
+    expect(getFrostNovaFreezeChance(0)).toBeCloseTo(0.25, 5)
+    expect(getFrostNovaFreezeChance(3)).toBeCloseTo(0.4, 5)
+  })
+
+  it('executeFrostNova rolls freeze independently per enemy', () => {
+    const skill = getLevelSkillById('frost-nova')
+    const m1 = makeTarget({ id: 'm1', name: 'A', resistance: 0, currentHP: 100 })
+    const m2 = makeTarget({ id: 'm2', name: 'B', resistance: 0, currentHP: 100 })
+    const mage = makeMage({ currentMP: 40 })
+    let n = 0
+    const rng = () => {
+      n += 1
+      if (n === 1) return 0.1
+      return 0.9
+    }
+    const r = executeFrostNova(mage, [m1, m2], skill, { isCrit: false, rng })
+    expect(r.hits.length).toBe(2)
+    expect(r.hits[0].freezeProcced).toBe(true)
+    expect(r.hits[1].freezeProcced).toBe(false)
+    expect(getFreezeDebuff(m1)).not.toBeNull()
+    expect(getFreezeDebuff(m2)).toBeNull()
+    expect(mage.currentMP).toBe(29)
+  })
+
+  it('getMageSkillWithEnhancements increases frost nova freeze chance', () => {
+    const mage = makeMage({ skillEnhancements: { 'frost-nova': { enhanceCount: 2 } } })
+    const s = getMageSkillWithEnhancements(mage, 'frost-nova')
+    expect(s?.freezeChance).toBeCloseTo(0.35, 5)
   })
 })
 

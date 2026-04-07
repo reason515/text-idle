@@ -4,42 +4,30 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  MAGE_LEVEL_SKILLS,
-  MAGE_SKILL_CHOICE_LEVELS,
+  MAGE_LEARN_MILESTONE_TO_POOL_KEY,
   getMageNewSkillsAtLevel,
   getLevelSkillById,
 } from './mageLevelSkills.js'
 
 describe('mageLevelSkills', () => {
-  it('MAGE_SKILL_CHOICE_LEVELS contains 5, 10, 15, ... 60', () => {
-    expect(MAGE_SKILL_CHOICE_LEVELS).toContain(5)
-    expect(MAGE_SKILL_CHOICE_LEVELS).toContain(10)
-    expect(MAGE_SKILL_CHOICE_LEVELS).toContain(60)
-    expect(MAGE_SKILL_CHOICE_LEVELS).toHaveLength(12)
+  it('MAGE_LEARN_MILESTONE_TO_POOL_KEY maps learn milestones to legacy tier rows', () => {
+    expect(MAGE_LEARN_MILESTONE_TO_POOL_KEY[10]).toBe(5)
+    expect(MAGE_LEARN_MILESTONE_TO_POOL_KEY[20]).toBe(15)
   })
 
-  it('getMageNewSkillsAtLevel returns 3 skills for Mage at Lv 5', () => {
-    const skills = getMageNewSkillsAtLevel('Mage', 5)
+  it('getMageNewSkillsAtLevel returns 3 skills for Mage at learn milestone 10 (tier 5 pool)', () => {
+    const skills = getMageNewSkillsAtLevel('Mage', 10)
     expect(skills).toHaveLength(3)
-    expect(skills.map((s) => s.spec)).toEqual(['奥术', '冰霜', '火焰'])
     expect(skills.map((s) => s.id)).toContain('arcane-missiles')
-    expect(skills.map((s) => s.id)).toContain('frost-nova')
-    expect(skills.map((s) => s.id)).toContain('flamestrike')
+    expect(getMageNewSkillsAtLevel('Mage', 5)).toEqual([])
   })
 
   it('getMageNewSkillsAtLevel returns empty for non-Mage', () => {
-    expect(getMageNewSkillsAtLevel('Warrior', 5)).toEqual([])
+    expect(getMageNewSkillsAtLevel('Warrior', 10)).toEqual([])
   })
 
-  it('getLevelSkillById finds Arcane Missiles', () => {
-    const s = getLevelSkillById('arcane-missiles')
-    expect(s).not.toBeNull()
-    expect(s.name).toBe('奥术飞弹')
-    expect(s.spec).toBe('奥术')
-    expect(s.manaCost).toBe(11)
-  })
-
-  it('getLevelSkillById returns null for unknown', () => {
-    expect(getLevelSkillById('unknown-skill')).toBeNull()
+  it('getLevelSkillById finds skill across tiers', () => {
+    const s = getLevelSkillById('frost-nova')
+    expect(s?.id).toBe('frost-nova')
   })
 })

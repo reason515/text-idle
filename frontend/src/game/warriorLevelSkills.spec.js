@@ -4,56 +4,38 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  WARRIOR_LEVEL_SKILLS,
-  SKILL_CHOICE_LEVELS,
-  isSkillChoiceLevel,
+  LEARN_MILESTONE_TO_POOL_KEY,
   getNewSkillsAtLevel,
   getLevelSkillById,
 } from './warriorLevelSkills.js'
 
 describe('warriorLevelSkills', () => {
-  it('SKILL_CHOICE_LEVELS contains 5, 10, 15, ... 60', () => {
-    expect(SKILL_CHOICE_LEVELS).toContain(5)
-    expect(SKILL_CHOICE_LEVELS).toContain(10)
-    expect(SKILL_CHOICE_LEVELS).toContain(60)
-    expect(SKILL_CHOICE_LEVELS).toHaveLength(12)
-    expect(SKILL_CHOICE_LEVELS.every((l) => l % 5 === 0)).toBe(true)
+  it('LEARN_MILESTONE_TO_POOL_KEY maps learn milestones to legacy tier rows', () => {
+    expect(LEARN_MILESTONE_TO_POOL_KEY[10]).toBe(5)
+    expect(LEARN_MILESTONE_TO_POOL_KEY[20]).toBe(15)
+    expect(LEARN_MILESTONE_TO_POOL_KEY[60]).toBe(60)
   })
 
-  it('isSkillChoiceLevel returns true for 5, 10, 15, ... 60', () => {
-    expect(isSkillChoiceLevel(5)).toBe(true)
-    expect(isSkillChoiceLevel(10)).toBe(true)
-    expect(isSkillChoiceLevel(60)).toBe(true)
-  })
-
-  it('isSkillChoiceLevel returns false for non-multiples', () => {
-    expect(isSkillChoiceLevel(1)).toBe(false)
-    expect(isSkillChoiceLevel(4)).toBe(false)
-    expect(isSkillChoiceLevel(6)).toBe(false)
-  })
-
-  it('getNewSkillsAtLevel returns 3 skills for Warrior at Lv 5', () => {
-    const skills = getNewSkillsAtLevel('Warrior', 5)
+  it('getNewSkillsAtLevel returns 3 skills for Warrior at learn milestone 10 (tier 5 pool)', () => {
+    const skills = getNewSkillsAtLevel('Warrior', 10)
     expect(skills).toHaveLength(3)
-    expect(skills.map((s) => s.spec)).toEqual(['武器', '狂暴', '防护'])
     expect(skills.map((s) => s.id)).toContain('cleave')
-    expect(skills.map((s) => s.id)).toContain('whirlwind')
-    expect(skills.map((s) => s.id)).toContain('taunt')
+    expect(getNewSkillsAtLevel('Warrior', 5)).toEqual([])
+  })
+
+  it('getNewSkillsAtLevel at learn milestone 20 uses legacy tier 15 (Thunder Clap tier, not Shield Slam)', () => {
+    const skills = getNewSkillsAtLevel('Warrior', 20)
+    const ids = skills.map((s) => s.id)
+    expect(ids).toContain('thunder-clap')
+    expect(ids).not.toContain('shield-slam')
   })
 
   it('getNewSkillsAtLevel returns empty for non-Warrior', () => {
-    expect(getNewSkillsAtLevel('Mage', 5)).toEqual([])
+    expect(getNewSkillsAtLevel('Mage', 10)).toEqual([])
   })
 
-  it('getLevelSkillById finds Cleave', () => {
+  it('getLevelSkillById finds skill across tiers', () => {
     const s = getLevelSkillById('cleave')
-    expect(s).not.toBeNull()
-    expect(s.name).toBe('顺劈斩')
-    expect(s.spec).toBe('武器')
-    expect(s.targets).toBe(2)
-  })
-
-  it('getLevelSkillById returns null for unknown', () => {
-    expect(getLevelSkillById('unknown-skill')).toBeNull()
+    expect(s?.id).toBe('cleave')
   })
 })

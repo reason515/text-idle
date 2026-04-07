@@ -9,7 +9,7 @@
       <p class="subtitle">每个专精提供独特战斗风格。在 <span :style="{ color: classColor(selectedHero.class) }">{{ heroDisplayName(selectedHero.name) }}</span> 加入小队前必须选择其一。</p>
     </template>
     <template v-else-if="showLevelChoiceStep">
-      <h2>{{ expansionLevel }} 级技能选择</h2>
+      <h2>{{ expansionSkillChoiceModalLevel }} 级技能选择</h2>
       <p class="subtitle">为 <span :style="{ color: classColor(selectedHero?.class) }">{{ heroDisplayName(selectedHero?.name) }}</span> 强化已有技能或学习新技能。</p>
     </template>
     <template v-else>
@@ -110,8 +110,8 @@
     <!-- Expansion: level choice step (SkillChoiceModal) -->
     <template v-else-if="showLevelChoiceStep">
       <SkillChoiceModal
-        :hero="expansionHeroForSkillChoice"
-        :level="expansionLevel"
+        :hero="expansionStagingHero"
+        :level="expansionSkillChoiceModalLevel"
         @skip="skipLevelChoice"
         @enhance="(sid) => confirmLevelChoice({ type: 'enhance', skillId: sid })"
         @learn="(sid) => confirmLevelChoice({ type: 'learn', skillId: sid })"
@@ -223,7 +223,11 @@ import { HEROES, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getSquad, addHer
 import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints } from '../game/combat.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
-import { hasSkillChoiceAtLevel } from '../game/skillChoice.js'
+import {
+  getFirstUnresolvedSkillChoiceLevel,
+  applyEnhanceSkill,
+  applyLearnNewSkill,
+} from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
@@ -320,7 +324,8 @@ const availableHeroes = computed(() =>
 
 const pendingAllocatedAttrs = ref(null)
 const levelChoiceDone = ref(false)
-const pendingLevelChoice = ref(null)
+/** Staging hero for expansion recruitment skill milestones (mutated by applyEnhance / applyLearn). */
+const expansionStagingHero = ref(null)
 const showAttrError = ref(false)
 
 const pendingAttrPoints = computed(() => {
@@ -335,13 +340,21 @@ const showAttrAllocStep = computed(() =>
   selectedHero.value && isExpansion.value && expansionAttrPoints.value > 0 && pendingAttrPoints.value > 0
 )
 
-const showLevelChoiceStep = computed(() =>
-  selectedHero.value &&
-  isExpansion.value &&
-  needsInitialSkill(selectedHero.value) &&
-  selectedSkillId.value &&
-  hasSkillChoiceAtLevel({ class: selectedHero.value.class, skills: [selectedSkillId.value] }, expansionLevel.value) &&
-  !levelChoiceDone.value
+const expansionSkillChoiceModalLevel = computed(() => {
+  const h = expansionStagingHero.value
+  if (!h) return null
+  return getFirstUnresolvedSkillChoiceLevel(h)
+})
+
+const showLevelChoiceStep = computed(
+  () =>
+    selectedHero.value &&
+    isExpansion.value &&
+    needsInitialSkill(selectedHero.value) &&
+    selectedSkillId.value &&
+    expansionStagingHero.value &&
+    expansionSkillChoiceModalLevel.value != null &&
+    !levelChoiceDone.value
 )
 
 const displayLevel = computed(() => (isExpansion.value ? expansionLevel.value : 1))
@@ -365,14 +378,6 @@ const getSecondaryFormulasForDisplay = computed(() => {
   const heroForCompute = { ...selectedHero.value, ...displayAttrs.value, level: displayLevel.value }
   const { formulas } = computeSecondaryAttributes(selectedHero.value.class, displayLevel.value, heroForCompute)
   return formulas
-})
-
-const expansionHeroForSkillChoice = computed(() => {
-  if (!selectedHero.value || !selectedSkillId.value) return null
-  return {
-    ...selectedHero.value,
-    skills: [selectedSkillId.value],
-  }
 })
 
 function getAllocatedAttr(key) {
@@ -405,18 +410,32 @@ function confirmAttrAlloc() {
 
 function skipLevelChoice() {
   levelChoiceDone.value = true
-  pendingLevelChoice.value = null
 }
 
 function confirmLevelChoice(choice) {
-  pendingLevelChoice.value = choice
-  levelChoiceDone.value = true
+  const h = expansionStagingHero.value
+  if (!h) return
+  const milestone = getFirstUnresolvedSkillChoiceLevel(h)
+  if (milestone == null) return
+  if (choice.type === 'enhance') {
+    applyEnhanceSkill(h, choice.skillId)
+  } else {
+    applyLearnNewSkill(h, choice.skillId, milestone)
+  }
+  if (getFirstUnresolvedSkillChoiceLevel(h) == null) {
+    levelChoiceDone.value = true
+  }
 }
 
 function backFromConfirm() {
-  if (isExpansion.value && needsInitialSkill(selectedHero.value) && selectedSkillId.value && hasSkillChoiceAtLevel({ class: selectedHero.value.class, skills: [selectedSkillId.value] }, expansionLevel.value)) {
+  if (
+    isExpansion.value &&
+    needsInitialSkill(selectedHero.value) &&
+    selectedSkillId.value &&
+    expansionStagingHero.value &&
+    getFirstUnresolvedSkillChoiceLevel(expansionStagingHero.value) != null
+  ) {
     levelChoiceDone.value = false
-    pendingLevelChoice.value = null
   } else if (needsInitialSkill(selectedHero.value)) {
     selectedSkillId.value = null
   } else if (isExpansion.value && expansionAttrPoints.value > 0) {
@@ -425,7 +444,7 @@ function backFromConfirm() {
     selectedHero.value = null
     pendingAllocatedAttrs.value = null
     levelChoiceDone.value = false
-    pendingLevelChoice.value = null
+    expansionStagingHero.value = null
   }
 }
 
@@ -436,7 +455,7 @@ function selectHero(hero) {
   showSkillError.value = false
   pendingAllocatedAttrs.value = isExpansion.value && expansionAttrPoints.value > 0 ? { strength: 0, agility: 0, intellect: 0, stamina: 0, spirit: 0 } : null
   levelChoiceDone.value = false
-  pendingLevelChoice.value = null
+  expansionStagingHero.value = null
 }
 
 function confirmSkillSelection() {
@@ -446,6 +465,13 @@ function confirmSkillSelection() {
   }
   showSkillError.value = false
   selectedSkillId.value = pendingSkillId.value
+  if (isExpansion.value && needsInitialSkill(selectedHero.value)) {
+    expansionStagingHero.value = {
+      ...selectedHero.value,
+      level: expansionLevel.value,
+      skills: [pendingSkillId.value],
+    }
+  }
 }
 
 function confirmSelection() {
@@ -469,7 +495,12 @@ function confirmSelection() {
       level: expansionLevel.value,
       allocatedAttrs,
       skillId: needsInitialSkill(selectedHero.value) ? selectedSkillId.value : null,
-      levelChoice: pendingLevelChoice.value ?? undefined,
+    }
+    if (needsInitialSkill(selectedHero.value) && expansionStagingHero.value) {
+      opts.skills = [...expansionStagingHero.value.skills]
+      if (expansionStagingHero.value.skillEnhancements) {
+        opts.skillEnhancements = { ...expansionStagingHero.value.skillEnhancements }
+      }
     }
     const ok = addExpansionHeroToSquad(selectedHero.value, opts)
     if (ok) {
@@ -491,7 +522,7 @@ function resetRecruitState() {
   selectedSkillId.value = null
   pendingAllocatedAttrs.value = null
   levelChoiceDone.value = false
-  pendingLevelChoice.value = null
+  expansionStagingHero.value = null
 }
 </script>
 

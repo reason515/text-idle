@@ -14,6 +14,7 @@ export const DEBUFF_DISPLAY = {
   bleed: { name: '流血', short: '流血', isDebuff: true },
   freeze: { name: '冰冻', short: '冰冻', isDebuff: true },
   burn: { name: '燃烧', short: '燃烧', isDebuff: true },
+  'shadow-pain': { name: '暗言术：痛', short: '暗痛', isDebuff: true },
 }
 
 /** Buff badges (short label max 4 Chinese characters). */
@@ -78,6 +79,9 @@ export function getDebuffTip(debuff) {
   }
   if (debuff.type === 'burn') {
     return `每回合 ${debuff.damagePerRound ?? 0} 点法术伤害，持续 ${rounds} 回合`
+  }
+  if (debuff.type === 'shadow-pain') {
+    return `每回合 ${debuff.damagePerRound ?? 0} 点暗影伤害，持续 ${rounds} 回合`
   }
   return `${rounds} 回合`
 }

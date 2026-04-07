@@ -680,10 +680,15 @@ export function createExpansionCharacter(hero, opts = {}) {
     stamina: attrs.stamina ?? initialAttrs.stamina,
     spirit: attrs.spirit ?? initialAttrs.spirit,
   }
-  if (opts.skillId) {
+  if (opts.skills && Array.isArray(opts.skills)) {
+    character.skills = [...opts.skills]
+  } else if (opts.skillId) {
     character.skills = [opts.skillId]
   }
-  if (opts.levelChoice) {
+  if (opts.skillEnhancements && typeof opts.skillEnhancements === 'object') {
+    character.skillEnhancements = { ...opts.skillEnhancements }
+  }
+  if (opts.levelChoice && !opts.skillEnhancements) {
     if (opts.levelChoice.type === 'enhance') {
       character.skillEnhancements = { [opts.levelChoice.skillId]: { enhanceCount: 1 } }
     } else if (opts.levelChoice.type === 'learn' && opts.levelChoice.skillId) {
