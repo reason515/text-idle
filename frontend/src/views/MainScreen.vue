@@ -416,16 +416,22 @@
                 :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }"
               >{{ entry.targetName }}{{ entry.cleaveTargets > 1 ? '（+' + (entry.cleaveTargets - 1) + ' 个目标）' : '' }}</span>
               <template v-if="entry.finalDamage != null">
-                <span class="log-sep">造成</span>
-                <span
-                  class="log-dmg"
-                  :class="[
-                    entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
-                    entry.isCrit ? 'log-crit' : ''
-                  ]"
-                >{{ netDamageToHp(entry) }}</span>
-                <span v-if="entry.isCrit" class="log-crit-mark">暴击！</span>
-                <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
+                <template v-if="entry.isMiss">
+                  <span class="log-sep">结果</span>
+                  <span class="log-miss">未命中（闪避）</span>
+                </template>
+                <template v-else>
+                  <span class="log-sep">造成</span>
+                  <span
+                    class="log-dmg"
+                    :class="[
+                      entry.damageType === 'magic' ? 'log-magic-dmg' : 'log-phys-dmg',
+                      entry.isCrit ? 'log-crit' : ''
+                    ]"
+                  >{{ netDamageToHp(entry) }}</span>
+                  <span v-if="entry.isCrit" class="log-crit-mark">暴击！</span>
+                  <span class="log-dtype">({{ entry.damageType === 'magic' ? '法术' : '物理' }})</span>
+                </template>
               </template>
               <div
                 v-if="damageFormulaEquation(entry) || supportSkillEffectLine(entry) || weaponMechanicLines(entry).length || entry.tauntApplied || entry.targetHPBefore != null || entry.actorHPAfter != null || entry.debuffApplied || entry.debuffRefreshed || entry.targetReason || (entry.threatAmount != null && entry.threatTargetName) || entry.threatHealAmount != null || entry.threatShieldAmount != null || entry.frostboltFreezeProcced !== undefined || (entry.skillId === 'frost-nova' && entry.frostNovaHits?.length)"
@@ -4494,6 +4500,7 @@ onUnmounted(() => {
 /* Damage colors: physical = white, magic = blue */
 .log-phys-dmg { color: var(--color-log-phys); }
 .log-magic-dmg { color: var(--color-mp); }
+.log-miss { color: var(--warning); font-weight: bold; }
 .log-crit { font-weight: bold; }
 .log-crit-mark {
   color: var(--color-boss);
