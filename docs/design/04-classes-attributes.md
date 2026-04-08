@@ -172,6 +172,18 @@ XP_Required(Level) = Base_XP * (Level ^ Curve_Exponent)
 - **武器专有（7.3）与面板**：主手/双手武器上的平直物攻/法强（`physWeaponFlat` / `spellWeaponFlat`）与武器暴击率（`physCritPct` / `spellCritPct`）**合并进**上述「物攻」「法强」「物暴 %」「法暴 %」的数值与公式（标注 `EQP` / `WPN`）。其余武器专有效果（物暴伤、法暴伤、生命偷取、命中回血、附加魔法伤害、护甲穿透、物攻%、无视护甲%、魔力回流、施法回蓝、奥术追伤、法术穿透、法术伤害%、无视抗性% 等）在角色详情 **副属性** 区块下另设 **「武器」** 分组行展示，实现见 `heroes.js` 中 `buildWeaponSecondaryRows` 与 `computeSecondaryAttributes` 的 `weaponSecondary`。
 | 格挡率(%) | Block | `Block = 装备/技能提供` | 仅持盾职业 |
 
+##### 命中与闪避对抗关系（WoW 风格）
+
+- `Hit` 与 `Dodge` 均为**面板百分比属性**；战斗中二者直接对抗，不是独立生效。
+- 战斗最终命中率由 [03-combat.md](./03-combat.md) 的统一公式计算：`FinalHitChance = clamp(Hit - Dodge + LevelAdjust, 60, 99)`。
+- 职责划分：本章定义 `Hit/Dodge` 的属性来源与成长；战斗章定义“何时判定、如何结算”。
+
+##### 装备与词缀对 Hit/Dodge 的口径
+
+- 若装备词缀提供 `hitPct` / `dodgePct`，作为面板附加值加到对应属性后再参与对抗判定。
+- 该加成属于“命中/闪避对抗层”，不直接改写暴击、护甲、抗性公式。
+- 装备词缀定义与可出现部位见 [06-equipment.md](./06-equipment.md)。
+
 ##### 职业系数表（k 值）
 
 系数设计考虑满级（60 级）时 177 点自由属性全加主属性的极端情况，且 **k 值在基础设计表上统一 ×0.9**（与每级 3 点、小数值节奏一致），使面板成长更可控。实现见 `frontend/src/data/heroes.js` 中 `CLASS_COEFFICIENTS`。**力量→护甲** 不列入下表：全职业使用同一常数 `STRENGTH_TO_ARMOR_K = 0.5`，避免法系力量已低再叠乘更低系数；公式见上表「护甲」行。

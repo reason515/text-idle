@@ -77,8 +77,43 @@ import { heroDisplayName } from './heroDisplayName.js'
 import { MANA_REGEN_SPIRIT_SCALE } from './manaRegenConstants.js'
 
 export const CRIT_MULTIPLIER = 1.5
+export const HIT_CHANCE_FLOOR = 60
+export const HIT_CHANCE_CEIL = 99
+export const HIT_LEVEL_ADJUST_PER_LEVEL = 0.5
+export const HIT_LEVEL_ADJUST_CAP = 8
 
 export { MANA_REGEN_SPIRIT_SCALE } from './manaRegenConstants.js'
+
+export function computeFinalHitChance(attacker, defender) {
+  const attackerHit = attacker?.hit ?? 95
+  const defenderDodge = defender?.dodge ?? 0
+  const attackerLevel = attacker?.level ?? 1
+  const defenderLevel = defender?.level ?? 1
+  const levelAdjustRaw = (attackerLevel - defenderLevel) * HIT_LEVEL_ADJUST_PER_LEVEL
+  const levelAdjust = clamp(levelAdjustRaw, -HIT_LEVEL_ADJUST_CAP, HIT_LEVEL_ADJUST_CAP)
+  const finalHitChance = clamp(
+    attackerHit - defenderDodge + levelAdjust,
+    HIT_CHANCE_FLOOR,
+    HIT_CHANCE_CEIL
+  )
+  return {
+    attackerHit,
+    defenderDodge,
+    levelAdjust,
+    finalHitChance,
+    missChance: 100 - finalHitChance,
+  }
+}
+
+export function rollHitCheck(attacker, defender, rng = Math.random) {
+  const detail = computeFinalHitChance(attacker, defender)
+  const roll = rng()
+  return {
+    ...detail,
+    roll,
+    isHit: roll * 100 < detail.finalHitChance,
+  }
+}
 
 export const MAPS = [
   {
@@ -378,6 +413,8 @@ export function createMonster(template, options = {}) {
     skillChance: tier === 'normal' ? 0 : tier === 'elite' ? 0.35 : 0.45,
     physCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.1,
     spellCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.1,
+    hit: tier === 'normal' ? 95 : tier === 'elite' ? 97 : 99,
+    dodge: 5,
   }
 }
 
@@ -463,11 +500,14 @@ function heroCombatStats(hero) {
   const physMultiplier = 1 + baseAttr * PHYS_MULTIPLIER_K
   const spellBaseAttr = getSpellBaseAttr(hero)
   const spellMultiplier = 1 + spellBaseAttr * SPELL_MULTIPLIER_K
+  const dodgeBase = 5 + (hero.agility + (eq?.agility || 0)) * (CLASS_COEFFICIENTS[hero.class]?.k_Dodge || 0)
+  const hitBase = 95 + (hero.agility + (eq?.agility || 0)) * 0.2
   return {
     id: hero.id,
     name: heroDisplayName(hero.name),
     side: 'hero',
     class: hero.class,
+    level: hero.level ?? 1,
     agility: hero.agility,
     armor: computeHeroArmor(hero),
     resistance: computeHeroResistance(hero),
@@ -481,6 +521,8 @@ function heroCombatStats(hero) {
     spellPowerWeaponMax: eq?.spellPowerMax ?? undefined,
     physCrit: crit.physCrit + (eq?.physCritPct ?? 0) / 100,
     spellCrit: crit.spellCrit + (eq?.spellCritPct ?? 0) / 100,
+    dodge: Math.round((dodgeBase + (eq?.dodgePct ?? 0)) * 10) / 10,
+    hit: Math.round((hitBase + (eq?.hitPct ?? 0)) * 10) / 10,
     physCritMult: CRIT_MULTIPLIER + (eq?.physCritDmgPct ?? 0) / 100,
     spellCritMult: CRIT_MULTIPLIER + (eq?.spellCritDmgPct ?? 0) / 100,
     physArmorPen: eq?.armorPen ?? 0,
@@ -961,12 +1003,18 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             break
           }
 
-          const isCrit = rng() < (actor.physCrit || 0)
+          const skillRoll = rng()
+          const hitResult = rollHitCheck(actor, target, () => skillRoll)
+          const isCrit = hitResult.isHit ? skillRoll < (actor.physCrit || 0) : false
           if (skill.targets && skill.targets >= 2) {
             const aliveMonsters = alive(monsterUnits)
             if (aliveMonsters.length > 0) {
               const cleaveActorHPBefore = actor.currentHP
-              const sr = executeCleave(actor, aliveMonsters, skill, { isCrit, rng })
+              const sr = executeCleave(actor, aliveMonsters, skill, {
+                isCrit,
+                rng,
+                isHit: hitResult.isHit,
+              })
               if (!actor.skillCooldowns) actor.skillCooldowns = {}
               actor.skillCooldowns[skillId] = round
               const firstHit = sr.hits[0]
@@ -993,6 +1041,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 damageType: 'physical',
                 rawDamage: firstHit?.baseRaw ?? 0,
                 isCrit,
+                isMiss: !hitResult.isHit,
+                finalHitChance: hitResult.finalHitChance,
+                missChance: hitResult.missChance,
+                attackerHit: hitResult.attackerHit,
+                defenderDodge: hitResult.defenderDodge,
+                levelAdjust: hitResult.levelAdjust,
                 finalDamage: sr.totalDamage,
                 absorbed: 0,
                 targetDefense: firstHit?.effectiveArmor ?? 0,
@@ -1032,7 +1086,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           } else {
             const actorHPBefore = actor.currentHP
             const targetHPBefore = target.currentHP
-            const sr = executeWarriorSkill(actor, target, skill, { isCrit, rng })
+            const sr = executeWarriorSkill(actor, target, skill, {
+              isCrit,
+              rng,
+              isHit: hitResult.isHit,
+            })
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
             const entry = {
@@ -1054,6 +1112,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               damageType: 'physical',
               rawDamage: sr.rawDamage,
               isCrit: sr.isCrit,
+              isMiss: !sr.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
               finalDamage: sr.finalDamage,
               absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
               targetDefense: sr.effectiveArmor,
@@ -1159,12 +1223,18 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
 
           const critBonus = skill.spellCritBonus ?? 0
-          const isCrit = rng() < Math.min(1, (actor.spellCrit || 0) + critBonus)
+          const skillRoll = rng()
+          const hitResult = rollHitCheck(actor, mageTarget, () => skillRoll)
+          const isCrit = hitResult.isHit ? skillRoll < Math.min(1, (actor.spellCrit || 0) + critBonus) : false
 
           if (skillId === 'frost-nova') {
             const aliveMonsters = alive(monsterUnits)
             if (aliveMonsters.length === 0) continue
-            const sr = executeFrostNova(actor, aliveMonsters, skill, { isCrit, rng })
+            const sr = executeFrostNova(actor, aliveMonsters, skill, {
+              isCrit,
+              rng,
+              isHit: hitResult.isHit,
+            })
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
             const firstHit = sr.hits[0]
@@ -1196,6 +1266,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               damageType: 'magic',
               rawDamage: sr.rawDamage,
               isCrit,
+              isMiss: !hitResult.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
               finalDamage: sr.totalDamage,
               absorbed: 0,
               targetDefense: firstHit?.effectiveResistance ?? 0,
@@ -1236,7 +1312,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
 
           const targetHPBefore = mageTarget.currentHP
-          const sr = executeMageSkill(actor, mageTarget, skill, { isCrit, rng })
+          const sr = executeMageSkill(actor, mageTarget, skill, {
+            isCrit,
+            rng,
+            isHit: hitResult.isHit,
+          })
           if (!actor.skillCooldowns) actor.skillCooldowns = {}
           actor.skillCooldowns[skillId] = round
           const entry = {
@@ -1258,6 +1338,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             damageType: 'magic',
             rawDamage: sr.rawDamage,
             isCrit: sr.isCrit,
+            isMiss: !sr.isHit,
+            finalHitChance: hitResult.finalHitChance,
+            missChance: hitResult.missChance,
+            attackerHit: hitResult.attackerHit,
+            defenderDodge: hitResult.defenderDodge,
+            levelAdjust: hitResult.levelAdjust,
             finalDamage: sr.finalDamage,
             absorbed: Math.max(0, sr.rawAfterCrit - sr.finalDamage),
             targetDefense: sr.effectiveResistance,
@@ -1459,7 +1545,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             break
           }
           if (skillId === 'shadow-word-pain') {
-            const sr = executeShadowWordPain(actor, priestTarget, skill, { rng })
+            const skillRoll = rng()
+            const hitResult = rollHitCheck(actor, priestTarget, () => skillRoll)
+            const sr = executeShadowWordPain(actor, priestTarget, skill, { rng, isHit: hitResult.isHit })
             if (sr.finalDamage > 0) {
               addThreatFromDamage(threat, priestTarget.id, actor.id, sr.finalDamage, 1)
             }
@@ -1479,6 +1567,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               targetClass: priestTarget.class || null,
               targetTier: priestTarget.tier || null,
               damageType: 'magic',
+              isMiss: !sr.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
               finalDamage: sr.finalDamage,
               targetHPBefore: sr.targetHPBefore,
               targetHPAfter: sr.targetHPAfter,
@@ -1520,7 +1614,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)
         : (actor.physCrit || 0)
-      const isCrit = rng() < critRate
+      const attackRoll = rng()
+      const hitResult = rollHitCheck(actor, target, () => attackRoll)
+      const isCrit = hitResult.isHit ? attackRoll < critRate : false
       let rawBase = action.rawDamage
       if (actor.side === 'hero') {
         if (action.damageType === 'physical') {
@@ -1543,10 +1639,17 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           : actor.side === 'hero' && action.damageType === 'magic'
             ? { spellPen: actor.spellPen ?? 0, ignoreResistPct: actor.spellIgnoreResistPct ?? 0 }
             : {}
-      let damage =
-        actor.side === 'hero'
+      let damage = hitResult.isHit
+        ? actor.side === 'hero'
           ? applyDamageWithWeaponAffixes(rawAfterCrit, action.damageType, target, weaponOpts)
           : applyDamage(rawAfterCrit, action.damageType, target)
+        : {
+            damageType: action.damageType,
+            absorbed: 0,
+            finalDamage: 0,
+            effectiveDefense: 0,
+            nextHP: target.currentHP ?? 0,
+          }
       if (target.side === 'hero') {
         const ds = applyDefensiveStanceToIncomingDamage(target, damage.finalDamage)
         if (ds.stanceMitigated > 0) {
@@ -1723,6 +1826,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         damageType: damage.damageType,
         rawDamage: action.rawDamage,
         isCrit,
+        isMiss: !hitResult.isHit,
+        finalHitChance: hitResult.finalHitChance,
+        missChance: hitResult.missChance,
+        attackerHit: hitResult.attackerHit,
+        defenderDodge: hitResult.defenderDodge,
+        levelAdjust: hitResult.levelAdjust,
         finalDamage: reportedFinalDamage,
         absorbed: damage.absorbed,
         targetDefense: damage.effectiveDefense,

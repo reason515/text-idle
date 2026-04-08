@@ -164,6 +164,16 @@ describe('Example13: Heroic Strike', () => {
     expect(result.skillCoefficient).toBe(1.2)
   })
 
+  it('missed strike deals no damage and gains no rage', () => {
+    const warrior = makeWarrior({ physAtk: 15, currentMP: 20 })
+    const target = makeTarget({ armor: 5, currentHP: 40 })
+    const result = executeWarriorSkill(warrior, target, skill, { isCrit: true, isHit: false })
+    expect(result.isHit).toBe(false)
+    expect(result.finalDamage).toBe(0)
+    expect(result.rageGained).toBe(0)
+    expect(target.currentHP).toBe(40)
+  })
+
   it('crit applies 1.5x multiplier to raw damage', () => {
     const warrior = makeWarrior({ physAtk: 10, currentMP: 20 })
     const target = makeTarget({ armor: 0 })

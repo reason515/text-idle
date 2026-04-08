@@ -235,8 +235,27 @@ export function executePowerWordShield(priest, target, skill, opts = {}) {
  * @returns {{ skillId:string, skillName:string, skillSpec:string, finalDamage:number, targetHPBefore:number, targetHPAfter:number, targetMaxHP:number, manaConsumed:number, debuffApplied:boolean, debuffRefreshed:boolean, debuffType:string, debuffDuration:number, debuffDamagePerRound:number, debuffDamageType:string }}
  */
 export function executeShadowWordPain(priest, target, skill, opts = {}) {
-  const { rng } = opts
+  const { rng, isHit = true } = opts
   priest.currentMP = Math.max(0, (priest.currentMP || 0) - (skill.manaCost ?? 0))
+  if (!isHit) {
+    return {
+      skillId: skill.id,
+      skillName: skill.name,
+      skillSpec: skill.spec,
+      finalDamage: 0,
+      targetHPBefore: target.currentHP ?? 0,
+      targetHPAfter: target.currentHP ?? 0,
+      targetMaxHP: target.maxHP,
+      manaConsumed: skill.manaCost ?? 0,
+      debuffApplied: false,
+      debuffRefreshed: false,
+      debuffType: 'shadow-pain',
+      debuffDuration: skill.duration ?? 4,
+      debuffDamagePerRound: 0,
+      debuffDamageType: 'magic',
+      isHit: false,
+    }
+  }
   const spellPower = getEffectiveSpellPower(priest, rng)
   const dotCoeff = skill.coefficient ?? 0.35
   const duration = skill.duration ?? 4
@@ -272,5 +291,6 @@ export function executeShadowWordPain(priest, target, skill, opts = {}) {
     debuffDuration: duration,
     debuffDamagePerRound: dotDamage,
     debuffDamageType: 'magic',
+    isHit: true,
   }
 }

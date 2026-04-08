@@ -137,6 +137,17 @@ describe('Fireball', () => {
     expect(skillEnhanced.spellCritBonus).toBeCloseTo(0.14, 5)
   })
 
+  it('missed cast still consumes mana but deals no damage', () => {
+    const mage = makeMage({ spellPower: 20, currentMP: 40 })
+    const target = makeTarget({ resistance: 3, currentHP: 40 })
+    const result = executeMageSkill(mage, target, skill, { isCrit: true, isHit: false })
+    expect(result.isHit).toBe(false)
+    expect(result.manaConsumed).toBe(13)
+    expect(result.finalDamage).toBe(0)
+    expect(target.currentHP).toBe(40)
+    expect(mage.currentMP).toBe(27)
+  })
+
   it('getMageEnhancementPreviewEffectDesc shows coeff and crit for fireball', () => {
     const hero = makeMage({ skillEnhancements: {} })
     const desc = getMageEnhancementPreviewEffectDesc(hero, 'fireball')

@@ -17,6 +17,8 @@ import {
   createMonster,
   buildEncounterMonsters,
   applyDamage,
+  computeFinalHitChance,
+  rollHitCheck,
   runAutoCombat,
   pickTarget,
   buildRoundOrder,
@@ -48,6 +50,30 @@ function sampleHero(overrides = {}) {
     ...overrides,
   }
 }
+
+describe('hit and dodge resolution', () => {
+  it('uses recommended clamp and level adjustment', () => {
+    const out = computeFinalHitChance(
+      { hit: 95, level: 10 },
+      { dodge: 20, level: 1 },
+    )
+    expect(out.levelAdjust).toBe(4.5)
+    expect(out.finalHitChance).toBe(79.5)
+  })
+
+  it('clamps final hit chance to [60, 99]', () => {
+    const low = computeFinalHitChance({ hit: 40, level: 1 }, { dodge: 80, level: 60 })
+    const high = computeFinalHitChance({ hit: 200, level: 60 }, { dodge: 0, level: 1 })
+    expect(low.finalHitChance).toBe(60)
+    expect(high.finalHitChance).toBe(99)
+  })
+
+  it('rollHitCheck returns miss when rng is above hit chance', () => {
+    const r = rollHitCheck({ hit: 60, level: 1 }, { dodge: 0, level: 1 }, () => 0.99)
+    expect(r.isHit).toBe(false)
+    expect(r.finalHitChance).toBe(60)
+  })
+})
 
 describe('pickTarget (Priest ally-hp-below triage)', () => {
   it('picks lowest HP ratio among allies at or below threshold (not lowest absolute HP across party)', () => {

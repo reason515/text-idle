@@ -347,7 +347,7 @@ export function applyDefensiveStanceToIncomingDamage(hero, finalDamage) {
  * @returns {Object} Execution result with damage, heal, debuff info
  */
 export function executeWarriorSkill(warrior, target, skill, opts = {}) {
-  let { isCrit = false, rng } = opts
+  let { isCrit = false, rng, isHit = true } = opts
   const critMult = warrior.physCritMult ?? DEFAULT_CRIT
 
   // Shield Slam: guaranteed crit when target has Sunder Armor debuff (design doc 8.1.4)
@@ -356,6 +356,33 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   }
 
   warrior.currentMP = Math.max(0, (warrior.currentMP || 0) - skill.rageCost)
+
+  if (!isHit) {
+    return {
+      skillId: skill.id,
+      skillName: skill.name,
+      skillSpec: skill.spec,
+      skillCoefficient: skill.coefficient ?? (skill.baseCoefficient ?? 0.8),
+      rawDamage: 0,
+      rawAfterCrit: 0,
+      finalDamage: 0,
+      effectiveArmor: 0,
+      isCrit: false,
+      isHit: false,
+      rageConsumed: skill.rageCost,
+      rageGained: 0,
+      heal: 0,
+      healFromSkill: 0,
+      weaponLifeStealHeal: 0,
+      weaponLifeOnHitHeal: 0,
+      primaryPhysDamage: 0,
+      weaponAddedMagicDamage: 0,
+      debuffApplied: false,
+      debuffRefreshed: false,
+      debuffArmorReduction: undefined,
+      debuffDuration: skill.id === 'sunder-armor' ? skill.debuffDuration : undefined,
+    }
+  }
 
   const coeff = skill.coefficient ?? (skill.baseCoefficient ?? 0.8)
   const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
@@ -431,7 +458,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
   const actualDebuffArmorReduction =
     skill.id === 'sunder-armor' ? (getSunderDebuff(target)?.armorReduction ?? 0) : undefined
 
-  const rageGained = rageFromAttack(isCrit)
+  const rageGained = physFinalDamage > 0 ? rageFromAttack(isCrit) : 0
   warrior.currentMP = Math.min(100, (warrior.currentMP || 0) + rageGained)
 
   return {
@@ -444,6 +471,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
     finalDamage,
     effectiveArmor: mitigationArmor,
     isCrit,
+    isHit: true,
     rageConsumed: skill.rageCost,
     rageGained,
     heal,
@@ -468,7 +496,7 @@ export function executeWarriorSkill(warrior, target, skill, opts = {}) {
  * @returns {Object} Result with hits array, totalDamage, etc.
  */
 export function executeCleave(warrior, targets, skill, opts = {}) {
-  const { isCrit = false, rng } = opts
+  const { isCrit = false, rng, isHit = true } = opts
   const critMult = warrior.physCritMult ?? DEFAULT_CRIT
   const maxTargets = Math.min(skill.targets ?? 2, targets.length) || 1
   const toHit = targets.slice(0, maxTargets)
@@ -486,12 +514,12 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
     const effectivePhysAtk = getEffectivePhysAtk(warrior, rng)
     const targetHPBefore = target.currentHP ?? 0
     const baseRaw = Math.round(effectivePhysAtk * coeff * (1 + (warrior.physDmgPct || 0) / 100))
-    const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
+    const rawAfterCrit = isHit && isCrit ? Math.round(baseRaw * critMult) : baseRaw
     const effectiveArmor = computePhysicalDefenseAfterWeapon(target, {
       armorPen: warrior.physArmorPen ?? 0,
       ignoreArmorPct: warrior.physIgnoreArmorPct ?? 0,
     })
-    let physFinal = Math.max(1, rawAfterCrit - effectiveArmor)
+    let physFinal = isHit ? Math.max(1, rawAfterCrit - effectiveArmor) : 0
     target.currentHP = Math.max(0, targetHPBefore - physFinal)
     let hitTotal = physFinal
     let hitWeaponAddedMagic = 0
@@ -530,6 +558,8 @@ export function executeCleave(warrior, targets, skill, opts = {}) {
       effectiveArmor,
       targetHPBefore,
       weaponAddedMagicDamage: hitWeaponAddedMagic,
+      isHit,
+      isMiss: !isHit,
     })
   }
 

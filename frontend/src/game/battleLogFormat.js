@@ -30,6 +30,14 @@ export function damageFormulaEquation(entry) {
   const raw = entry.rawDamage
   const final = entry.finalDamage
   if (raw == null || final == null) return ''
+  if (entry.isMiss) {
+    const hit = entry.finalHitChance
+    const miss = entry.missChance
+    if (hit != null && miss != null) {
+      return `未命中（命中率 ${hit.toFixed(1)}%，未命中率 ${miss.toFixed(1)}%）`
+    }
+    return '未命中'
+  }
 
   const defLabel = entry.damageType === 'magic' ? '抗性抵消' : '护甲抵消'
   const defVal = Math.max(0, entry.targetDefense ?? 0)

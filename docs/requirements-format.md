@@ -1348,6 +1348,35 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 34: Hit vs Dodge Resolution (WoW-style)
+
+**User Story**
+
+> As a player,  
+> I want hit and dodge to oppose each other with clear caps and level adjustment,  
+> So that hit/dodge builds are meaningful without creating guaranteed-hit or guaranteed-miss extremes.
+
+**Design Reference (from design doc)**
+
+- **Combat rule**: `docs/design/03-combat.md` section 6.
+- **Formula**: `FinalHitChance = clamp(Hit - Dodge + LevelAdjust, 60, 99)`.
+- **Level adjust**: `LevelAdjust = clamp((AttackerLevel - DefenderLevel) * 0.5, -8, +8)`.
+- **Order**: Hit check happens before crit and damage mitigation; miss means 0 damage and no on-hit/on-damage triggers.
+
+**Acceptance Criteria**
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| AC1 | Attacker Hit, Defender Dodge, and level difference are known | One attack/skill is resolved | Engine computes `FinalHitChance` using `clamp(Hit - Dodge + LevelAdjust, 60, 99)` |
+| AC2 | Final hit chance would be below 60% | Hit chance is finalized | It is clamped to 60% |
+| AC3 | Final hit chance would be above 99% | Hit chance is finalized | It is clamped to 99% |
+| AC4 | Attack misses (random roll fails hit check) | Action resolves | Damage is 0; no life steal, no life-on-hit, no mana reflux, no arcane follow-up, and no damage threat is added |
+| AC5 | Attack hits | Action resolves | Crit and mitigation are evaluated normally; on-hit/on-damage effects can trigger |
+| AC6 | Warrior uses a rage skill and misses | Skill resolves | Rage/mana cost is still consumed, but no damage and no hit-based rage gain |
+| AC7 | Combat log shows a miss entry | Player opens detail formula line | Detail line shows miss information (e.g., final hit chance and miss chance) |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

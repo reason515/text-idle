@@ -303,7 +303,7 @@ export function tickMageDebuffs(unit) {
  * @param {Object} opts - { isCrit: boolean, rng?: function }
  */
 export function executeFrostNova(mage, monsters, skill, opts = {}) {
-  const { isCrit = false, rng } = opts
+  const { isCrit = false, rng, isHit = true } = opts
   const roll = rng ?? Math.random
   const critMult = mage.spellCritMult ?? DEFAULT_SPELL_CRIT
   const coeff = skill.coefficient ?? 0.5
@@ -321,12 +321,12 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
 
     const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
     const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
-    const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
+    const rawAfterCrit = isHit && isCrit ? Math.round(baseRaw * critMult) : baseRaw
     const effectiveResistance = computeMagicDefenseAfterWeapon(target, {
       spellPen: mage.spellPen ?? 0,
       ignoreResistPct: mage.spellIgnoreResistPct ?? 0,
     })
-    const mainMagicDamage = Math.max(1, rawAfterCrit - effectiveResistance)
+    const mainMagicDamage = isHit ? Math.max(1, rawAfterCrit - effectiveResistance) : 0
     totalMainMagic += mainMagicDamage
 
     target.currentHP = Math.max(0, (target.currentHP || 0) - mainMagicDamage)
@@ -349,7 +349,7 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
     const finalDamage = mainMagicDamage + arcaneFollowupDamage
     totalDamage += finalDamage
 
-    const freezeProcced = roll() < freezeChance
+    const freezeProcced = isHit && roll() < freezeChance
     if (freezeProcced) {
       applyFreezeDebuff(target, 1)
     }
@@ -365,6 +365,8 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
       effectiveResistance,
       arcaneFollowupDamage,
       freezeProcced,
+      isHit,
+      isMiss: !isHit,
     })
   }
 
@@ -409,13 +411,38 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
  * @returns {Object} Execution result with damage, debuff info
  */
 export function executeMageSkill(mage, target, skill, opts = {}) {
-  const { isCrit = false, rng } = opts
+  const { isCrit = false, rng, isHit = true } = opts
   const roll = rng ?? Math.random
   const critMult = mage.spellCritMult ?? DEFAULT_SPELL_CRIT
 
   mage.currentMP = Math.max(0, (mage.currentMP || 0) - (skill.manaCost ?? 0))
 
   const coeff = skill.coefficient ?? 1
+  if (!isHit) {
+    return {
+      skillId: skill.id,
+      skillName: skill.name,
+      skillSpec: skill.spec,
+      skillCoefficient: coeff,
+      rawDamage: 0,
+      rawAfterCrit: 0,
+      finalDamage: 0,
+      primaryMagicDamage: 0,
+      effectiveResistance: 0,
+      arcaneFollowupDamage: 0,
+      manaRefluxGain: 0,
+      manaOnCastGain: 0,
+      isCrit: false,
+      isHit: false,
+      manaConsumed: skill.manaCost ?? 0,
+      debuffApplied: false,
+      debuffRefreshed: false,
+      debuffType: undefined,
+      freezeSkipActions: undefined,
+      freezeProcced: skill.id === 'frostbolt' ? false : undefined,
+    }
+  }
+
 
   const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
   const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
@@ -484,6 +511,7 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     manaRefluxGain,
     manaOnCastGain,
     isCrit,
+    isHit: true,
     manaConsumed: skill.manaCost ?? 0,
     debuffApplied: !!(debuffResult && debuffResult.applied),
     debuffRefreshed: !!(debuffResult && debuffResult.refreshed),

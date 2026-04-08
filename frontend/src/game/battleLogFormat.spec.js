@@ -30,6 +30,18 @@ describe('damageFormulaEquation', () => {
     ).toBe('攻击(100) - 护甲抵消(20) = 80')
   })
 
+  it('formats miss line with hit and miss chances', () => {
+    expect(
+      damageFormulaEquation({
+        rawDamage: 100,
+        finalDamage: 0,
+        isMiss: true,
+        finalHitChance: 60,
+        missChance: 40,
+      }),
+    ).toBe('未命中（命中率 60.0%，未命中率 40.0%）')
+  })
+
   it('uses primaryFinalDamage for main line when weapon segments split total', () => {
     expect(
       damageFormulaEquation({

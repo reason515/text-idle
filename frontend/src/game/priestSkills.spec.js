@@ -131,6 +131,18 @@ describe('priestSkills', () => {
       expect(priest.currentMP).toBe(40)
     })
 
+    it('executeShadowWordPain miss consumes mana but does not apply debuff', () => {
+      const priest = { currentMP: 50, intellect: 10, spirit: 9 }
+      const target = { currentHP: 90, maxHP: 100, debuffs: [] }
+      const skill = getAnyPriestSkillById('shadow-word-pain')
+      const result = executeShadowWordPain(priest, target, skill, { isHit: false })
+      expect(result.isHit).toBe(false)
+      expect(result.finalDamage).toBe(0)
+      expect(target.currentHP).toBe(90)
+      expect(target.debuffs).toHaveLength(0)
+      expect(priest.currentMP).toBe(40)
+    })
+
     it('isPriestAllyTargetSkill identifies ally and enemy skill target types', () => {
       expect(isPriestAllyTargetSkill('flash-heal')).toBe(true)
       expect(isPriestAllyTargetSkill('greater-heal')).toBe(true)
