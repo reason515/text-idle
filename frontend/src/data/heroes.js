@@ -233,8 +233,8 @@ const SECONDARY_ATTR_ORDER = [
 const NA = '-'
 
 /**
- * Weapon-only affix rows for character detail (from MainHand/TwoHand via getEquipmentBonuses).
- * Excludes stats merged into 物攻/法强/物暴/法暴 (physWeaponFlat, spellWeaponFlat, physCritPct, spellCritPct).
+ * Affix-derived secondary rows for character detail.
+ * Excludes stats merged into 物攻/法强/物暴/法暴/命中/闪避。
  * @param {Object} eq - getEquipmentBonuses result
  * @returns {Array<{key: string, label: string, value: string, formula: string}>}
  */
@@ -275,6 +275,10 @@ export function buildWeaponSecondaryRows(eq) {
   if (eq.spellPen > 0) pushNum('WSpellPen', '\u6cd5\u672f\u7a7f\u900f', eq.spellPen)
   if (eq.spellDmgPct > 0) pushPct('WSpellDmgPct', '\u6cd5\u672f\u4f24\u5bb3%', eq.spellDmgPct)
   if (eq.ignoreResistPct > 0) pushPct('WIgnoreResist', '\u65e0\u89c6\u6297\u6027', eq.ignoreResistPct)
+  if (eq.manaRegen > 0) pushNum('WManaRegen', '\u6bcf\u56de\u5408\u6cd5\u529b\u56de\u590d', eq.manaRegen)
+  if (eq.hpRegen > 0) pushNum('WHpRegen', '\u6bcf\u56de\u5408\u751f\u547d\u56de\u590d', eq.hpRegen)
+  if (eq.goldFindPct > 0) pushPct('WGoldFind', '\u91d1\u5e01\u6389\u843d\u52a0\u6210', eq.goldFindPct)
+  if (eq.magicFindPct > 0) pushPct('WMagicFind', '\u9b54\u6cd5\u5bfb\u83b7(MF)', eq.magicFindPct)
   return rows
 }
 
@@ -298,7 +302,16 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     : baseAttrs
   // Always merge equipment into attrs when hero is provided so HP/MP match computeHeroMaxHP (gear stamina, etc.)
   const attrs = heroAttrs ? getEffectiveAttrs({ ...rawAttrs, equipment: heroAttrs.equipment }) : rawAttrs
-  const eq = heroAttrs?.equipment ? getEquipmentBonuses(heroAttrs.equipment) : { armor: 0, resistance: 0, physAtk: 0, spellPower: 0 }
+  const eq = heroAttrs?.equipment
+    ? getEquipmentBonuses(heroAttrs.equipment)
+    : {
+        armor: 0,
+        resistance: 0,
+        physAtk: 0,
+        spellPower: 0,
+        hitPct: 0,
+        dodgePct: 0,
+      }
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}
   const formulaMap = {}
@@ -445,14 +458,24 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   }
 
   // Dodge
-  const dodge = 5 + attrs.agility * (coef.k_Dodge || 0)
-  values.Dodge = Math.round(dodge * 10) / 10
-  formulaMap.Dodge = fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, values.Dodge))
+  const dodgeBase = 5 + attrs.agility * (coef.k_Dodge || 0)
+  const dodgeEq = eq.dodgePct ?? 0
+  values.Dodge = Math.round((dodgeBase + dodgeEq) * 10) / 10
+  formulaMap.Dodge = dodgeEq
+    ? fmtFormula(
+        `${formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, Math.round(dodgeBase * 10) / 10)} + EQP(+${dodgeEq}%) = ${values.Dodge}`,
+      )
+    : fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, values.Dodge))
 
   // Hit
-  const hit = 95 + attrs.agility * 0.2
-  values.Hit = Math.round(hit * 10) / 10
-  formulaMap.Hit = fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
+  const hitBase = 95 + attrs.agility * 0.2
+  const hitEq = eq.hitPct ?? 0
+  values.Hit = Math.round((hitBase + hitEq) * 10) / 10
+  formulaMap.Hit = hitEq
+    ? fmtFormula(
+        `${formulaWithValues('95 + Agi * 0.2', attrs, level, Math.round(hitBase * 10) / 10)} + EQP(+${hitEq}%) = ${values.Hit}`,
+      )
+    : fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
 
   // Build formulas array in fixed order
   const labels = {

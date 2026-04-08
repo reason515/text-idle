@@ -25,6 +25,19 @@ alwaysApply: false
 - **Changing 7.2.1 or 7.2.3** in the design doc: update **`equipment.js`** pools to match in the **same change set**, unless the edit is explicitly a design-only proposal (then do not claim parity; label as future work).
 - **Do not** describe live-drop affix names or numeric ranges in other sections (e.g. examples in 7.2.2) as if they were implemented unless they exist in `AFFIX_POOL`.
 
+## Mechanic compatibility gate (mandatory)
+
+- When designing or revising affixes (including 7.2.x/7.3 proposals), you MUST check conflicts against current game mechanics and implementation before finalizing.
+- Minimum verification scope:
+  - Combat formulas and timing semantics in `docs/design/03-combat.md` (turn-based only; no real-time assumptions).
+  - Attribute and secondary-stat model in `docs/design/04-classes-attributes.md`.
+  - Current executable fields and aggregation in `frontend/src/game/equipment.js`, `frontend/src/game/weaponAffixPools.js`, and `frontend/src/game/combat.js`.
+- If an affix is design-only and not implemented yet, label it clearly as **未实现 / 候选** and do not present it as live behavior.
+- If a conflict is found (missing stat field, incompatible trigger timing, unsupported stacking, contradictory formulas), resolve it in the same change set by either:
+  - adjusting the affix design to fit existing mechanics, or
+  - updating related docs/code/tests together to establish the new mechanic.
+- Prohibited: speculative or "free-form" affix descriptions that bypass current mechanics/implementation constraints.
+
 ## Tests
 
 - If affix generation or display logic changes, extend or adjust `frontend/src/game/equipment.spec.js` so pools and naming stay covered.

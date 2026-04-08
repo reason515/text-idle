@@ -1068,7 +1068,7 @@
                     </span>
                   </span>
                 </div>
-                <div v-if="heroWeaponSecondaryAttrs.length" class="detail-sep-line detail-sep-weapon">武器</div>
+                <div v-if="heroWeaponSecondaryAttrs.length" class="detail-sep-line detail-sep-weapon">词缀加成</div>
                 <div v-for="attr in heroWeaponSecondaryAttrs" :key="'w-' + attr.key" class="detail-row">
                   <span class="detail-label secondary-label">{{ attr.label }}</span>
                   <span class="detail-value">
@@ -1761,6 +1761,12 @@ const AFFIX_STAT_LABELS = {
   spellPen: '\u6cd5\u672f\u7a7f\u900f',
   spellDmgPct: '\u6cd5\u672f\u4f24\u5bb3%',
   ignoreResistPct: '\u65e0\u89c6\u6297\u6027%',
+  hitPct: '\u547d\u4e2d\u7387',
+  dodgePct: '\u95ea\u907f\u7387',
+  manaRegen: '\u6bcf\u56de\u5408\u6cd5\u529b\u56de\u590d',
+  hpRegen: '\u6bcf\u56de\u5408\u751f\u547d\u56de\u590d',
+  goldFindPct: '\u91d1\u5e01\u6389\u843d\u52a0\u6210',
+  magicFindPct: '\u9b54\u6cd5\u5bfb\u83b7(MF)',
 }
 function formatAffixStat(stat) {
   if (!stat) return ''
@@ -1785,6 +1791,10 @@ function formatAffixValue(affix) {
     'manaRefluxPct',
     'spellDmgPct',
     'ignoreResistPct',
+    'hitPct',
+    'dodgePct',
+    'goldFindPct',
+    'magicFindPct',
   ])
   if (pctStats.has(affix.stat)) return `${affix.value}%`
   if (affix.stat === 'addedMagicDmg' || affix.stat === 'arcaneFollowup') {
@@ -1972,7 +1982,33 @@ const heroWeaponSecondaryAttrs = computed(() => {
     selectedHero.value.level || 1,
     selectedHero.value
   )
-  return r.weaponSecondary ?? []
+  const rows = r.weaponSecondary ?? []
+  const heroes = squad.value || []
+  const heroCount = heroes.length || 1
+  let totalGoldFind = 0
+  let totalMagicFind = 0
+  for (const h of heroes) {
+    const eq = getEquipmentBonuses(h?.equipment)
+    totalGoldFind += eq?.goldFindPct ?? 0
+    totalMagicFind += eq?.magicFindPct ?? 0
+  }
+  const avgGoldFind = Math.round((totalGoldFind / heroCount) * 10) / 10
+  const avgMagicFind = Math.round((totalMagicFind / heroCount) * 10) / 10
+  return rows.map((row) => {
+    if (row.key === 'WGoldFind') {
+      return {
+        ...row,
+        formula: `当前英雄 GF = ${row.value}\n小队平均 GF = ${avgGoldFind}%\n战利品金币按小队平均 GF 生效`,
+      }
+    }
+    if (row.key === 'WMagicFind') {
+      return {
+        ...row,
+        formula: `当前英雄 MF = ${row.value}\n小队平均 MF = ${avgMagicFind}%\n掉落品质按小队平均 MF 生效`,
+      }
+    }
+    return row
+  })
 })
 
 function isMapUnlocked(mapId) {

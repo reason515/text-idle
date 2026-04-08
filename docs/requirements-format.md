@@ -421,7 +421,7 @@ Then [expected result/verifiable behavior].
 - **Battle separator**: Visual separator line between consecutive battles.
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
-- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
+- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. Equipment-provided `hitPct` and `dodgePct` are merged into 命中 % / 闪避 % formulas. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
 - **Monster detail panel**: Similar alignment; **物攻** shows **effective min–max per hit** (same 1–4 unarmed scaling as combat, e.g. `6-24` when the underlying PhysAtk stat is 15); includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 - **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 
@@ -758,7 +758,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Drop rate**: Low overall (configurable); each victory rolls independently; most victories produce no equipment drop.
 - **Drop condition**: Only on **victory**; defeat grants no equipment.
 - **Item tier** (determined by monster level, not MF): Normal bases from Lv 1–20 monsters; Exceptional bases from Lv 21–40; Elite bases from Lv 41–60.
-- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–5 affixes), Unique (fixed affixes + special effect).
+- **Item quality** (determined by Magic Find): Normal (white, 0 affixes), Magic/Blue (1–2 affixes), Rare/Yellow (3–5 affixes), Unique (fixed affixes + special effect). Party **average** `magicFindPct` raises Magic/Rare weight with diminishing return cap.
 - **Display**: Dropped item appears in the combat log's victory summary line alongside EXP and Gold, with a brief highlight animation when appearing to enhance the sense of surprise.
 - **Affix roll range visible**: Player can see the rolled value and the range (e.g., `+7 Armor [+5~18]`) so they can judge the roll quality.
 - **Blue vs. Yellow range rule**: Both Magic and Rare use the same per-affix roll band: max(1, floor(base × 0.7)) to ceil(base × 1.3). Rare differs from Magic mainly by **affix count** (3–5 vs 1–2). Affix values are never +0.
@@ -1038,7 +1038,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Concept**: Shop mimics D2 Gambling — player spends gold to buy "unidentified" equipment by slot; purchase triggers immediate auto-identify using the same quality/affix logic as monster drops.
 - **Flow**: Select slot → Pay gold → Generate unidentified item (slot, base, level fixed; quality and affixes not yet rolled) → Auto-identify → Item enters backpack.
 - **Level cap**: Shop item level does **not exceed the highest level among squad members**; empty squad defaults to level 1.
-- **Quality and affixes**: Fully reuses drop logic — MF (if configured), quality distribution (Normal/Magic/Rare/Unique), affix pools; rings and amulets only roll Magic or higher.
+- **Quality and affixes**: Fully reuses drop logic — MF (from equipped heroes' `magicFindPct`, resolved by squad average), quality distribution (Normal/Magic/Rare/Unique), affix pools; rings and amulets only roll Magic or higher.
 - **Item tier**: Tier (Normal/Exceptional/Elite) and base selection follow the same rules as monster drops, based on item level.
 - **Pricing**: Per-slot base price; level affects price via formula `base * (1 + level * 0.08)`; higher level = higher cost; price shown before purchase (e.g., Helm ~270 at Lv1, ~450 at Lv10).
 - **UI entry**: Shop button in the top bar, **next to the Backpack button** (Backpack left, Shop right); click opens a modal.

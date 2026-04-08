@@ -544,7 +544,8 @@ function heroCombatStats(hero) {
     maxMP,
     // Warriors start each combat at 0 Rage
     currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? maxMP),
-    equipmentRecoveryBonus: hero.equipmentRecoveryBonus ?? 0,
+    equipmentRecoveryBonus: (hero.equipmentRecoveryBonus ?? 0) + (eq?.manaRegen ?? 0),
+    hpRegen: eq?.hpRegen ?? 0,
     spirit: hero.spirit,
     skills: getHeroSkillIds(hero),
     skillEnhancements: hero.skillEnhancements ?? {},
@@ -763,12 +764,36 @@ function actorDamage(actor, rng, round) {
   return { action: 'skill', skillId, skillName, damageType: 'physical', rawDamage: Math.round(effPhys * coeff) }
 }
 
-function rewardForVictory(monsters, rng) {
+export function computePartyDropModifiers(heroes) {
+  let goldFindPct = 0
+  let magicFindPct = 0
+  let heroCount = 0
+  for (const hero of heroes || []) {
+    heroCount += 1
+    const eq = getEquipmentBonuses(hero?.equipment)
+    goldFindPct += eq?.goldFindPct ?? 0
+    magicFindPct += eq?.magicFindPct ?? 0
+  }
+  if (heroCount <= 0) {
+    return { goldFindPct: 0, magicFindPct: 0 }
+  }
+  const avgGoldFind = goldFindPct / heroCount
+  const avgMagicFind = magicFindPct / heroCount
+  return {
+    goldFindPct: Math.max(0, Math.min(300, avgGoldFind)),
+    magicFindPct: Math.max(0, Math.min(300, avgMagicFind)),
+  }
+}
+
+function rewardForVictory(monsters, heroes, rng) {
   const totalTierValue = monsters.reduce((sum, m) => sum + (m.tier === 'boss' ? 5 : m.tier === 'elite' ? 2 : 1), 0)
-  const equipment = generateEquipmentDrop(monsters, rng)
+  const dropModifiers = computePartyDropModifiers(heroes)
+  const equipment = generateEquipmentDrop(monsters, rng, dropModifiers)
+  const baseGold = 7 * totalTierValue
+  const gold = Math.max(0, Math.floor(baseGold * (1 + dropModifiers.goldFindPct / 100)))
   return {
     exp: 12 * totalTierValue,
-    gold: 7 * totalTierValue,
+    gold,
     equipment,
   }
 }
@@ -1967,6 +1992,29 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
     }
 
+    const hpRegenUpdates = []
+    for (const hero of heroUnits) {
+      if (hero.currentHP <= 0) continue
+      const regen = Math.floor(hero.hpRegen || 0)
+      if (regen <= 0) continue
+      const hpBefore = Math.min(hero.maxHP, Math.max(0, hero.currentHP || 0))
+      if (hpBefore >= hero.maxHP) continue
+      const hpGained = Math.min(hero.maxHP - hpBefore, regen)
+      hero.currentHP = hpBefore + hpGained
+      hpRegenUpdates.push({
+        actorId: hero.id,
+        actorName: hero.name,
+        actorClass: hero.class,
+        hpBefore,
+        hpGained,
+        hpAfter: hero.currentHP,
+        maxHP: hero.maxHP,
+      })
+    }
+    if (hpRegenUpdates.length > 0) {
+      log.push({ round, type: 'hpRegenBatch', updates: hpRegenUpdates })
+    }
+
     // Tick shield duration (Power Word: Shield)
     for (const unit of heroUnits) {
       if (unit.currentHP <= 0 || !unit.shield) continue
@@ -1997,7 +2045,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     log,
     initialOrder,
     turnActedByRound,
-    rewards: outcome === 'victory' ? rewardForVictory(monsterUnits, rng) : { exp: 0, gold: 0, equipment: [] },
+    rewards: outcome === 'victory' ? rewardForVictory(monsterUnits, heroes, rng) : { exp: 0, gold: 0, equipment: [] },
     heroesAfter: heroUnits,
     monstersAfter: monsterUnits,
   }

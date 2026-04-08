@@ -434,6 +434,43 @@ describe('equipment', () => {
       const b = getEquipmentBonuses({ MainHand: item })
       expect(b.physWeaponFlat).toBe(4)
     })
+
+    it('sums general affix stats across non-weapon slots', () => {
+      const b = getEquipmentBonuses({
+        Ring1: {
+          armor: 0,
+          resistance: 0,
+          physAtk: 0,
+          spellPower: 0,
+          physCritPct: 2,
+          spellCritPct: 3,
+          hitPct: 4,
+          dodgePct: 5,
+          manaRegen: 2,
+          hpRegen: 1,
+          goldFindPct: 10,
+          magicFindPct: 8,
+        },
+      })
+      expect(b.physCritPct).toBe(2)
+      expect(b.spellCritPct).toBe(3)
+      expect(b.hitPct).toBe(4)
+      expect(b.dodgePct).toBe(5)
+      expect(b.manaRegen).toBe(2)
+      expect(b.hpRegen).toBe(1)
+      expect(b.goldFindPct).toBe(10)
+      expect(b.magicFindPct).toBe(8)
+    })
+  })
+
+  describe('magic find drop modifiers', () => {
+    it('higher magicFindPct can upgrade quality tier under same deterministic roll', () => {
+      const monsters = [{ tier: 'normal', level: 10 }]
+      const noMf = generateEquipmentDrop(monsters, () => 0.02, { magicFindPct: 0 })
+      const highMf = generateEquipmentDrop(monsters, () => 0.02, { magicFindPct: 300 })
+      expect(noMf[0]?.quality).toBe('magic')
+      expect(highMf[0]?.quality).toBe('rare')
+    })
   })
 
   describe('weapon affix pools', () => {

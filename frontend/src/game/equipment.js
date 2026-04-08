@@ -73,12 +73,34 @@ const AFFIX_POOL = [
   { id: 'of-stamina', name: '\u8010\u529b', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 4, stat: 'stamina' },
   { id: 'of-vitality', name: '\u6d3b\u529b', type: 'suffix', tier: 'exceptional', baseMin: 4, baseMax: 10, stat: 'stamina' },
   { id: 'of-spirit', name: '\u7cbe\u795e', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 3, stat: 'spirit' },
+  { id: 'phys-crit-n', name: '\u731b\u88ad', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 2, stat: 'physCritPct' },
+  { id: 'phys-crit-e', name: '\u8001\u7ec3', type: 'prefix', tier: 'exceptional', baseMin: 2, baseMax: 4, stat: 'physCritPct' },
+  { id: 'phys-crit-l', name: '\u6218\u610f', type: 'prefix', tier: 'elite', baseMin: 4, baseMax: 7, stat: 'physCritPct' },
+  { id: 'phys-critdmg-n', name: '\u7834\u52bf', type: 'suffix', tier: 'normal', baseMin: 4, baseMax: 8, stat: 'physCritDmgPct' },
+  { id: 'phys-critdmg-e', name: '\u51cc\u5389', type: 'suffix', tier: 'exceptional', baseMin: 8, baseMax: 14, stat: 'physCritDmgPct' },
+  { id: 'phys-critdmg-l', name: '\u88c1\u51b3', type: 'suffix', tier: 'elite', baseMin: 14, baseMax: 24, stat: 'physCritDmgPct' },
+  { id: 'spell-crit-n', name: '\u5492\u950b', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 2, stat: 'spellCritPct' },
+  { id: 'spell-crit-e', name: '\u5965\u609f', type: 'prefix', tier: 'exceptional', baseMin: 2, baseMax: 4, stat: 'spellCritPct' },
+  { id: 'spell-crit-l', name: '\u661f\u8f89', type: 'prefix', tier: 'elite', baseMin: 4, baseMax: 7, stat: 'spellCritPct' },
+  { id: 'spell-critdmg-n', name: '\u88c2\u5492', type: 'suffix', tier: 'normal', baseMin: 4, baseMax: 8, stat: 'spellCritDmgPct' },
+  { id: 'spell-critdmg-e', name: '\u7ec8\u7130', type: 'suffix', tier: 'exceptional', baseMin: 8, baseMax: 14, stat: 'spellCritDmgPct' },
+  { id: 'spell-critdmg-l', name: '\u5929\u542f', type: 'suffix', tier: 'elite', baseMin: 14, baseMax: 24, stat: 'spellCritDmgPct' },
+  { id: 'mana-regen-n', name: '\u542f\u8fea', type: 'prefix', tier: 'normal', baseMin: 1, baseMax: 2, stat: 'manaRegen' },
+  { id: 'mana-regen-e', name: '\u51a5\u60f3', type: 'prefix', tier: 'exceptional', baseMin: 2, baseMax: 4, stat: 'manaRegen' },
+  { id: 'mana-regen-l', name: '\u8d24\u54f2', type: 'prefix', tier: 'elite', baseMin: 4, baseMax: 7, stat: 'manaRegen' },
+  { id: 'hp-regen-n', name: '\u575a\u5fcd', type: 'suffix', tier: 'normal', baseMin: 1, baseMax: 2, stat: 'hpRegen' },
+  { id: 'hp-regen-e', name: '\u6052\u5fc3', type: 'suffix', tier: 'exceptional', baseMin: 2, baseMax: 4, stat: 'hpRegen' },
+  { id: 'hp-regen-l', name: '\u5b88\u9b42', type: 'suffix', tier: 'elite', baseMin: 4, baseMax: 7, stat: 'hpRegen' },
+  { id: 'gold-find-n', name: '\u8d2a\u6b32', type: 'suffix', tier: 'normal', baseMin: 6, baseMax: 12, stat: 'goldFindPct' },
+  { id: 'gold-find-e', name: '\u5546\u8d3e', type: 'suffix', tier: 'exceptional', baseMin: 12, baseMax: 20, stat: 'goldFindPct' },
+  { id: 'gold-find-l', name: '\u5de8\u8d3e', type: 'suffix', tier: 'elite', baseMin: 20, baseMax: 35, stat: 'goldFindPct' },
+  { id: 'magic-find-n', name: '\u5e78\u8fd0', type: 'suffix', tier: 'normal', baseMin: 5, baseMax: 10, stat: 'magicFindPct' },
+  { id: 'magic-find-e', name: '\u5bfb\u5b9d', type: 'suffix', tier: 'exceptional', baseMin: 10, baseMax: 18, stat: 'magicFindPct' },
+  { id: 'magic-find-l', name: '\u5929\u7737', type: 'suffix', tier: 'elite', baseMin: 18, baseMax: 30, stat: 'magicFindPct' },
 ]
 
 const WEAPON_AFFIX_STATS = new Set([
   'physWeaponFlat',
-  'physCritPct',
-  'physCritDmgPct',
   'lifeStealPct',
   'lifeOnHit',
   'addedMagicDmg',
@@ -86,8 +108,6 @@ const WEAPON_AFFIX_STATS = new Set([
   'physDmgPct',
   'ignoreArmorPct',
   'spellWeaponFlat',
-  'spellCritPct',
-  'spellCritDmgPct',
   'manaRefluxPct',
   'manaOnCast',
   'arcaneFollowup',
@@ -95,6 +115,22 @@ const WEAPON_AFFIX_STATS = new Set([
   'spellDmgPct',
   'ignoreResistPct',
 ])
+
+export function applyMagicFindToQualityWeights(normal, magic, rare, magicFindPct = 0) {
+  const mf = Math.max(0, Number(magicFindPct) || 0)
+  if (mf <= 0) return { normal, magic, rare }
+  const effectiveMf = Math.min(300, mf)
+  const normalWeight = normal
+  const magicWeight = magic * (1 + effectiveMf / 200)
+  const rareWeight = rare * (1 + effectiveMf / 120)
+  const sum = normalWeight + magicWeight + rareWeight
+  if (sum <= 0) return { normal, magic, rare }
+  return {
+    normal: normalWeight / sum,
+    magic: magicWeight / sum,
+    rare: rareWeight / sum,
+  }
+}
 
 /** Epithets for Rare items */
 const EPITHET_POOL = [
@@ -271,7 +307,7 @@ function resolveSlotForDrop(slot, rng) {
 }
 
 /** Generate a single equipment item. slotOverride: when provided (shop), use this slot. baseKeyOverride: when provided, use this base table. */
-function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, baseKeyOverride = null) {
+function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, baseKeyOverride = null, dropModifiers = {}) {
   const itemTier = getItemTierByMonsterLevel(monsterLevel)
   const slots = getDroppableSlots(itemTier)
   const slot = slotOverride != null ? slotOverride : pickRandom(slots, rng)
@@ -289,25 +325,34 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
   const resolvedSlot = baseKey === 'Shield' ? 'OffHand' : slot
 
   let quality = QUALITY_NORMAL
+  const mfAdjusted =
+    monsterTier === 'boss'
+      ? applyMagicFindToQualityWeights(QUALITY_BOSS_NORMAL, QUALITY_BOSS_MAGIC, QUALITY_BOSS_RARE, dropModifiers.magicFindPct)
+      : monsterTier === 'shop'
+        ? applyMagicFindToQualityWeights(QUALITY_SHOP_NORMAL, QUALITY_SHOP_MAGIC, QUALITY_SHOP_RARE, dropModifiers.magicFindPct)
+        : monsterTier === 'elite'
+          ? applyMagicFindToQualityWeights(QUALITY_ELITE_NORMAL, QUALITY_ELITE_MAGIC, QUALITY_ELITE_RARE, dropModifiers.magicFindPct)
+          : applyMagicFindToQualityWeights(QUALITY_NORMAL_CHANCE, QUALITY_MAGIC_CHANCE, QUALITY_RARE_CHANCE, dropModifiers.magicFindPct)
+
   if (monsterTier === 'boss') {
     const q = rng()
-    if (q < QUALITY_BOSS_RARE) quality = QUALITY_RARE
-    else if (q < QUALITY_BOSS_RARE + QUALITY_BOSS_MAGIC) quality = QUALITY_MAGIC
+    if (q < mfAdjusted.rare) quality = QUALITY_RARE
+    else if (q < mfAdjusted.rare + mfAdjusted.magic) quality = QUALITY_MAGIC
     else quality = QUALITY_NORMAL
   } else if (monsterTier === 'shop') {
     const q = rng()
-    if (q < QUALITY_SHOP_RARE) quality = QUALITY_RARE
-    else if (q < QUALITY_SHOP_RARE + QUALITY_SHOP_MAGIC) quality = QUALITY_MAGIC
+    if (q < mfAdjusted.rare) quality = QUALITY_RARE
+    else if (q < mfAdjusted.rare + mfAdjusted.magic) quality = QUALITY_MAGIC
     else quality = QUALITY_NORMAL
   } else if (monsterTier === 'elite') {
     const q = rng()
-    if (q < QUALITY_ELITE_RARE) quality = QUALITY_RARE
-    else if (q < QUALITY_ELITE_RARE + QUALITY_ELITE_MAGIC) quality = QUALITY_MAGIC
+    if (q < mfAdjusted.rare) quality = QUALITY_RARE
+    else if (q < mfAdjusted.rare + mfAdjusted.magic) quality = QUALITY_MAGIC
     else quality = QUALITY_NORMAL
   } else {
     const q = rng()
-    if (q < QUALITY_RARE_CHANCE) quality = QUALITY_RARE
-    else if (q < QUALITY_RARE_CHANCE + QUALITY_MAGIC_CHANCE) quality = QUALITY_MAGIC
+    if (q < mfAdjusted.rare) quality = QUALITY_RARE
+    else if (q < mfAdjusted.rare + mfAdjusted.magic) quality = QUALITY_MAGIC
     else quality = QUALITY_NORMAL
   }
 
@@ -426,6 +471,16 @@ function applyAffixToItem(item, affix) {
   else if (stat === 'intellect') item.intBonus = (item.intBonus || 0) + val
   else if (stat === 'stamina') item.staBonus = (item.staBonus || 0) + val
   else if (stat === 'spirit') item.spiBonus = (item.spiBonus || 0) + val
+  else if (stat === 'physCritPct') item.physCritPct = (item.physCritPct || 0) + val
+  else if (stat === 'physCritDmgPct') item.physCritDmgPct = (item.physCritDmgPct || 0) + val
+  else if (stat === 'spellCritPct') item.spellCritPct = (item.spellCritPct || 0) + val
+  else if (stat === 'spellCritDmgPct') item.spellCritDmgPct = (item.spellCritDmgPct || 0) + val
+  else if (stat === 'hitPct') item.hitPct = (item.hitPct || 0) + val
+  else if (stat === 'dodgePct') item.dodgePct = (item.dodgePct || 0) + val
+  else if (stat === 'manaRegen') item.manaRegen = (item.manaRegen || 0) + val
+  else if (stat === 'hpRegen') item.hpRegen = (item.hpRegen || 0) + val
+  else if (stat === 'goldFindPct') item.goldFindPct = (item.goldFindPct || 0) + val
+  else if (stat === 'magicFindPct') item.magicFindPct = (item.magicFindPct || 0) + val
 }
 
 /**
@@ -513,7 +568,7 @@ export function createStarterWhiteItem({ id, baseKey, slot, baseName = null }) {
  * @param {Function} rng - Random function 0..1
  * @returns {Array} Equipment items (may be empty)
  */
-export function generateEquipmentDrop(monsters, rng = Math.random) {
+export function generateEquipmentDrop(monsters, rng = Math.random, dropModifiers = {}) {
   if (!monsters || !monsters.length) return []
 
   const hasBoss = monsters.some((m) => m.tier === 'boss')
@@ -528,7 +583,7 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
 
   const rollDrop = (monster) => {
     if (rng() < baseChance) {
-      const item = generateOneItem(monster.level ?? 1, monster.tier ?? 'normal', rng)
+      const item = generateOneItem(monster.level ?? 1, monster.tier ?? 'normal', rng, null, null, dropModifiers)
       if (item) drops.push(item)
     }
   }
@@ -539,7 +594,7 @@ export function generateEquipmentDrop(monsters, rng = Math.random) {
 
   if (hasBoss && !drops.some((d) => d.quality === QUALITY_MAGIC || d.quality === QUALITY_RARE || d.quality === QUALITY_UNIQUE)) {
     const bossMonster = monsters.find((m) => m.tier === 'boss') || monsters[0]
-    const guaranteed = generateOneItem(bossMonster.level ?? 1, 'boss', rng)
+    const guaranteed = generateOneItem(bossMonster.level ?? 1, 'boss', rng, null, null, dropModifiers)
     if (guaranteed) {
       if (guaranteed.quality === QUALITY_NORMAL) {
         guaranteed.quality = QUALITY_MAGIC
@@ -725,6 +780,12 @@ export function sumWeaponAffixStatsFromItem(item) {
     spellPen: 0,
     spellDmgPct: 0,
     ignoreResistPct: 0,
+    hitPct: 0,
+    dodgePct: 0,
+    manaRegen: 0,
+    hpRegen: 0,
+    goldFindPct: 0,
+    magicFindPct: 0,
   }
   if (!item) return o
   for (const a of [...(item.prefixes || []), ...(item.suffixes || [])]) {
@@ -791,6 +852,12 @@ export function getEquipmentBonuses(equipment) {
     spellPen: 0,
     spellDmgPct: 0,
     ignoreResistPct: 0,
+    hitPct: 0,
+    dodgePct: 0,
+    manaRegen: 0,
+    hpRegen: 0,
+    goldFindPct: 0,
+    magicFindPct: 0,
   }
   if (!equipment || typeof equipment !== 'object') return out
   for (const [slot, item] of Object.entries(equipment)) {
@@ -802,6 +869,16 @@ export function getEquipmentBonuses(equipment) {
     out.intellect += item.intBonus || 0
     out.stamina += item.staBonus || 0
     out.spirit += item.spiBonus || 0
+    out.physCritPct += item.physCritPct || 0
+    out.physCritDmgPct += item.physCritDmgPct || 0
+    out.spellCritPct += item.spellCritPct || 0
+    out.spellCritDmgPct += item.spellCritDmgPct || 0
+    out.hitPct += item.hitPct || 0
+    out.dodgePct += item.dodgePct || 0
+    out.manaRegen += item.manaRegen || 0
+    out.hpRegen += item.hpRegen || 0
+    out.goldFindPct += item.goldFindPct || 0
+    out.magicFindPct += item.magicFindPct || 0
 
     if (WEAPON_SLOTS.includes(slot)) {
       mergeWeaponAffixTotals(out, sumWeaponAffixStatsFromItem(item))

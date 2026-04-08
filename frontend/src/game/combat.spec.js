@@ -19,6 +19,7 @@ import {
   applyDamage,
   computeFinalHitChance,
   rollHitCheck,
+  computePartyDropModifiers,
   runAutoCombat,
   pickTarget,
   buildRoundOrder,
@@ -72,6 +73,26 @@ describe('hit and dodge resolution', () => {
     const r = rollHitCheck({ hit: 60, level: 1 }, { dodge: 0, level: 1 }, () => 0.99)
     expect(r.isHit).toBe(false)
     expect(r.finalHitChance).toBe(60)
+  })
+})
+
+describe('party GF/MF averaging', () => {
+  it('uses squad average (not sum) for gold and magic find modifiers', () => {
+    const highFinder = sampleHero({
+      id: 'gf-mf-high',
+      equipment: {
+        Ring1: { goldFindPct: 100, magicFindPct: 60 },
+      },
+    })
+    const neutral = sampleHero({
+      id: 'gf-mf-zero',
+      equipment: {
+        Ring1: { goldFindPct: 0, magicFindPct: 0 },
+      },
+    })
+    const mods = computePartyDropModifiers([highFinder, neutral])
+    expect(mods.goldFindPct).toBe(50)
+    expect(mods.magicFindPct).toBe(30)
   })
 })
 

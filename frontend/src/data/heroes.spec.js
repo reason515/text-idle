@@ -229,6 +229,7 @@ describe('heroes', () => {
             physAtkMax: 5,
             armor: 0,
             resistance: 0,
+            physCritPct: 3,
             prefixes: [{ stat: 'physCritPct', value: 3 }],
             suffixes: [{ stat: 'lifeStealPct', value: 2 }],
           },
@@ -253,6 +254,37 @@ describe('heroes', () => {
       expect(rows.find((r) => r.key === 'WLifeSteal')).toBeTruthy()
       expect(rows.find((r) => r.key === 'WAddedMagic')?.value).toBe('1-4')
       expect(rows.find((r) => r.key === 'WArcaneFU')?.value).toBe('2-6')
+    })
+
+    it('secondary formulas include EQP hit/dodge and extra affix rows', () => {
+      const hero = {
+        class: 'Warrior',
+        strength: 10,
+        agility: 4,
+        intellect: 2,
+        stamina: 9,
+        spirit: 3,
+        level: 1,
+        equipment: {
+          Ring1: {
+            armor: 0,
+            resistance: 0,
+            physAtk: 0,
+            spellPower: 0,
+            hitPct: 4,
+            dodgePct: 3,
+            goldFindPct: 12,
+            magicFindPct: 9,
+          },
+        },
+      }
+      const { values, formulas, weaponSecondary } = computeSecondaryAttributes('Warrior', 1, hero)
+      expect(values.Hit).toBe(99.8)
+      expect(values.Dodge).toBe(8.7)
+      expect(formulas.find((f) => f.key === 'Hit')?.formula).toContain('EQP(+4%)')
+      expect(formulas.find((f) => f.key === 'Dodge')?.formula).toContain('EQP(+3%)')
+      expect(weaponSecondary.find((r) => r.key === 'WGoldFind')?.value).toBe('+12%')
+      expect(weaponSecondary.find((r) => r.key === 'WMagicFind')?.value).toBe('+9%')
     })
 
     it('Warrior with weapon damage range shows PhysAtk as min-max', () => {
