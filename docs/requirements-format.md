@@ -130,7 +130,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Main layout**: Three-column layout per [09-social-ui.md](design/09-social-ui.md): Squad (left), Monsters (center-left), Combat Log (right). Top bar: map selector, backpack, shop, gold, user.
+- **Main layout**: Three-column battlefield layout per [09-social-ui.md](design/09-social-ui.md): Squad (left), Combat Log (center), Monsters (right) — two armies facing off. Top bar: map selector, exploration progress, gold, backpack, shop, user. Bottom bar: expandable function area (world chat, future features).
 - **Initial state**: Squad has 3 hero cards; map is Elwynn Forest (only option); combat may auto-start or require map confirmation.
 - **Hero cards**: Each shows name, class (WoW color), level 1, HP bar, resource bar; click opens detail modal.
 - **Reference**: [09-social-ui.md](design/09-social-ui.md).
@@ -140,7 +140,7 @@ Then [expected result/verifiable behavior].
 | # | Given | When | Then |
 |---|-------|------|------|
 | AC1 | Player has just completed the intro and landed on the main screen | Main screen loads | The left column (Squad) displays **3 hero cards** (Warrior, Mage, Priest) in a vertical or grid layout |
-| AC2 | Player views the main screen for the first time | Player inspects the layout | Top bar shows map selector (Elwynn Forest), backpack, shop, gold; center shows monster area (empty or first encounter); right shows combat log |
+| AC2 | Player views the main screen for the first time | Player inspects the layout | Top bar shows map selector (Elwynn Forest), exploration progress, gold, backpack, shop; battle area shows Squad (left), Combat Log (center), Monsters (right); bottom bar shows expandable function area |
 | AC3 | Player views the squad panel | Squad is displayed | Each of the 3 hero cards shows: hero name, class label (Warrior/Mage/Priest) in WoW class color, Level 1, HP bar, resource bar (Rage/MP/MP) |
 | AC4 | Player has not defeated any map boss | Player views the squad area | A "Recruit" or expansion button is either hidden, disabled, or shows a lock/tooltip (e.g., "Defeat Hogger to recruit"); no 4th hero slot is available yet |
 | AC5 | Player clicks a hero card (e.g., Warrior) | Hero detail modal opens | Modal shows full hero info: name, class, level, attributes, equipment slots, **skill list** (Sunder Armor, Taunt for Warrior); player can configure tactics |
@@ -452,7 +452,7 @@ Then [expected result/verifiable behavior].
 | AC21 | A Warrior hero is displayed | Player views resource bar or detail panel | Resource is "Rage" with max value fixed at 100 (same for Rogue "Energy" and Hunter "Focus") |
 | AC22 | Combat is in progress | Player clicks Pause button | Combat log stops scrolling; new log entries are not displayed until Resume is clicked |
 | AC23 | Combat is paused | Player clicks Resume button | Combat log resumes scrolling and displaying new entries |
-| AC24 | Player views main battle layout | Layout is displayed | Squad (left), Monsters (center-left), Combat Log (right); monsters closer to squad for easier status comparison |
+| AC24 | Player views main battle layout | Layout is displayed | Squad (left, green accent), Combat Log (center), Monsters (right, red accent) — battlefield layout with two armies facing off; bottom bar for expandable functions |
 | AC25 | Player opens hero detail modal | Hero has Stamina 9, Level 1, Warrior class | HP in basic info and HP in secondary attributes both show 34 (10 + 9*2.5 + 1*1.5); values are consistent |
 | AC26 | Combat log displays entries | Player views [Rx], used, on, for, (physical), (magic) | These elements use distinct colors/backgrounds for readability (e.g. #66aa88, #88bb99, #99ccaa) |
 | AC27 | Combat log displays an action | A hero or monster acts | The actor's Agility value is shown next to the actor name (e.g. "HeroName (AGI 12) used..."), so the player can see that higher agility acts first |

@@ -24,7 +24,7 @@
       </div>
       <div class="topbar-center">
         <div class="gold-display tooltip-wrap">
-          <span class="gold-label">金币</span>
+          <span class="gold-icon">&#9830;</span>
           <span class="gold-value">{{ gold }}</span>
           <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
         </div>
@@ -535,42 +535,36 @@
           </template>
         </div>
       </div>
-      <div class="chat-col battle-panel">
-        <div class="panel-header chat-panel-header">
-          <div class="panel-heading">
-            <span class="col-header">世界聊天</span>
-            <p class="panel-subtitle">预留给后续的跨玩家频道与社交互动</p>
-          </div>
-          <span class="panel-chip panel-chip-muted">即将开放</span>
-        </div>
-        <div class="chat-preview-list">
-          <div class="chat-preview-item">
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bottom-bar-tabs">
+        <span class="bottom-bar-tab active">世界聊天</span>
+        <span class="bottom-bar-tab-soon">更多功能即将开放...</span>
+      </div>
+      <div class="bottom-bar-content">
+        <div class="chat-inline-messages">
+          <div class="chat-inline-item">
             <span class="chat-channel-tag">世界</span>
-            <div class="chat-preview-copy">
-              <span class="chat-preview-author">系统</span>
-              <p>世界聊天区域预留中，后续可用于实时频道与系统公告。</p>
-            </div>
+            <span class="chat-inline-author">系统</span>
+            <span class="chat-inline-text">世界聊天区域预留中，后续可用于实时频道与系统公告。</span>
           </div>
-          <div class="chat-preview-item">
+          <div class="chat-inline-item">
             <span class="chat-channel-tag">示例</span>
-            <div class="chat-preview-copy">
-              <span class="chat-preview-author">玩家A</span>
-              <p>有人准备挑战下一张地图的首领吗？</p>
-            </div>
+            <span class="chat-inline-author">玩家A</span>
+            <span class="chat-inline-text">有人准备挑战下一张地图的首领吗？</span>
           </div>
-          <div class="chat-preview-item">
+          <div class="chat-inline-item">
             <span class="chat-channel-tag">示例</span>
-            <div class="chat-preview-copy">
-              <span class="chat-preview-author">玩家B</span>
-              <p>我刚刷到一件不错的法系装备，晚点可以分享配置思路。</p>
-            </div>
+            <span class="chat-inline-author">玩家B</span>
+            <span class="chat-inline-text">我刚刷到一件不错的法系装备，晚点可以分享配置思路。</span>
           </div>
         </div>
-        <div class="chat-preview-composer">
+        <div class="chat-inline-composer">
           <label class="chat-composer-label" for="worldChatPreview">世界消息</label>
           <textarea
             id="worldChatPreview"
-            class="chat-composer-input"
+            class="chat-inline-input"
             placeholder="世界聊天功能即将开放"
             disabled
           ></textarea>
@@ -3299,9 +3293,9 @@ onUnmounted(() => {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--border-dark);
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--border-dark);
   background: var(--bg-panel);
   flex-shrink: 0;
 }
@@ -3333,11 +3327,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.45rem;
-  padding: 0.65rem 0.8rem;
+  gap: 0.3rem;
+  padding: 0.4rem 0.6rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
 .topbar-action-buttons {
@@ -3356,15 +3349,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.45rem;
-  padding: 0.65rem 0.8rem;
+  gap: 0.3rem;
+  padding: 0.4rem 0.6rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
 .topbar-map-section {
-  min-width: 14rem;
+  min-width: 11rem;
 }
 
 .topbar-progress-section {
@@ -3380,17 +3372,17 @@ onUnmounted(() => {
 
 .map-btn {
   width: fit-content;
-  min-height: 2.3rem;
-  padding: 0.45rem 0.7rem;
+  min-height: 1.8rem;
+  padding: 0.3rem 0.55rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
   color: var(--accent);
   font-family: inherit;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   flex-shrink: 0;
 }
 .map-btn:hover {
@@ -3418,31 +3410,29 @@ onUnmounted(() => {
 }
 
 .gold-display {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
-  min-width: 7rem;
-  min-height: 100%;
-  padding: 0.6rem 0.9rem;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
   background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  border: 1px solid rgba(255, 204, 68, 0.2);
   color: var(--color-gold);
   font-size: var(--font-base);
   flex-shrink: 0;
-  text-align: center;
 }
-.gold-label {
-  color: var(--text-label);
-  font-size: var(--font-sm);
+.gold-icon {
+  color: var(--color-gold);
+  font-size: var(--font-base);
+  line-height: 1;
 }
 .gold-value {
   font-weight: normal;
   min-width: 2ch;
-  font-size: var(--font-lg);
+  font-size: var(--font-base);
   line-height: 1;
+  color: var(--color-gold);
 }
 .gold-tooltip {
   white-space: nowrap;
@@ -3450,10 +3440,10 @@ onUnmounted(() => {
 }
 
 .topbar-btn {
-  min-height: 2.35rem;
-  padding: 0.65rem 0.8rem;
+  min-height: 1.8rem;
+  padding: 0.35rem 0.6rem;
   font-family: inherit;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -3768,13 +3758,13 @@ onUnmounted(() => {
 }
 
 .btn-logout {
-  min-height: 2.35rem;
+  min-height: 1.8rem;
   background: var(--bg-elevated);
   border: 1px solid var(--error);
   color: var(--error);
   font-family: inherit;
-  font-size: var(--font-base);
-  padding: 0.65rem 0.9rem;
+  font-size: var(--font-sm);
+  padding: 0.35rem 0.6rem;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -3784,12 +3774,12 @@ onUnmounted(() => {
 
 .battle-content {
   display: grid;
-  grid-template-columns: 17rem 16rem minmax(0, 1fr) 15rem;
+  grid-template-columns: 16rem minmax(0, 1fr) 16rem;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  gap: 0.8rem;
-  padding: 0.8rem;
+  gap: 0;
+  padding: 0;
   background: var(--bg-dark);
 }
 
@@ -3799,31 +3789,51 @@ onUnmounted(() => {
   overflow: hidden;
   padding: 0.75rem;
   background: var(--bg-panel);
-  border: 1px solid var(--border-dark);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  border: none;
+  border-left: 1px solid var(--border-dark);
+  border-right: 1px solid var(--border-dark);
+}
+
+.squad-col {
+  grid-column: 1;
+  grid-row: 1;
+  border-left: 3px solid var(--accent);
+  border-right: 1px solid var(--border-dark);
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.03) 0%, var(--bg-panel) 40%);
+}
+
+.monsters-col {
+  grid-column: 3;
+  grid-row: 1;
+  border-right: 3px solid var(--color-defeat);
+  border-left: 1px solid var(--border-dark);
+  background: linear-gradient(270deg, rgba(255, 68, 68, 0.03) 0%, var(--bg-panel) 40%);
 }
 
 .log-col {
-  border-color: var(--border);
-}
-
-.chat-col {
-  gap: 0.75rem;
-}
-
-.chat-panel-header {
-  margin-bottom: 0;
+  grid-column: 2;
+  grid-row: 1;
+  border-left: 1px solid var(--border-dark);
+  border-right: 1px solid var(--border-dark);
 }
 
 .panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.65rem;
-  padding-bottom: 0.55rem;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--border-dark);
   flex-shrink: 0;
+}
+
+.squad-col .panel-header {
+  border-bottom-color: rgba(0, 255, 136, 0.2);
+}
+
+.monsters-col .panel-header {
+  border-bottom-color: rgba(255, 68, 68, 0.2);
 }
 
 .panel-heading {
@@ -3831,23 +3841,33 @@ onUnmounted(() => {
 }
 
 .panel-subtitle {
-  margin: 0.35rem 0 0 0;
+  margin: 0.2rem 0 0 0;
   color: var(--text-muted);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
 }
 
 .panel-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.8rem;
-  min-height: 1.8rem;
-  padding: 0.2rem 0.5rem;
+  min-width: 2.4rem;
+  min-height: 1.5rem;
+  padding: 0.15rem 0.4rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
   color: var(--text-value);
   font-size: var(--font-sm);
   flex-shrink: 0;
+}
+
+.squad-col .panel-chip {
+  border-color: rgba(0, 255, 136, 0.25);
+  color: var(--accent);
+}
+
+.monsters-col .panel-chip {
+  border-color: rgba(255, 68, 68, 0.25);
+  color: var(--color-defeat);
 }
 
 .panel-chip-muted {
@@ -4020,8 +4040,17 @@ onUnmounted(() => {
 .col-header {
   font-size: var(--font-md);
   color: var(--text-value);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.squad-col .col-header {
+  color: var(--accent);
+}
+
+.monsters-col .col-header {
+  color: var(--color-defeat);
 }
 
 /* Shared scrollbar styling */
@@ -4063,34 +4092,78 @@ onUnmounted(() => {
   background: var(--scrollbar-thumb-hover);
 }
 
-.chat-preview-list {
+/* Bottom bar (function area / chat) */
+.bottom-bar {
+  flex-shrink: 0;
+  border-top: 2px solid var(--border-dark);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  max-height: 9rem;
+}
+
+.bottom-bar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-dark);
+  flex-shrink: 0;
+}
+
+.bottom-bar-tab {
+  font-size: var(--font-sm);
+  color: var(--accent);
+  padding: 0.25rem 0.5rem;
+  border-bottom: 2px solid var(--accent);
+  cursor: default;
+}
+
+.bottom-bar-tab-soon {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.bottom-bar-content {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.chat-inline-messages {
+  flex: 1;
+  min-width: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.6rem;
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-.chat-preview-item {
+.chat-inline-item {
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.55rem 0.6rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-dark);
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.15rem 0.35rem;
+  font-size: var(--font-sm);
+  background: var(--bg-darker);
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .chat-channel-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.4rem;
-  min-height: 1.35rem;
-  padding: 0.1rem 0.3rem;
+  min-width: 2.2rem;
+  padding: 0.05rem 0.25rem;
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
   color: var(--text-label);
@@ -4098,56 +4171,57 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.chat-preview-copy {
-  min-width: 0;
-}
-
-.chat-preview-author {
-  display: block;
-  margin-bottom: 0.25rem;
+.chat-inline-author {
   color: var(--text-value);
   font-size: var(--font-sm);
+  flex-shrink: 0;
 }
 
-.chat-preview-copy p {
-  margin: 0;
+.chat-inline-text {
   color: var(--text-muted);
   font-size: var(--font-sm);
-  line-height: 1.45;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.chat-preview-composer {
+.chat-inline-composer {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.7rem;
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.25rem 0;
 }
 
 .chat-composer-label {
   color: var(--text-label);
   font-size: var(--font-sm);
+  flex-shrink: 0;
 }
 
-.chat-composer-input {
-  width: 100%;
-  min-height: 5.5rem;
+.chat-inline-input {
+  width: 14rem;
+  min-height: 1.8rem;
+  max-height: 1.8rem;
   resize: none;
-  padding: 0.6rem;
+  padding: 0.25rem 0.5rem;
   font-family: inherit;
-  font-size: var(--font-base);
-  background: var(--bg-elevated);
+  font-size: var(--font-sm);
+  background: var(--bg-darker);
   border: 1px solid var(--border-dark);
   color: var(--text-muted);
 }
 
-.chat-composer-input:disabled {
+.chat-inline-input:disabled {
   opacity: 1;
 }
 
 .chat-send-btn {
   margin-top: 0;
+  width: auto;
+  padding: 0.25rem 0.6rem;
+  font-size: var(--font-sm);
   background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
   color: var(--text-muted);
@@ -5478,10 +5552,14 @@ input.tactics-condition-value[type="number"] {
 }
 .gold-display .tooltip-text.tooltip-below {
   bottom: auto;
-  top: calc(100% + 0.4rem);
+  top: calc(100% + 0.35rem);
   left: 50%;
   right: auto;
   transform: translateX(-50%);
+}
+.gold-display:hover {
+  border-color: rgba(255, 204, 68, 0.4);
+  background: rgba(255, 204, 68, 0.05);
 }
 .resource-rage { color: var(--color-rage) !important; }
 

@@ -277,7 +277,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(pauseBtn).toContainText('暂停')
   })
 
-  test('layout: squad left, monsters center-left, combat log right', async ({ page }) => {
+  test('layout: squad left, log center, monsters right (battlefield)', async ({ page }) => {
     const email = uniqueTestEmail('layout-e2e')
     await registerAndGoToMain(page, email)
 
@@ -286,11 +286,13 @@ test.describe('Combat Flow (Example 5-9)', () => {
     const battleContent = page.locator('.battle-content')
     await expect(battleContent).toBeVisible()
     const cols = battleContent.locator('> div')
-    await expect(cols).toHaveCount(4)
+    await expect(cols).toHaveCount(3)
     await expect(cols.nth(0)).toHaveClass(/squad-col/)
     await expect(cols.nth(1)).toHaveClass(/monsters-col/)
     await expect(cols.nth(2)).toHaveClass(/log-col/)
-    await expect(cols.nth(3)).toHaveClass(/chat-col/)
+
+    const bottomBar = page.locator('.bottom-bar')
+    await expect(bottomBar).toBeVisible()
   })
 
   test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {
