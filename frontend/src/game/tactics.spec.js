@@ -190,12 +190,54 @@ describe('tactics', () => {
       expect(tacticsConditionWhenRequiresPickedTarget(null)).toBe(false)
     })
 
+    it('tacticsConditionWhenRequiresPickedTarget is true when skill-level whenAll includes target HP clauses', () => {
+      expect(
+        tacticsConditionWhenRequiresPickedTarget({
+          skillId: 'fireball',
+          whenAll: [
+            { when: 'target-hp-above', value: 0.05 },
+            { when: 'target-hp-below', value: 0.5 },
+          ],
+        }),
+      ).toBe(true)
+    })
+
+    it('isTacticsConditionInactive is false when whenAll is non-empty', () => {
+      expect(isTacticsConditionInactive({ skillId: 'x', whenAll: [{ when: 'target-hp-below', value: 0.1 }] })).toBe(false)
+    })
+
+    it('skill-level whenAll ANDs target-hp-above and target-hp-below (mage middle band)', () => {
+      const cond = {
+        skillId: 'fireball',
+        whenAll: [
+          { when: 'target-hp-above', value: 0.05 },
+          { when: 'target-hp-below', value: 0.5 },
+        ],
+      }
+      const mid = { currentHP: 30, maxHP: 100 }
+      const low = { currentHP: 3, maxHP: 100 }
+      expect(checkCondition(cond, {}, mid, [], [], {})).toBe(true)
+      expect(checkCondition(cond, {}, low, [], [], {})).toBe(false)
+    })
+
     it('tacticsHpRatioWhenSkipsPreFilter is true only for active target-hp-below/above', () => {
       expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-hp-below', value: 0.5 })).toBe(true)
       expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-hp-above', value: 0.5 })).toBe(true)
       expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: 'target-has-debuff', value: 'sunder' })).toBe(false)
       expect(tacticsHpRatioWhenSkipsPreFilter({ skillId: 'x', when: ' ', value: 0.5 })).toBe(false)
       expect(tacticsHpRatioWhenSkipsPreFilter(null)).toBe(false)
+    })
+
+    it('tacticsHpRatioWhenSkipsPreFilter is true when whenAll includes target-hp-below/above', () => {
+      expect(
+        tacticsHpRatioWhenSkipsPreFilter({
+          skillId: 'fireball',
+          whenAll: [
+            { when: 'target-hp-above', value: 0.05 },
+            { when: 'target-hp-below', value: 0.5 },
+          ],
+        }),
+      ).toBe(true)
     })
 
     it('self-hit-this-round passes when actor was hit', () => {

@@ -37,6 +37,7 @@ import {
   executePowerWordShield,
   executeShadowWordPain,
   applyDamageToShieldedUnit,
+  getShieldBuff,
 } from './priestSkills.js'
 import { getHeroSkillIds } from './skillChoice.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
@@ -629,6 +630,39 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
 
 const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal']
 
+/**
+ * True when every skill in tactics skillPriority costs more MP/rage than the actor currently has
+ * (or the skill definition is missing). Used so Mage/Priest basic-attack tactic gates do not consume
+ * the turn when no spell in priority can be paid for (idle rule: resource skip then fallback attack).
+ * Warrior rage fallback keeps full basic-attack conditions so per-target rules stay consistent.
+ * @param {{ class?: string, currentMP?: number }} actor
+ * @param {string[]} priority
+ * @returns {boolean}
+ */
+export function heroAllPrioritySkillsUnaffordable(actor, priority) {
+  if (!actor || !Array.isArray(priority) || priority.length === 0) return false
+  const mp = actor.currentMP || 0
+  const cls = actor.class
+  for (const skillId of priority) {
+    if (cls === 'Mage') {
+      const skill = getMageSkillWithEnhancements(actor, skillId) ?? getAnyMageSkillById(skillId)
+      const cost = skill?.manaCost ?? skill?.rageCost ?? 999
+      if (skill && cost <= mp) return false
+    } else if (cls === 'Priest') {
+      const skill = getPriestSkillWithEnhancements(actor, skillId) ?? getAnyPriestSkillById(skillId)
+      const cost = skill?.manaCost ?? 999
+      if (skill && cost <= mp) return false
+    } else if (cls === 'Warrior') {
+      const skill = getSkillWithEnhancements(actor, skillId) ?? getAnyWarriorSkillById(skillId)
+      const cost = skill?.rageCost ?? 0
+      if (skill && cost <= mp) return false
+    } else {
+      return false
+    }
+  }
+  return true
+}
+
 export function pickTarget(actor, heroes, monsters, opts = {}) {
   const { threat, tauntState, skillId, conditions, rng, designatedTank, round, monsterLastTarget } = opts
   if (actor.side === 'monster') {
@@ -639,7 +673,11 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
   const cond = skillId ? conditionsList.find((c) => c.skillId === skillId) : null
   const chain = getTargetRuleChain(actor, skillId || '', conditionsList)
   const targetAllies = skillId && ALLY_TARGET_SKILLS.includes(skillId)
-  const candidates = targetAllies ? alive(heroes) : alive(monsters)
+  let candidates = targetAllies ? alive(heroes) : alive(monsters)
+  if (skillId === 'power-word-shield') {
+    candidates = candidates.filter((u) => !getShieldBuff(u))
+    if (candidates.length === 0) candidates = targetAllies ? alive(heroes) : alive(monsters)
+  }
   let filtered =
     cond && !tacticsHpRatioWhenSkipsPreFilter(cond)
       ? filterTargetsByCondition(candidates, cond, actor, opts)
@@ -1623,18 +1661,49 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         }
       }
 
+      const priorityForResource = getSkillPriority(actor)
+      const relaxBasicAttackTacticGates =
+        actor.side === 'hero' &&
+        (actor.class === 'Mage' || actor.class === 'Priest') &&
+        heroAllPrioritySkillsUnaffordable(actor, priorityForResource)
+      const conditionsForBasicAttack =
+        relaxBasicAttackTacticGates && actor.side === 'hero'
+          ? (conditions || []).filter((c) => c.skillId !== 'basic-attack')
+          : conditions
+
       // Basic attack / monster skill path
       const target =
         actor.side === 'hero'
           ? pickTarget(actor, heroUnits, monsterUnits, {
               skillId: 'basic-attack',
-              conditions,
+              conditions: conditionsForBasicAttack,
               rng,
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
             }) ?? defaultTarget
           : defaultTarget
+      if (actor.side === 'hero') {
+        const baCond = conditions.find((c) => c.skillId === 'basic-attack')
+        if (
+          baCond &&
+          !relaxBasicAttackTacticGates &&
+          tacticsConditionWhenRequiresPickedTarget(baCond) &&
+          !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)
+        ) {
+          log.push({
+            round,
+            type: 'actionSkipped',
+            skipReason: 'tactics-gate',
+            actorId: actor.id,
+            actorName: actor.name,
+            actorClass: actor.class || null,
+            actorTier: null,
+            actorAgility: actor.agility ?? 0,
+          })
+          continue
+        }
+      }
       const action = actorDamage(actor, rng, round)
       const critRate = action.damageType === 'magic'
         ? (actor.spellCrit || 0)

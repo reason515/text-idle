@@ -22,6 +22,7 @@ import {
   computePartyDropModifiers,
   runAutoCombat,
   pickTarget,
+  heroAllPrioritySkillsUnaffordable,
   buildRoundOrder,
   startRestPhase,
   applyRestStep,
@@ -150,6 +151,72 @@ describe('pickTarget (Priest ally-hp-below triage)', () => {
       rng: () => 0.5,
       designatedTank: tank,
     })
+    expect(t.id).toBe('t1')
+  })
+})
+
+describe('pickTarget (PWS auto-excludes shielded allies)', () => {
+  it('picks unshielded ally over shielded ally for power-word-shield', () => {
+    const conditions = [
+      { skillId: 'power-word-shield', targetRule: 'lowest-hp-ally' },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Priest',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 80,
+      maxHP: 100,
+      tactics: { conditions },
+    }
+    const tank = {
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      side: 'hero',
+      currentHP: 50,
+      maxHP: 200,
+      shield: { absorbRemaining: 100, remainingRounds: 3 },
+    }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 60, maxHP: 100 }
+    const t = pickTarget(priest, [priest, tank, mage], [], {
+      skillId: 'power-word-shield',
+      conditions,
+      rng: () => 0.5,
+      designatedTank: tank,
+    })
+    expect(t.id).toBe('m1')
+  })
+
+  it('falls back to full pool when all allies have shields', () => {
+    const conditions = [
+      { skillId: 'power-word-shield', targetRule: 'lowest-hp-ally' },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Priest',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 80,
+      maxHP: 100,
+      shield: { absorbRemaining: 50, remainingRounds: 2 },
+    }
+    const tank = {
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      side: 'hero',
+      currentHP: 50,
+      maxHP: 200,
+      shield: { absorbRemaining: 100, remainingRounds: 3 },
+    }
+    const t = pickTarget(priest, [priest, tank], [], {
+      skillId: 'power-word-shield',
+      conditions,
+      rng: () => 0.5,
+      designatedTank: tank,
+    })
+    expect(t).not.toBeNull()
     expect(t.id).toBe('t1')
   })
 })
@@ -992,6 +1059,60 @@ describe('combat progression and systems', () => {
     expect(mUp.regenRaw).toBe(4)
     expect(mUp.manaGained).toBeGreaterThan(0)
     expect(mUp.actorName).toBeDefined()
+  })
+
+  it('heroAllPrioritySkillsUnaffordable is true when Mage cannot pay any priority skill', () => {
+    const actor = { class: 'Mage', currentMP: 0, skills: ['frostbolt', 'fireball'] }
+    expect(heroAllPrioritySkillsUnaffordable(actor, ['frostbolt', 'fireball'])).toBe(true)
+    expect(heroAllPrioritySkillsUnaffordable(actor, [])).toBe(false)
+  })
+
+  it('heroAllPrioritySkillsUnaffordable is false when Mage can afford at least one priority skill', () => {
+    const actor = { class: 'Mage', currentMP: 500, skills: ['frostbolt', 'fireball'] }
+    expect(heroAllPrioritySkillsUnaffordable(actor, ['frostbolt', 'fireball'])).toBe(false)
+  })
+
+  it('Mage at 0 MP still basic-attacks when basic-attack has target-hp-below gate (resource fallback)', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      agility: 99,
+      intellect: 25,
+      spirit: 10,
+      currentMP: 0,
+      maxMP: 100,
+      skills: ['frostbolt', 'fireball'],
+      tactics: {
+        skillPriority: ['frostbolt', 'fireball'],
+        targetRule: 'lowest-hp',
+        conditions: [
+          { skillId: 'frostbolt', when: 'target-hp-above', value: 0.5 },
+          {
+            skillId: 'fireball',
+            whenAll: [{ when: 'target-hp-above', value: 0.05 }, { when: 'target-hp-below', value: 0.5 }],
+          },
+          { skillId: 'basic-attack', when: 'target-hp-below', value: 0.05 },
+        ],
+      },
+    })
+    const monster = createMonster(
+      {
+        id: 'm1',
+        name: 'Mob',
+        damageType: 'physical',
+        base: { hp: 100, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    monster.currentHP = 80
+    monster.maxHP = 100
+    const result = runAutoCombat({ heroes: [mage], monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const skip = result.log.find(
+      (e) => e.type === 'actionSkipped' && e.actorName === 'Hero One' && e.skipReason === 'tactics-gate',
+    )
+    expect(skip).toBeUndefined()
+    const basic = result.log.find((e) => e.actorName === 'Hero One' && e.action === 'basic')
+    expect(basic).toBeDefined()
   })
 
   it('Mage tactics: lowest-hp + HP% skills hit global lowest HP, not a high-HP mob matching frost only', () => {

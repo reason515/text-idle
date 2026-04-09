@@ -8,7 +8,7 @@ import { getShieldBuff } from './priestSkills.js'
 
 /** @typedef {{ when: string, value?: number|string }} WhenClause */
 /** @typedef {{ rule: string, when?: string, value?: number|string, whenAll?: WhenClause[] }} TargetRuleStep */
-/** @typedef {{ skillId: string, when?: string, value?: number|string, targetRule?: string, targetRules?: (string|TargetRuleStep)[] }} TacticsCondition */
+/** @typedef {{ skillId: string, when?: string, value?: number|string, whenAll?: WhenClause[], targetRule?: string, targetRules?: (string|TargetRuleStep)[] }} TacticsCondition */
 
 /** Sentinel: use tactics.targetRule for this chain step */
 export const TACTICS_TARGET_RULE_INHERIT = 'default'
@@ -21,6 +21,7 @@ export const TACTICS_TARGET_RULE_INHERIT = 'default'
  */
 export function isTacticsConditionInactive(condition) {
   if (!condition) return true
+  if (Array.isArray(condition.whenAll) && condition.whenAll.length > 0) return false
   const w = condition.when
   if (w == null || w === '') return true
   if (typeof w === 'string' && w.trim() === '') return true
@@ -97,6 +98,15 @@ export function getConditions(actor) {
  */
 export function tacticsConditionWhenRequiresPickedTarget(condition) {
   if (!condition || isTacticsConditionInactive(condition)) return false
+  if (Array.isArray(condition.whenAll) && condition.whenAll.length > 0) {
+    return condition.whenAll.some(
+      (x) =>
+        x &&
+        (x.when === 'target-hp-below' ||
+          x.when === 'target-hp-above' ||
+          x.when === 'target-has-debuff'),
+    )
+  }
   const w = condition.when
   return w === 'target-hp-below' || w === 'target-hp-above' || w === 'target-has-debuff'
 }
@@ -111,6 +121,9 @@ export function tacticsConditionWhenRequiresPickedTarget(condition) {
  */
 export function tacticsHpRatioWhenSkipsPreFilter(condition) {
   if (!condition || isTacticsConditionInactive(condition)) return false
+  if (Array.isArray(condition.whenAll) && condition.whenAll.length > 0) {
+    return condition.whenAll.some((x) => x && (x.when === 'target-hp-below' || x.when === 'target-hp-above'))
+  }
   const w = condition.when
   return w === 'target-hp-below' || w === 'target-hp-above'
 }
@@ -127,6 +140,21 @@ export function tacticsHpRatioWhenSkipsPreFilter(condition) {
  */
 export function checkCondition(condition, actor, target, heroes, monsters, ctx) {
   if (isTacticsConditionInactive(condition)) return true
+
+  if (Array.isArray(condition.whenAll) && condition.whenAll.length > 0) {
+    const needsTarget = condition.whenAll.some(
+      (w) =>
+        w &&
+        (w.when === 'target-hp-below' ||
+          w.when === 'target-hp-above' ||
+          w.when === 'target-has-debuff'),
+    )
+    if (needsTarget && !target) return false
+    return condition.whenAll.every((w) => {
+      if (!w || !w.when) return true
+      return checkCondition({ when: w.when, value: w.value }, actor, target, heroes, monsters, ctx)
+    })
+  }
 
   const { when, value } = condition
 

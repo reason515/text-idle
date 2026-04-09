@@ -109,6 +109,7 @@
 
 **说明**：
 
+- **技能级 `whenAll`（AND）**：与目标链步骤相同，可在**单个技能的 `conditions` 条目**上使用 `whenAll: [{ when, value? }, ...]`，全部子条件满足时才可选用该技能。用于「中间血量区间」等需同时满足 `target-hp-above` 与 `target-hp-below` 的情形（例如法师：5% 以下普攻、5%–50% 火球、50% 以上寒冰箭时，火球须用 `whenAll` 绑定上下阈，避免低血仍匹配「低于 50%」而抢在普攻之前）。
 - `target-hp-below` / `target-hp-above`：**不**先按血量比例缩小敌方候选池。引擎先在**全部存活敌方**上按该技能的 `targetRule`（或继承全局 `targetRule`）选定目标，再用该比例条件判断是否可选用该技能。这样「默认目标：血量最低」与「寒冰箭仅当目标高于 60%」组合时，是先锁定全场当前 HP 最低者，再在该目标上分支寒冰箭/火球，而不会出现「只在比例高于 60% 的怪里再取血量最低」从而误打高血线怪的情况。
 - `target-has-debuff`：先按 debuff 过滤目标池，若无有效目标则跳过该技能。**不要用此项表示「没有真言术：盾」**；无盾请用 `self-no-shield` / `tank-no-shield`。
 - `ally-ot`：依赖仇恨系统与**指定坦克**；若未指定坦克，该条件及仇恨/坦克相关目标选项不可用。
@@ -129,9 +130,17 @@
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
 ```
 
+**法师 / 牧师：法力不足以施放优先级内任一法术时**：普攻阶段会**忽略** `conditions` 中 `skillId: basic-attack` 的条目（含 `target-hp-below` / `target-hp-above` 等），仍按全局 `targetRule` 或该条默认目标规则选取敌人并出手，避免「MP 已空却因普攻条件与当前目标血量不匹配而整回合 `actionSkipped`」。**战士**在怒气不足以施放优先级内技能时**不**做此放宽，普攻仍完全遵守 `basic-attack` 条件，以免破坏依赖目标链的破甲/切换逻辑。实现见 `heroAllPrioritySkillsUnaffordable` 与普攻路径（`frontend/src/game/combat.js`）。
+
 **回归测试（与需求文档对齐）**：`docs/requirements-format.md` Example 33 列出可验收行为；前端用 Vitest（`tactics.js` / `combat.js` 相关 `*.spec.js`）锁定条件顺序、`targetRules` 链与牧师快速治疗门控；E2E `e2e/browser/tactics.spec.js` 可校验持久化战术在「当前战术」摘要中的展示。
 
 **牧师「快速治疗」预检（与目标链首步 `ally-hp-below`）**：若 `targetRules` **仅含一步**且该步为「血量最低的队友 + `ally-hp-below`」，且**未**配置技能级 `when`，则当全队当前无人满足该血量阈值时，**不得**施放快速治疗（避免把「无技能级条件」当成始终可用，从而对满血队友施放治疗）。
+
+**勿误加无门控兜底**：若玩家意图仅为「存在低于 X% 的成员（含自己）时对其快速治疗」，则 `targetRules` **不应**在急诊步后再接**纯** `lowest-hp-ally`（无 `when` / `whenAll`）。否则在「全员比例都高于 X%」时，第一步候选为空会落到第二步，按**当前 HP 绝对值**选最低者，可能奶到比例健康但血条数字最小的自己。`validateAiTactics` 会移除急诊步（`ally-hp-below`，含 `when` 或单条 `whenAll`）之后**任意位置**的无门控 `lowest-hp-ally`；该校验在「坦克低血补充步」等启发式**之前**执行，以免中间插入其它步骤后漏删末尾兜底。点击 **应用** 合并战术时，`mergeAiTacticsApply` 会再次执行同一剥离，避免「仅合并急诊补充」路径把旧存档里的错误第二段保留下来。需要「否则仍奶最少血」时须在规则中显式描述。
+
+**真言术：盾「全队偏高血线」**：若描述为全队/所有英雄 **高于** X% 时给自己套盾、有盾再给队友等，第一步 `self` 应使用 **`self-hp-above`**（与快速治疗的「低于」区分），第二步给队友时 **不需要** `self-hp-above` 门控（第一步已包含该检查；若第一步因「自身有盾」失败则 HP 条件已满足；若因 HP 低失败则快速治疗优先处理）和 `self-no-shield`（第一段失败通常表示自身已有盾）。AI 校验可将误写的 `self-hp-below` 纠正为 `self-hp-above`，移除第二段多余的 `self-no-shield`，并 **剥离第二段中冗余的 `self-hp-above`** 门控。
+
+**真言术：盾自动排除已有盾目标**：引擎在 `pickTarget` 为 `power-word-shield` 选目标时，**自动过滤**掉身上已有护盾的队友（通过 `getShieldBuff`）。若过滤后无存活候选，则回退到全体存活队友池（允许刷新/覆盖）。因此「给无盾队友套盾」无需在规则中显式声明筛选条件，`lowest-hp-ally` 等目标规则已自动跳过有盾者。
 
 ---
 

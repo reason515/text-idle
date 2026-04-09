@@ -1252,17 +1252,17 @@
                       <span class="ai-tactics-preview-val ai-tactics-rule-list">
                         <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标优先链</span>
-                          <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules) }}</span>
+                          <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules, { skillId: c.skillId }) }}</span>
                         </span>
                         <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">目标</span>
                           <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
                         </span>
-                        <span v-if="c.when" class="ai-tactics-rule-item">
+                        <span v-if="tacticsSkillWhenDisplay(c)" class="ai-tactics-rule-item">
                           <span class="ai-tactics-rule-label">条件</span>
-                          <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
+                          <span class="ai-tactics-rule-value">{{ tacticsSkillWhenDisplay(c) }}</span>
                         </span>
-                        <span v-if="!c.targetRules?.length && !c.targetRule && !c.when" class="ai-tactics-current-empty">无额外规则</span>
+                        <span v-if="!c.targetRules?.length && !c.targetRule && !tacticsSkillWhenDisplay(c)" class="ai-tactics-current-empty">无额外规则</span>
                       </span>
                     </div>
                   </div>
@@ -1307,17 +1307,17 @@
                     <span class="ai-tactics-current-val ai-tactics-rule-list">
                       <span v-if="c.targetRules?.length" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标优先链</span>
-                        <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules) }}</span>
+                        <span class="ai-tactics-rule-value">{{ targetRulesChainDisplay(c.targetRules, { skillId: c.skillId }) }}</span>
                       </span>
                       <span v-else-if="c.targetRule" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">目标</span>
                         <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(c.targetRule) }}</span>
                       </span>
-                      <span v-if="c.when" class="ai-tactics-rule-item">
+                      <span v-if="tacticsSkillWhenDisplay(c)" class="ai-tactics-rule-item">
                         <span class="ai-tactics-rule-label">条件</span>
-                        <span class="ai-tactics-rule-value">{{ whenDisplayName(c.when) }}<template v-if="c.value !== undefined"> {{ conditionValueDisplay(c.when, c.value) }}</template></span>
+                        <span class="ai-tactics-rule-value">{{ tacticsSkillWhenDisplay(c) }}</span>
                       </span>
-                      <span v-if="!c.targetRules?.length && !c.targetRule && !c.when" class="ai-tactics-current-empty">无额外规则</span>
+                      <span v-if="!c.targetRules?.length && !c.targetRule && !tacticsSkillWhenDisplay(c)" class="ai-tactics-current-empty">无额外规则</span>
                     </span>
                   </div>
                 </template>
@@ -1631,7 +1631,7 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
-import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRulesChainDisplay, whenDisplayName, conditionValueDisplay } from '../game/aiTactics.js'
+import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRulesChainDisplay, tacticsSkillWhenDisplay, conditionValueDisplay } from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'
@@ -2591,7 +2591,8 @@ function persistSkillTargetChain(hero, skillId, rawStep0, rawStep1) {
       if (c) {
         delete c.targetRules
         delete c.targetRule
-        if (!c.when && c.value === undefined) {
+        const hasWhenAll = Array.isArray(c.whenAll) && c.whenAll.length > 0
+        if (!c.when && c.value === undefined && !hasWhenAll) {
           t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
         }
       }
@@ -2670,7 +2671,8 @@ function upsertSkillCondition(hero, skillId, updater) {
     const hasTargets =
       (c.targetRules?.length > 0) ||
       !!c.targetRule
-    if (!c.when && !hasTargets && c.value === undefined) {
+    const hasWhenAll = Array.isArray(c.whenAll) && c.whenAll.length > 0
+    if (!c.when && !hasTargets && c.value === undefined && !hasWhenAll) {
       t.conditions = t.conditions.filter((x) => x.skillId !== skillId)
     }
   })
@@ -2683,6 +2685,7 @@ function setSkillConditionWhen(hero, skillId, value) {
       if (c) {
         delete c.when
         delete c.value
+        delete c.whenAll
         const hasTargets = (c.targetRules?.length > 0) || !!c.targetRule
         if (!hasTargets) t.conditions = (t.conditions ?? []).filter((x) => x.skillId !== skillId)
       }
