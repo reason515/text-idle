@@ -3924,8 +3924,9 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 .shop-modal {
-  min-width: 20rem;
-  max-width: 26rem;
+  width: min(92vw, 48rem);
+  min-width: min(92vw, 20rem);
+  max-width: min(92vw, 48rem);
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -3962,10 +3963,24 @@ onUnmounted(() => {
 }
 .shop-message-error { color: var(--error); }
 .shop-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
+}
+@media (min-width: 42rem) {
+  .shop-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: start;
+  }
+}
+.shop-section {
+  min-width: 0;
+  padding: 0.5rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-darker);
 }
 .shop-section-title {
   font-size: var(--font-s);
@@ -3982,27 +3997,38 @@ onUnmounted(() => {
 }
 .shop-slot-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  column-gap: 0.5rem;
+  row-gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
 }
 .shop-slot-label {
+  grid-column: 1 / -1;
+  grid-row: 1;
   color: var(--color-formula-equip);
   font-size: var(--font-base);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
 }
 .shop-slot-price {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
   color: var(--color-gold);
   font-size: var(--font-base);
   white-space: nowrap;
 }
 .shop-buy-btn {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
   flex-shrink: 0;
   width: 3rem;
   min-width: 3rem;
