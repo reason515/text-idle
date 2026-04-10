@@ -677,7 +677,6 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
   let candidates = targetAllies ? alive(heroes) : alive(monsters)
   if (skillId === 'power-word-shield') {
     candidates = candidates.filter((u) => !getShieldBuff(u))
-    if (candidates.length === 0) candidates = targetAllies ? alive(heroes) : alive(monsters)
   }
   let filtered =
     cond && !tacticsHpRatioWhenSkipsPreFilter(cond)

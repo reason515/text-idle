@@ -188,7 +188,7 @@ describe('pickTarget (PWS auto-excludes shielded allies)', () => {
     expect(t.id).toBe('m1')
   })
 
-  it('falls back to full pool when all allies have shields', () => {
+  it('returns null when all allies have shields (no refresh via target pick)', () => {
     const conditions = [
       { skillId: 'power-word-shield', targetRule: 'lowest-hp-ally' },
     ]
@@ -216,8 +216,35 @@ describe('pickTarget (PWS auto-excludes shielded allies)', () => {
       rng: () => 0.5,
       designatedTank: tank,
     })
-    expect(t).not.toBeNull()
-    expect(t.id).toBe('t1')
+    expect(t).toBeNull()
+  })
+
+  it('solo priest with shield: PWS pickTarget returns null (Anduin-style chain, dead allies)', () => {
+    const conditions = [
+      {
+        skillId: 'power-word-shield',
+        targetRules: [
+          { rule: 'self', whenAll: [{ when: 'self-hp-above', value: 0.6 }, { when: 'self-no-shield' }] },
+          { rule: 'lowest-hp-ally', whenAll: [{ when: 'self-no-shield' }] },
+        ],
+      },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Anduin',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 17,
+      maxHP: 23,
+      tactics: { conditions },
+      shield: { absorbRemaining: 30, remainingRounds: 3 },
+    }
+    const t = pickTarget(priest, [priest], [], {
+      skillId: 'power-word-shield',
+      conditions,
+      rng: () => 0.5,
+    })
+    expect(t).toBeNull()
   })
 
   it('targetRules chain: lowest-hp-ally step with mistaken self-no-shield still shields unshielded ally when priest has shield', () => {

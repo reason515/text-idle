@@ -140,7 +140,7 @@
 
 **真言术：盾「全队偏高血线」**：若描述为全队/所有英雄 **高于** X% 时给自己套盾、有盾再给队友等，第一步 `self` 应使用 **`self-hp-above`**（与快速治疗的「低于」区分），第二步给队友时 **不需要** `self-hp-above` 门控（第一步已包含该检查；若第一步因「自身有盾」失败则 HP 条件已满足；若因 HP 低失败则快速治疗优先处理）和 `self-no-shield`（第一段失败通常表示自身已有盾）。AI 校验可将误写的 `self-hp-below` 纠正为 `self-hp-above`，移除第二段多余的 `self-no-shield`，并 **剥离第二段中冗余的 `self-hp-above`** 门控。
 
-**真言术：盾自动排除已有盾目标**：引擎在 `pickTarget` 为 `power-word-shield` 选目标时，**自动过滤**掉身上已有护盾的队友（通过 `getShieldBuff`）。若过滤后无存活候选，则回退到全体存活队友池（允许刷新/覆盖）。因此「给无盾队友套盾」无需在规则中显式声明筛选条件，`lowest-hp-ally` 等目标规则已自动跳过有盾者。
+**真言术：盾自动排除已有盾目标**：引擎在 `pickTarget` 为 `power-word-shield` 选目标时，**自动过滤**掉身上已有护盾的队友（通过 `getShieldBuff`）。若过滤后**没有任何**无盾存活队友，则**无法**为该技能选出目标（该技能本回合跳过，优先级继续向下，通常落到普攻）。不会对已有盾目标通过目标选取「刷新」护盾。因此「给无盾队友套盾」无需在规则中显式声明筛选条件，`lowest-hp-ally` 等目标规则已自动跳过有盾者。
 
 **`self-no-shield` 与 `lowest-hp-ally`**：`self-no-shield` 表示施法者自身无盾，只应在 **`rule: self`**（或依赖自身的同类步骤）上作为门控。若误配在 **`rule: lowest-hp-ally`** 上，会在「自身已有盾、应给无盾队友套盾」时错误地整步失败；引擎在 `evaluateTargetRuleStepGates` 中对 **`lowest-hp-ally` 步骤忽略 `self-no-shield`**，与存档/AI 中「第二段不写自身无盾」的约定一致。
 
