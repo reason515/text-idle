@@ -142,6 +142,8 @@
 
 **真言术：盾自动排除已有盾目标**：引擎在 `pickTarget` 为 `power-word-shield` 选目标时，**自动过滤**掉身上已有护盾的队友（通过 `getShieldBuff`）。若过滤后无存活候选，则回退到全体存活队友池（允许刷新/覆盖）。因此「给无盾队友套盾」无需在规则中显式声明筛选条件，`lowest-hp-ally` 等目标规则已自动跳过有盾者。
 
+**`self-no-shield` 与 `lowest-hp-ally`**：`self-no-shield` 表示施法者自身无盾，只应在 **`rule: self`**（或依赖自身的同类步骤）上作为门控。若误配在 **`rule: lowest-hp-ally`** 上，会在「自身已有盾、应给无盾队友套盾」时错误地整步失败；引擎在 `evaluateTargetRuleStepGates` 中对 **`lowest-hp-ally` 步骤忽略 `self-no-shield`**，与存档/AI 中「第二段不写自身无盾」的约定一致。
+
 ---
 
 ## 五、示例：战士防护坦克

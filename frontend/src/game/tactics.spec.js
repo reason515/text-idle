@@ -423,6 +423,34 @@ describe('tactics', () => {
       const tankLow = { id: 't', currentHP: 100, maxHP: 200 }
       expect(evaluateTargetRuleStepGates(step, priest, [priest, tankLow], [], { tankId: 't' })).toBe(true)
     })
+
+    it('ignores self-no-shield on lowest-hp-ally so ally PW:S step works when priest already has shield', () => {
+      const priest = {
+        id: 'p',
+        currentHP: 80,
+        maxHP: 100,
+        shield: { absorbRemaining: 10, remainingRounds: 2 },
+      }
+      const step = {
+        rule: 'lowest-hp-ally',
+        whenAll: [{ when: 'self-no-shield' }],
+      }
+      expect(evaluateTargetRuleStepGates(step, priest, [priest], [], {})).toBe(true)
+    })
+
+    it('still applies self-no-shield on self rule when priest has shield', () => {
+      const priest = {
+        id: 'p',
+        currentHP: 80,
+        maxHP: 100,
+        shield: { absorbRemaining: 10, remainingRounds: 2 },
+      }
+      const step = {
+        rule: 'self',
+        whenAll: [{ when: 'self-no-shield' }],
+      }
+      expect(evaluateTargetRuleStepGates(step, priest, [priest], [], {})).toBe(false)
+    })
   })
 
   describe('getAllyHpBelowThresholdFromStep', () => {

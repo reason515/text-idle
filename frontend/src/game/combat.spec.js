@@ -219,6 +219,43 @@ describe('pickTarget (PWS auto-excludes shielded allies)', () => {
     expect(t).not.toBeNull()
     expect(t.id).toBe('t1')
   })
+
+  it('targetRules chain: lowest-hp-ally step with mistaken self-no-shield still shields unshielded ally when priest has shield', () => {
+    const conditions = [
+      {
+        skillId: 'power-word-shield',
+        targetRules: [
+          { rule: 'self', whenAll: [{ when: 'self-hp-above', value: 0.6 }, { when: 'self-no-shield' }] },
+          { rule: 'lowest-hp-ally', whenAll: [{ when: 'self-no-shield' }] },
+        ],
+      },
+    ]
+    const priest = {
+      id: 'p1',
+      name: 'Priest',
+      class: 'Priest',
+      side: 'hero',
+      currentHP: 80,
+      maxHP: 100,
+      shield: { absorbRemaining: 50, remainingRounds: 2 },
+    }
+    const tank = {
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      side: 'hero',
+      currentHP: 150,
+      maxHP: 200,
+    }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 60, maxHP: 100 }
+    const t = pickTarget(priest, [priest, tank, mage], [], {
+      skillId: 'power-word-shield',
+      conditions,
+      rng: () => 0.5,
+      designatedTank: tank,
+    })
+    expect(t.id).toBe('m1')
+  })
 })
 
 describe('combat progression and systems', () => {

@@ -299,6 +299,18 @@ export function getAllyHpBelowThresholdFromStep(step) {
 }
 
 /**
+ * `self-no-shield` is defined on the caster for self-target steps. Configurations and AI output
+ * sometimes attach it to `lowest-hp-ally` (meaning "shield an unshielded ally"); evaluating it
+ * there would require the caster to have no shield, which blocks the ally branch exactly when
+ * the priest already has a shield and should spread PW:S — ignore it for this rule id only.
+ * @param {TargetRuleStep} step
+ * @returns {boolean}
+ */
+function ignoreSelfNoShieldForStepGate(step) {
+  return step && step.rule === 'lowest-hp-ally'
+}
+
+/**
  * All per-step gates must pass before pickTargetByRule runs for that step.
  * Supports legacy { when, value } or { whenAll: [{ when, value }, ...] } (AND).
  * @param {string|TargetRuleStep} step
@@ -311,13 +323,18 @@ export function getAllyHpBelowThresholdFromStep(step) {
 export function evaluateTargetRuleStepGates(step, actor, heroes, monsters, ctx) {
   if (typeof step !== 'object' || step === null) return true
   const c = ctx || {}
+  const skipSelfNoShield = ignoreSelfNoShieldForStepGate(step)
   if (Array.isArray(step.whenAll) && step.whenAll.length > 0) {
-    return step.whenAll.every((w) => {
+    const whenAll = skipSelfNoShield
+      ? step.whenAll.filter((w) => w && w.when !== 'self-no-shield')
+      : step.whenAll
+    return whenAll.every((w) => {
       if (!w || !w.when) return true
       return checkCondition({ when: w.when, value: w.value }, actor, null, heroes, monsters, c)
     })
   }
   if (step.when) {
+    if (skipSelfNoShield && step.when === 'self-no-shield') return true
     return checkCondition({ when: step.when, value: step.value }, actor, null, heroes, monsters, c)
   }
   return true
