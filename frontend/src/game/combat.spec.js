@@ -835,7 +835,7 @@ describe('combat progression and systems', () => {
     expect(basicEntries.length).toBeGreaterThan(0)
   })
 
-  it('hero magic basic attack (effSpell > effPhys) shows skillName Magic Attack in log', () => {
+  it('Mage basic attack is always physical (no Magic Attack pseudo-skill)', () => {
     const mage = sampleHero({
       id: 'm1',
       class: 'Mage',
@@ -860,10 +860,13 @@ describe('combat progression and systems', () => {
     const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     const result = runAutoCombat({ heroes: [mage], monsters, rng, maxRounds: 3 })
     const magicAttackEntry = result.log.find(
-      (e) => e.actorName === 'Hero One' && e.action === 'skill' && e.skillName === '魔法攻击'
+      (e) => e.actorName === 'Hero One' && e.skillName === '魔法攻击'
     )
-    expect(magicAttackEntry).toBeDefined()
-    expect(magicAttackEntry.damageType).toBe('magic')
+    expect(magicAttackEntry).toBeUndefined()
+    const basicEntries = result.log.filter(
+      (e) => e.actorName === 'Hero One' && e.action === 'basic' && e.damageType === 'physical'
+    )
+    expect(basicEntries.length).toBeGreaterThan(0)
   })
 
   it('Power Word: Shield on tank absorbs monster damage (log shieldAbsorbed, HP only loses overflow)', () => {
