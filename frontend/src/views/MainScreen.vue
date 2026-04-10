@@ -1656,6 +1656,7 @@ import {
 } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
+import { buildDisplayHeroesFromSquad } from '../game/squadDisplaySync.js'
 import {
   applyCombatPacingDelayMs,
   COMBAT_PACING_MS,
@@ -1835,6 +1836,8 @@ const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim()
 const currentSkillChoice = computed(() => pendingSkillChoices.value[0] ?? null)
 const squad = ref([])
 const displayHeroes = ref([])
+/** True after encounter display is initialized until rest phase clears monsters. Used to merge live HP/MP when rebuilding from squad mid-fight. */
+const encounterInProgress = ref(false)
 const currentMonsters = ref([])
 const displayedLog = ref([])
 const lastOutcome = ref('')
@@ -2045,7 +2048,7 @@ function equipItem(item, targetHero, targetSlot) {
   removeFromInventory(item.id)
   inventoryVersion.value++
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   showToast({ type: 'equip', itemName: formatItemDisplayName(item), heroName: heroDisplayName(hero.name), quality: item.quality })
 }
 
@@ -2219,7 +2222,7 @@ function confirmUnequipEquipment() {
   delete hero.equipment[storageKey]
   inventoryVersion.value++
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   selectedEquippedItem.value = null
   equippedUnequipConfirming.value = false
 }
@@ -2258,6 +2261,15 @@ function computeHeroDisplay(hero) {
     currentMP,
     xpRequired,
   }
+}
+
+function syncDisplayHeroesFromSquad() {
+  displayHeroes.value = buildDisplayHeroesFromSquad(
+    squad.value,
+    computeHeroDisplay,
+    displayHeroes.value,
+    encounterInProgress.value
+  )
 }
 
 function hpPct(hero) {
@@ -2303,7 +2315,7 @@ function loadSquad() {
     xp: h.xp ?? 0,
     unassignedPoints: h.unassignedPoints ?? 0,
   }))
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
 }
 
 const hasDesignatedTank = computed(() => squad.value.some((h) => h.isTank === true))
@@ -2317,7 +2329,7 @@ function setHeroAsTank(hero, checked) {
     sh.isTank = false
   }
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
 }
 function loadProgress() {
   try {
@@ -2346,7 +2358,7 @@ function onSkillChoiceEnhance(skillId) {
   if (!choice) return
   applyEnhanceSkill(choice.hero, skillId)
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   pendingSkillChoices.value.shift()
 }
 
@@ -2355,7 +2367,7 @@ function onSkillChoiceLearn(skillId) {
   if (!choice) return
   applyLearnNewSkill(choice.hero, skillId, choice.level)
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   pendingSkillChoices.value.shift()
 }
 
@@ -2364,7 +2376,7 @@ function assignPoint(attr) {
   if (!sh) return
   if (!assignAttributePoint(sh, attr)) return
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }
 
@@ -2613,7 +2625,7 @@ function saveTacticsToSquad(hero, updater) {
   if (!sh.tactics) sh.tactics = {}
   updater(sh.tactics)
   saveSquad(squad.value)
-  displayHeroes.value = squad.value.map(computeHeroDisplay)
+  syncDisplayHeroesFromSquad()
   selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }
 
@@ -3072,6 +3084,7 @@ async function animateCombatLog(result) {
 }
 
 async function autoRest(heroesAfter, { isDefeat = false } = {}) {
+  encounterInProgress.value = false
   currentMonsters.value = []
   const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
   let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
@@ -3158,6 +3171,7 @@ async function runCombatLoop() {
 
     currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
     displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
+    encounterInProgress.value = true
     unitFloatingNumbers.value = {}
     monsterTargets.value = {}
     lastOutcome.value = ''
@@ -3199,7 +3213,7 @@ async function runCombatLoop() {
       const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
       saveSquad(squad.value)
       gold.value = addGold(result.rewards.gold)
-      displayHeroes.value = squad.value.map(computeHeroDisplay)
+      syncDisplayHeroesFromSquad()
 
       for (let i = 0; i < squad.value.length; i += 1) {
         const r = results[i]
