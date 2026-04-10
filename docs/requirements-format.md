@@ -1346,6 +1346,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC5 | Warrior has Taunt first in priority with condition ally-ot only; solo tank; no OT | Combat runs | Taunt is never logged as used; another skill (e.g. Sunder Armor) may be used once Rage allows |
 | AC6 | Priest flash-heal has `targetRules` with a single step `{ when: ally-hp-below }` and no skill-level `when`; all allies above threshold | Priest's turn | Flash Heal is not cast (emergency gate fails) |
 | AC7 | Target rules step object `{ rule: tank, when: tank-hp-below }` and tank HP is above threshold | That step is evaluated | Step gate fails (`evaluateTargetRuleStepGates`); chain may continue to the next step |
+| AC8 | Mage has HP-band tactics (e.g. frost above 50%, fire between 5–50%, basic below 5%); current MP pays for frost but enemy HP is in the fire band; fireball costs more than current MP | Mage's turn | No priority spell is cast; basic attack still resolves (basic-attack `when` gates ignored per design), not `actionSkipped` with `tactics-gate` |
 
 ---
 

@@ -130,7 +130,7 @@
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
 ```
 
-**法师 / 牧师：法力不足以施放优先级内任一法术时**：普攻阶段会**忽略** `conditions` 中 `skillId: basic-attack` 的条目（含 `target-hp-below` / `target-hp-above` 等），仍按全局 `targetRule` 或该条默认目标规则选取敌人并出手，避免「MP 已空却因普攻条件与当前目标血量不匹配而整回合 `actionSkipped`」。**战士**在怒气不足以施放优先级内技能时**不**做此放宽，普攻仍完全遵守 `basic-attack` 条件，以免破坏依赖目标链的破甲/切换逻辑。实现见 `heroAllPrioritySkillsUnaffordable` 与普攻路径（`frontend/src/game/combat.js`）。
+**法师 / 牧师：普攻门控放宽**（满足其一即可）：**(1)** 法力不足以施放优先级内**任一**法术；**(2)** 本回合已按 `skillPriority` 尝试但**没有任何**优先级内法术实际出手（冷却、或资源只够低顺位法术但该法术的血量条件不满足、或高顺位法术缺蓝而低顺位又不满足条件等）。此时普攻阶段会**忽略** `conditions` 中 `skillId: basic-attack` 的条目（含 `target-hp-below` / `target-hp-above` 等），仍按全局 `targetRule` 或该条默认目标规则选取敌人并出手，避免「能付得起某个技能的蓝量却因血量分段与当前目标不匹配、同时火球等又缺蓝而整回合 `actionSkipped`」。**战士**在怒气不足以施放优先级内技能时**不**做此放宽，普攻仍完全遵守 `basic-attack` 条件，以免破坏依赖目标链的破甲/切换逻辑。实现见 `heroAllPrioritySkillsUnaffordable`、本回合「优先级内未出手」标志与普攻路径（`frontend/src/game/combat.js`）。
 
 **回归测试（与需求文档对齐）**：`docs/requirements-format.md` Example 33 列出可验收行为；前端用 Vitest（`tactics.js` / `combat.js` 相关 `*.spec.js`）锁定条件顺序、`targetRules` 链与牧师快速治疗门控；E2E `e2e/browser/tactics.spec.js` 可校验持久化战术在「当前战术」摘要中的展示。
 

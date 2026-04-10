@@ -634,6 +634,7 @@ const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal']
  * True when every skill in tactics skillPriority costs more MP/rage than the actor currently has
  * (or the skill definition is missing). Used so Mage/Priest basic-attack tactic gates do not consume
  * the turn when no spell in priority can be paid for (idle rule: resource skip then fallback attack).
+ * Also combined with per-turn flags when priority was non-empty but no spell fired (cooldown/conditions).
  * Warrior rage fallback keeps full basic-attack conditions so per-target rules stay consistent.
  * @param {{ class?: string, currentMP?: number }} actor
  * @param {string[]} priority
@@ -959,6 +960,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         tankId: designatedTankUnit?.id,
       }
       const conditions = getConditions(actor)
+      /** Mage/Priest: set when skillPriority was non-empty but no spell fired (MP/CD/conditions). Used with resource check to relax basic-attack gates. */
+      let magePriorityNoCastThisTurn = false
+      let priestPriorityNoCastThisTurn = false
       const skillPriority = getSkillPriority(actor)
 
       // Warrior skill path: use first affordable skill from priority (tactics or skills)
@@ -1445,6 +1449,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           emitMonsterIntentChangesIfNeeded()
           continue
         }
+        magePriorityNoCastThisTurn = true
       }
 
       // Priest skill path: ally heals/shield + threat utility + shadow DOT
@@ -1654,13 +1659,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         if (usedSkill) {
           continue
         }
+        priestPriorityNoCastThisTurn = true
       }
 
       const priorityForResource = getSkillPriority(actor)
       const relaxBasicAttackTacticGates =
         actor.side === 'hero' &&
         (actor.class === 'Mage' || actor.class === 'Priest') &&
-        heroAllPrioritySkillsUnaffordable(actor, priorityForResource)
+        (heroAllPrioritySkillsUnaffordable(actor, priorityForResource) ||
+          (actor.class === 'Mage' && magePriorityNoCastThisTurn) ||
+          (actor.class === 'Priest' && priestPriorityNoCastThisTurn))
       const conditionsForBasicAttack =
         relaxBasicAttackTacticGates && actor.side === 'hero'
           ? (conditions || []).filter((c) => c.skillId !== 'basic-attack')

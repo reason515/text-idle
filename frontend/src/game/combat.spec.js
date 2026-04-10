@@ -1155,6 +1155,49 @@ describe('combat progression and systems', () => {
     expect(basic).toBeDefined()
   })
 
+  it('Mage with MP that affords frost but not fire: HP band blocks frost, fire unaffordable; still basic-attacks (no tactics-gate skip)', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      agility: 99,
+      intellect: 25,
+      spirit: 10,
+      currentMP: 12,
+      maxMP: 100,
+      skills: ['frostbolt', 'fireball'],
+      tactics: {
+        skillPriority: ['frostbolt', 'fireball'],
+        targetRule: 'lowest-hp',
+        conditions: [
+          { skillId: 'frostbolt', when: 'target-hp-above', value: 0.5 },
+          {
+            skillId: 'fireball',
+            whenAll: [{ when: 'target-hp-above', value: 0.05 }, { when: 'target-hp-below', value: 0.5 }],
+          },
+          { skillId: 'basic-attack', when: 'target-hp-below', value: 0.05 },
+        ],
+      },
+    })
+    const monster = createMonster(
+      {
+        id: 'm1',
+        name: 'Mob',
+        damageType: 'physical',
+        base: { hp: 100, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 }
+    )
+    monster.currentHP = 40
+    monster.maxHP = 100
+    const result = runAutoCombat({ heroes: [mage], monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const skip = result.log.find(
+      (e) => e.type === 'actionSkipped' && e.actorName === 'Hero One' && e.skipReason === 'tactics-gate',
+    )
+    expect(skip).toBeUndefined()
+    const basic = result.log.find((e) => e.actorName === 'Hero One' && e.action === 'basic')
+    expect(basic).toBeDefined()
+  })
+
   it('Mage tactics: lowest-hp + HP% skills hit global lowest HP, not a high-HP mob matching frost only', () => {
     const mage = sampleHero({
       id: 'm1',
