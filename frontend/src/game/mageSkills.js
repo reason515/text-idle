@@ -29,6 +29,15 @@ export const FROST_NOVA_FREEZE_CHANCE_MAX = 0.4
 const MAX_ENHANCE_COUNT = 3
 
 /**
+ * Format spell damage coefficient for UI (no long float tails).
+ * @param {number} n
+ * @returns {string}
+ */
+function fmtCoeffUi(n) {
+  return String(Number.parseFloat(Number(n).toFixed(2)))
+}
+
+/**
  * @param {number} [enhanceCount]
  * @returns {number}
  */
@@ -108,17 +117,17 @@ export function getMageSkillWithEnhancements(mage, skillId) {
   if (skillId === 'fireball') {
     out.coefficient = Math.min(1.45, 1.3 + enhanceCount * 0.05)
     out.spellCritBonus = Math.min(0.18, 0.12 + enhanceCount * 0.02)
-    out.effectDesc = `${out.coefficient} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
+    out.effectDesc = `${fmtCoeffUi(out.coefficient)} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
   } else if (skillId === 'frostbolt') {
     out.coefficient = Math.min(0.95, 0.8 + enhanceCount * 0.05)
     out.freezeChance = getFrostboltFreezeChance(enhanceCount)
     const pct = Math.round(out.freezeChance * 100)
-    out.effectDesc = `${out.coefficient} 倍法术伤害；${pct}% 概率冰冻目标，使其跳过 1 次行动`
+    out.effectDesc = `${fmtCoeffUi(out.coefficient)} 倍法术伤害；${pct}% 概率冰冻目标，使其跳过 1 次行动`
   } else if (skillId === 'frost-nova') {
     out.freezeChance = getFrostNovaFreezeChance(enhanceCount)
     const coeff = out.coefficient ?? 0.5
     const pct = Math.round(out.freezeChance * 100)
-    out.effectDesc = `对所有敌人 ${coeff} 倍法术伤害；每名敌人 ${pct}% 概率冰冻 1 次行动（独立判定）；2 回合 CD`
+    out.effectDesc = `对所有敌人 ${fmtCoeffUi(coeff)} 倍法术伤害；每名敌人 ${pct}% 概率冰冻 1 次行动（独立判定）；2 回合 CD`
   }
 
   return out
@@ -146,20 +155,20 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
     const nextCoeff = Math.min(1.45, 1.3 + next * 0.05)
     const currCrit = Math.min(0.18, 0.12 + current * 0.02)
     const nextCrit = Math.min(0.18, 0.12 + next * 0.02)
-    return `${currCoeff} -> ${nextCoeff} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%`
+    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%`
   }
   if (skillId === 'frostbolt') {
     const currCoeff = Math.min(0.95, 0.8 + current * 0.05)
     const nextCoeff = Math.min(0.95, 0.8 + next * 0.05)
     const currPct = Math.round(getFrostboltFreezeChance(current) * 100)
     const nextPct = Math.round(getFrostboltFreezeChance(next) * 100)
-    return `${currCoeff} -> ${nextCoeff} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%`
+    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%`
   }
   if (skillId === 'frost-nova') {
     const coeff = base.coefficient ?? 0.5
     const currPct = Math.round(getFrostNovaFreezeChance(current) * 100)
     const nextPct = Math.round(getFrostNovaFreezeChance(next) * 100)
-    return `${coeff} 倍群体伤害；每名冰冻概率 ${currPct}% -> ${nextPct}%`
+    return `${fmtCoeffUi(coeff)} 倍群体伤害；每名冰冻概率 ${currPct}% -> ${nextPct}%`
   }
 
   return base.effectDesc ?? ''
