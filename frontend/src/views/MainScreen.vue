@@ -716,7 +716,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="selectedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
+      <div v-if="selectedItem || equipReplacePending?.mode === 'equip_confirm'" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
         <div class="modal-box item-detail-modal">
           <template v-if="equipReplacePending?.mode === 'replace_confirm'">
             <div class="modal-title item-compare-title">对比 — 替换{{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
@@ -849,6 +849,79 @@
                 <span class="equip-replace-hint">当前装备将移至背包。</span>
                 <div class="equip-replace-actions">
                   <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">确认</button>
+                  <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else-if="equipReplacePending?.mode === 'equip_confirm'">
+            <div class="modal-title item-compare-title">确认装备 — {{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
+            <div class="item-compare-section item-equip-confirm-section">
+              <div class="item-compare-item" :style="{ color: getQualityColor(equipReplacePending.item?.quality) }">
+                {{ formatItemDisplayName(equipReplacePending.item) }}
+              </div>
+              <div class="item-compare-stats" v-if="equipReplacePending.item">
+                <div class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">等级需求</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.levelReq || 0 }}</span>
+                </div>
+                <div v-if="(equipReplacePending.item.strReq || 0) > 0 || (equipReplacePending.item.agiReq || 0) > 0 || (equipReplacePending.item.intReq || 0) > 0 || (equipReplacePending.item.spiReq || 0) > 0" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">属性需求</span>
+                  <span class="item-compare-detail-value">
+                    <span v-if="(equipReplacePending.item.strReq || 0) > 0">Str {{ equipReplacePending.item.strReq }}</span>
+                    <span v-if="(equipReplacePending.item.agiReq || 0) > 0">Agi {{ equipReplacePending.item.agiReq }}</span>
+                    <span v-if="(equipReplacePending.item.intReq || 0) > 0">Int {{ equipReplacePending.item.intReq }}</span>
+                    <span v-if="(equipReplacePending.item.spiReq || 0) > 0">Spi {{ equipReplacePending.item.spiReq }}</span>
+                  </span>
+                </div>
+                <div v-if="(equipReplacePending.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">护甲</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.armor }}</span>
+                </div>
+                <div v-if="(equipReplacePending.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">抗性</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.resistance }}</span>
+                </div>
+                <div v-if="((equipReplacePending.item.physAtk || 0) > 0 || (equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">物攻</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
+                </div>
+                <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">法强</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
+                </div>
+                <div v-if="(equipReplacePending.item.blockPct || 0) > 0" class="item-compare-detail-row">
+                  <span class="item-compare-detail-label">格挡率</span>
+                  <span class="item-compare-detail-value">{{ equipReplacePending.item.blockPct }}%</span>
+                </div>
+                <div
+                  v-if="(equipReplacePending.item.prefixes?.length || 0) + (equipReplacePending.item.suffixes?.length || 0) > 0"
+                  class="detail-sep-line item-compare-sep"
+                >词缀</div>
+                <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'ecp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
+                  <span class="item-compare-detail-label item-compare-affix-label">
+                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
+                    <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                  </span>
+                  <span class="item-compare-detail-value item-compare-affix-val">
+                    <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
+                    <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
+                  </span>
+                </div>
+                <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ecs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
+                  <span class="item-compare-detail-label item-compare-affix-label">
+                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
+                    <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                  </span>
+                  <span class="item-compare-detail-value item-compare-affix-val">
+                    <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
+                    <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
+                  </span>
+                </div>
+              </div>
+              <div class="item-compare-actions">
+                <div class="equip-replace-actions">
+                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null">确认</button>
                   <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
                 </div>
               </div>
@@ -2141,16 +2214,39 @@ function getInventorySlotMinWidth(item) {
 function getItemTooltipLines(item) {
   if (!item) return []
   const lines = []
+  const slot = item.slot
+  const hideArmorResOnJewelry = ['Ring', 'Ring1', 'Ring2', 'Amulet'].includes(slot)
   const reqs = []
   if ((item.strReq || 0) > 0) reqs.push('Str ' + item.strReq)
   if ((item.agiReq || 0) > 0) reqs.push('Agi ' + item.agiReq)
   if ((item.intReq || 0) > 0) reqs.push('Int ' + item.intReq)
   if ((item.spiReq || 0) > 0) reqs.push('Spi ' + item.spiReq)
   if (reqs.length) lines.push({ label: '需求', value: reqs.join(' ') })
-  if ((item.armor || 0) > 0) lines.push({ label: '护甲', value: String(item.armor) })
-  if ((item.resistance || 0) > 0) lines.push({ label: '抗性', value: String(item.resistance) })
-  if ((item.physAtk || 0) > 0) lines.push({ label: '物攻', value: String(item.physAtk) })
-  if ((item.spellPower || 0) > 0) lines.push({ label: '法强', value: String(item.spellPower) })
+  if (!hideArmorResOnJewelry && (item.armor || 0) > 0) lines.push({ label: '护甲', value: String(item.armor) })
+  if (!hideArmorResOnJewelry && (item.resistance || 0) > 0) lines.push({ label: '抗性', value: String(item.resistance) })
+  if (!hideArmorResOnJewelry) {
+    const hasPhys =
+      (item.physAtk || 0) > 0 ||
+      (item.physAtkMin != null && item.physAtkMax != null)
+    if (hasPhys) {
+      const val =
+        item.physAtkMin != null && item.physAtkMax != null
+          ? item.physAtkMin + '-' + item.physAtkMax
+          : String(item.physAtk ?? 0)
+      lines.push({ label: '物攻', value: val })
+    }
+    const hasSpell =
+      (item.spellPower || 0) > 0 ||
+      (item.spellPowerMin != null && item.spellPowerMax != null)
+    if (hasSpell) {
+      const val =
+        item.spellPowerMin != null && item.spellPowerMax != null
+          ? item.spellPowerMin + '-' + item.spellPowerMax
+          : String(item.spellPower ?? 0)
+      lines.push({ label: '法强', value: val })
+    }
+  }
+  if ((item.blockPct || 0) > 0) lines.push({ label: '格挡率', value: String(item.blockPct) + '%' })
   for (const p of item.prefixes || []) lines.push({ label: '前缀', value: p.name + ' +' + p.value + ' ' + p.stat })
   for (const s of item.suffixes || []) lines.push({ label: '后缀', value: s.name + ' +' + s.value + ' ' + s.stat })
   return lines
@@ -2272,7 +2368,12 @@ function tryEquipFromBackpack(item) {
     showBackpackModal.value = false
     return true
   }
-  equipItem(item, hero, pendingEquipSlot.value)
+  equipReplacePending.value = {
+    hero,
+    item,
+    mode: 'equip_confirm',
+    targetSlot: pendingEquipSlot.value,
+  }
   pendingEquipSlot.value = null
   showBackpackModal.value = false
   return true

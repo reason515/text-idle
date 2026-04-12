@@ -173,6 +173,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Cap' }).click()
+    await page.locator('.item-equip-confirm-section').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
     await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' })).toContainText('Cap', { timeout: 5000 })
 
@@ -278,6 +279,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u4e3b\u624b' }).locator('.equipment-slot-val').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
     await page.locator('.inventory-slot').filter({ hasText: 'Short Sword' }).click()
+    await page.locator('.item-equip-confirm-section').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible()
 
     const physAtkRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
@@ -324,6 +326,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await ring2Slot.click()
     await expect(page.locator('.inventory-modal')).toBeVisible({ timeout: 5000 })
     await page.locator('.inventory-modal .inventory-slot').filter({ hasText: 'Ring' }).first().click()
+    await page.locator('.item-equip-confirm-section').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
 
     const equipment = await page.evaluate(() => {
