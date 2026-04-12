@@ -12,6 +12,8 @@ import {
   SKILL_MILESTONE_LEVELS,
   applyLearnNewSkill,
   applyEnhanceSkill,
+  markSkillMilestoneResolved,
+  inferLegacySkillMilestonesResolved,
 } from './skillChoice.js'
 
 describe('skillChoice', () => {
@@ -133,14 +135,15 @@ describe('skillChoice', () => {
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)
     })
 
-    it('returns 10 when lower milestones resolved but 10 still has learn options', () => {
+    it('returns 10 when enhance milestones before 10 are marked resolved but 10 still has learn options', () => {
       const hero = {
         class: 'Warrior',
         level: 10,
         skills: ['heroic-strike'],
         skillEnhancements: {
-          'heroic-strike': { enhanceCount: 3 },
+          'heroic-strike': { enhanceCount: 1 },
         },
+        skillMilestonesResolved: [3, 6, 9],
       }
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(10)
     })
@@ -157,8 +160,24 @@ describe('skillChoice', () => {
           whirlwind: { enhanceCount: 3 },
           'defensive-stance': { enhanceCount: 3 },
         },
+        skillMilestonesResolved: [3, 6, 9, 10, 12, 15, 18],
       }
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(20)
+    })
+
+    it('does not treat same milestone as unresolved after mark + enhance', () => {
+      const hero = { class: 'Warrior', level: 5, skill: 'heroic-strike' }
+      applyEnhanceSkill(hero, 'heroic-strike')
+      markSkillMilestoneResolved(hero, 3)
+      expect(hasSkillChoiceAtLevel(hero, 3)).toBe(false)
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(null)
+    })
+  })
+
+  describe('inferLegacySkillMilestonesResolved', () => {
+    it('allocates one milestone per enhance for enhance-only levels', () => {
+      const hero = { class: 'Warrior', level: 5, skill: 'heroic-strike', skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } }
+      expect(inferLegacySkillMilestonesResolved(hero)).toEqual([3])
     })
   })
 

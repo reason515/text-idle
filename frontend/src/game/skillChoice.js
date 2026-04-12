@@ -103,6 +103,89 @@ export function getSkillChoiceOptions(hero, level) {
 }
 
 /**
+ * Milestone levels where the player has already committed a skill choice (one per milestone).
+ * Prevents treating "still enhanceable" as an unfinished milestone after a choice was made.
+ * @param {Object} hero
+ * @param {number} level
+ * @returns {boolean}
+ */
+export function isSkillMilestoneResolved(hero, level) {
+  const list = hero.skillMilestonesResolved
+  return Array.isArray(list) && list.includes(level)
+}
+
+/**
+ * Record that the player resolved the skill milestone at `level` (enhance or learn).
+ * Mutates hero.
+ * @param {Object} hero
+ * @param {number} level
+ */
+export function markSkillMilestoneResolved(hero, level) {
+  if (!isSkillMilestoneLevel(level)) return
+  const existing = hero.skillMilestonesResolved
+  if (Array.isArray(existing) && existing.includes(level)) return
+  const next = Array.isArray(existing) ? [...existing, level] : [level]
+  hero.skillMilestonesResolved = [...new Set(next)].sort((a, b) => a - b)
+}
+
+/**
+ * Backfill skillMilestonesResolved for saves created before per-milestone tracking.
+ * Uses enhance totals and current pools; one enhance-only milestone consumes at most one enhance.
+ * @param {Object} hero
+ * @returns {number[]}
+ */
+export function inferLegacySkillMilestonesResolved(hero) {
+  const level = hero.level ?? 1
+  let enhancePool = 0
+  for (const id of getHeroSkillIds(hero)) {
+    enhancePool += hero.skillEnhancements?.[id]?.enhanceCount ?? 0
+  }
+  const resolved = []
+  for (const L of SKILL_MILESTONE_LEVELS) {
+    if (L > level) break
+    const opts = getSkillChoiceOptions(hero, L)
+    const hasEnhance = opts.canEnhance
+    const hasNew = opts.newSkills.length > 0
+    if (!hasEnhance && !hasNew) {
+      resolved.push(L)
+      continue
+    }
+    if (hasNew && !hasEnhance) {
+      continue
+    }
+    if (hasEnhance && !hasNew) {
+      if (enhancePool > 0) {
+        resolved.push(L)
+        enhancePool -= 1
+      }
+      continue
+    }
+    const newSkillIds = opts.newSkills.map((s) => s.id)
+    const learnedAllNew =
+      newSkillIds.length === 0 || newSkillIds.every((id) => getHeroSkillIds(hero).includes(id))
+    if (learnedAllNew) {
+      resolved.push(L)
+      continue
+    }
+    if (enhancePool > 0) {
+      resolved.push(L)
+      enhancePool -= 1
+    }
+  }
+  return resolved
+}
+
+/**
+ * If skillMilestonesResolved is missing, infer legacy milestones once.
+ * @param {Object} hero
+ */
+export function ensureSkillMilestonesResolvedMigrated(hero) {
+  if (!hero || typeof hero !== 'object') return
+  if (Array.isArray(hero.skillMilestonesResolved)) return
+  hero.skillMilestonesResolved = inferLegacySkillMilestonesResolved(hero)
+}
+
+/**
  * Check if hero has any choice to make at this level (enhance or learn).
  * @param {Object} hero
  * @param {number} level
@@ -111,6 +194,7 @@ export function getSkillChoiceOptions(hero, level) {
 export function hasSkillChoiceAtLevel(hero, level) {
   if (!isSkillMilestoneLevel(level)) return false
   if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest') return false
+  if (isSkillMilestoneResolved(hero, level)) return false
   const opts = getSkillChoiceOptions(hero, level)
   return opts.canEnhance || opts.newSkills.length > 0
 }

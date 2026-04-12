@@ -8,6 +8,7 @@
 
 import { getEquipmentBonuses, createStarterWhiteItem } from '../game/equipment.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
+import { ensureSkillMilestonesResolvedMigrated, markSkillMilestoneResolved } from '../game/skillChoice.js'
 import { fmtTipNum } from '../utils/formulaTip.js'
 
 /**
@@ -808,13 +809,27 @@ export const SQUAD_STORAGE_KEY = 'squad'
 export function getSquad() {
   try {
     const raw = localStorage.getItem(SQUAD_STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const squad = raw ? JSON.parse(raw) : []
+    let changed = false
+    for (const h of squad) {
+      if (!Array.isArray(h?.skillMilestonesResolved)) {
+        ensureSkillMilestonesResolvedMigrated(h)
+        changed = true
+      }
+    }
+    if (changed) {
+      localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
+    }
+    return squad
   } catch {
     return []
   }
 }
 
 export function saveSquad(squad) {
+  for (const h of squad) {
+    ensureSkillMilestonesResolvedMigrated(h)
+  }
   localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
 }
 
@@ -899,11 +914,16 @@ export function createExpansionCharacter(hero, opts = {}) {
   if (opts.skillEnhancements && typeof opts.skillEnhancements === 'object') {
     character.skillEnhancements = { ...opts.skillEnhancements }
   }
+  if (Array.isArray(opts.skillMilestonesResolved)) {
+    character.skillMilestonesResolved = [...opts.skillMilestonesResolved]
+  }
   if (opts.levelChoice && !opts.skillEnhancements) {
     if (opts.levelChoice.type === 'enhance') {
       character.skillEnhancements = { [opts.levelChoice.skillId]: { enhanceCount: 1 } }
+      markSkillMilestoneResolved(character, opts.levelChoice.milestoneLevel ?? 3)
     } else if (opts.levelChoice.type === 'learn' && opts.levelChoice.skillId) {
       character.skills = character.skills ? [...character.skills, opts.levelChoice.skillId] : [opts.levelChoice.skillId]
+      markSkillMilestoneResolved(character, opts.levelChoice.milestoneLevel ?? 10)
     }
   }
   return character

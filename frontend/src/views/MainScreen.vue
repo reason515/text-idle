@@ -1726,6 +1726,7 @@ import {
   getFirstUnresolvedSkillChoiceLevel,
   applyLearnNewSkill,
   applyEnhanceSkill,
+  markSkillMilestoneResolved,
 } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
@@ -2531,6 +2532,7 @@ function onSkillChoiceEnhance(skillId) {
   const choice = pendingSkillChoices.value[0]
   if (!choice) return
   applyEnhanceSkill(choice.hero, skillId)
+  markSkillMilestoneResolved(choice.hero, choice.level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
   pendingSkillChoices.value.shift()
@@ -2540,6 +2542,7 @@ function onSkillChoiceLearn(skillId) {
   const choice = pendingSkillChoices.value[0]
   if (!choice) return
   applyLearnNewSkill(choice.hero, skillId, choice.level)
+  markSkillMilestoneResolved(choice.hero, choice.level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
   pendingSkillChoices.value.shift()

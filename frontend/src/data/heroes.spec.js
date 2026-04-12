@@ -47,7 +47,7 @@ describe('heroes', () => {
     it('returns parsed squad when valid JSON stored', () => {
       const squad = [{ id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }]
       localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
-      expect(getSquad()).toEqual(squad)
+      expect(getSquad()).toEqual([{ ...squad[0], skillMilestonesResolved: [] }])
     })
 
     it('returns empty array when stored value is invalid JSON', () => {
@@ -60,7 +60,7 @@ describe('heroes', () => {
     it('stores squad as JSON string', () => {
       const squad = [{ id: 'jaina', name: '吉安娜·普罗德摩尔' }]
       saveSquad(squad)
-      expect(getSquad()).toEqual(squad)
+      expect(getSquad()).toEqual([{ ...squad[0], skillMilestonesResolved: [] }])
     })
   })
 

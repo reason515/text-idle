@@ -227,6 +227,7 @@ import {
   getFirstUnresolvedSkillChoiceLevel,
   applyEnhanceSkill,
   applyLearnNewSkill,
+  markSkillMilestoneResolved,
 } from '../game/skillChoice.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
@@ -422,6 +423,7 @@ function confirmLevelChoice(choice) {
   } else {
     applyLearnNewSkill(h, choice.skillId, milestone)
   }
+  markSkillMilestoneResolved(h, milestone)
   if (getFirstUnresolvedSkillChoiceLevel(h) == null) {
     levelChoiceDone.value = true
   }
@@ -470,6 +472,7 @@ function confirmSkillSelection() {
       ...selectedHero.value,
       level: expansionLevel.value,
       skills: [pendingSkillId.value],
+      skillMilestonesResolved: [],
     }
   }
 }
@@ -500,6 +503,9 @@ function confirmSelection() {
       opts.skills = [...expansionStagingHero.value.skills]
       if (expansionStagingHero.value.skillEnhancements) {
         opts.skillEnhancements = { ...expansionStagingHero.value.skillEnhancements }
+      }
+      if (Array.isArray(expansionStagingHero.value.skillMilestonesResolved)) {
+        opts.skillMilestonesResolved = [...expansionStagingHero.value.skillMilestonesResolved]
       }
     }
     const ok = addExpansionHeroToSquad(selectedHero.value, opts)
