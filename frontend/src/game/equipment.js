@@ -56,6 +56,13 @@ const QUALITY_SHOP_NORMAL = 0.50
 const QUALITY_SHOP_MAGIC = 0.35
 const QUALITY_SHOP_RARE = 0.15
 
+/** Base quality weights for shop purchases before magic find (keep in sync with shop UI). */
+export const SHOP_QUALITY_ODDS = Object.freeze({
+  normal: QUALITY_SHOP_NORMAL,
+  magic: QUALITY_SHOP_MAGIC,
+  rare: QUALITY_SHOP_RARE,
+})
+
 /** Affix pools: { id, name, type: 'prefix'|'suffix', tier: 'normal'|'exceptional'|'elite', baseMin, baseMax } */
 const AFFIX_POOL = [
   { id: 'sturdy', name: '\u575a\u56fa', type: 'prefix', tier: 'normal', baseMin: 2, baseMax: 5, stat: 'armor' },

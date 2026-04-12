@@ -20,6 +20,7 @@ alwaysApply: false
 ## UI and styling
 
 - All UI must follow `ui-design.mdc` (same glob) and [docs/design/11-ui-tokens.md](docs/design/11-ui-tokens.md).
+- **Tooltips and in-panel hints** (hover copy, modal helper blocks, no `title=`, equipment quality colors): `frontend-tips-tooltips.mdc` is **alwaysApply** and loads in every chat—follow it together with `ui-design.mdc`.
 
 ## Doc sync
 

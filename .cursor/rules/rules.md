@@ -1,6 +1,6 @@
 # AI Development Rules (Full Reference)
 
-**Note:** Cursor loads `.mdc` files from this directory. The files `core.mdc` and `workflow.mdc` have `alwaysApply: true` and are the primary rules. This `.md` file is the full reference for humans.
+**Note:** Cursor loads `.mdc` files from this directory. The files `core.mdc`, `workflow.mdc`, and `frontend-tips-tooltips.mdc` have `alwaysApply: true`. This `.md` file is the full reference for humans.
 
 ---
 

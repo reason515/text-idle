@@ -10,6 +10,7 @@
 | `shell.mdc` | always | PowerShell rules (no `&&`, prefer project tools) |
 | `frontend.mdc` | `frontend/**` | Vue/Vite layout, Vitest unit tests, pointer to UI tokens |
 | `ui-design.mdc` | `frontend/**` | Tokens, colors, tooltips, forms, battle log semantic colors |
+| `frontend-tips-tooltips.mdc` | **always** | Tooltip pattern, no `title` for tips, modal hint blocks, equipment quality copy colors |
 | `backend.mdc` | `**/*.go` | Go packages, `go test`, handler/service boundaries |
 | `e2e-browser.mdc` | `e2e/browser/**` | Playwright specs, helpers, port script, E2E skill |
 | `docs-sync.mdc` | `docs/design/**`, `docs/requirements-format.md`, `docs/design-change-impact.md` | Index cross-refs, formula/UI alignment, impact checklist, requirements AC |

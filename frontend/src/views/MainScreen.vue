@@ -586,12 +586,29 @@
           <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === '金币不足' }">
             {{ shopMessage }}
           </div>
+          <div class="shop-quality-banner">
+            <div class="shop-quality-line">
+              <span class="shop-quality-banner-label">单次购买品质（基础概率）：</span>
+              <span class="shop-quality-tier" :style="{ color: getQualityColor(QUALITY_NORMAL) }">普通 {{ shopQualityBasePct.normal }}%</span>
+              <span class="shop-quality-sep">，</span>
+              <span class="shop-quality-tier" :style="{ color: getQualityColor(QUALITY_MAGIC) }">魔法 {{ shopQualityBasePct.magic }}%</span>
+              <span class="shop-quality-sep">，</span>
+              <span class="shop-quality-tier" :style="{ color: getQualityColor(QUALITY_RARE) }">稀有 {{ shopQualityBasePct.rare }}%</span>
+            </div>
+            <span class="shop-quality-mf tooltip-wrap has-tip">
+              寻宝可提高魔法与稀有占比。
+              <span class="tooltip-text tooltip-below shop-quality-mf-tooltip">商店掷骰使用高于普通遭遇的魔法与稀有权重；角色寻宝（MF）会进一步提高魔法与稀有物品的有效占比。</span>
+            </span>
+          </div>
           <div class="shop-sections">
             <div class="shop-section">
               <div class="shop-section-title">武器</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => s.id.startsWith('MainHand') || s.id.startsWith('OffHand'))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
+                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
+                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
+                  </span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -607,7 +624,10 @@
               <div class="shop-section-title">护甲</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => ['Helm','Armor','Gloves','Boots','Belt'].includes(s.id))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
+                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
+                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
+                  </span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -623,7 +643,10 @@
               <div class="shop-section-title">饰品</div>
               <div class="shop-slot-list">
                 <div v-for="slot in SHOP_SLOTS.filter(s => ['Amulet','Ring'].includes(s.id))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label">{{ slot.label }}</span>
+                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
+                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
+                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
+                  </span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -638,7 +661,9 @@
           </div>
           <div v-if="shopConfirmingSlot" class="shop-confirm-row">
             <span class="shop-confirm-text">
-              花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买 {{ getShopConfirmLabel(shopConfirmingSlot) }}？
+              <span class="shop-confirm-prefix">花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买</span>
+              <span class="shop-confirm-slot-name">{{ getShopConfirmLabel(shopConfirmingSlot) }}</span>
+              <span class="shop-confirm-suffix">？</span>
             </span>
             <div class="shop-confirm-actions">
               <button class="btn btn-sm" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
@@ -1725,6 +1750,10 @@ import {
   getEquipReasonsStructured,
   getEquipmentBonuses,
   itemMatchesSlot,
+  SHOP_QUALITY_ODDS,
+  QUALITY_NORMAL,
+  QUALITY_MAGIC,
+  QUALITY_RARE,
 } from '../game/equipment.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import {
@@ -1749,6 +1778,12 @@ const RESOURCE_MAP = {
   Hunter: { label: '集中值', fillClass: 'focus-fill' },
 }
 const DEFAULT_RESOURCE = { label: '法力', fillClass: 'mp-fill' }
+
+const shopQualityBasePct = {
+  normal: Math.round(SHOP_QUALITY_ODDS.normal * 100),
+  magic: Math.round(SHOP_QUALITY_ODDS.magic * 100),
+  rare: Math.round(SHOP_QUALITY_ODDS.rare * 100),
+}
 
 const PRIMARY_ATTRS = [
   { key: 'strength', label: '力量' },
@@ -4111,6 +4146,55 @@ onUnmounted(() => {
   color: var(--error);
 }
 .shop-message-error { color: var(--error); }
+.shop-quality-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+}
+.shop-quality-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.15rem;
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+.shop-quality-banner-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+}
+.shop-quality-tier {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shop-quality-sep {
+  color: var(--text-muted);
+}
+.shop-quality-mf {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+.shop-quality-banner .shop-quality-mf.tooltip-wrap.has-tip {
+  display: inline;
+  width: auto;
+  max-width: 100%;
+}
+.shop-quality-mf-tooltip.tooltip-text {
+  white-space: normal;
+  max-width: min(22rem, 90vw);
+  min-width: 12rem;
+  line-height: 1.45;
+  text-align: left;
+  right: auto;
+  left: 0;
+  bottom: auto;
+  top: calc(100% + 4px);
+}
 .shop-sections {
   display: grid;
   grid-template-columns: 1fr;
@@ -4146,7 +4230,7 @@ onUnmounted(() => {
 }
 .shop-slot-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 0.5rem;
@@ -4155,16 +4239,33 @@ onUnmounted(() => {
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
+  min-width: 0;
 }
-.shop-slot-label {
+.shop-slot-row .shop-slot-label-wrap.tooltip-wrap.has-tip {
   grid-column: 1 / -1;
   grid-row: 1;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0;
+  border-bottom: none;
+  cursor: default;
+}
+.shop-slot-label-visible {
   color: var(--color-formula-equip);
   font-size: var(--font-base);
   line-height: 1.35;
-  overflow: visible;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shop-slot-row .shop-slot-label-wrap .tooltip-text.tooltip-below {
+  bottom: auto;
+  top: calc(100% + 4px);
+  left: 0;
+  right: auto;
   white-space: normal;
-  word-break: break-word;
+  max-width: min(20rem, 85vw);
 }
 .shop-slot-price {
   grid-column: 1;
@@ -4198,8 +4299,26 @@ onUnmounted(() => {
 .shop-confirm-text {
   font-size: var(--font-base);
   color: var(--text);
-  display: block;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.2rem;
+  min-width: 0;
   margin-bottom: 0.4rem;
+}
+.shop-confirm-prefix {
+  flex-shrink: 0;
+}
+.shop-confirm-slot-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-formula-equip);
+}
+.shop-confirm-suffix {
+  flex-shrink: 0;
 }
 .shop-confirm-price {
   color: var(--color-gold);

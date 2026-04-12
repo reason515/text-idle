@@ -84,6 +84,21 @@
 | `var(--color-elite)` | Elite 怪物 | Elite 名称、Elite 标签 |
 | `var(--color-normal)` | Normal 怪物 | Normal 名称、Normal 标签 |
 
+### 1.2.1 装备品质色（物品 Normal / Magic / Rare / Unique）
+
+装备名称、品质标签、商店概率说明等需要区分「普通 / 魔法 / 稀有 / 独特」时，**须与背包、掉落一致**。颜色在 `frontend/src/game/equipment.js` 的 `getQualityColor(quality)` 中集中定义（返回值用于 `:style="{ color: ... }"` 等，避免在组件内手写另一套色值）。
+
+| 品质 | `quality` 常量 | 颜色值 | 典型用途 |
+|------|------------------|--------|----------|
+| 普通（白） | `normal` | `#cccccc` | 无词缀底材名 |
+| 魔法（蓝） | `magic` | `#4488ff` | 1–2 词缀 |
+| 稀有（黄） | `rare` | `#ffcc00` | 多条词缀、稀有称谓 |
+| 独特（橙） | `unique` | `#ff9900` | 独特物品 |
+
+**用法**：在 Vue 中 `import { getQualityColor, QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE, QUALITY_UNIQUE } from '../game/equipment.js'`，对需要着色的文案使用 `:style="{ color: getQualityColor(QUALITY_MAGIC) }"` 等。若仅引用语义、不着色，仍可用 `var(--text-label)` / `var(--text-muted)`。
+
+**注意**：本节颜色为 **装备品质专用**；勿与 `var(--color-normal)`（Normal **怪物** tier）混淆。
+
 ### 1.3 扩展色（公式、日志等）
 
 | Token | 用途 |
@@ -107,6 +122,7 @@
 | 普通攻击 | `--color-log-basic` | 战斗日志、战术面板 |
 | 英雄名 | `classColor(hero.class)` | 英雄卡片、角色详情 |
 | 目标英雄名 | `classColor(targetClass)` | 怪物目标、战斗日志 |
+| 装备品质（普通/魔法/稀有/独特） | `getQualityColor(quality)`（见 §1.2.1） | 背包槽位、商店说明、掉落提示 |
 
 ### 1.4 禁止
 
@@ -218,10 +234,20 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
   - focus 时 `var(--accent)` 边框，`var(--focus-glow)` 发光
 - **checkbox / radio**：使用 `appearance: none` 去除原生样式，自定义背景、边框；选中态使用 `var(--accent)` 边框、`var(--bg-selected)` 背景
 
-### 5.3 Tooltip
+### 5.3 Tooltip 与面板内说明
 
-- 统一使用 `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`
-- 禁止使用 `title=` 做用户可见提示
+**悬停提示**
+
+- 统一使用 `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`（必要时加 `tooltip-below`，避免被 `overflow` 裁切）。
+- **禁止**使用 `title=` 作为游戏内说明（样式与可访问性不一致于本项目 Tooltip）。
+
+**模态框 / 面板内的固定说明文案**（如商店购买品质概率、技能选择提示等）
+
+- 不要只在面板底色上放一段 `text-muted`，须做成**内层卡片**，与角色详情 `detail-skill-choice-banner`、商店 `shop-quality-banner` 等一致：
+  - 背景 `var(--bg-darker)`，边框 `1px solid var(--border-dark)`，`border-radius: 6px`，内边距约 `0.65rem 0.75rem`。
+- 列表项等**过长单行文案**：可见区域使用省略号，完整内容放在 `tooltip-text` 中，规则同上。
+
+**与 Cursor 规则的关系**：`.cursor/rules/frontend-tips-tooltips.mdc`（`alwaysApply: true`）重复强调以上要求，避免仅依赖 `globs` 匹配而漏读。
 
 ### 5.4 模态框 / 面板
 

@@ -1,0 +1,30 @@
+---
+description: Tooltips and in-panel hints - mandatory patterns for Vue UI (always loaded)
+alwaysApply: true
+---
+
+# Frontend Tips and Tooltips (MANDATORY)
+
+Applies whenever you add or change **hints, explainers, odds copy, or hover tips** under `frontend/`, including **modals** (shop, map, detail) and **lists** with long labels.
+
+## Hover tips (MANDATORY)
+
+- Use `class="tooltip-wrap has-tip"` on the trigger and a child `<span class="tooltip-text">` for the body.
+- Do **not** use the HTML `title` attribute for gameplay or explanatory copy (browser chrome is inconsistent and does not match game styling).
+- If a scrollable or clipped ancestor hides the popup, add `tooltip-below` (or the same pattern used elsewhere in `MainScreen.vue` for that context).
+
+## Persistent in-panel helper blocks (MANDATORY)
+
+Short paragraphs inside modals/panels (e.g. shop quality odds, skill-choice reminders) are **not** plain `text-muted` on the panel root alone. They MUST read as a **nested card** so hierarchy matches the rest of the UI:
+
+- Background: `var(--bg-darker)`
+- Border: `1px solid var(--border-dark)`
+- Border radius: `6px`
+- Padding: about `0.65rem 0.75rem`
+- Reuse or mirror the structure used for `detail-skill-choice-banner` / `shop-quality-banner` in `MainScreen.vue`.
+
+See also: [ui-design.mdc](./ui-design.mdc) (full tokens), [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md) (Tooltip section and equipment quality colors).
+
+## Equipment quality wording (MANDATORY)
+
+When labeling **normal / magic / rare / unique** item quality in UI copy, color the words with `getQualityColor(...)` and `QUALITY_*` from `equipment.js` so colors match backpack and tooltips. Values are documented in `11-ui-tokens.md` (equipment quality).

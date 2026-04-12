@@ -34,9 +34,14 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 - Base: `var(--bg-dark)`. Panel: `var(--bg-panel)`. Card: `var(--bg-darker)`. Elevated: `var(--bg-elevated)`.
 - Hover: `var(--bg-hover)`. Selected: `var(--bg-selected)`.
 
-## Tooltip
+## Tooltip and in-panel hints (MANDATORY)
 
-- Use `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`. No `title=` for user tips.
+- **Hover**: `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`. Do **not** use `title=` for gameplay or explanatory copy.
+- **Persistent helper blocks** inside modals/panels (shop text, banners): nested card treatment — `var(--bg-darker)`, `1px solid var(--border-dark)`, `border-radius: 6px`, padding like `detail-skill-choice-banner`. Avoid a lone muted paragraph with no inner card.
+- **Long labels** in dense lists: ellipsis on the visible line + full string in `tooltip-text` (same hover pattern), not `title`.
+- **Equipment quality labels** (普通 / 魔法 / 稀有 / 独特): use `getQualityColor` + `QUALITY_*` from `equipment.js`; see `docs/design/11-ui-tokens.md`.
+
+These rules are duplicated for visibility in [frontend-tips-tooltips.mdc](./frontend-tips-tooltips.mdc) (`alwaysApply: true`).
 
 ## Form Inputs (MANDATORY)
 
