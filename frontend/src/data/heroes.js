@@ -106,7 +106,10 @@ export function computeHeroMaxHP(hero) {
   const attrs = getEffectiveAttrs(hero)
   const coef = CLASS_COEFFICIENTS[hero?.class] || {}
   const k_HP = coef.k_HP ?? 0
-  return Math.round(10 + attrs.stamina * k_HP + (hero?.level || 1) * LEVEL_HP_PER_LEVEL)
+  const eq = getEquipmentBonuses(hero?.equipment)
+  const base = 10 + attrs.stamina * k_HP + (hero?.level || 1) * LEVEL_HP_PER_LEVEL
+  const pct = (eq.maxHpPct || 0) / 100
+  return Math.round(base * (1 + pct)) + (eq.maxHpFlat || 0)
 }
 
 /**
@@ -124,7 +127,10 @@ export function computeHeroMaxMP(hero) {
   if (kMp == null) {
     return 100
   }
-  return Math.round(5 + (attrs.spirit || 0) * kMp + (hero?.level || 1) * LEVEL_MP_PER_LEVEL)
+  const eq = getEquipmentBonuses(hero?.equipment)
+  const base = 5 + (attrs.spirit || 0) * kMp + (hero?.level || 1) * LEVEL_MP_PER_LEVEL
+  const pct = (eq.maxManaPct || 0) / 100
+  return Math.round(base * (1 + pct))
 }
 
 /** Armor for combat: round(Str * STRENGTH_TO_ARMOR_K) + equipment armor (all classes). */
@@ -233,52 +239,183 @@ const SECONDARY_ATTR_ORDER = [
 const NA = '-'
 
 /**
- * Affix-derived secondary rows for character detail.
- * Excludes stats merged into 物攻/法强/物暴/法暴/命中/闪避。
- * @param {Object} eq - getEquipmentBonuses result
+ * 装备词缀汇总行（角色详情「词缀加成」区块）。不含已并入副属性公式的命中/闪避/物暴%/法暴% 等。
+ * @param {Object} eq - getEquipmentBonuses 结果
+ * @param {string} [heroClass] - 用于提示（如击杀怒气仅战士）
  * @returns {Array<{key: string, label: string, value: string, formula: string}>}
  */
-export function buildWeaponSecondaryRows(eq) {
+export function buildWeaponSecondaryRows(eq, heroClass = null) {
   if (!eq) return []
   const rows = []
-  const pushPct = (key, label, v) => {
-    if (v > 0) rows.push({ key, label, value: `+${v}%`, formula: '-' })
+  const pushRow = (key, label, value, formula) => {
+    rows.push({ key, label, value, formula })
   }
-  const pushNum = (key, label, v) => {
-    if (v > 0) rows.push({ key, label, value: String(v), formula: '-' })
+  const pushPct = (key, label, v, tip) => {
+    if (v > 0) pushRow(key, label, `+${v}%`, tip ?? `来自装备词缀叠加，当前合计 +${v}%。`)
   }
-  if (eq.physCritDmgPct > 0) pushPct('WPhysCritDmg', '\u7269\u66b4\u4f24', eq.physCritDmgPct)
-  if (eq.spellCritDmgPct > 0) pushPct('WSpellCritDmg', '\u6cd5\u66b4\u4f24', eq.spellCritDmgPct)
-  if (eq.lifeStealPct > 0) pushPct('WLifeSteal', '\u751f\u547d\u5077\u53d6', eq.lifeStealPct)
-  if (eq.lifeOnHit > 0) pushNum('WLifeOnHit', '\u547d\u4e2d\u56de\u8840', eq.lifeOnHit)
+  const pushNum = (key, label, v, tip) => {
+    if (v > 0) pushRow(key, label, `+${v}`, tip ?? `来自装备词缀叠加，当前合计 +${v}。`)
+  }
+
+  // —— 武器输出向 ——
+  if (eq.physCritDmgPct > 0) {
+    pushPct('WPhysCritDmg', '\u7269\u66b4\u4f24\u52a0\u6210', eq.physCritDmgPct, `\u7269\u7406\u66b4\u51fb\u65f6\u989d\u5916\u66b4\u4f24\u500d\u7387\u52a0\u6210\uff08\u88c5\u5907\u5408\u8ba1 +${eq.physCritDmgPct}%\uff09\u3002`)
+  }
+  if (eq.spellCritDmgPct > 0) {
+    pushPct('WSpellCritDmg', '\u6cd5\u66b4\u4f24\u52a0\u6210', eq.spellCritDmgPct, `\u6cd5\u672f\u66b4\u51fb\u65f6\u989d\u5916\u66b4\u4f24\u52a0\u6210\uff08\u88c5\u5907\u5408\u8ba1 +${eq.spellCritDmgPct}%\uff09\u3002`)
+  }
+  if (eq.lifeStealPct > 0) {
+    pushPct('WLifeSteal', '\u751f\u547d\u5077\u53d6', eq.lifeStealPct, `\u7269\u7406\u4f24\u5bb3\u7ed3\u7b97\u540e\u6309\u6b64\u6bd4\u4f8b\u56de\u590d\u751f\u547d\uff08\u88c5\u5907\u5408\u8ba1 +${eq.lifeStealPct}%\uff09\u3002`)
+  }
+  if (eq.lifeOnHit > 0) {
+    pushNum('WLifeOnHit', '\u547d\u4e2d\u56de\u8840', eq.lifeOnHit, `\u7269\u7406\u547d\u4e2d\u4e14\u9020\u6210\u4f24\u5bb3\u65f6\u989d\u5916\u56de\u590d ${eq.lifeOnHit} \u751f\u547d\uff08\u6bcf\u6b21\u653b\u51fb\u53ef\u89e6\u53d1\uff09\u3002`)
+  }
   if (eq.addedMagicDmgMax > 0 && (eq.addedMagicDmgMin ?? 0) <= eq.addedMagicDmgMax) {
-    rows.push({
-      key: 'WAddedMagic',
-      label: '\u9644\u52a0\u9b54\u6cd5\u4f24\u5bb3',
-      value: `${eq.addedMagicDmgMin}-${eq.addedMagicDmgMax}`,
-      formula: '-',
-    })
+    pushRow(
+      'WAddedMagic',
+      '\u9644\u52a0\u9b54\u6cd5\u4f24\u5bb3',
+      `${eq.addedMagicDmgMin}-${eq.addedMagicDmgMax}`,
+      `\u7269\u7406\u653b\u51fb\u540e\u989d\u5916\u4e00\u6bb5\u9b54\u6cd5\u4f24\u5bb3\uff08\u533a\u95f4\u968f\u673a\uff0c\u88c5\u5907\u53e0\u52a0\uff09\u3002`,
+    )
   }
-  if (eq.armorPen > 0) pushNum('WArmorPen', '\u62a4\u7532\u7a7f\u900f', eq.armorPen)
-  if (eq.physDmgPct > 0) pushPct('WPhysDmgPct', '\u7269\u653b%', eq.physDmgPct)
-  if (eq.ignoreArmorPct > 0) pushPct('WIgnoreArmor', '\u65e0\u89c6\u62a4\u7532', eq.ignoreArmorPct)
-  if (eq.manaRefluxPct > 0) pushPct('WManaReflux', '\u9b54\u529b\u56de\u6d41', eq.manaRefluxPct)
-  if (eq.manaOnCast > 0) pushNum('WManaOnCast', '\u65bd\u6cd5\u56de\u84dd', eq.manaOnCast)
+  if (eq.armorPen > 0) {
+    pushNum('WArmorPen', '\u62a4\u7532\u7a7f\u900f', eq.armorPen, `\u7ed3\u7b97\u7269\u7406\u4f24\u5bb3\u65f6\u65e0\u89c6\u76ee\u6807\u56fa\u5b9a\u62a4\u7532\u6570\u503c\uff0c\u5f53\u524d\u88c5\u5907\u5408\u8ba1 +${eq.armorPen}\u3002`)
+  }
+  if (eq.physDmgPct > 0) pushPct('WPhysDmgPct', '\u7269\u7406\u4f24\u5bb3%', eq.physDmgPct)
+  if (eq.ignoreArmorPct > 0) pushPct('WIgnoreArmor', '\u65e0\u89c6\u62a4\u7532%', eq.ignoreArmorPct)
+  if (eq.manaRefluxPct > 0) {
+    pushPct('WManaReflux', '\u9b54\u529b\u56de\u6d41', eq.manaRefluxPct, `\u6cd5\u672f\u4f24\u5bb3\u7ed3\u7b97\u540e\u6309\u6b64\u6bd4\u4f8b\u8fd4\u8fd8\u6cd5\u529b\uff08\u88c5\u5907\u5408\u8ba1 +${eq.manaRefluxPct}%\uff09\u3002`)
+  }
+  if (eq.manaOnCast > 0) {
+    pushNum('WManaOnCast', '\u65bd\u6cd5\u56de\u84dd', eq.manaOnCast, `\u9020\u6210\u6cd5\u672f\u4f24\u5bb3\u65f6\u989d\u5916\u56de\u590d\u6cd5\u529b ${eq.manaOnCast} \u70b9\u3002`)
+  }
   if (eq.arcaneFollowupMax > 0 && (eq.arcaneFollowupMin ?? 0) <= eq.arcaneFollowupMax) {
-    rows.push({
-      key: 'WArcaneFU',
-      label: '\u5965\u672f\u8ffd\u4f24',
-      value: `${eq.arcaneFollowupMin}-${eq.arcaneFollowupMax}`,
-      formula: '-',
-    })
+    pushRow(
+      'WArcaneFU',
+      '\u5965\u672f\u8ffd\u4f24',
+      `${eq.arcaneFollowupMin}-${eq.arcaneFollowupMax}`,
+      `\u540c\u4e00\u6b21\u6cd5\u672f\u4e2d\u8ffd\u52a0\u4e00\u6bb5\u9b54\u6cd5\u4f24\u5bb3\u533a\u95f4\u3002`,
+    )
   }
-  if (eq.spellPen > 0) pushNum('WSpellPen', '\u6cd5\u672f\u7a7f\u900f', eq.spellPen)
+  if (eq.spellPen > 0) {
+    pushNum('WSpellPen', '\u6cd5\u672f\u7a7f\u900f', eq.spellPen, `\u7ed3\u7b97\u9b54\u6cd5\u4f24\u5bb3\u65f6\u65e0\u89c6\u76ee\u6807\u56fa\u5b9a\u6297\u6027\u6570\u503c\uff0c\u5f53\u524d\u5408\u8ba1 +${eq.spellPen}\u3002`)
+  }
   if (eq.spellDmgPct > 0) pushPct('WSpellDmgPct', '\u6cd5\u672f\u4f24\u5bb3%', eq.spellDmgPct)
-  if (eq.ignoreResistPct > 0) pushPct('WIgnoreResist', '\u65e0\u89c6\u6297\u6027', eq.ignoreResistPct)
-  if (eq.manaRegen > 0) pushNum('WManaRegen', '\u6bcf\u56de\u5408\u6cd5\u529b\u56de\u590d', eq.manaRegen)
-  if (eq.hpRegen > 0) pushNum('WHpRegen', '\u6bcf\u56de\u5408\u751f\u547d\u56de\u590d', eq.hpRegen)
-  if (eq.goldFindPct > 0) pushPct('WGoldFind', '\u91d1\u5e01\u6389\u843d\u52a0\u6210', eq.goldFindPct)
-  if (eq.magicFindPct > 0) pushPct('WMagicFind', '\u9b54\u6cd5\u5bfb\u83b7(MF)', eq.magicFindPct)
+  if (eq.ignoreResistPct > 0) pushPct('WIgnoreResist', '\u65e0\u89c6\u6297\u6027%', eq.ignoreResistPct)
+
+  // —— 生存 / 防御（装备）——
+  if (eq.physDrPct > 0) {
+    pushPct(
+      'EPhysDr',
+      '\u7269\u7406\u51cf\u4f24',
+      eq.physDrPct,
+      `\u5728\u62a4\u7532\u51cf\u4f24\u4e4b\u540e\uff0c\u518d\u6309\u6bd4\u4f8b\u964d\u4f4e\u53d7\u5230\u7684\u7269\u7406\u4f24\u5bb3\uff08\u88c5\u5907\u5408\u8ba1\u6700\u591a\u6309\u5b9e\u73b0\u4e0a\u9650\u6298\u7b97\uff0c\u5f53\u524d\u663e\u793a +${eq.physDrPct}%\uff09\u3002`,
+    )
+  }
+  if (eq.thorns > 0) {
+    pushNum('EThorns', '\u53cd\u4f24\u4f24\u5bb3', eq.thorns, `\u53d7\u5230\u654c\u65b9\u7269\u7406\u653b\u51fb\u5e76\u9020\u6210\u4f24\u5bb3\u65f6\uff0c\u5bf9\u653b\u51fb\u8005\u53cd\u5f39\u56fa\u5b9a\u4f24\u5bb3 ${eq.thorns}\u3002`)
+  }
+  if (eq.blockPct > 0) {
+    pushPct('EBlock', '\u683c\u6321\u7387', eq.blockPct, `\u53d7\u5230\u7269\u7406\u653b\u51fb\u65f6\u6982\u7387\u89e6\u53d1\u683c\u6321\uff08\u542b\u76fe\u724c\u5e95\u6750+\u8bcd\u7f00\uff0c\u5408\u8ba1\u663e\u793a +${eq.blockPct}%\uff09\u3002`)
+  }
+  if (eq.blockDrPct > 0) {
+    pushPct(
+      'EBlockDr',
+      '\u683c\u6321\u540e\u51cf\u4f24',
+      eq.blockDrPct,
+      `\u683c\u6321\u6210\u529f\u540e\uff0c\u5269\u4f59\u7269\u7406\u4f24\u5bb3\u518d\u6309\u6b64\u6bd4\u4f8b\u964d\u4f4e\uff08\u5408\u8ba1 +${eq.blockDrPct}%\uff09\u3002`,
+    )
+  }
+  if (eq.blockCounter > 0) {
+    pushNum(
+      'EBlockCnt',
+      '\u683c\u6321\u53cd\u51fb\u4f24\u5bb3',
+      eq.blockCounter,
+      `\u683c\u6321\u6210\u529f\u65f6\u5bf9\u653b\u51fb\u8005\u989d\u5916\u9020\u6210\u56fa\u5b9a\u7269\u7406\u4f24\u5bb3 ${eq.blockCounter}\u3002`,
+    )
+  }
+
+  // —— 生命 / 法力池（装备百分比与固定）——
+  if (eq.maxHpFlat > 0) {
+    pushNum(
+      'EMaxHpFlat',
+      '\u989d\u5916\u6700\u5927\u751f\u547d',
+      eq.maxHpFlat,
+      `\u5728\u57fa\u7840\u6700\u5927\u751f\u547d\u516c\u5f0f\u4e4b\u5916\uff0c\u989d\u5916\u589e\u52a0 ${eq.maxHpFlat} \u70b9\u6700\u5927\u751f\u547d\uff08\u88c5\u5907\u53e0\u52a0\uff09\u3002`,
+    )
+  }
+  if (eq.maxHpPct > 0) {
+    pushPct(
+      'EMaxHpPct',
+      '\u6700\u5927\u751f\u547d%',
+      eq.maxHpPct,
+      `\u5728\u57fa\u7840\u6700\u5927\u751f\u547d\u4e0a\u518d\u4e58\u4ee5 (1+${eq.maxHpPct}%)\uff08\u4e0e\u56fa\u5b9a\u503c\u52a0\u6210\u5148\u4e58\u7b97\u540e\u518d\u52a0\u56fa\u5b9a\uff0c\u89c1\u751f\u547d\u516c\u5f0f\uff09\u3002`,
+    )
+  }
+  if (eq.maxManaPct > 0) {
+    pushPct(
+      'EMaxManaPct',
+      '\u6700\u5927\u6cd5\u529b%',
+      eq.maxManaPct,
+      `\u5728\u57fa\u7840\u6700\u5927\u6cd5\u529b\u4e0a\u518d\u4e58\u4ee5 (1+${eq.maxManaPct}%)\uff08\u4ec5\u6cd5\u529b\u804c\u4e1a\uff09\u3002`,
+    )
+  }
+
+  // —— 每回合回复 ——
+  if (eq.manaRegen > 0) {
+    pushNum('WManaRegen', '\u6bcf\u56de\u5408\u6cd5\u529b\u56de\u590d', eq.manaRegen, `\u6bcf\u56de\u5408\u7ed3\u675f\u65f6\u989d\u5916\u56de\u590d ${eq.manaRegen} \u6cd5\u529b\uff08\u4e0e\u7cbe\u795e\u56de\u590d\u53e0\u52a0\uff09\u3002`)
+  }
+  if (eq.hpRegen > 0) {
+    pushNum('WHpRegen', '\u6bcf\u56de\u5408\u751f\u547d\u56de\u590d', eq.hpRegen, `\u6bcf\u56de\u5408\u7ed3\u675f\u65f6\u989d\u5916\u56de\u590d ${eq.hpRegen} \u751f\u547d\u3002`)
+  }
+
+  // —— 击杀与怒气 / 连击 ——
+  if (eq.lifeOnKill > 0) {
+    const v = eq.lifeOnKill
+    pushRow(
+      'ELifeOnKill',
+      '\u51fb\u6740\u56de\u590d\u751f\u547d',
+      `+${v} \u751f\u547d`,
+      `\u51fb\u6740\u654c\u65b9\u5355\u4f4d\u65f6\u56de\u590d ${v} \u751f\u547d\uff08\u88c5\u5907\u6570\u503c\u53e0\u52a0\uff1b\u5b9e\u6218\u4e3b\u8981\u5728\u666e\u653b/\u8fde\u51fb\u7ebf\u89e6\u53d1\uff09\u3002`,
+    )
+  }
+  if (eq.rageOnKill > 0) {
+    const v = eq.rageOnKill
+    const war = heroClass === 'Warrior'
+    pushRow(
+      'ERageOnKill',
+      '\u51fb\u6740\u56de\u590d\u6012\u6c14',
+      `+${v} \u6012\u6c14`,
+      war
+        ? `\u51fb\u6740\u654c\u65b9\u65f6\u589e\u52a0 ${v} \u6012\u6c14\uff08\u6700\u591a 100\uff09\u3002`
+        : `\u88c5\u5907\u8bcd\u7f29\u603b\u548c +${v}\u3002\u4ec5\u6218\u58eb\u804c\u4e1a\u5728\u6218\u6597\u4e2d\u751f\u6548\u3002`,
+    )
+  }
+  if (eq.rageGenPct > 0) {
+    pushPct(
+      'ERageGen',
+      '\u6012\u6c14\u83b7\u53d6\u52a0\u6210',
+      eq.rageGenPct,
+      `\u6218\u58eb\u9020\u6210/\u53d7\u5230\u4f24\u5bb3\u83b7\u5f97\u6012\u6c14\u65f6\uff0c\u989d\u5916\u4e58 (1+${eq.rageGenPct}%)\u3002`,
+    )
+  }
+  if (eq.doubleStrikePct > 0) {
+    pushPct(
+      'EDoubleStrike',
+      '\u8fde\u51fb\u6982\u7387',
+      eq.doubleStrikePct,
+      `\u666e\u653b\u7269\u7406\u547d\u4e2d\u540e\u6982\u7387\u518d\u8ffd\u52a0\u4e00\u6bb1\uff08\u7ea6 60% \u7269\u7406\u57fa\u7840\u4f24\u5bb3\uff09\u3002`,
+    )
+  }
+
+  // —— 掉落 ——
+  if (eq.goldFindPct > 0) {
+    pushPct('WGoldFind', '\u91d1\u5e01\u6389\u843d\u52a0\u6210', eq.goldFindPct, `\u80dc\u5229\u91d1\u5e01\u6309\u5c0f\u961f\u5e73\u5747 GF \u6298\u7b97\uff08\u5f53\u524d\u82f1\u96c4\u88c5\u5907\u5408\u8ba1 +${eq.goldFindPct}%\uff09\u3002`)
+  }
+  if (eq.magicFindPct > 0) {
+    pushPct('WMagicFind', '\u9b54\u6cd5\u5bfb\u83b7(MF)', eq.magicFindPct, `\u6389\u843d\u54c1\u8d28\u6743\u91cd\u6309\u5c0f\u961f\u5e73\u5747 MF \u6298\u7b97\uff08\u5f53\u524d\u82f1\u96c4\u88c5\u5907\u5408\u8ba1 +${eq.magicFindPct}%\uff09\u3002`)
+  }
+
   return rows
 }
 
@@ -311,21 +448,53 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
         spellPower: 0,
         hitPct: 0,
         dodgePct: 0,
+        maxHpPct: 0,
+        maxHpFlat: 0,
+        maxManaPct: 0,
+        physDrPct: 0,
+        thorns: 0,
+        blockPct: 0,
+        lifeOnKill: 0,
+        rageGenPct: 0,
+        rageOnKill: 0,
+        doubleStrikePct: 0,
+        blockDrPct: 0,
+        blockCounter: 0,
       }
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   const values = {}
   const formulaMap = {}
 
-  // HP
-  const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * LEVEL_HP_PER_LEVEL
-  values.HP = Math.round(hp)
-  formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, values.HP))
+  // HP（含装备 maxHp%、maxHp 固定）
+  if (heroAttrs) {
+    values.HP = computeHeroMaxHP({ ...heroAttrs, class: heroClass, level })
+    const eqHp = eq.maxHpPct || eq.maxHpFlat
+      ? ` + EQP(${eq.maxHpPct ? `+${eq.maxHpPct}%` : ''}${eq.maxHpPct && eq.maxHpFlat ? ' ' : ''}${eq.maxHpFlat ? `+${eq.maxHpFlat}` : ''})`
+      : ''
+    formulaMap.HP = fmtFormula(
+      formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, null) +
+        eqHp +
+        ` = ${values.HP}`,
+    )
+  } else {
+    const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * LEVEL_HP_PER_LEVEL
+    values.HP = Math.round(hp)
+    formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, values.HP))
+  }
 
   // Resource (2nd position): MP for mana classes, Rage/Energy/Focus for others
   if (coef.k_MP != null) {
-    const mp = 5 + attrs.spirit * coef.k_MP + level * LEVEL_MP_PER_LEVEL
-    values.MP = Math.round(mp)
-    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: fmtFormula(formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, Math.round(mp))) }
+    const mp = heroAttrs
+      ? computeHeroMaxMP({ ...heroAttrs, class: heroClass, level })
+      : Math.round(5 + attrs.spirit * coef.k_MP + level * LEVEL_MP_PER_LEVEL)
+    values.MP = mp
+    const mpFormula = heroAttrs && (eq.maxManaPct || 0) > 0
+      ? fmtFormula(
+          formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, null) +
+            ` × (1 + ${eq.maxManaPct}%) = ${mp}`,
+        )
+      : fmtFormula(formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, mp))
+    formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: mpFormula }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
     formulaMap.Resource = { key: 'Rage', label: '怒气', value: 100, formula: '固定 100' }
@@ -504,7 +673,7 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     }
   }
 
-  const weaponSecondary = buildWeaponSecondaryRows(eq)
+  const weaponSecondary = buildWeaponSecondaryRows(eq, heroClass)
 
   return { values, formulas, weaponSecondary }
 }

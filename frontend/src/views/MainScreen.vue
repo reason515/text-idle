@@ -1062,19 +1062,25 @@
                     </span>
                   </span>
                 </div>
-                <div v-if="heroWeaponSecondaryAttrs.length" class="detail-sep-line detail-sep-weapon">词缀加成</div>
-                <div v-for="attr in heroWeaponSecondaryAttrs" :key="'w-' + attr.key" class="detail-row">
-                  <span class="detail-label secondary-label">{{ attr.label }}</span>
-                  <span class="detail-value">
-                    <span
-                      class="tooltip-wrap"
-                      :class="{ 'has-tip': attr.formula && attr.formula !== '-' }"
-                      @mouseenter="(e) => attr.formula && attr.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(attr.formula))"
-                      @mouseleave="hideFormulaTooltip"
-                    >
-                      {{ attr.value }}
+                <div class="detail-sep-line detail-sep-weapon">装备词缀与特效</div>
+                <template v-if="heroWeaponSecondaryAttrs.length">
+                  <div v-for="attr in heroWeaponSecondaryAttrs" :key="'w-' + attr.key" class="detail-row">
+                    <span class="detail-label secondary-label">{{ attr.label }}</span>
+                    <span class="detail-value">
+                      <span
+                        class="tooltip-wrap"
+                        :class="{ 'has-tip': attr.formula && attr.formula !== '-' }"
+                        @mouseenter="(e) => attr.formula && attr.formula !== '-' && showFormulaTooltip(e, formatSecondaryFormulaTip(attr.formula))"
+                        @mouseleave="hideFormulaTooltip"
+                      >
+                        {{ attr.value }}
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                </template>
+                <div v-else class="detail-row detail-row-muted">
+                  <span class="detail-label secondary-label">—</span>
+                  <span class="detail-value">暂无加成（需穿戴含词缀的魔法/稀有装备）</span>
                 </div>
               </div>
             </div>
@@ -1762,6 +1768,23 @@ const AFFIX_STAT_LABELS = {
   hpRegen: '\u6bcf\u56de\u5408\u751f\u547d\u56de\u590d',
   goldFindPct: '\u91d1\u5e01\u6389\u843d\u52a0\u6210',
   magicFindPct: '\u9b54\u6cd5\u5bfb\u83b7(MF)',
+  physDrPct: '\u7269\u7406\u51cf\u4f24',
+  armorPct: '\u62a4\u7532%',
+  resistancePct: '\u6297\u6027%',
+  maxHpFlat: '\u6700\u5927\u751f\u547d',
+  lifeOnKill: '\u51fb\u6740\u56de\u590d',
+  thorns: '\u53cd\u4f24',
+  blockPct: '\u683c\u6321\u7387',
+  blockDrPct: '\u683c\u6321\u51cf\u4f24',
+  blockCounter: '\u683c\u6321\u53cd\u51fb',
+  rageGenPct: '\u6012\u6c14\u83b7\u53d6',
+  maxHpPct: '\u6700\u5927\u751f\u547d%',
+  maxManaPct: '\u6700\u5927\u6cd5\u529b%',
+  spellPowerFlat: '\u6cd5\u5f3a',
+  orbBalanced: '\u62a4\u7532+\u6297\u6027',
+  allPrimary: '\u5168\u5c5e\u6027',
+  rageOnKill: '\u51fb\u6740\u6012\u6c14',
+  doubleStrikePct: '\u8fde\u51fb\u7387',
 }
 function formatAffixStat(stat) {
   if (!stat) return ''
@@ -1790,6 +1813,15 @@ function formatAffixValue(affix) {
     'dodgePct',
     'goldFindPct',
     'magicFindPct',
+    'physDrPct',
+    'armorPct',
+    'resistancePct',
+    'blockPct',
+    'blockDrPct',
+    'rageGenPct',
+    'maxHpPct',
+    'maxManaPct',
+    'doubleStrikePct',
   ])
   if (pctStats.has(affix.stat)) return `${affix.value}%`
   if (affix.stat === 'addedMagicDmg' || affix.stat === 'arcaneFollowup') {
@@ -5504,6 +5536,10 @@ input.tactics-condition-value[type="number"] {
   border-top-color: var(--border-dark);
   font-size: var(--font-xs);
   margin-top: 0.35rem;
+}
+.detail-row-muted .detail-value {
+  color: var(--text-muted);
+  font-size: var(--font-s);
 }
 .val-hp { color: var(--color-hp); }
 .detail-hp-val { /* color from inline hpBarColor by injury level */ }

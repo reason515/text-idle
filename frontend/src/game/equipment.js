@@ -15,8 +15,17 @@ import {
   SLOT_LABELS,
 } from '../data/itemBases.js'
 import { PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL } from './weaponAffixPools.js'
+import {
+  ARMOR_AFFIX_POOL,
+  SHIELD_AFFIX_POOL,
+  ORB_AFFIX_POOL,
+  RING_AFFIX_POOL,
+  AMULET_AFFIX_POOL,
+  affixAllowedOnSlot,
+} from './slotAffixPools.js'
 
 export { PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL }
+export { ARMOR_AFFIX_POOL, SHIELD_AFFIX_POOL, ORB_AFFIX_POOL, RING_AFFIX_POOL, AMULET_AFFIX_POOL }
 
 /** Quality identifiers */
 export const QUALITY_NORMAL = 'normal'
@@ -114,6 +123,7 @@ const WEAPON_AFFIX_STATS = new Set([
   'spellPen',
   'spellDmgPct',
   'ignoreResistPct',
+  'hitPct',
 ])
 
 export function applyMagicFindToQualityWeights(normal, magic, rare, magicFindPct = 0) {
@@ -229,12 +239,28 @@ export function getWeaponAffixMode(baseKey, baseDef) {
   return null
 }
 
-function getMergedAffixPool(itemTier, baseKey, baseDef) {
-  const general = filterAffixesByTier(AFFIX_POOL, itemTier)
+function getMergedAffixPool(itemTier, baseKey, baseDef, resolvedSlot) {
+  let pool = filterAffixesByTier(AFFIX_POOL, itemTier)
+  const armorSlots = ['Helm', 'Armor', 'Gloves', 'Boots', 'Belt']
+  if (armorSlots.includes(resolvedSlot)) {
+    pool = pool.concat(filterAffixesByTier(ARMOR_AFFIX_POOL, itemTier))
+  }
+  if (baseKey === 'Shield') {
+    pool = pool.concat(filterAffixesByTier(SHIELD_AFFIX_POOL, itemTier))
+  }
+  if (baseKey === 'OffHand') {
+    pool = pool.concat(filterAffixesByTier(ORB_AFFIX_POOL, itemTier))
+  }
+  if (resolvedSlot === 'Ring') {
+    pool = pool.concat(filterAffixesByTier(RING_AFFIX_POOL, itemTier))
+  }
+  if (resolvedSlot === 'Amulet') {
+    pool = pool.concat(filterAffixesByTier(AMULET_AFFIX_POOL, itemTier))
+  }
   const mode = getWeaponAffixMode(baseKey, baseDef)
-  if (mode === 'physical') return general.concat(filterAffixesByTier(PHYS_WEAPON_AFFIX_POOL, itemTier))
-  if (mode === 'spell') return general.concat(filterAffixesByTier(SPELL_WEAPON_AFFIX_POOL, itemTier))
-  return general
+  if (mode === 'physical') pool = pool.concat(filterAffixesByTier(PHYS_WEAPON_AFFIX_POOL, itemTier))
+  if (mode === 'spell') pool = pool.concat(filterAffixesByTier(SPELL_WEAPON_AFFIX_POOL, itemTier))
+  return pool.filter((a) => affixAllowedOnSlot(a, resolvedSlot, baseKey))
 }
 
 function makeAffixEntry(def, quality, rng) {
@@ -402,6 +428,16 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     item.resistance = rollBaseStat(baseDef.resistance)
   }
 
+  item._armorBase = item.armor
+  item._resBase = item.resistance
+  item._armorFlatAffix = 0
+  item._resFlatAffix = 0
+
+  if (baseKey === 'Shield' && baseDef.blockPct != null) {
+    const bp = baseDef.blockPct
+    item.blockPct = Array.isArray(bp) ? randomInRange(bp[0], bp[1], rng) : Number(bp) || 0
+  }
+
   const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
   const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? rollWeaponDamageRange(baseDef.physAtk, rng) : null
   if (physAtkRange) {
@@ -419,7 +455,7 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     item.spellPower = rollBaseStat(baseDef.spellPower)
   }
 
-  const allowedAffixes = getMergedAffixPool(itemTier, baseKey, baseDef)
+  const allowedAffixes = getMergedAffixPool(itemTier, baseKey, baseDef, resolvedSlot)
 
   if (quality === QUALITY_MAGIC) {
     const count = rng() < 0.5 ? 1 : 2
@@ -457,15 +493,27 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     applyAffixToItem(item, s)
   }
 
+  finalizeItemDefenseStats(item)
+
   return item
+}
+
+function finalizeItemDefenseStats(item) {
+  if (item._armorBase == null) return
+  const ab = item._armorBase + (item._armorFlatAffix || 0)
+  const rb = item._resBase + (item._resFlatAffix || 0)
+  const ap = (item.armorPct || 0) / 100
+  const rp = (item.resistancePct || 0) / 100
+  item.armor = Math.floor(ab * (1 + ap))
+  item.resistance = Math.floor(rb * (1 + rp))
 }
 
 function applyAffixToItem(item, affix) {
   const stat = affix.stat
   const val = affix.value
   if (WEAPON_AFFIX_STATS.has(stat)) return
-  if (stat === 'armor') item.armor += val
-  else if (stat === 'resistance') item.resistance += val
+  if (stat === 'armor') item._armorFlatAffix = (item._armorFlatAffix || 0) + val
+  else if (stat === 'resistance') item._resFlatAffix = (item._resFlatAffix || 0) + val
   else if (stat === 'strength') item.strBonus = (item.strBonus || 0) + val
   else if (stat === 'agility') item.agiBonus = (item.agiBonus || 0) + val
   else if (stat === 'intellect') item.intBonus = (item.intBonus || 0) + val
@@ -481,6 +529,31 @@ function applyAffixToItem(item, affix) {
   else if (stat === 'hpRegen') item.hpRegen = (item.hpRegen || 0) + val
   else if (stat === 'goldFindPct') item.goldFindPct = (item.goldFindPct || 0) + val
   else if (stat === 'magicFindPct') item.magicFindPct = (item.magicFindPct || 0) + val
+  else if (stat === 'physDrPct') item.physDrPct = (item.physDrPct || 0) + val
+  else if (stat === 'armorPct') item.armorPct = (item.armorPct || 0) + val
+  else if (stat === 'resistancePct') item.resistancePct = (item.resistancePct || 0) + val
+  else if (stat === 'maxHpFlat') item.maxHpFlat = (item.maxHpFlat || 0) + val
+  else if (stat === 'lifeOnKill') item.lifeOnKill = (item.lifeOnKill || 0) + val
+  else if (stat === 'thorns') item.thorns = (item.thorns || 0) + val
+  else if (stat === 'blockPct') item.blockPct = (item.blockPct || 0) + val
+  else if (stat === 'blockDrPct') item.blockDrPct = (item.blockDrPct || 0) + val
+  else if (stat === 'blockCounter') item.blockCounter = (item.blockCounter || 0) + val
+  else if (stat === 'rageGenPct') item.rageGenPct = (item.rageGenPct || 0) + val
+  else if (stat === 'maxHpPct') item.maxHpPct = (item.maxHpPct || 0) + val
+  else if (stat === 'maxManaPct') item.maxManaPct = (item.maxManaPct || 0) + val
+  else if (stat === 'spellPowerFlat') item.spellPower = (item.spellPower || 0) + val
+  else if (stat === 'orbBalanced') {
+    const half = Math.floor(val / 2)
+    item._armorFlatAffix = (item._armorFlatAffix || 0) + half
+    item._resFlatAffix = (item._resFlatAffix || 0) + (val - half)
+  } else if (stat === 'allPrimary') {
+    item.strBonus = (item.strBonus || 0) + val
+    item.agiBonus = (item.agiBonus || 0) + val
+    item.intBonus = (item.intBonus || 0) + val
+    item.staBonus = (item.staBonus || 0) + val
+    item.spiBonus = (item.spiBonus || 0) + val
+  } else if (stat === 'rageOnKill') item.rageOnKill = (item.rageOnKill || 0) + val
+  else if (stat === 'doubleStrikePct') item.doubleStrikePct = (item.doubleStrikePct || 0) + val
 }
 
 /**
@@ -539,6 +612,16 @@ export function createStarterWhiteItem({ id, baseKey, slot, baseName = null }) {
     item.armor = rollMidScalar(baseDef.armor)
     item.resistance = rollMidScalar(baseDef.resistance)
   }
+
+  item._armorBase = item.armor
+  item._resBase = item.resistance
+  item._armorFlatAffix = 0
+  item._resFlatAffix = 0
+  if (baseKey === 'Shield' && baseDef.blockPct != null) {
+    const bp = baseDef.blockPct
+    item.blockPct = Array.isArray(bp) ? Math.round((bp[0] + bp[1]) / 2) : Number(bp) || 0
+  }
+  finalizeItemDefenseStats(item)
 
   const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
   const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? weaponMidRollFromBase(baseDef.physAtk) : null
@@ -602,12 +685,13 @@ export function generateEquipmentDrop(monsters, rng = Math.random, dropModifiers
         const basesG = getBaseItemsForSlot(baseKeyG)
         const tierG = guaranteed.itemTier
         const baseRowG = basesG?.[tierG]?.find((b) => b.name === guaranteed.baseName) ?? {}
-        const allowedAffixes = getMergedAffixPool(tierG, baseKeyG, baseRowG)
+        const allowedAffixes = getMergedAffixPool(tierG, baseKeyG, baseRowG, guaranteed.slot || 'MainHand')
         const usedIds = new Set()
         const p = pickAffixNoDup(allowedAffixes, 'prefix', usedIds, rng)
         if (p) {
           guaranteed.prefixes = [makeAffixEntry(p, QUALITY_MAGIC, rng)]
           applyAffixToItem(guaranteed, guaranteed.prefixes[0])
+          finalizeItemDefenseStats(guaranteed)
         }
       }
       drops.push(guaranteed)
@@ -858,6 +942,18 @@ export function getEquipmentBonuses(equipment) {
     hpRegen: 0,
     goldFindPct: 0,
     magicFindPct: 0,
+    physDrPct: 0,
+    maxHpFlat: 0,
+    lifeOnKill: 0,
+    thorns: 0,
+    blockPct: 0,
+    blockDrPct: 0,
+    blockCounter: 0,
+    rageGenPct: 0,
+    maxHpPct: 0,
+    maxManaPct: 0,
+    rageOnKill: 0,
+    doubleStrikePct: 0,
   }
   if (!equipment || typeof equipment !== 'object') return out
   for (const [slot, item] of Object.entries(equipment)) {
@@ -879,6 +975,18 @@ export function getEquipmentBonuses(equipment) {
     out.hpRegen += item.hpRegen || 0
     out.goldFindPct += item.goldFindPct || 0
     out.magicFindPct += item.magicFindPct || 0
+    out.physDrPct += item.physDrPct || 0
+    out.maxHpFlat += item.maxHpFlat || 0
+    out.lifeOnKill += item.lifeOnKill || 0
+    out.thorns += item.thorns || 0
+    out.blockPct += item.blockPct || 0
+    out.blockDrPct += item.blockDrPct || 0
+    out.blockCounter += item.blockCounter || 0
+    out.rageGenPct += item.rageGenPct || 0
+    out.maxHpPct += item.maxHpPct || 0
+    out.maxManaPct += item.maxManaPct || 0
+    out.rageOnKill += item.rageOnKill || 0
+    out.doubleStrikePct += item.doubleStrikePct || 0
 
     if (WEAPON_SLOTS.includes(slot)) {
       mergeWeaponAffixTotals(out, sumWeaponAffixStatsFromItem(item))

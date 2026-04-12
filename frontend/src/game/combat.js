@@ -547,6 +547,15 @@ function heroCombatStats(hero) {
     currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? maxMP),
     equipmentRecoveryBonus: (hero.equipmentRecoveryBonus ?? 0) + (eq?.manaRegen ?? 0),
     hpRegen: eq?.hpRegen ?? 0,
+    physDrPct: eq?.physDrPct ?? 0,
+    lifeOnKill: eq?.lifeOnKill ?? 0,
+    thorns: eq?.thorns ?? 0,
+    blockPct: eq?.blockPct ?? 0,
+    blockDrPct: eq?.blockDrPct ?? 0,
+    blockCounter: eq?.blockCounter ?? 0,
+    rageGenPct: eq?.rageGenPct ?? 0,
+    rageOnKill: eq?.rageOnKill ?? 0,
+    doubleStrikePct: eq?.doubleStrikePct ?? 0,
     spirit: hero.spirit,
     skills: getHeroSkillIds(hero),
     skillEnhancements: hero.skillEnhancements ?? {},
@@ -1757,6 +1766,39 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
         }
       }
+      if (
+        target.side === 'hero' &&
+        hitResult.isHit &&
+        damage.finalDamage > 0 &&
+        damage.damageType === 'physical'
+      ) {
+        let fd = damage.finalDamage
+        const pdr = target.physDrPct || 0
+        if (pdr > 0) fd = Math.max(0, Math.floor(fd * (1 - Math.min(75, pdr) / 100)))
+        let blockedPhysical = false
+        const bc = target.blockPct || 0
+        if (bc > 0 && rng() * 100 < Math.min(75, bc)) {
+          blockedPhysical = true
+          const bdr = target.blockDrPct || 0
+          fd = Math.max(0, Math.floor(fd * Math.max(0.1, 1 - Math.min(85, bdr) / 100)))
+        }
+        damage = {
+          ...damage,
+          finalDamage: fd,
+          nextHP: Math.max(0, (target.currentHP || 0) - fd),
+          blockedPhysical,
+        }
+      }
+      let blockCounterDamageToMonster = 0
+      if (
+        actor.side === 'monster' &&
+        target.side === 'hero' &&
+        damage.blockedPhysical &&
+        (target.blockCounter || 0) > 0
+      ) {
+        blockCounterDamageToMonster = Math.min(target.blockCounter || 0, actor.currentHP || 0)
+        actor.currentHP = Math.max(0, (actor.currentHP || 0) - blockCounterDamageToMonster)
+      }
       if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
         const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
         damage.absorbedByShield = shieldResult.absorbed
@@ -1768,6 +1810,39 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         target.currentHP = damage.nextHP
       }
       if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
+
+      let thornsDamageToMonster = 0
+      if (
+        actor.side === 'monster' &&
+        target.side === 'hero' &&
+        action.damageType === 'physical' &&
+        damage.finalDamage > 0
+      ) {
+        const tn = target.thorns || 0
+        if (tn > 0) {
+          thornsDamageToMonster = Math.min(tn, actor.currentHP || 0)
+          actor.currentHP = Math.max(0, (actor.currentHP || 0) - thornsDamageToMonster)
+        }
+      }
+
+      let lifeOnKillHeal = 0
+      let rageOnKillGain = 0
+      if (
+        actor.side === 'hero' &&
+        target.side === 'monster' &&
+        targetHPBefore > 0 &&
+        (target.currentHP ?? 0) <= 0
+      ) {
+        const lk = actor.lifeOnKill || 0
+        if (lk > 0) {
+          lifeOnKillHeal = lk
+          actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
+        }
+        if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
+          rageOnKillGain = actor.rageOnKill
+          actor.currentMP = Math.min(100, (actor.currentMP || 0) + rageOnKillGain)
+        }
+      }
 
       const shieldOnMain = damage.absorbedByShield != null && damage.absorbedByShield > 0
 
@@ -1837,8 +1912,45 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         }
       }
 
+      let doubleStrikeDamage = 0
+      if (
+        actor.side === 'hero' &&
+        action.action === 'basic' &&
+        action.damageType === 'physical' &&
+        hitResult.isHit &&
+        target.side === 'monster' &&
+        (target.currentHP ?? 0) > 0 &&
+        (actor.doubleStrikePct || 0) > 0 &&
+        rng() * 100 < (actor.doubleStrikePct || 0)
+      ) {
+        const dsRaw = Math.round(rawBase * 0.6)
+        const dsCritRoll = rng()
+        const dsIsCrit = dsCritRoll < (actor.physCrit || 0)
+        const dsAfterCrit = dsIsCrit
+          ? Math.round(dsRaw * (actor.physCritMult ?? CRIT_MULTIPLIER))
+          : dsRaw
+        const dsDmg = applyDamageWithWeaponAffixes(dsAfterCrit, 'physical', target, weaponOpts)
+        if (dsDmg.finalDamage > 0) {
+          target.currentHP = dsDmg.nextHP
+          doubleStrikeDamage = dsDmg.finalDamage
+          addThreatFromDamage(threat, target.id, actor.id, dsDmg.finalDamage, 1)
+          if ((target.currentHP ?? 0) <= 0) {
+            const lk = actor.lifeOnKill || 0
+            if (lk > 0) {
+              actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
+            }
+            if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
+              actor.currentMP = Math.min(100, (actor.currentMP || 0) + (actor.rageOnKill || 0))
+            }
+          }
+        }
+      }
+
       const reportedFinalDamage =
-        damage.finalDamage + weaponAddedMagicDamage + weaponArcaneFollowupDamage
+        damage.finalDamage +
+        weaponAddedMagicDamage +
+        weaponArcaneFollowupDamage +
+        doubleStrikeDamage
 
       const hasWeaponDamageSegments = weaponAddedMagicDamage > 0 || weaponArcaneFollowupDamage > 0
       const primaryFinalDamage =
@@ -1886,14 +1998,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         debuffResult = applyMonsterSkillDebuff(target, skillDef)
       }
 
-      // Rage gain for Warriors: fixed per attack; crit doubles; dodge (no hit) gives 0
+      // Rage gain for Warriors: fixed per attack; crit doubles; dodge (no hit) gives 0; ring 怒气获取率
       if (damage.finalDamage > 0) {
         if (actor.side === 'hero' && actor.class === 'Warrior') {
-          const gained = rageFromAttack(isCrit)
+          let gained = rageFromAttack(isCrit)
+          gained = Math.floor(gained * (1 + (actor.rageGenPct || 0) / 100))
           actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
         }
         if (target.side === 'hero' && target.class === 'Warrior') {
-          const gained = rageFromAttack(isCrit)
+          let gained = rageFromAttack(isCrit)
+          gained = Math.floor(gained * (1 + (target.rageGenPct || 0) / 100))
           target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
         }
       }
@@ -1942,6 +2056,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (weaponLifeOnHitHeal > 0) logEntry.weaponLifeOnHitHeal = weaponLifeOnHitHeal
       if (weaponManaReflux > 0) logEntry.weaponManaReflux = weaponManaReflux
       if (weaponManaOnCast > 0) logEntry.weaponManaOnCast = weaponManaOnCast
+      if (thornsDamageToMonster > 0) logEntry.thornsDamageToMonster = thornsDamageToMonster
+      if (blockCounterDamageToMonster > 0) logEntry.blockCounterDamageToMonster = blockCounterDamageToMonster
+      if (lifeOnKillHeal > 0) logEntry.lifeOnKillHeal = lifeOnKillHeal
+      if (rageOnKillGain > 0) logEntry.rageOnKillGain = rageOnKillGain
+      if (doubleStrikeDamage > 0) logEntry.doubleStrikeDamage = doubleStrikeDamage
+      if (damage.blockedPhysical) logEntry.blockedPhysical = true
       if (
         actorHPBeforeWeaponHeal != null &&
         (weaponLifeStealHeal > 0 || weaponLifeOnHitHeal > 0)

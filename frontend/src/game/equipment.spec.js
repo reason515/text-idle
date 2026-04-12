@@ -474,12 +474,12 @@ describe('equipment', () => {
   })
 
   describe('weapon affix pools', () => {
-    it('PHYS_WEAPON_AFFIX_POOL has 27 entries', () => {
-      expect(PHYS_WEAPON_AFFIX_POOL.length).toBe(27)
+    it('PHYS_WEAPON_AFFIX_POOL has 30 entries (9 族×3 + 命中3)', () => {
+      expect(PHYS_WEAPON_AFFIX_POOL.length).toBe(30)
     })
 
-    it('SPELL_WEAPON_AFFIX_POOL has 27 entries', () => {
-      expect(SPELL_WEAPON_AFFIX_POOL.length).toBe(27)
+    it('SPELL_WEAPON_AFFIX_POOL has 30 entries (9 族×3 + 命中3)', () => {
+      expect(SPELL_WEAPON_AFFIX_POOL.length).toBe(30)
     })
 
     it('getWeaponAffixMode: phys weapon vs spell weapon', () => {
