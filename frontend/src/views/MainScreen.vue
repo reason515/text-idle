@@ -583,6 +583,17 @@
               <span class="shop-gold-value">{{ gold }}</span>
             </div>
           </div>
+          <div v-if="shopConfirmingSlot" class="shop-confirm-row">
+            <span class="shop-confirm-text">
+              <span class="shop-confirm-prefix">花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买</span>
+              <span class="shop-confirm-slot-name">{{ getShopConfirmLabel(shopConfirmingSlot) }}</span>
+              <span class="shop-confirm-suffix">？</span>
+            </span>
+            <div class="shop-confirm-actions">
+              <button type="button" class="btn btn-sm shop-confirm-btn" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
+              <button type="button" class="btn btn-sm shop-confirm-btn" @click="shopConfirmingSlot = null">取消</button>
+            </div>
+          </div>
           <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === '金币不足' }">
             {{ shopMessage }}
           </div>
@@ -604,11 +615,13 @@
             <div class="shop-section">
               <div class="shop-section-title">武器</div>
               <div class="shop-slot-list">
-                <div v-for="slot in SHOP_SLOTS.filter(s => s.id.startsWith('MainHand') || s.id.startsWith('OffHand'))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
-                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
-                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
-                  </span>
+                <div
+                  v-for="slot in SHOP_SLOTS.filter(s => s.id.startsWith('MainHand') || s.id.startsWith('OffHand'))"
+                  :key="slot.id"
+                  class="shop-slot-row"
+                  :class="{ 'shop-slot-row--unaffordable': gold < getShopPriceForSlot(slot.id) }"
+                >
+                  <span class="shop-slot-label">{{ slot.label }}</span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -623,11 +636,13 @@
             <div class="shop-section">
               <div class="shop-section-title">护甲</div>
               <div class="shop-slot-list">
-                <div v-for="slot in SHOP_SLOTS.filter(s => ['Helm','Armor','Gloves','Boots','Belt'].includes(s.id))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
-                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
-                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
-                  </span>
+                <div
+                  v-for="slot in SHOP_SLOTS.filter(s => ['Helm','Armor','Gloves','Boots','Belt'].includes(s.id))"
+                  :key="slot.id"
+                  class="shop-slot-row"
+                  :class="{ 'shop-slot-row--unaffordable': gold < getShopPriceForSlot(slot.id) }"
+                >
+                  <span class="shop-slot-label">{{ slot.label }}</span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -642,11 +657,13 @@
             <div class="shop-section">
               <div class="shop-section-title">饰品</div>
               <div class="shop-slot-list">
-                <div v-for="slot in SHOP_SLOTS.filter(s => ['Amulet','Ring'].includes(s.id))" :key="slot.id" class="shop-slot-row">
-                  <span class="shop-slot-label-wrap tooltip-wrap has-tip">
-                    <span class="shop-slot-label-visible">{{ slot.label }}</span>
-                    <span class="tooltip-text tooltip-below">{{ slot.label }}</span>
-                  </span>
+                <div
+                  v-for="slot in SHOP_SLOTS.filter(s => ['Amulet','Ring'].includes(s.id))"
+                  :key="slot.id"
+                  class="shop-slot-row"
+                  :class="{ 'shop-slot-row--unaffordable': gold < getShopPriceForSlot(slot.id) }"
+                >
+                  <span class="shop-slot-label">{{ slot.label }}</span>
                   <span class="shop-slot-price">{{ getShopPriceForSlot(slot.id) }} 金币</span>
                   <button
                     class="btn btn-sm shop-buy-btn"
@@ -657,17 +674,6 @@
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-          <div v-if="shopConfirmingSlot" class="shop-confirm-row">
-            <span class="shop-confirm-text">
-              <span class="shop-confirm-prefix">花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买</span>
-              <span class="shop-confirm-slot-name">{{ getShopConfirmLabel(shopConfirmingSlot) }}</span>
-              <span class="shop-confirm-suffix">？</span>
-            </span>
-            <div class="shop-confirm-actions">
-              <button class="btn btn-sm" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
-              <button class="btn btn-sm" @click="shopConfirmingSlot = null">取消</button>
             </div>
           </div>
           <button class="btn shop-close-btn" @click="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">关闭</button>
@@ -4143,9 +4149,17 @@ onUnmounted(() => {
 .shop-message {
   margin-bottom: 0.5rem;
   font-size: var(--font-base);
-  color: var(--error);
+  color: var(--text-muted);
 }
-.shop-message-error { color: var(--error); }
+.shop-message-error {
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0.45rem 0.55rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
 .shop-quality-banner {
   display: flex;
   flex-direction: column;
@@ -4240,32 +4254,23 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   border-radius: 4px;
   min-width: 0;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.shop-slot-row .shop-slot-label-wrap.tooltip-wrap.has-tip {
+.shop-slot-row--unaffordable {
+  border-color: var(--border-dark);
+  background: var(--bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.shop-slot-label {
   grid-column: 1 / -1;
   grid-row: 1;
-  display: block !important;
-  width: 100% !important;
-  min-width: 0;
-  border-bottom: none;
-  cursor: default;
-}
-.shop-slot-label-visible {
   color: var(--color-formula-equip);
-  font-size: var(--font-base);
-  line-height: 1.35;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--font-base-sm);
+  line-height: 1.4;
+  min-width: 0;
 }
-.shop-slot-row .shop-slot-label-wrap .tooltip-text.tooltip-below {
-  bottom: auto;
-  top: calc(100% + 4px);
-  left: 0;
-  right: auto;
-  white-space: normal;
-  max-width: min(20rem, 85vw);
+.shop-slot-row--unaffordable .shop-slot-label {
+  color: var(--text-muted);
 }
 .shop-slot-price {
   grid-column: 1;
@@ -4274,6 +4279,10 @@ onUnmounted(() => {
   color: var(--color-gold);
   font-size: var(--font-base);
   white-space: nowrap;
+}
+.shop-slot-row--unaffordable .shop-slot-price {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 .shop-buy-btn {
   grid-column: 2;
@@ -4284,14 +4293,27 @@ onUnmounted(() => {
   min-width: 3rem;
   padding: 0.2rem 0.4rem;
   font-size: var(--font-sm);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
 }
 .shop-buy-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
+  border-color: var(--border-dark) !important;
+  color: var(--text-muted) !important;
+  background: var(--bg-darker) !important;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  text-shadow: none;
+}
+.shop-buy-btn:disabled:hover {
+  border-color: var(--border-dark) !important;
+  color: var(--text-muted) !important;
+  background: var(--bg-elevated) !important;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 .shop-confirm-row {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.6rem;
+  margin-top: 0;
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.65rem;
   background: var(--bg-hover);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -4304,7 +4326,7 @@ onUnmounted(() => {
   align-items: baseline;
   gap: 0.2rem;
   min-width: 0;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0;
 }
 .shop-confirm-prefix {
   flex-shrink: 0;
@@ -4326,7 +4348,18 @@ onUnmounted(() => {
 }
 .shop-confirm-actions {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: row;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+.shop-confirm-actions .shop-confirm-btn {
+  flex: 1 1 0;
+  min-width: 5.75rem;
+  width: auto;
+  max-width: none;
+  margin-top: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: var(--font-base);
 }
 .shop-close-btn {
   width: 100%;
