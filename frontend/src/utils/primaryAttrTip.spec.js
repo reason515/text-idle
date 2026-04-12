@@ -28,7 +28,7 @@ describe('buildPrimaryAttrTooltipHtml', () => {
   it('includes class-specific armor formula for Warrior strength', () => {
     const html = buildPrimaryAttrTooltipHtml('Warrior', 'strength', 0)
     expect(html).toContain('0.5')
-    expect(html).toContain('baseAttr')
+    expect(html).toContain('基础属性')
     expect(html).toContain('0.8')
   })
 
@@ -39,14 +39,14 @@ describe('buildPrimaryAttrTooltipHtml', () => {
 
   it('includes MP formula for Mage spirit', () => {
     const html = buildPrimaryAttrTooltipHtml('Mage', 'spirit', 0)
-    expect(html).toContain('2.52')
+    expect(html).toContain('2.5')
     expect(html).toContain('法力上限')
     expect(html).toContain('战斗内法力恢复/回合')
   })
 
-  it('Mage spirit tooltip shows combat MP regen as SPI * 0.8 + equipment', () => {
+  it('Mage spirit tooltip shows combat MP regen as Spirit * 0.8 + equipment', () => {
     const html = buildPrimaryAttrTooltipHtml('Mage', 'spirit', 0)
-    expect(html).toMatch(/战斗内法力恢复\/回合[\s\S]*SPI[\s\S]*tip-num">0\.8/)
+    expect(html).toMatch(/战斗内法力恢复\/回合[\s\S]*精神[\s\S]*tip-num">0\.8/)
   })
 
   it('Mage intellect tooltip defers MP cap to Spirit', () => {
@@ -57,14 +57,14 @@ describe('buildPrimaryAttrTooltipHtml', () => {
   it('Mage spell baseAttr tooltip uses Int coeff 0.8 (formatted tip-num)', () => {
     const html = buildPrimaryAttrTooltipHtml('Mage', 'intellect', 0)
     expect(html).toMatch(
-      /tip-attr-var">baseAttr<\/span>[\s\S]*?tip-num">0\.8<\/span>[\s\S]*?tip-num">0\.8<\/span>/
+      /法术基础属性[\s\S]*?tip-num">0\.8<\/span>[\s\S]*?tip-num">0\.8<\/span>/
     )
   })
 
   it('Warlock spell baseAttr tooltip keeps Int coeff 1.2', () => {
     const html = buildPrimaryAttrTooltipHtml('Warlock', 'intellect', 0)
     expect(html).toMatch(
-      /tip-attr-var">baseAttr<\/span>[\s\S]*?tip-num">1\.2<\/span>[\s\S]*?tip-num">0\.8<\/span>/
+      /法术基础属性[\s\S]*?tip-num">1\.2<\/span>[\s\S]*?tip-num">0\.8<\/span>/
     )
   })
 

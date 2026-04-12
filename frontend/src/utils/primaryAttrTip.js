@@ -10,7 +10,7 @@ import {
 } from '../data/heroes.js'
 import { MANA_REGEN_SPIRIT_SCALE } from '../game/manaRegenConstants.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
-import { formatSecondaryFormulaTip } from './formulaTip.js'
+import { formatSecondaryFormulaTip, fmtTipNum } from './formulaTip.js'
 
 
 function fmt(raw) {
@@ -31,30 +31,32 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
   const c = CLASS_COEFFICIENTS[heroClass] || {}
   const isManaClass = c.k_MP != null
   const spellIntK = getSpellIntellectK(heroClass)
-  const spellBaseAttrLine = `法术 baseAttr = Int * ${spellIntK} + Spi * 0.8`
+  const spellBaseAttrLine = `法术基础属性 = 智力 * ${fmtTipNum(spellIntK)} + 精神 * ${fmtTipNum(0.8)}`
 
   switch (attrKey) {
     case 'strength': {
       const lines = [
-        '<span class="tip-purpose">力量：提升护甲（全职业统一 STR→护甲 系数），并参与物理伤害倍率中的 baseAttr（力敏混合）。</span>',
+        '<span class="tip-purpose">力量：提升护甲（全职业统一力量→护甲系数），并参与物理伤害倍率中的基础属性（力敏混合）。</span>',
       ]
-      lines.push(fmt(`护甲基础 = Str * ${STRENGTH_TO_ARMOR_K} + 装备护甲`))
+      lines.push(fmt(`护甲基础 = 力量 * ${fmtTipNum(STRENGTH_TO_ARMOR_K)} + 装备护甲`))
       if (c.physAtkAttr === 'strength') {
         const baseAttrLine =
-          heroClass === 'Warrior' ? 'baseAttr = Str * 0.8 + Agi * 0.6' : 'baseAttr = Str * 1.4 + Agi * 0.6'
+          heroClass === 'Warrior'
+            ? `基础属性 = 力量 * ${fmtTipNum(0.8)} + 敏捷 * ${fmtTipNum(0.6)}`
+            : `基础属性 = 力量 * ${fmtTipNum(1.4)} + 敏捷 * ${fmtTipNum(0.6)}`
         lines.push(fmt(baseAttrLine))
         lines.push(
-          `物理伤害：baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) + 装备物攻（与副属性「物攻」一致）`
+          `物理伤害：基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)}) + 装备物攻（与副属性「物攻」一致）`
         )
       } else if (c.physAtkAttr === 'agility') {
-        lines.push(fmt('baseAttr = Agi * 1.4 + Str * 0.6'))
+        lines.push(fmt(`基础属性 = 敏捷 * ${fmtTipNum(1.4)} + 力量 * ${fmtTipNum(0.6)}`))
         lines.push(
-          `物理伤害：baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) + 装备物攻；敏捷为主属性时力量仍贡献 Str * 0.6。`
+          `物理伤害：基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)}) + 装备物攻；敏捷为主属性时力量仍贡献 力量 × ${fmtTipNum(0.6)}。`
         )
       } else {
-        lines.push(fmt('baseAttr = Str * 1.4 + Agi * 0.6'))
+        lines.push(fmt(`基础属性 = 力量 * ${fmtTipNum(1.4)} + 敏捷 * ${fmtTipNum(0.6)}`))
         lines.push(
-          `物理伤害倍率仍用上述 baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K})（普通攻击等）；副属性「物攻」可能仅显示装备加成。`
+          `物理伤害倍率仍用上述 基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)})（普通攻击等）；副属性「物攻」可能仅显示装备加成。`
         )
       }
       if (equipmentBonus > 0) {
@@ -64,23 +66,25 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     }
     case 'agility': {
       const lines = [
-        '<span class="tip-purpose">敏捷：影响命中、物暴、闪避与出手顺序（同敏捷时随机）；并参与物理伤害 baseAttr。</span>',
-        fmt(`命中% = 95 + Agi * 0.2`),
-        fmt(`物暴% = 5 + Agi * ${c.k_PhysCrit ?? 0}`),
-        fmt(`闪避% = 5 + Agi * ${c.k_Dodge ?? 0}`),
+        '<span class="tip-purpose">敏捷：影响命中、物暴、闪避与出手顺序（同敏捷时随机）；并参与物理伤害基础属性。</span>',
+        fmt(`命中% = 95 + 敏捷 * ${fmtTipNum(0.2)}`),
+        fmt(`物暴% = 5 + 敏捷 * ${fmtTipNum(c.k_PhysCrit ?? 0)}`),
+        fmt(`闪避% = 5 + 敏捷 * ${fmtTipNum(c.k_Dodge ?? 0)}`),
         '出手：敏捷高者优先行动。',
       ]
       if (c.physAtkAttr === 'agility') {
-        lines.push(fmt('baseAttr = Agi * 1.4 + Str * 0.6'))
-        lines.push(`物理伤害：baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) + 装备物攻`)
+        lines.push(fmt(`基础属性 = 敏捷 * ${fmtTipNum(1.4)} + 力量 * ${fmtTipNum(0.6)}`))
+        lines.push(`物理伤害：基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)}) + 装备物攻`)
       } else if (c.physAtkAttr === 'strength') {
         const baseAttrLine =
-          heroClass === 'Warrior' ? 'baseAttr = Str * 0.8 + Agi * 0.6' : 'baseAttr = Str * 1.4 + Agi * 0.6'
+          heroClass === 'Warrior'
+            ? `基础属性 = 力量 * ${fmtTipNum(0.8)} + 敏捷 * ${fmtTipNum(0.6)}`
+            : `基础属性 = 力量 * ${fmtTipNum(1.4)} + 敏捷 * ${fmtTipNum(0.6)}`
         lines.push(fmt(baseAttrLine))
-        lines.push('主物理为力量时，敏捷仍贡献 baseAttr 中的 Agi * 0.6。')
+        lines.push(`主物理为力量时，敏捷仍贡献基础属性中的 敏捷 × ${fmtTipNum(0.6)}。`)
       } else {
-        lines.push(fmt('baseAttr = Str * 1.4 + Agi * 0.6'))
-        lines.push(`无力量/敏捷主物攻展示时，战斗内物理倍率仍用上述 baseRoll * (1 + baseAttr * ${PHYS_MULTIPLIER_K}) 结构。`)
+        lines.push(fmt(`基础属性 = 力量 * ${fmtTipNum(1.4)} + 敏捷 * ${fmtTipNum(0.6)}`))
+        lines.push(`无力量/敏捷主物攻展示时，战斗内物理倍率仍用上述 基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)}) 结构。`)
       }
       if (equipmentBonus > 0) {
         lines.push(`<span class="tip-equip-label">装备加成该属性:</span> +${equipmentBonus}`)
@@ -89,31 +93,31 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     }
     case 'intellect': {
       const lines = [
-        '<span class="tip-purpose">智力：影响法术伤害 baseAttr、法术抗性、法术暴击（若有系数）；法力上限由精神决定（法力职业）。</span>',
+        '<span class="tip-purpose">智力：影响法术伤害基础属性、法术抗性、法术暴击（若有系数）；法力上限由精神决定（法力职业）。</span>',
       ]
       if (isManaClass) {
-        lines.push('<span class="tip-muted">法力上限见「精神」条目：5 + Spi × k_MP + Level。</span>')
+        lines.push('<span class="tip-muted">法力上限见「精神」条目：5 + 精神 × 系数 + 等级。</span>')
       } else {
         lines.push('<span class="tip-muted">本职业：资源非法力，无此项法力上限公式。</span>')
       }
       if (c.k_SpellPower != null) {
         lines.push(fmt(spellBaseAttrLine))
         lines.push(
-          `法术伤害：baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) + 装备法强（与副属性「法强」一致）`
+          `法术伤害：基础骰值 × (1 + 基础属性 × ${fmtTipNum(SPELL_MULTIPLIER_K)}) + 装备法强（与副属性「法强」一致）`
         )
       } else {
         lines.push(fmt(spellBaseAttrLine))
         lines.push(
-          `无面板法强系数时，战斗内法术倍率仍可能使用上述 baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) 结构。`
+          `无面板法强系数时，战斗内法术倍率仍可能使用上述 基础骰值 × (1 + 基础属性 × ${fmtTipNum(SPELL_MULTIPLIER_K)}) 结构。`
         )
       }
       if (c.k_Resistance != null) {
-        lines.push(fmt(`抗性基础 = Int * ${c.k_Resistance} + 装备抗性`))
+        lines.push(fmt(`抗性基础 = 智力 * ${fmtTipNum(c.k_Resistance)} + 装备抗性`))
       } else {
         lines.push('<span class="tip-muted">本职业：智力不转化为面板抗性。</span>')
       }
       if (c.k_SpellCrit != null) {
-        lines.push(fmt(`法暴% = 5 + Int * ${c.k_SpellCrit}`))
+        lines.push(fmt(`法暴% = 5 + 智力 * ${fmtTipNum(c.k_SpellCrit)}`))
       } else {
         lines.push('<span class="tip-muted">本职业：无法术暴击系数（法暴% 为 0）。</span>')
       }
@@ -125,7 +129,7 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     case 'stamina': {
       const lines = [
         '<span class="tip-purpose">耐力：提升生命值上限（全职业）。</span>',
-        fmt(`生命 = 10 + Stam * ${c.k_HP ?? 0} + Level * ${LEVEL_HP_PER_LEVEL}`),
+        fmt(`生命 = 10 + 耐力 * ${fmtTipNum(c.k_HP ?? 0)} + 等级 * ${fmtTipNum(LEVEL_HP_PER_LEVEL)}`),
       ]
       if (equipmentBonus > 0) {
         lines.push(`<span class="tip-equip-label">装备加成该属性:</span> +${equipmentBonus}`)
@@ -134,14 +138,14 @@ export function buildPrimaryAttrTooltipHtml(heroClass, attrKey, equipmentBonus =
     }
     case 'spirit': {
       const lines = [
-        '<span class="tip-purpose">精神：法力上限（法力职业）、参与法术伤害 baseAttr；法力职业战斗内每回合法力恢复。</span>',
+        '<span class="tip-purpose">精神：法力上限（法力职业）、参与法术伤害基础属性；法力职业战斗内每回合法力恢复。</span>',
         fmt(spellBaseAttrLine),
-        `法术伤害：baseRoll * (1 + baseAttr * ${SPELL_MULTIPLIER_K}) + 装备法强`,
+        `法术伤害：基础骰值 × (1 + 基础属性 × ${fmtTipNum(SPELL_MULTIPLIER_K)}) + 装备法强`,
       ]
       if (isManaClass) {
-        lines.push(fmt(`法力上限 = 5 + Spi * ${c.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`))
+        lines.push(fmt(`法力上限 = 5 + 精神 * ${fmtTipNum(c.k_MP)} + 等级 * ${fmtTipNum(LEVEL_MP_PER_LEVEL)}`))
         lines.push(
-          fmt(`战斗内法力恢复/回合 = Spi * ${MANA_REGEN_SPIRIT_SCALE} + 装备恢复`)
+          fmt(`战斗内法力恢复/回合 = 精神 * ${fmtTipNum(MANA_REGEN_SPIRIT_SCALE)} + 装备恢复`)
         )
       } else {
         lines.push('<span class="tip-muted">本职业：非法力资源，无此项每回合 MP 恢复公式。</span>')

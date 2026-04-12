@@ -206,7 +206,7 @@ describe('heroes', () => {
       const { formulas } = computeSecondaryAttributes('Rogue', 1)
       const hpFormula = formulas.find((f) => f.key === 'HP')
       expect(hpFormula).toBeDefined()
-      expect(hpFormula.formula).toContain('Stam')
+      expect(hpFormula.formula).toContain('耐力')
       expect(hpFormula.value).toBeGreaterThan(0)
     })
 
@@ -221,15 +221,15 @@ describe('heroes', () => {
       const hero = { class: 'Warrior', strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3, level: 1, equipment: { Helm: { armor: 5, resistance: 0, physAtk: 0, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
       const { formulas } = computeSecondaryAttributes('Warrior', 1, hero)
       const armorFormula = formulas.find((f) => f.key === 'Armor')
-      expect(armorFormula.formula).toContain('Str(10)')
-      expect(armorFormula.formula).toMatch(/EQP\(\+5\)/)
+      expect(armorFormula.formula).toContain('力量(10)')
+      expect(armorFormula.formula).toMatch(/装备\(\+5\)/)
     })
 
     it('equipment-only formulas use EQP with value', () => {
       const hero = { class: 'Priest', strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9, level: 1, equipment: { MainHand: { armor: 0, resistance: 0, physAtk: 4, spellPower: 0, strBonus: 0, agiBonus: 0, intBonus: 0, staBonus: 0, spiBonus: 0 } } }
       const { formulas } = computeSecondaryAttributes('Priest', 1, hero)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toMatch(/EQP: \+4/)
+      expect(physAtkFormula.formula).toMatch(/装备: \+4/)
     })
 
     it('Warrior with weapon affix merges PhysCrit and shows weapon-only rows', () => {
@@ -256,7 +256,7 @@ describe('heroes', () => {
       const { values, formulas, weaponSecondary } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.PhysCrit).toBe(9.1)
       const physCritF = formulas.find((f) => f.key === 'PhysCrit')
-      expect(physCritF.formula).toContain('WPN(+3%)')
+      expect(physCritF.formula).toContain('武器(+3%)')
       const ls = weaponSecondary.find((w) => w.key === 'WLifeSteal')
       expect(ls?.value).toBe('+2%')
     })
@@ -299,8 +299,8 @@ describe('heroes', () => {
       const { values, formulas, weaponSecondary } = computeSecondaryAttributes('Warrior', 1, hero)
       expect(values.Hit).toBe(99.8)
       expect(values.Dodge).toBe(8.7)
-      expect(formulas.find((f) => f.key === 'Hit')?.formula).toContain('EQP(+4%)')
-      expect(formulas.find((f) => f.key === 'Dodge')?.formula).toContain('EQP(+3%)')
+      expect(formulas.find((f) => f.key === 'Hit')?.formula).toContain('装备(+4%)')
+      expect(formulas.find((f) => f.key === 'Dodge')?.formula).toContain('装备(+3%)')
       expect(weaponSecondary.find((r) => r.key === 'WGoldFind')?.value).toBe('+12%')
       expect(weaponSecondary.find((r) => r.key === 'WMagicFind')?.value).toBe('+9%')
     })
@@ -313,7 +313,7 @@ describe('heroes', () => {
       expect(minVal).toBe(9)
       expect(maxVal).toBe(15)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseRoll = weapon(3-5) = 3-5')
+      expect(physAtkFormula.formula).toContain('基础骰值 = 武器(3-5) = 3-5')
     })
 
     it('Warrior with TwoHand weapon damage range shows PhysAtk as min-max', () => {
@@ -324,52 +324,52 @@ describe('heroes', () => {
       expect(minVal).toBe(25)
       expect(maxVal).toBe(37)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseRoll = weapon(8-12) = 8-12')
+      expect(physAtkFormula.formula).toContain('基础骰值 = 武器(8-12) = 8-12')
     })
 
     it('formulas include actual attribute values for calculation transparency', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const hpFormula = formulas.find((f) => f.key === 'HP')
-      expect(hpFormula.formula).toContain('Stam(9)')
-      expect(hpFormula.formula).toContain('Level(1)')
+      expect(hpFormula.formula).toContain('耐力(9)')
+      expect(hpFormula.formula).toContain('等级(1)')
       expect(hpFormula.formula).toMatch(/= 34$/)
     })
 
     it('PhysAtk formula shows baseRoll = weapon(0) when no weapon', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseRoll = weapon(0) = 0')
+      expect(physAtkFormula.formula).toContain('基础骰值 = 武器(0) = 0')
     })
 
     it('PhysAtk formula shows baseAttr detail (Str*0.8+Agi*0.6 for Warrior)', () => {
       const { formulas } = computeSecondaryAttributes('Warrior', 1)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseAttr = ')
-      expect(physAtkFormula.formula).toContain('Str(10)')
-      expect(physAtkFormula.formula).toContain('Agi(4)')
-      expect(physAtkFormula.formula).toMatch(/Str.*0\.8.*Agi.*0\.6/)
+      expect(physAtkFormula.formula).toContain('基础属性 = ')
+      expect(physAtkFormula.formula).toContain('力量(10)')
+      expect(physAtkFormula.formula).toContain('敏捷(4)')
+      expect(physAtkFormula.formula).toMatch(/力量.*0\.8.*敏捷.*0\.6/)
     })
 
     it('PhysAtk formula shows baseAttr detail (Agi*1.4+Str*0.6 for agility class)', () => {
       const { formulas } = computeSecondaryAttributes('Rogue', 1)
       const physAtkFormula = formulas.find((f) => f.key === 'PhysAtk')
-      expect(physAtkFormula.formula).toContain('baseAttr = ')
-      expect(physAtkFormula.formula).toMatch(/Agi.*1\.4.*Str.*0\.6/)
+      expect(physAtkFormula.formula).toContain('基础属性 = ')
+      expect(physAtkFormula.formula).toMatch(/敏捷.*1\.4.*力量.*0\.6/)
     })
 
     it('SpellPower formula shows baseAttr detail (Mage: Int*0.8+Spi*0.8)', () => {
       const { formulas } = computeSecondaryAttributes('Mage', 1)
       const spellFormula = formulas.find((f) => f.key === 'SpellPower')
-      expect(spellFormula.formula).toContain('baseAttr = ')
-      expect(spellFormula.formula).toContain('Int(11)')
-      expect(spellFormula.formula).toContain('Spi(5)')
-      expect(spellFormula.formula).toMatch(/Int.*0\.8.*Spi.*0\.8/)
+      expect(spellFormula.formula).toContain('基础属性 = ')
+      expect(spellFormula.formula).toContain('智力(11)')
+      expect(spellFormula.formula).toContain('精神(5)')
+      expect(spellFormula.formula).toMatch(/智力.*0\.8.*精神.*0\.8/)
     })
 
     it('SpellPower formula shows Int*1.2+Spi*0.8 for Warlock (non Priest/Mage)', () => {
       const { formulas } = computeSecondaryAttributes('Warlock', 1)
       const spellFormula = formulas.find((f) => f.key === 'SpellPower')
-      expect(spellFormula.formula).toMatch(/Int.*1\.2.*Spi.*0\.8/)
+      expect(spellFormula.formula).toMatch(/智力.*1\.2.*精神.*0\.8/)
     })
 
     it('all classes have same secondary attribute order with Resource in 2nd position', () => {

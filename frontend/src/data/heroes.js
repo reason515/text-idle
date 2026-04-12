@@ -8,6 +8,7 @@
 
 import { getEquipmentBonuses, createStarterWhiteItem } from '../game/equipment.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
+import { fmtTipNum } from '../utils/formulaTip.js'
 
 /**
  * Initial attributes for each class at level 1 (small-number design principle)
@@ -187,16 +188,16 @@ function fmtFormula(s) {
   return s.replace(/\*/g, '\u00D7')
 }
 
-/** Build formula with actual values substituted for attributes (e.g. "10 + Stam(9) x 4 + Level(1) x 2 = 48") */
+/** Build formula with actual values substituted for attributes (Chinese labels; numbers rounded for display). */
 function formulaWithValues(template, attrs, level, result) {
   const s = template
-    .replace(/\bStam\b/g, `Stam(${attrs.stamina})`)
-    .replace(/\bInt\b/g, `Int(${attrs.intellect})`)
-    .replace(/\bStr\b/g, `Str(${attrs.strength})`)
-    .replace(/\bAgi\b/g, `Agi(${attrs.agility})`)
-    .replace(/\bSpi\b/g, `Spi(${attrs.spirit})`)
-    .replace(/\bLevel\b/g, `Level(${level})`)
-  return result != null ? `${s} = ${result}` : s
+    .replace(/耐力(?!\()/g, `耐力(${fmtTipNum(attrs.stamina)})`)
+    .replace(/智力(?!\()/g, `智力(${fmtTipNum(attrs.intellect)})`)
+    .replace(/力量(?!\()/g, `力量(${fmtTipNum(attrs.strength)})`)
+    .replace(/敏捷(?!\()/g, `敏捷(${fmtTipNum(attrs.agility)})`)
+    .replace(/精神(?!\()/g, `精神(${fmtTipNum(attrs.spirit)})`)
+    .replace(/等级(?!\()/g, `等级(${fmtTipNum(level)})`)
+  return result != null ? `${s} = ${fmtTipNum(result)}` : s
 }
 
 /** Build baseAttr formula string for PhysAtk (Warrior Str*0.8+Agi*0.6; else Str*1.4+Agi*0.6 or Agi*1.4+Str*0.6). */
@@ -204,11 +205,11 @@ function getPhysBaseAttrFormula(heroClass, attrs) {
   const coef = CLASS_COEFFICIENTS[heroClass] || {}
   let template
   if (coef.physAtkAttr === 'agility') {
-    template = 'Agi * 1.4 + Str * 0.6'
+    template = `敏捷 * ${fmtTipNum(1.4)} + 力量 * ${fmtTipNum(0.6)}`
   } else if (heroClass === 'Warrior') {
-    template = 'Str * 0.8 + Agi * 0.6'
+    template = `力量 * ${fmtTipNum(0.8)} + 敏捷 * ${fmtTipNum(0.6)}`
   } else {
-    template = 'Str * 1.4 + Agi * 0.6'
+    template = `力量 * ${fmtTipNum(1.4)} + 敏捷 * ${fmtTipNum(0.6)}`
   }
   return formulaWithValues(template, attrs, null, null)
 }
@@ -216,7 +217,7 @@ function getPhysBaseAttrFormula(heroClass, attrs) {
 /** Build baseAttr formula string for SpellPower (Int*k+Spi*0.8; k class-dependent). */
 function getSpellBaseAttrFormula(heroClass, attrs) {
   const intK = getSpellIntellectK(heroClass)
-  return formulaWithValues(`Int * ${intK} + Spi * 0.8`, attrs, null, null)
+  return formulaWithValues(`智力 * ${fmtTipNum(intK)} + 精神 * ${fmtTipNum(0.8)}`, attrs, null, null)
 }
 
 /**
@@ -469,17 +470,19 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   if (heroAttrs) {
     values.HP = computeHeroMaxHP({ ...heroAttrs, class: heroClass, level })
     const eqHp = eq.maxHpPct || eq.maxHpFlat
-      ? ` + EQP(${eq.maxHpPct ? `+${eq.maxHpPct}%` : ''}${eq.maxHpPct && eq.maxHpFlat ? ' ' : ''}${eq.maxHpFlat ? `+${eq.maxHpFlat}` : ''})`
+      ? ` + 装备(${eq.maxHpPct ? `+${fmtTipNum(eq.maxHpPct)}%` : ''}${eq.maxHpPct && eq.maxHpFlat ? ' ' : ''}${eq.maxHpFlat ? `+${fmtTipNum(eq.maxHpFlat)}` : ''})`
       : ''
+    const kHpDisp = typeof coef.k_HP === 'number' ? fmtTipNum(coef.k_HP) : '?'
     formulaMap.HP = fmtFormula(
-      formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, null) +
+      formulaWithValues(`10 + 耐力 * ${kHpDisp} + 等级 * ${fmtTipNum(LEVEL_HP_PER_LEVEL)}`, attrs, level, null) +
         eqHp +
-        ` = ${values.HP}`,
+        ` = ${fmtTipNum(values.HP)}`,
     )
   } else {
     const hp = 10 + attrs.stamina * (coef.k_HP || 0) + level * LEVEL_HP_PER_LEVEL
     values.HP = Math.round(hp)
-    formulaMap.HP = fmtFormula(formulaWithValues(`10 + Stam * ${coef.k_HP ?? '?'} + Level * ${LEVEL_HP_PER_LEVEL}`, attrs, level, values.HP))
+    const kHpDisp = typeof coef.k_HP === 'number' ? fmtTipNum(coef.k_HP) : '?'
+    formulaMap.HP = fmtFormula(formulaWithValues(`10 + 耐力 * ${kHpDisp} + 等级 * ${fmtTipNum(LEVEL_HP_PER_LEVEL)}`, attrs, level, values.HP))
   }
 
   // Resource (2nd position): MP for mana classes, Rage/Energy/Focus for others
@@ -490,10 +493,10 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     values.MP = mp
     const mpFormula = heroAttrs && (eq.maxManaPct || 0) > 0
       ? fmtFormula(
-          formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, null) +
-            ` × (1 + ${eq.maxManaPct}%) = ${mp}`,
+          formulaWithValues(`5 + 精神 * ${fmtTipNum(coef.k_MP)} + 等级 * ${fmtTipNum(LEVEL_MP_PER_LEVEL)}`, attrs, level, null) +
+            ` × (1 + ${fmtTipNum(eq.maxManaPct)}%) = ${fmtTipNum(mp)}`,
         )
-      : fmtFormula(formulaWithValues(`5 + Spi * ${coef.k_MP} + Level * ${LEVEL_MP_PER_LEVEL}`, attrs, level, mp))
+      : fmtFormula(formulaWithValues(`5 + 精神 * ${fmtTipNum(coef.k_MP)} + 等级 * ${fmtTipNum(LEVEL_MP_PER_LEVEL)}`, attrs, level, mp))
     formulaMap.Resource = { key: 'MP', label: '法力', value: values.MP, formula: mpFormula }
   } else if (heroClass === 'Warrior') {
     values.Rage = 100
@@ -524,24 +527,24 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const baseAttrRounded = Math.round(baseAttr * 10) / 10
     const baseAttrFormula = getPhysBaseAttrFormula(heroClass, attrs)
     const baseRollLine = hasPhysWeapon
-      ? `baseRoll = weapon(${eq.physAtkMin}-${eq.physAtkMax}) = ${baseRollMin}-${baseRollMax}`
-      : `baseRoll = weapon(0) = 0`
+      ? `基础骰值 = 武器(${eq.physAtkMin}-${eq.physAtkMax}) = ${fmtTipNum(baseRollMin)}-${fmtTipNum(baseRollMax)}`
+      : `基础骰值 = 武器(0) = 0`
     const bonusParts = []
-    if (atkEq) bonusParts.push(`EQP +${atkEq}`)
-    if (atkWpn) bonusParts.push(`WPN +${atkWpn}`)
+    if (atkEq) bonusParts.push(`装备 +${fmtTipNum(atkEq)}`)
+    if (atkWpn) bonusParts.push(`武器 +${fmtTipNum(atkWpn)}`)
     const bonusStr = bonusParts.length ? ` + ${bonusParts.join(' + ')}` : ''
     const mainFormula =
       eq.physAtkMin != null && eq.physAtkMax != null
-        ? `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.PhysAtk}`
-        : `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.PhysAtk}`
-    formulaMap.PhysAtk = fmtFormula(`baseAttr = ${baseAttrFormula} = ${baseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
+        ? `基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)})${bonusStr} = ${values.PhysAtk}`
+        : `基础骰值 × (1 + 基础属性 × ${fmtTipNum(PHYS_MULTIPLIER_K)})${bonusStr} = ${values.PhysAtk}`
+    formulaMap.PhysAtk = fmtFormula(`基础属性 = ${baseAttrFormula} = ${fmtTipNum(baseAttrRounded)}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
     const atkEq = eq.physAtk ?? 0
     const atkWpn = eq.physWeaponFlat ?? 0
     const atkSum = atkEq + atkWpn
     values.PhysAtk = atkSum > 0 ? atkSum : NA
     formulaMap.PhysAtk =
-      atkSum > 0 ? (atkWpn ? `EQP +${atkEq}; WPN +${atkWpn}` : `EQP: +${atkEq}`) : NA
+      atkSum > 0 ? (atkWpn ? `装备 +${fmtTipNum(atkEq)}; 武器 +${fmtTipNum(atkWpn)}` : `装备: +${fmtTipNum(atkEq)}`) : NA
   }
 
   // SpellPower: baseRoll(weapon) x (1 + baseAttr x 0.2) + EQP spellPower + WPN spellWeaponFlat (7.3)
@@ -560,43 +563,47 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     const spellBaseAttrRounded = Math.round(spellBaseAttr * 10) / 10
     const spellBaseAttrFormula = getSpellBaseAttrFormula(heroClass, attrs)
     const baseRollLine = hasSpellWeapon
-      ? `baseRoll = weapon(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${baseRollMin}-${baseRollMax}`
-      : `baseRoll = weapon(0) = 0`
+      ? `基础骰值 = 武器(${eq.spellPowerMin}-${eq.spellPowerMax}) = ${fmtTipNum(baseRollMin)}-${fmtTipNum(baseRollMax)}`
+      : `基础骰值 = 武器(0) = 0`
     const bonusParts = []
-    if (spEq) bonusParts.push(`EQP +${spEq}`)
-    if (spWpn) bonusParts.push(`WPN +${spWpn}`)
+    if (spEq) bonusParts.push(`装备 +${fmtTipNum(spEq)}`)
+    if (spWpn) bonusParts.push(`武器 +${fmtTipNum(spWpn)}`)
     const bonusStr = bonusParts.length ? ` + ${bonusParts.join(' + ')}` : ''
     const mainFormula =
       eq.spellPowerMin != null && eq.spellPowerMax != null
-        ? `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.SpellPower}`
-        : `baseRoll x (1 + baseAttr x 0.2)${bonusStr} = ${values.SpellPower}`
-    formulaMap.SpellPower = fmtFormula(`baseAttr = ${spellBaseAttrFormula} = ${spellBaseAttrRounded}\n\n${baseRollLine}\n\n${mainFormula}`)
+        ? `基础骰值 × (1 + 基础属性 × ${fmtTipNum(SPELL_MULTIPLIER_K)})${bonusStr} = ${values.SpellPower}`
+        : `基础骰值 × (1 + 基础属性 × ${fmtTipNum(SPELL_MULTIPLIER_K)})${bonusStr} = ${values.SpellPower}`
+    formulaMap.SpellPower = fmtFormula(`基础属性 = ${spellBaseAttrFormula} = ${fmtTipNum(spellBaseAttrRounded)}\n\n${baseRollLine}\n\n${mainFormula}`)
   } else {
     const spEq = eq.spellPower ?? 0
     const spWpn = eq.spellWeaponFlat ?? 0
     const spSum = spEq + spWpn
     values.SpellPower = spSum > 0 ? spSum : NA
     formulaMap.SpellPower =
-      spSum > 0 ? (spWpn ? `EQP +${spEq}; WPN +${spWpn}` : `EQP: +${spEq}`) : NA
+      spSum > 0 ? (spWpn ? `装备 +${fmtTipNum(spEq)}; 武器 +${fmtTipNum(spWpn)}` : `装备: +${fmtTipNum(spEq)}`) : NA
   }
 
   // Armor (base + equipment): universal STRENGTH_TO_ARMOR_K
   {
     const baseArmor = attrs.strength * STRENGTH_TO_ARMOR_K
     values.Armor = Math.round((baseArmor + eq.armor) * 10) / 10
-    const baseFormula = formulaWithValues(`Str * ${STRENGTH_TO_ARMOR_K}`, attrs, level, null)
-    formulaMap.Armor = eq.armor ? fmtFormula(baseFormula + ` + EQP(+${eq.armor}) = ${values.Armor}`) : fmtFormula(formulaWithValues(`Str * ${STRENGTH_TO_ARMOR_K}`, attrs, level, values.Armor))
+    const baseFormula = formulaWithValues(`力量 * ${fmtTipNum(STRENGTH_TO_ARMOR_K)}`, attrs, level, null)
+    formulaMap.Armor = eq.armor
+      ? fmtFormula(baseFormula + ` + 装备(+${fmtTipNum(eq.armor)}) = ${fmtTipNum(values.Armor)}`)
+      : fmtFormula(formulaWithValues(`力量 * ${fmtTipNum(STRENGTH_TO_ARMOR_K)}`, attrs, level, values.Armor))
   }
 
   // Resistance (base + equipment)
   if (coef.k_Resistance != null) {
     const baseResistance = attrs.intellect * coef.k_Resistance
     values.Resistance = Math.round((baseResistance + eq.resistance) * 10) / 10
-    const baseFormula = formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, null)
-    formulaMap.Resistance = eq.resistance ? fmtFormula(baseFormula + ` + EQP(+${eq.resistance}) = ${values.Resistance}`) : fmtFormula(formulaWithValues(`Int * ${coef.k_Resistance}`, attrs, level, values.Resistance))
+    const baseFormula = formulaWithValues(`智力 * ${fmtTipNum(coef.k_Resistance)}`, attrs, level, null)
+    formulaMap.Resistance = eq.resistance
+      ? fmtFormula(baseFormula + ` + 装备(+${fmtTipNum(eq.resistance)}) = ${fmtTipNum(values.Resistance)}`)
+      : fmtFormula(formulaWithValues(`智力 * ${fmtTipNum(coef.k_Resistance)}`, attrs, level, values.Resistance))
   } else {
     values.Resistance = eq.resistance || NA
-    formulaMap.Resistance = eq.resistance ? `EQP: +${eq.resistance}` : NA
+    formulaMap.Resistance = eq.resistance ? `装备: +${fmtTipNum(eq.resistance)}` : NA
   }
 
   // PhysCrit: base + WPN physCritPct (7.3 weapon)
@@ -605,9 +612,9 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   values.PhysCrit = Math.round((physCritBase + wpnPhysCritPct) * 10) / 10
   formulaMap.PhysCrit = wpnPhysCritPct
     ? fmtFormula(
-        `${formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, physCritBase)} + WPN(+${wpnPhysCritPct}%) = ${values.PhysCrit}`,
+        `${formulaWithValues(`5 + 敏捷 * ${fmtTipNum(coef.k_PhysCrit ?? 0)}`, attrs, level, physCritBase)} + 武器(+${fmtTipNum(wpnPhysCritPct)}%) = ${fmtTipNum(values.PhysCrit)}`,
       )
-    : fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_PhysCrit ?? 0}`, attrs, level, values.PhysCrit))
+    : fmtFormula(formulaWithValues(`5 + 敏捷 * ${fmtTipNum(coef.k_PhysCrit ?? 0)}`, attrs, level, values.PhysCrit))
 
   // SpellCrit: base + WPN spellCritPct (7.3 weapon)
   if (coef.k_SpellCrit != null) {
@@ -616,12 +623,12 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
     values.SpellCrit = Math.round((spellCritBase + wpnSpellCritPct) * 10) / 10
     formulaMap.SpellCrit = wpnSpellCritPct
       ? fmtFormula(
-          `${formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, spellCritBase)} + WPN(+${wpnSpellCritPct}%) = ${values.SpellCrit}`,
+          `${formulaWithValues(`5 + 智力 * ${fmtTipNum(coef.k_SpellCrit)}`, attrs, level, spellCritBase)} + 武器(+${fmtTipNum(wpnSpellCritPct)}%) = ${fmtTipNum(values.SpellCrit)}`,
         )
-      : fmtFormula(formulaWithValues(`5 + Int * ${coef.k_SpellCrit}`, attrs, level, values.SpellCrit))
+      : fmtFormula(formulaWithValues(`5 + 智力 * ${fmtTipNum(coef.k_SpellCrit)}`, attrs, level, values.SpellCrit))
   } else if ((eq.spellCritPct ?? 0) > 0) {
     values.SpellCrit = eq.spellCritPct
-    formulaMap.SpellCrit = fmtFormula(`WPN(+${eq.spellCritPct}%)`)
+    formulaMap.SpellCrit = fmtFormula(`武器(+${fmtTipNum(eq.spellCritPct)}%)`)
   } else {
     formulaMap.SpellCrit = NA
   }
@@ -632,9 +639,9 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   values.Dodge = Math.round((dodgeBase + dodgeEq) * 10) / 10
   formulaMap.Dodge = dodgeEq
     ? fmtFormula(
-        `${formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, Math.round(dodgeBase * 10) / 10)} + EQP(+${dodgeEq}%) = ${values.Dodge}`,
+        `${formulaWithValues(`5 + 敏捷 * ${fmtTipNum(coef.k_Dodge ?? 0)}`, attrs, level, Math.round(dodgeBase * 10) / 10)} + 装备(+${fmtTipNum(dodgeEq)}%) = ${fmtTipNum(values.Dodge)}`,
       )
-    : fmtFormula(formulaWithValues(`5 + Agi * ${coef.k_Dodge ?? 0}`, attrs, level, values.Dodge))
+    : fmtFormula(formulaWithValues(`5 + 敏捷 * ${fmtTipNum(coef.k_Dodge ?? 0)}`, attrs, level, values.Dodge))
 
   // Hit
   const hitBase = 95 + attrs.agility * 0.2
@@ -642,9 +649,9 @@ export function computeSecondaryAttributes(heroClass, level = 1, heroAttrs = nul
   values.Hit = Math.round((hitBase + hitEq) * 10) / 10
   formulaMap.Hit = hitEq
     ? fmtFormula(
-        `${formulaWithValues('95 + Agi * 0.2', attrs, level, Math.round(hitBase * 10) / 10)} + EQP(+${hitEq}%) = ${values.Hit}`,
+        `${formulaWithValues(`95 + 敏捷 * ${fmtTipNum(0.2)}`, attrs, level, Math.round(hitBase * 10) / 10)} + 装备(+${fmtTipNum(hitEq)}%) = ${fmtTipNum(values.Hit)}`,
       )
-    : fmtFormula(formulaWithValues('95 + Agi * 0.2', attrs, level, values.Hit))
+    : fmtFormula(formulaWithValues(`95 + 敏捷 * ${fmtTipNum(0.2)}`, attrs, level, values.Hit))
 
   // Build formulas array in fixed order
   const labels = {
