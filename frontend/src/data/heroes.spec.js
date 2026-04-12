@@ -9,6 +9,7 @@ import {
   getSquad,
   saveSquad,
   getSquadMaxLevel,
+  getSquadAverageLevel,
   addHeroToSquad,
   addExpansionHeroToSquad,
   getInitialAttributes,
@@ -83,6 +84,23 @@ describe('heroes', () => {
     it('treats missing level as 1', () => {
       expect(getSquadMaxLevel([{ level: 5 }, {}])).toBe(5)
       expect(getSquadMaxLevel([{}])).toBe(1)
+    })
+  })
+
+  describe('getSquadAverageLevel', () => {
+    it('returns 1 for empty squad', () => {
+      expect(getSquadAverageLevel([])).toBe(1)
+      expect(getSquadAverageLevel(null)).toBe(1)
+      expect(getSquadAverageLevel(undefined)).toBe(1)
+    })
+
+    it('returns arithmetic mean of levels', () => {
+      expect(getSquadAverageLevel([{ level: 2 }, { level: 4 }])).toBe(3)
+      expect(getSquadAverageLevel([{ level: 3 }, { level: 10 }, { level: 5 }])).toBe(6)
+    })
+
+    it('treats missing level as 1', () => {
+      expect(getSquadAverageLevel([{ level: 5 }, {}])).toBe(3)
     })
   })
 

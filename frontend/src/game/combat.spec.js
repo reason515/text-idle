@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getSquadMaxLevel, createFixedTrioSquad } from '../data/heroes.js'
+import { getSquadMaxLevel, getSquadAverageLevel, createFixedTrioSquad } from '../data/heroes.js'
 import { getEffectivePhysAtk } from './damageUtils.js'
 import {
   MAPS,
@@ -518,6 +518,7 @@ describe('combat progression and systems', () => {
     const squad = [{ level: 3 }, { level: 10 }, { level: 5 }]
     const squadLevel = getSquadMaxLevel(squad)
     expect(squadLevel).toBe(10)
+    expect(getSquadAverageLevel(squad)).toBeCloseTo(6, 5)
     const pool = MAP_MONSTER_POOLS['elwynn-forest']
     const { min, max } = pool.levelRange
     const rng = () => 0.5
@@ -525,7 +526,54 @@ describe('combat progression and systems', () => {
       mapId: 'elwynn-forest',
       squadSize: squad.length,
       level: squadLevel,
+      squadAverageLevel: getSquadAverageLevel(squad),
       rng,
+    })
+    for (const m of monsters) {
+      expect(m.level).toBeGreaterThanOrEqual(squadLevel + min)
+      expect(m.level).toBeLessThanOrEqual(squadLevel + max)
+    }
+  })
+
+  it('early game (squad avg < 5): encounter monster levels do not exceed floor(avg)', () => {
+    const rngHigh = () => 0.99
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 2,
+      level: 4,
+      squadAverageLevel: 1,
+      rng: rngHigh,
+    })
+    for (const m of monsters) {
+      expect(m.level).toBe(1)
+    }
+  })
+
+  it('early game: boss level also respects floor(avg) cap when avg < 5', () => {
+    const rngHigh = () => 0.99
+    const [boss] = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 3,
+      level: 5,
+      squadAverageLevel: 2,
+      forceBoss: true,
+      rng: rngHigh,
+    })
+    expect(boss.tier).toBe('boss')
+    expect(boss.level).toBe(2)
+  })
+
+  it('squad avg >= 5: no early cap (high roll can exceed avg)', () => {
+    const pool = MAP_MONSTER_POOLS['elwynn-forest']
+    const { min, max } = pool.levelRange
+    const squadLevel = 6
+    const rngHigh = () => 0.99
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 1,
+      level: squadLevel,
+      squadAverageLevel: 5,
+      rng: rngHigh,
     })
     for (const m of monsters) {
       expect(m.level).toBeGreaterThanOrEqual(squadLevel + min)

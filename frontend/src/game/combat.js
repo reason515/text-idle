@@ -432,11 +432,21 @@ export function buildEncounterMonsters({
   rng = Math.random,
   level = 1,
   forceBoss = false,
+  /** When squad average level is below 5, rolled enemy levels are capped to floor(squadAverageLevel). Omit to disable. */
+  squadAverageLevel = null,
 }) {
   const pool = MAP_MONSTER_POOLS[mapId] ?? MAP_MONSTER_POOLS['elwynn-forest']
   const levelRange = pool.levelRange ?? { min: -1, max: 2 }
+  const earlyLevelCap =
+    squadAverageLevel != null && squadAverageLevel < 5
+      ? Math.max(1, Math.floor(squadAverageLevel))
+      : null
+
+  const applyEarlyCap = (monsterLevel) =>
+    earlyLevelCap == null ? monsterLevel : Math.min(monsterLevel, earlyLevelCap)
+
   if (forceBoss) {
-    const bossLevel = randomLevelInRange(level, levelRange, rng)
+    const bossLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
     return [createMonster(pool.boss, { tier: 'boss', level: bossLevel })]
   }
   const count = generateEncounterSize(squadSize, distribution, rng)
@@ -445,7 +455,7 @@ export function buildEncounterMonsters({
     const isElite = rng() < 0.25
     const tier = isElite ? 'elite' : 'normal'
     const template = isElite ? pickRandom(pool.elite, rng) : pickRandom(pool.normal, rng)
-    const monsterLevel = randomLevelInRange(level, levelRange, rng)
+    const monsterLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
     monsters.push(createMonster(template, { tier, level: monsterLevel }))
   }
   return monsters

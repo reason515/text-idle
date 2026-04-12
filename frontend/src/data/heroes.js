@@ -824,6 +824,18 @@ export function getSquadMaxLevel(squad) {
 }
 
 /**
+ * Arithmetic mean of squad member levels (each missing level counts as 1).
+ * Empty squad returns 1.
+ * @param {Array<{level?: number}>} squad
+ * @returns {number}
+ */
+export function getSquadAverageLevel(squad) {
+  if (!squad || squad.length === 0) return 1
+  const sum = squad.reduce((acc, h) => acc + (h.level ?? 1), 0)
+  return sum / squad.length
+}
+
+/**
  * Create a character from a hero template with initial attributes.
  * @param {Object} hero - Hero template object (id, name, class)
  * @param {Object} opts - { skill?: string, skills?: string[] } optional skill id or skills array

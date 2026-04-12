@@ -380,7 +380,7 @@ Then [expected result/verifiable behavior].
 - **Damage types**: Physical (reduced by Armor), Magic (reduced by Resistance). Monsters can be pure physical, pure magic, or mixed (PhysRatio/MagicRatio).
 - **Defense formula**: 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed. Flat subtraction, no cap.
 - **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner, Defias Trapper, Forest Spider, Timber Wolf (normal); Kobold Geomancer, Defias Smuggler, Defias Cutpurse (elite); Hogger (Boss).
-- **Squad level for encounters**: All level-dependent mechanics (e.g. encounter monster level) use the **maximum level among squad members** as the baseline. Empty squad defaults to level 1.
+- **Squad level for encounters**: Encounter monster level rolls use the **maximum level among squad members** as the baseline (baseLevel), then apply each map's `levelRange`. Empty squad defaults to level 1. **Early game**: When **squad arithmetic average level** is **strictly below 5**, each rolled monster level (including zone boss) is **capped** to `max(1, floor(average))` so random enemies do not exceed the party average. No cap when average level ≥ 5. See `buildEncounterMonsters` / `getSquadAverageLevel` in the codebase.
 
 **Acceptance Criteria**
 
@@ -395,8 +395,9 @@ Then [expected result/verifiable behavior].
 | AC7 | Player views monster info (e.g., in bestiary, combat log, or pre-encounter tooltip) | Player inspects a monster type | Core attributes (HP, PhysAtk, SpellPower, Agility, Armor, Resistance) and damage type (Physical/Magic/Mixed) are visible or inferable |
 | AC8 | Squad enters combat on a specific map (e.g., Elwynn Forest) | Encounter is generated | Monsters are drawn from that map's pool (e.g., Kobold Miner, Young Wolf, Defias Trapper, Forest Spider, Timber Wolf for Normal; Kobold Geomancer, Defias Smuggler, Defias Cutpurse for Elite; Hogger for Boss) |
 | AC9 | Two monsters have the same Agility | Turn order is determined | Order between them is random (see Example 6 AC2); monsters participate in the same Agility-based turn order as heroes |
-| AC10 | Squad level is 5 and map has level range [-1, +2] | Encounter is generated | Each monster has a level in [4, 7]; same monster type at different levels has different stats (higher level = stronger) |
-| AC11 | Squad has heroes at levels 3, 10, 5 (mixed levels) | Encounter is generated | Monster level uses **squad max level** (10) as baseline; monsters are scaled to level 10 ± map range, not to individual hero levels |
+| AC10 | Squad max level is 5, squad average level is ≥ 5, and map has level range [-1, +2] | Encounter is generated | Each monster has a level in [4, 7]; same monster type at different levels has different stats (higher level = stronger) |
+| AC11 | Squad has heroes at levels 3, 10, 5 (mixed levels); average level is 6 | Encounter is generated | Monster level uses **squad max level** (10) as baseline; rolled levels fall in [9, 12] per map range; early cap (below) does not apply |
+| AC12 | Squad average level is below 5 (e.g. three heroes at level 1) | Encounter is generated | After the usual roll vs. max-level baseline, each monster level is **at most** `floor(squad average level)` (minimum 1), including the zone boss |
 
 ---
 

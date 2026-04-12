@@ -1567,7 +1567,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSquad, saveSquad, getSquadMaxLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, computeSecondaryAttributes, computeHeroMaxHP, computeHeroMaxMP, getEffectiveAttrs } from '../data/heroes.js'
+import { getSquad, saveSquad, getSquadMaxLevel, getSquadAverageLevel, MAX_SQUAD_SIZE, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, computeSecondaryAttributes, computeHeroMaxHP, computeHeroMaxMP, getEffectiveAttrs } from '../data/heroes.js'
 import {
   MAPS,
   createInitialProgress,
@@ -3194,10 +3194,12 @@ async function runCombatLoop() {
     isFirstBattle = false
 
     const squadLevel = getSquadMaxLevel(squad.value)
+    const squadAverageLevel = getSquadAverageLevel(squad.value)
     const monsters = buildEncounterMonsters({
       mapId: progress.value.currentMapId,
       squadSize: squad.value.length,
       level: squadLevel,
+      squadAverageLevel,
       forceBoss: progress.value.bossAvailable,
     })
 
