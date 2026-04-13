@@ -76,7 +76,7 @@ Tests set `localStorage.setItem('e2eFastCombat', '1')` so combat uses 0ms delays
 |------|--------|
 | warrior-skills.spec.js | Warrior initial skill selection (Example 12) |
 | mage-skills.spec.js | Mage initial skill selection |
-| skill-choice-level5.spec.js | Level 5 skill choice (enhance vs learn) |
+| skill-choice-milestones.spec.js | Skill milestones (every 3 enhance; every 10 learn new) |
 | combat-flow.spec.js | Combat log, victory/defeat |
 | intro.spec.js | Intro flow |
 | login.spec.js, register.spec.js | Auth |

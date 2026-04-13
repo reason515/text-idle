@@ -23,8 +23,6 @@ export const COMBAT_PACING_MS = {
   mapDescriptionRead: 1800,
   /** After encounter message before battle resolution. */
   afterEncounterMessage: 1000,
-  /** Each rest-phase tick while HP/MP recovery animates in the log. */
-  restStepReveal: 2000,
   /** After defeat summary before rest phase starts. */
   defeatBeforeRest: 2000,
   /** After a battle ends before the next loop iteration. */
@@ -96,4 +94,12 @@ export function getCombatLogStepDelayMs() {
   }
 
   return DEFAULT_COMBAT_LOG_STEP_DELAY_MS
+}
+
+/**
+ * Rest-phase log step delay must match combat log step delay (design 13-player-statistics 7.5).
+ * @returns {number}
+ */
+export function getRestStepRevealMs() {
+  return getCombatLogStepDelayMs()
 }

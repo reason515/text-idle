@@ -3,6 +3,7 @@ require('./globalHooks')
 const {
   registerAndGoToMain,
   pauseCombat,
+  dismissQueuedSkillChoiceModals,
   updateStoredState,
   uniqueTestEmail,
 } = require('./testHelpers')
@@ -646,25 +647,19 @@ test.describe('Experience and Leveling (Example 11)', () => {
       }
     }, undefined, { pauseFirst: true })
     await pauseCombat(page)
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
-    await pauseCombat(page)
+    await dismissQueuedSkillChoiceModals(page)
 
     await expect(page.locator('.hero-card').first()).toBeVisible({ timeout: 5000 })
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
     const attrAlloc = page.locator('.detail-modal .detail-section-primary.attr-alloc').first()
     await expect(attrAlloc).toBeVisible({ timeout: 5000 })
-    await expect(attrAlloc).toContainText('未分配')
+    await expect(attrAlloc).toContainText('\u672a\u5206\u914d')
+    await expect(attrAlloc.locator('.unassigned-val').first()).toHaveText('5', { timeout: 15000 })
     const attrBtn = page.locator('.detail-modal .detail-attr-col .attr-btn').first()
     await expect(attrBtn).toBeVisible()
-    const beforeVal = parseInt((await attrAlloc.locator('.unassigned-val').textContent()) || '0', 10)
-    expect(beforeVal).toBeGreaterThanOrEqual(1)
     await attrBtn.click()
-    await expect.poll(async () => {
-      const t = (await attrAlloc.locator('.unassigned-val').textContent()) || '0'
-      return parseInt(t, 10)
-    }, { timeout: 5000 }).toBe(beforeVal - 1)
+    await expect(attrAlloc.locator('.unassigned-val').first()).toHaveText('4', { timeout: 5000 })
   })
 })
 

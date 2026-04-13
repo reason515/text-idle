@@ -4,6 +4,7 @@ import {
   COMBAT_PACING_MS,
   DEFAULT_COMBAT_LOG_STEP_DELAY_MS,
   getCombatLogStepDelayMs,
+  getRestStepRevealMs,
   isE2eFastMode,
 } from './combatPacing.js'
 
@@ -38,6 +39,13 @@ describe('combatPacing', () => {
 
   it('getCombatLogStepDelayMs returns default when localStorage empty', () => {
     expect(getCombatLogStepDelayMs()).toBe(5000)
+  })
+
+  it('getRestStepRevealMs matches getCombatLogStepDelayMs', () => {
+    expect(getRestStepRevealMs()).toBe(getCombatLogStepDelayMs())
+    localStorage.setItem('textIdleCombatLogStepDelayMs', '3000')
+    expect(getRestStepRevealMs()).toBe(3000)
+    expect(getRestStepRevealMs()).toBe(getCombatLogStepDelayMs())
   })
 
   it('reads textIdleCombatLogStepDelayMs from localStorage', () => {

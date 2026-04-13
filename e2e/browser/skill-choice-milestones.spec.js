@@ -10,6 +10,9 @@ const {
   registerToCharacterSelect,
   updateStoredState,
   uniqueTestEmail,
+  pauseCombat,
+  dismissQueuedSkillChoiceModals,
+  clickHeroDetailSkillsTab,
 } = require('./testHelpers')
 
 async function prepareWarriorFirstMilestone(page, { level = 2, xp = 173, baseSkill = 'sunder-armor' } = {}) {
@@ -106,9 +109,13 @@ test.describe('Skill choice milestones', () => {
     await skillModal.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' }).click()
     await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
 
-    await expect(skillModal).not.toBeVisible()
-    await page.locator('.hero-card').first().click()
-    await page.getByRole('button', { name: '\u6280\u80fd' }).click()
+    await pauseCombat(page)
+    await dismissQueuedSkillChoiceModals(page)
+    await page.locator('.hero-card').first().click({ force: true })
+    await expect(page.locator('.detail-modal')).toBeVisible()
+    await dismissQueuedSkillChoiceModals(page)
+    await clickHeroDetailSkillsTab(page)
+    await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
     await expect(page.locator('.detail-section').filter({ hasText: '\u987a\u5288\u65a9' })).toBeVisible()
   })
 
@@ -142,7 +149,7 @@ test.describe('Skill choice milestones', () => {
 
     await page.locator('.hero-card').filter({ hasText: '\u5b89\u5ea6\u56e0' }).first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await clickHeroDetailSkillsTab(page)
     await page.getByTestId('skill-choice-from-detail-btn').click()
 
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
@@ -173,8 +180,12 @@ test.describe('Skill choice milestones', () => {
     const warrior = squadAfter.find((h) => h.class === 'Warrior')
     expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
 
-    await page.locator('.hero-card').first().click()
-    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await pauseCombat(page)
+    await dismissQueuedSkillChoiceModals(page)
+    await page.locator('.hero-card').first().click({ force: true })
+    await expect(page.locator('.detail-modal')).toBeVisible()
+    await dismissQueuedSkillChoiceModals(page)
+    await clickHeroDetailSkillsTab(page)
     await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
   })
 
@@ -212,7 +223,7 @@ test.describe('Skill choice milestones', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await clickHeroDetailSkillsTab(page)
     await page.getByTestId('skill-choice-from-detail-btn').click()
 
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')
@@ -287,8 +298,10 @@ test.describe('Skill choice milestones', () => {
     await page.locator('.skill-choice-modal button').filter({ hasText: '\u8df3\u8fc7' }).click()
     await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
 
-    await page.locator('.hero-card').first().click()
-    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await page.locator('.hero-card').first().click({ force: true })
+    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+    await dismissQueuedSkillChoiceModals(page)
+    await clickHeroDetailSkillsTab(page)
     await page.getByTestId('skill-choice-from-detail-btn').click()
 
     const skillModal = page.locator('[data-testid="skill-choice-modal"]')

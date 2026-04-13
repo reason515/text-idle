@@ -1478,6 +1478,46 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 35: Player Combat Statistics and Analytics (Step-Only Denominators)
+
+**User Story**
+
+> As a player,  
+> I want cumulative combat and reward statistics where **all** rates use **steps** only (combat actions + rest ticks), with optional **per 10 / per 100 steps** display when per-step numbers are tiny, plus a clear detail view and reset,  
+> So that I never have to reconcile **round-based** stats with **step-based** rest, and headline gold/XP efficiency still reflects downtime from deaths and recovery.
+
+**Design Reference (from design doc)**
+
+- **Primary**: [13-player-statistics.md](design/13-player-statistics.md) sections 1.3–1.6 (step-only denominators, no per-round rates; **exploration step** = combat action steps + rest steps; section 7.4 display scale; section **7.5** equal UI ms between combat action steps and rest steps).
+- **Rest**: [03-combat.md](design/03-combat.md) section 4 (rest steps) and section 7 (when stats update).
+- **UI placement**: [09-social-ui.md](design/09-social-ui.md) (top bar: step-based gold/XP efficiency; Analytics detail for the rest).
+
+**Acceptance Criteria**
+
+
+| #    | Given                                                                                         | When                                                                      | Then                                                                                                                                                                                                 |
+| ---- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC1  | Player is on the main screen                                                                  | Player views the top bar (or designated efficiency area)                  | **Gold** and **XP** efficiency labels are shown using **step-only** denominators (no per-**round** rates); display may use **per 1 / per 10 / per 100 exploration steps** (7.4) if per-step values are too small; other analytics are **not** on the main screen |
+| AC2  | Tooltip-capable UI for the two efficiencies                                                   | Player hovers the efficiency display (project tooltip pattern)            | Explanation includes **exploration steps**, **combat action steps** vs **rest steps**, and current display multiplier **N** (1/10/100) if applicable; **not** plain `title` for this copy |
+| AC3  | A battle completes and victory/defeat is fully resolved (rewards and settlement done)         | The statistics subsystem runs                                             | Cumulative gold and XP update per rules; **combat action step** count increases by the number of **unit actions** resolved in that battle (one action per hero/monster turn per design); reward efficiency refreshes using **exploration step** |
+| AC4  | Post-combat rest runs between battles                                                         | Each rest tick/step completes (or rest phase completes per implementation) | **Rest step** count increases toward the exploration-step denominator so longer recovery (e.g. death penalty) reduces per-step gold/XP vs a run with shorter rest                                     |
+| AC5  | Player opens the statistics **detail** view (via efficiency area click and/or a Stats entry) | Detail page or modal opens                                                | The view shows content beyond the two top-bar metrics: at least squad-level totals, per-hero breakdowns, and support for **reset** (see AC12)                                                          |
+| AC6  | Detail view is open                                                                           | Player inspects squad and hero sections                                   | **Damage dealt**, **damage taken** (including **shield absorb** toward damage taken per design), **healing done**, **healing received** are available at squad and per-hero level where implemented |
+| AC7  | Detail view shows skill-level splits                                                          | Player drills into damage or healing                                      | **Damage dealt** and **healing done** can be split by **skill id** (including basic attack if distinct); unknown sources may appear as Other with documented behavior                               |
+| AC8  | Enough combat events exist in the period                                                      | Detail view shows combat rate-style metrics (DPS/HPS style)               | **Per-combat-action-step** equivalents for tracked combat totals use **combat action step count only** as the denominator (**rest steps excluded**), not real-world minutes                         |
+| AC9  | Detail view includes effectiveness rates                                                      | Player views a hero with sufficient sample attacks                        | **Actual crit rate**, **actual hit rate**, and **actual dodge rate** (definitions aligned with combat events) are shown or marked N/A with reason                                                    |
+| AC10 | Sample size is too small for a rate                                                           | Player views that hero's rates                                            | UI warns that the sample is small (e.g., ratios are unreliable)                                                                                                                                        |
+| AC11 | Player has not reset statistics                                                               | Player views cumulative totals                                              | Totals reflect all completed battles and rest phases since stat start (or last reset), consistent with stored progress                                                                               |
+| AC12 | Player chooses **reset statistics**                                                           | Player confirms the destructive action (second confirmation per design)   | Cumulative tracked values, **combat action step count**, and **rest step count** (and thus exploration-step denominator) reset; UI confirms the stat window restarted                               |
+| AC13 | Player cancels reset                                                                          | Player dismisses the confirmation                                         | No data is cleared                                                                                                                                                                                   |
+| AC14 | Detail view presents analytics                                                                | Player scans the page                                                     | Information uses **charts and/or tables** appropriate to comparisons and exact numbers (per design hierarchy: squad -> hero -> skills)                                                            |
+| AC15 | A hero takes hit mitigated by Power Word: Shield (or equivalent)                              | That event is counted in statistics                                       | The absorbed amount contributes to that hero's **damage taken** (or equivalent labeled row) per [13-player-statistics.md](design/13-player-statistics.md) 5.1–5.2                                   |
+| AC16 | Player or tester inspects documented rates                                                    | Any efficiency or DPS-style rate is verified                              | **No** statistic uses **battle round count** as a denominator; all use **steps** per [13-player-statistics.md](design/13-player-statistics.md) 1.3                                                  |
+| AC17 | Production pacing (not E2E fast mode)                                                         | Combat log advances one action **step** and rest advances one rest **step** | The **milliseconds** between consecutive combat log lines for an action and between consecutive rest log lines use the **same** configured value per [13-player-statistics.md](design/13-player-statistics.md) 7.5 and [03-combat.md](design/03-combat.md) 1.3 |
+
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

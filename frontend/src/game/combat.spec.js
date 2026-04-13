@@ -733,6 +733,8 @@ describe('combat progression and systems', () => {
     expect(result.log[0].actorName).toBe('Hero One')
     const acted = result.turnActedByRound[1]
     expect(new Set(acted).size).toBe(acted.length)
+    expect(Number.isInteger(result.combatActionSteps)).toBe(true)
+    expect(result.combatActionSteps).toBeGreaterThan(0)
   })
 
   it('Example17: defeat returns empty equipment array', () => {

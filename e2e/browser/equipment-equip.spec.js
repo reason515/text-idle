@@ -141,7 +141,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.modal-box')).toBeVisible()
-    await expect(page.locator('.detail-sep-line').filter({ hasText: '\u88c5\u5907' })).toBeVisible()
+    await expect(page.locator('.detail-sep-line.detail-sep-equipment')).toBeVisible()
     const slotRows = page.locator('.equipment-slot-row')
     await expect(slotRows).toHaveCount(10)
     // Fixed trio Warrior: starter short sword (MainHand) and cloth chest (Armor); OffHand still empty

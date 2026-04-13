@@ -20,6 +20,7 @@
 | **社交与 UI** | [09-social-ui.md](./09-social-ui.md) | 排行榜、交易、PVP、UI/UX、技术规格、版本规划 |
 | **UI 设计令牌** | [11-ui-tokens.md](./11-ui-tokens.md) | 颜色、字体、间距等设计规范，新 UI 必须遵循 |
 | **仇恨系统** | [12-threat.md](./12-threat.md) | 仇恨表、怪物目标选择、仇恨生成、战斗日志/UI 仇恨展示 (6.2) |
+| **玩家数据统计** | [13-player-statistics.md](./13-player-statistics.md) | 唯一步数口径、探索步数、展示倍率、战斗与休息**日志步间毫秒一致**（7.5）、按技能拆分、实际暴击/命中/闪避、图表与表 |
 
 ## 快速导航
 
@@ -28,3 +29,4 @@
 - **底材与词缀**：装备底材表 → [06-equipment.md](./06-equipment.md) 4.3、4.4；**已实现通用词缀** → [06-equipment.md](./06-equipment.md) **7.2.1**；专用与扩展 → 七、7.3
 - **UI 规格**：主界面、战斗日志、角色/怪物面板 → [09-social-ui.md](./09-social-ui.md)
 - **UI 设计令牌**：颜色、字体、间距规范 → [11-ui-tokens.md](./11-ui-tokens.md)
+- **战斗数据分析**：每探索步收益（战斗行动步+休息）、每战斗行动步 DPS/HPS、清零、按英雄与技能下钻 → [13-player-statistics.md](./13-player-statistics.md)

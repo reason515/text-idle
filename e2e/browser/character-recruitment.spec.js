@@ -1,6 +1,10 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { updateStoredState, pauseCombat,
+const {
+  updateStoredState,
+  pauseCombat,
+  dismissQueuedSkillChoiceModals,
+  clickHeroDetailSkillsTab,
   uniqueTestEmail,
 } = require('./testHelpers')
 
@@ -369,10 +373,14 @@ test.describe('Character Recruitment (Example 4)', () => {
     await skillModal.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first().click()
     await skillModal.getByRole('button', { name: '确认' }).click()
     await expect(skillModal).not.toBeVisible()
+    await pauseCombat(page)
+    await dismissQueuedSkillChoiceModals(page)
 
     await page.locator('.hero-card').filter({ hasText: '瓦里安' }).click()
     await expect(page.locator('.detail-modal')).toBeVisible()
-    await page.locator('.detail-modal').getByRole('button', { name: '技能' }).click()
+    await dismissQueuedSkillChoiceModals(page)
+    await clickHeroDetailSkillsTab(page)
+    await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
     await expect(page.locator('.detail-modal').getByText('\u7834\u7532').first()).toBeVisible()
   })
 
@@ -382,18 +390,17 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.goto('/register')
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
     await registerAndCompleteIntro(page, email)
-    await page.evaluate(() => {
+    await updateStoredState(page, () => {
       const INIT = { Warrior: { strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 }, Mage: { strength: 2, agility: 4, intellect: 11, stamina: 4, spirit: 5 }, Hunter: { strength: 5, agility: 10, intellect: 4, stamina: 7, spirit: 4 }, Paladin: { strength: 8, agility: 3, intellect: 8, stamina: 8, spirit: 6 }, Priest: { strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9 } }
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const add = (h, cls) => squad.push({ ...h, class: cls, level: 1, xp: 0, unassignedPoints: 0, equipment: {}, ...INIT[cls] })
-      add({ id: 'rexxar', name: '雷克萨' }, 'Hunter')
-      add({ id: 'uther', name: '乌瑟尔' }, 'Paladin')
+      add({ id: 'rexxar', name: '\u96f7\u514b\u8428' }, 'Hunter')
+      add({ id: 'uther', name: '\u4e4c\u745f\u5c14' }, 'Paladin')
       localStorage.setItem('squad', JSON.stringify(squad))
       const p = JSON.parse(localStorage.getItem('combatProgress') || '{}')
       p.unlockedMapCount = 5
       localStorage.setItem('combatProgress', JSON.stringify(p))
-    })
-    await page.goto('/main', { waitUntil: 'domcontentloaded', timeout: 15000 })
+    }, undefined, { pauseFirst: false, safePath: '/character-select', returnPath: '/main' })
 
     await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })

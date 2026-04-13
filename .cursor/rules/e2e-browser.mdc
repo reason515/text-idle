@@ -28,6 +28,8 @@ alwaysApply: false
 
 - ASCII only in spec and helper source.
 - Follow patterns in existing specs; for new coverage, see [.cursor/skills/text-idle-add-e2e-test/SKILL.md](.cursor/skills/text-idle-add-e2e-test/SKILL.md).
+- After closing one skill milestone modal, other heroes may still have queued modals (shared combat XP): use `dismissQueuedSkillChoiceModals` from `testHelpers.js` (after `pauseCombat` when needed) before clicking main-screen UI behind overlays.
+- To switch the hero detail modal to the Skills tab when a `SkillChoiceModal` overlay would block Playwright pointer hits, use `clickHeroDetailSkillsTab` from `testHelpers.js` (DOM `click()` on the second tab button).
 
 ## Doc sync
 

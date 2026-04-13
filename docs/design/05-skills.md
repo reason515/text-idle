@@ -98,7 +98,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 - 角色面板展示：**基础属性** + **装备加成** + **Buff 加成** = **最终属性**。
 - **PhysAtk/SpellPower 公式悬停**：鼠标悬停时展示完整公式，含 baseAttr 详细计算（物理：**战士** Str×0.8+Agi×0.6；其他力量主物攻 Str×1.4+Agi×0.6；敏捷主物攻 Agi×1.4+Str×0.6；法术：**牧师、法师** Int×0.8+Spi×0.8，**其他法术职业** Int×1.2+Spi×0.8），便于玩家理解伤害来源。
-- 战斗日志与数据统计中，可展示关键衍生数值（如实际暴击率、命中率），便于玩家验证与优化构筑。
+- 战斗日志与数据统计中，可展示关键衍生数值（如实际暴击率、命中率），便于玩家验证与优化构筑；速率类统计以**步**为分母、不以战斗回合数为分母，完整口径见 [13-player-statistics.md](./13-player-statistics.md)。
 - **Buff/Debuff 面板提示**：角色或怪物身上存在 buff/debuff 时，在其面板上显示相应徽章；鼠标悬停可查看详细说明（名称、剩余回合、效果描述）。
 
 ---
@@ -232,7 +232,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 | **组建 (Assemble)** | 固定三人组拥有 2 个固定初始技能；扩展英雄招募时选择初始技能（3 选 1）；等级里程碑上选择加强或新技能（见四） |
 | **布局 (Strategize)** | 玩家配置技能策略（见 [10-tactics.md](./10-tactics.md)） |
 | **放置 (Engage)** | 技能在战斗中自动执行，影响伤害、治疗、仇恨等 |
-| **分析 (Analyze)** | 战斗日志与数据统计展示技能使用频率、伤害占比等 |
+| **分析 (Analyze)** | 战斗日志与数据统计展示技能使用频率、伤害占比等（详见 [13-player-statistics.md](./13-player-statistics.md)） |
 | **优化 (Optimize)** | 根据数据调整技能搭配、加强优先级、策略配置 |
 
 ---

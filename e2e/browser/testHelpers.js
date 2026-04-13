@@ -51,6 +51,27 @@ async function pauseCombat(page) {
   await expect(page.getByRole('button', { name: '继续' })).toBeVisible({ timeout: 3000 }).catch(() => {})
 }
 
+/** Victory XP is split across the squad; skip any queued skill milestone modals so main UI is usable. */
+async function dismissQueuedSkillChoiceModals(page, { maxSkips = 8 } = {}) {
+  const modal = page.locator('[data-testid="skill-choice-modal"]')
+  for (let i = 0; i < maxSkips; i++) {
+    const visible = await modal.isVisible().catch(() => false)
+    if (!visible) break
+    await modal.getByRole('button', { name: '\u8df3\u8fc7' }).click()
+  }
+  await expect(modal).not.toBeVisible({ timeout: 15000 })
+}
+
+/** Clicks the Skills tab in the open hero detail modal (DOM click; avoids Playwright hit-testing vs overlays). */
+async function clickHeroDetailSkillsTab(page) {
+  await page.evaluate(() => {
+    const root = document.querySelector('.detail-modal .detail-tabs')
+    if (!root) return
+    const tabs = root.querySelectorAll('button.detail-tab')
+    if (tabs[1]) tabs[1].click()
+  })
+}
+
 async function updateStoredState(page, pageFunction, arg, options = {}) {
   const {
     pauseFirst = false,
@@ -82,5 +103,7 @@ module.exports = {
   registerToCharacterSelect,
   recruitWarrior,
   pauseCombat,
+  dismissQueuedSkillChoiceModals,
+  clickHeroDetailSkillsTab,
   updateStoredState,
 }

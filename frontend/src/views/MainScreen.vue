@@ -28,6 +28,21 @@
           <span class="gold-value">{{ gold }}</span>
           <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
         </div>
+        <button
+          type="button"
+          class="stats-efficiency tooltip-wrap has-tip"
+          data-testid="player-stats-efficiency"
+          @click="showPlayerStatsModal = true"
+        >
+          <span class="stats-eff-label">效率</span>
+          <span class="stats-eff-values"
+            >{{ formattedGoldPerScale }} 金/{{ statsScaleLabel }}步 {{ formattedXpPerScale }} 经验/{{ statsScaleLabel }}步</span
+          >
+          <span class="tooltip-text tooltip-below stats-eff-tooltip"
+            >自上次清零起：探索步 {{ explorationStepsDisplay }}（战斗 {{ playerStats.combatActionSteps }} + 休息
+            {{ playerStats.restSteps }}）。点击打开详情与清零。</span
+          >
+        </button>
       </div>
       <div class="topbar-right">
         <div class="topbar-action-group">
@@ -700,6 +715,42 @@
             </button>
           </div>
           <button class="btn" @click="showMapModal = false">关闭</button>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="showPlayerStatsModal"
+        class="modal-overlay"
+        data-testid="player-stats-modal-overlay"
+        @click.self="showPlayerStatsModal = false; resetStatsConfirming = false"
+      >
+        <div class="modal-box player-stats-modal">
+          <div class="modal-title">数据统计</div>
+          <div class="detail-skill-choice-banner player-stats-banner">
+            <p>
+              探索步（战斗行动步 + 休息步）<strong>{{ explorationStepsDisplay }}</strong>；本周期累计获得金币
+              <strong class="val-gold">{{ playerStats.cumulativeGold }}</strong>、经验 <strong class="val-exp">{{ playerStats.cumulativeXp }}</strong>。
+            </p>
+            <p>
+              展示倍率：
+              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 1 }" @click="setStatsDisplayScale(1)">每步</button>
+              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 10 }" @click="setStatsDisplayScale(10)">每10步</button>
+              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 100 }" @click="setStatsDisplayScale(100)">每100步</button>
+            </p>
+          </div>
+          <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
+            <p>确定清零统计数据？将重置本周期累计步数与收益统计。</p>
+            <div class="player-stats-reset-actions">
+              <button type="button" class="btn btn-danger" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
+              <button type="button" class="btn" @click="resetStatsConfirming = false">取消</button>
+            </div>
+          </div>
+          <div v-else class="player-stats-actions">
+            <button type="button" class="btn btn-danger" data-testid="player-stats-reset-open" @click="resetStatsConfirming = true">清零统计</button>
+          </div>
+          <button type="button" class="btn" data-testid="player-stats-modal-close" @click="showPlayerStatsModal = false; resetStatsConfirming = false">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -1779,13 +1830,26 @@ import {
 } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
+import { buildDeferredCombatLogEntries } from '../utils/backgroundCombatLog.js'
 import { buildDisplayHeroesFromSquad } from '../game/squadDisplaySync.js'
 import {
   applyCombatPacingDelayMs,
   COMBAT_PACING_MS,
   getCombatLogStepDelayMs,
+  getRestStepRevealMs,
   isE2eFastMode,
 } from '../game/combatPacing.js'
+import {
+  PLAYER_STATS_STORAGE_KEY,
+  applyBattleToPlayerStats,
+  applyRestToPlayerStats,
+  createEmptyPlayerStats,
+  explorationSteps,
+  goldPerExplorationStep,
+  normalizePlayerStats,
+  scaledPerStep,
+  xpPerExplorationStep,
+} from '../game/playerStatistics.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2029,6 +2093,9 @@ const lastOutcome = ref('')
 const lastRewards = ref({ exp: 0, gold: 0, equipment: [] })
 const progress = ref(createInitialProgress())
 const gold = ref(0)
+const playerStats = ref(createEmptyPlayerStats())
+const showPlayerStatsModal = ref(false)
+const resetStatsConfirming = ref(false)
 const showMapModal = ref(false)
 const showBackpackModal = ref(false)
 const showShopModal = ref(false)
@@ -2105,7 +2172,7 @@ function getFloatingNumbers(unitId) {
 }
 
 function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } = {}) {
-  if (!unitId) return
+  if (!unitId || isCombatUiDeferred()) return
   const id = ++floatNumId
   const list = unitFloatingNumbers.value[unitId] ?? []
   list.push({ id, text, skillName, type })
@@ -2531,13 +2598,23 @@ function monsterHpPct(m) {
 }
 
 function addLogEntry(entry) {
-  displayedLog.value = [...displayedLog.value, entry]
+  addLogEntries([entry])
+}
+
+function addLogEntries(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return
+  displayedLog.value = [...displayedLog.value, ...entries]
   if (displayedLog.value.length > MAX_LOG_ENTRIES) {
     displayedLog.value = displayedLog.value.slice(-200)
   }
 }
 
+function isCombatUiDeferred() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden'
+}
+
 async function scrollLog() {
+  if (isCombatUiDeferred()) return
   await nextTick()
   if (logListEl.value) {
     logListEl.value.scrollTop = logListEl.value.scrollHeight
@@ -2554,6 +2631,56 @@ function loadSquad() {
 }
 
 const hasDesignatedTank = computed(() => squad.value.some((h) => h.isTank === true))
+
+const explorationStepsDisplay = computed(() => explorationSteps(playerStats.value))
+const statsScaleN = computed(() => {
+  const n = playerStats.value.displayScaleN
+  return n === 1 || n === 10 || n === 100 ? n : 100
+})
+const statsScaleLabel = computed(() => String(statsScaleN.value))
+const formattedGoldPerScale = computed(() => {
+  const v = scaledPerStep(goldPerExplorationStep(playerStats.value), statsScaleN.value)
+  if (!Number.isFinite(v)) return '0'
+  return v >= 100 ? v.toFixed(0) : v.toFixed(2)
+})
+const formattedXpPerScale = computed(() => {
+  const v = scaledPerStep(xpPerExplorationStep(playerStats.value), statsScaleN.value)
+  if (!Number.isFinite(v)) return '0'
+  return v >= 100 ? v.toFixed(0) : v.toFixed(1)
+})
+
+function loadPlayerStats() {
+  try {
+    const raw = localStorage.getItem(PLAYER_STATS_STORAGE_KEY)
+    if (!raw) {
+      playerStats.value = createEmptyPlayerStats()
+      return
+    }
+    playerStats.value = normalizePlayerStats(JSON.parse(raw))
+  } catch {
+    playerStats.value = createEmptyPlayerStats()
+  }
+}
+
+function savePlayerStats() {
+  try {
+    localStorage.setItem(PLAYER_STATS_STORAGE_KEY, JSON.stringify(playerStats.value))
+  } catch {
+    /* ignore */
+  }
+}
+
+function setStatsDisplayScale(n) {
+  if (n !== 1 && n !== 10 && n !== 100) return
+  playerStats.value = { ...playerStats.value, displayScaleN: n }
+  savePlayerStats()
+}
+
+function confirmResetPlayerStats() {
+  playerStats.value = createEmptyPlayerStats()
+  resetStatsConfirming.value = false
+  savePlayerStats()
+}
 
 function setHeroAsTank(hero, checked) {
   const sh = squad.value.find((h) => h.id === hero?.id)
@@ -3269,6 +3396,33 @@ async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
 
+  function cloneDebuffs(debuffs) {
+    return Array.isArray(debuffs) ? debuffs.map((debuff) => ({ ...debuff })) : []
+  }
+
+  function syncCombatResultImmediately(startIndex = 0) {
+    addLogEntries(buildDeferredCombatLogEntries(result.log, startIndex))
+    displayHeroes.value = result.heroesAfter.map((hero) => {
+      const display = computeHeroDisplay(hero)
+      return {
+        ...display,
+        currentHP: hero.currentHP ?? display.currentHP,
+        currentMP: hero.currentMP ?? display.currentMP,
+        debuffs: cloneDebuffs(hero.debuffs),
+        shield: hero.shield,
+      }
+    })
+    currentMonsters.value = result.monstersAfter.map((monster) => ({
+      ...monster,
+      debuffs: cloneDebuffs(monster.debuffs),
+    }))
+    monsterTargets.value = {}
+    unitFloatingNumbers.value = {}
+    currentActorId.value = null
+    currentTargetId.value = null
+    syncSelectedUnitsFromCombat()
+  }
+
   if (isE2eFastMode()) {
     for (let i = 0; i < result.log.length; i++) {
       if (!isRunning.value) return
@@ -3295,12 +3449,25 @@ async function animateCombatLog(result) {
     return
   }
 
+  if (isCombatUiDeferred()) {
+    syncCombatResultImmediately()
+    return
+  }
+
   const combatLogStepDelayMs = getCombatLogStepDelayMs()
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
+    if (isCombatUiDeferred()) {
+      syncCombatResultImmediately(i)
+      return
+    }
     await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     if (!isRunning.value) return
+    if (isCombatUiDeferred()) {
+      syncCombatResultImmediately(i)
+      return
+    }
     applyOneCombatEntry(entry)
     await scrollLog()
 
@@ -3318,6 +3485,10 @@ async function animateCombatLog(result) {
       currentMonsters.value = [...currentMonsters.value]
       syncSelectedUnitsFromCombat()
       await scrollLog()
+      if (isCombatUiDeferred()) {
+        syncCombatResultImmediately(i + 1)
+        return
+      }
       await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     }
   }
@@ -3344,19 +3515,36 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   }
   await scrollLog()
 
-  while (!rest.isComplete && isRunning.value) {
-    rest = applyRestStep(rest)
+  function syncRestState(nextRest) {
     displayHeroes.value = displayHeroes.value.map((dh) => {
-      const rh = rest.heroes.find((r) => r.id === dh.id)
+      const rh = nextRest.heroes.find((r) => r.id === dh.id)
       return rh ? { ...dh, currentHP: rh.currentHP, currentMP: rh.currentMP } : dh
     })
+  }
+
+  function completeRestImmediately(nextRest) {
+    let resolved = nextRest
+    while (!resolved.isComplete) {
+      resolved = applyRestStep(resolved)
+    }
+    return resolved
+  }
+
+  while (!rest.isComplete && isRunning.value) {
+    if (isCombatUiDeferred()) {
+      rest = completeRestImmediately(rest)
+      syncRestState(rest)
+      break
+    }
+    rest = applyRestStep(rest)
+    syncRestState(rest)
     addLogEntry({
       type: 'rest',
       heroes: rest.heroes.map((h) => ({ id: h.id, name: heroDisplayName(h.name), class: h.class, currentHP: h.currentHP, maxHP: h.maxHP })),
       complete: false,
     })
     await scrollLog()
-    await sleepMsRespectingPause(applyCombatPacingDelayMs(COMBAT_PACING_MS.restStepReveal))
+    await sleepMsRespectingPause(applyCombatPacingDelayMs(getRestStepRevealMs()))
     if (!isRunning.value) break
   }
 
@@ -3365,6 +3553,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     : '休息完成，全员已恢复。'
   addLogEntry({ type: 'rest', message: endMsg, complete: true })
   await scrollLog()
+  return rest.step
 }
 
 async function runCombatLoop() {
@@ -3491,7 +3680,14 @@ async function runCombatLoop() {
         }
       }
       saveProgress()
-      await autoRest(result.heroesAfter)
+      playerStats.value = applyBattleToPlayerStats(playerStats.value, {
+        combatActionSteps: result.combatActionSteps ?? 0,
+        goldGained: result.rewards.gold,
+        xpGained: result.rewards.exp,
+      })
+      const restStepsVictory = await autoRest(result.heroesAfter)
+      playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsVictory)
+      savePlayerStats()
     } else {
       lastOutcome.value = result.outcome
       addLogEntry({
@@ -3510,7 +3706,14 @@ async function runCombatLoop() {
       if (isE2eFastMode()) {
         await nextTick()
       }
-      await autoRest(result.heroesAfter, { isDefeat: true })
+      playerStats.value = applyBattleToPlayerStats(playerStats.value, {
+        combatActionSteps: result.combatActionSteps ?? 0,
+        goldGained: 0,
+        xpGained: 0,
+      })
+      const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
+      playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsDefeat)
+      savePlayerStats()
     }
 
     if (!isRunning.value) break
@@ -3529,6 +3732,7 @@ watch(selectedHero, (val, oldVal) => {
 onMounted(() => {
   loadSquad()
   loadProgress()
+  loadPlayerStats()
   gold.value = getGold()
   isRunning.value = true
   runCombatLoop()
@@ -3581,6 +3785,9 @@ onUnmounted(() => {
 .topbar-center {
   flex-shrink: 0;
   align-items: center;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
 }
 
 .topbar-action-group,
@@ -3698,6 +3905,83 @@ onUnmounted(() => {
 .gold-tooltip {
   white-space: nowrap;
   min-width: max-content;
+}
+
+.stats-efficiency {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  text-align: left;
+  max-width: 22rem;
+}
+.stats-eff-label {
+  color: var(--text-label);
+  font-size: var(--font-xs);
+  letter-spacing: 0.04em;
+}
+.stats-eff-values {
+  color: var(--text-value);
+  font-size: var(--font-sm);
+  line-height: 1.35;
+}
+.stats-eff-tooltip {
+  max-width: 18rem;
+  white-space: normal;
+}
+.player-stats-modal {
+  max-width: min(90vw, 26rem);
+}
+.player-stats-banner p {
+  margin: 0 0 0.5rem;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+.player-stats-banner p:last-child {
+  margin-bottom: 0;
+}
+.player-stats-banner .val-gold {
+  color: var(--color-gold);
+}
+.player-stats-banner .val-exp {
+  color: var(--color-exp);
+}
+.btn-scale {
+  margin-right: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  font-size: var(--font-xs);
+  border: 1px solid var(--border);
+  background: var(--bg-dark);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.btn-scale.active {
+  border-color: var(--accent);
+  color: var(--text-value);
+}
+.player-stats-actions {
+  margin: 0.5rem 0;
+}
+.player-stats-reset-confirm .player-stats-reset-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.btn-danger {
+  border-color: var(--color-defeat);
+  color: var(--color-defeat);
 }
 
 .topbar-btn {

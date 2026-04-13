@@ -75,9 +75,9 @@ test.describe('Tactics configuration (AI UI)', () => {
     await priestCard.click()
     await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
 
-    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd' }).click()
+    await page.locator('.detail-modal').getByRole('button', { name: '\u6280\u80fd', exact: true }).click()
     await expect(page.locator('.detail-modal .detail-row').filter({ hasText: '\u5feb\u901f\u6cbb\u7597' })).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: '\u771f\u8a00\u672f\uff1a\u76fe' })).toBeVisible()
+    await expect(page.locator('.detail-modal .detail-row').filter({ hasText: '\u771f\u8a00\u672f\uff1a\u76fe' }).first()).toBeVisible()
 
     await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.getByTestId('ai-tactics-section')).toBeVisible({ timeout: 5000 })

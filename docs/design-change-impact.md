@@ -76,6 +76,16 @@ When modifying design documents (especially core flows like squad, recruitment, 
 
 **Examples to review**: 10 (battle log / detail), 14 (mage formula), 20 (equip / orb), plus any Example citing SpellPower or combat log.
 
+## 8. Player statistics (combat analytics)
+
+| Check | Affected areas | Notes |
+|-------|----------------|-------|
+| **New metrics or event sources** | [13-player-statistics.md](design/13-player-statistics.md) | 唯一步数分母、无按回合统计、战斗行动步与休息步、探索步数、展示倍率、清零、每场战斗/休息后更新 |
+| **Combat/rest log pacing** | [03-combat.md](design/03-combat.md) 1.3, `combatPacing.js`, MainScreen loop | 战斗日志步间 ms 与 `restStepReveal` 一致（[13-player-statistics.md](design/13-player-statistics.md) 7.5） |
+| **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎事件一致；护盾吸收是否计入「受到的伤害」 |
+| **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |
+| **Requirements Examples** | [requirements-format.md](../requirements-format.md) | 若用户故事或 AC 引用统计面板或清零流程 |
+
 ## Usage
 
 Before committing design changes:

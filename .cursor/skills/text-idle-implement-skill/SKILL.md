@@ -98,4 +98,4 @@ Implement in `getSkillWithEnhancements(warrior, skillId)`.
 ## Tests
 
 - Unit: `frontend/src/game/warriorSkills.spec.js`, `warriorLevelSkills.spec.js`, `mageSkills.spec.js`
-- E2E: `e2e/browser/warrior-skills.spec.js`, `e2e/browser/mage-skills.spec.js`, `e2e/browser/skill-choice-level5.spec.js`
+- E2E: `e2e/browser/warrior-skills.spec.js`, `e2e/browser/mage-skills.spec.js`, `e2e/browser/skill-choice-milestones.spec.js`

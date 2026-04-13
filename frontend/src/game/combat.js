@@ -937,6 +937,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   const turnActedByRound = {}
   let round = 1
   let initialOrder = []
+  /** One per living unit turn slot in round order (design: combat action step). */
+  let combatActionSteps = 0
 
   while (round <= maxRounds && alive(heroUnits).length > 0 && alive(monsterUnits).length > 0) {
     for (const h of heroUnits) h.hitThisRound = false
@@ -951,6 +953,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     for (const actor of roundOrder) {
       let tauntExpiredMonsterIds = []
       if (actor.currentHP <= 0) continue
+      combatActionSteps += 1
       if (consumeFreezeTurn(actor)) {
         log.push({
           round,
@@ -2257,6 +2260,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   return {
     outcome,
     rounds: round - 1,
+    combatActionSteps,
     log,
     initialOrder,
     turnActedByRound,
