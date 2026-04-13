@@ -947,7 +947,7 @@ describe('combat progression and systems', () => {
     expect(basicEntries.length).toBeGreaterThan(0)
   })
 
-  it('Mage basic attack is always physical (no Magic Attack pseudo-skill)', () => {
+  it('Mage basic attack deals magic damage from spell power (no Magic Attack pseudo-skill)', () => {
     const mage = sampleHero({
       id: 'm1',
       class: 'Mage',
@@ -976,9 +976,40 @@ describe('combat progression and systems', () => {
     )
     expect(magicAttackEntry).toBeUndefined()
     const basicEntries = result.log.filter(
-      (e) => e.actorName === 'Hero One' && e.action === 'basic' && e.damageType === 'physical'
+      (e) => e.actorName === 'Hero One' && e.action === 'basic' && e.damageType === 'magic'
     )
     expect(basicEntries.length).toBeGreaterThan(0)
+  })
+
+  it('Priest basic attack deals magic damage (k_PhysAtk null class)', () => {
+    const priest = sampleHero({
+      id: 'p1',
+      class: 'Priest',
+      intellect: 20,
+      spirit: 20,
+      strength: 2,
+      agility: 2,
+      currentMP: 0,
+      equipment: { MainHand: { spellPowerMin: 8, spellPowerMax: 10, armor: 0, resistance: 0 } },
+      skills: ['flash-heal', 'power-word-shield'],
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Young Wolf',
+          damageType: 'physical',
+          base: { hp: 100, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    const result = runAutoCombat({ heroes: [priest], monsters, rng, maxRounds: 3 })
+    const basicMagic = result.log.filter(
+      (e) => e.actorName === 'Hero One' && e.action === 'basic' && e.damageType === 'magic'
+    )
+    expect(basicMagic.length).toBeGreaterThan(0)
   })
 
   it('Power Word: Shield on tank absorbs monster damage (log shieldAbsorbed, HP only loses overflow)', () => {

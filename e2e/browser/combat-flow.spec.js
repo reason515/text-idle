@@ -459,6 +459,37 @@ test.describe('Threat Display (Example 32)', () => {
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
     await expect(page.locator('.log-threat').filter({ hasText: '仇恨 +' }).first()).toBeVisible({ timeout: 60000 })
   })
+
+  test('AC30 (Example 10): Mage basic attack at 0 MP is logged as magic damage', async ({ page }) => {
+    test.setTimeout(120000)
+    const email = uniqueTestEmail('mage-basic-magic-e2e')
+    await registerAndGoToMain(page, email)
+
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await page.evaluate(() => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      for (const h of squad) {
+        if (h.class === 'Mage') {
+          h.currentMP = 0
+          h.agility = 999
+        }
+        if (h.class === 'Warrior') h.agility = 1
+      }
+      localStorage.setItem('squad', JSON.stringify(squad))
+    })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    const jaina = '\u5409\u5b89\u5a1c'
+    const basicZh = '\u666e\u901a\u653b\u51fb'
+    const mageBasicMagic = page
+      .locator('.log-entry')
+      .filter({ hasText: jaina })
+      .filter({ hasText: basicZh })
+      .filter({ has: page.locator('.log-magic-dmg') })
+    await expect(mageBasicMagic.first()).toBeVisible({ timeout: 90000 })
+  })
 })
 
 test.describe('Experience and Leveling (Example 11)', () => {

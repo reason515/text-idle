@@ -445,6 +445,7 @@ Then [expected result/verifiable behavior].
 - **Name colors**: Hero names in combat log use their WoW class color (same as hero card). Monster names use tier-based colors: Normal (#66aa88), Elite (#cc88ff), Boss (#ff6644). Monster name color is **consistent** whether the monster is acting or being targeted.
 - **Skill name and damage colors**: When a skill is used, the skill name and the damage dealt are displayed in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing.
 - **Damage colors**: Physical damage numbers are white (#dddddd); magic damage numbers are blue (#44aaff). Crit adds bold + "CRIT!" marker.
+- **Hero basic attack damage type**: Classes whose `CLASS_COEFFICIENTS.k_PhysAtk` is `null` (Mage, Priest, Warlock) use **magic** basic attacks (effective Spell Power vs Resistance). Other classes use **physical** basic attacks (effective PhysAtk vs Armor). See [03-combat.md](design/03-combat.md) section 5 and `actorDamage` in `frontend/src/game/combat.js`.
 - **Damage calculation detail**: Each log entry shows a sub-line with readable color (#88aa88): `ATK(raw) - Armor(defVal) = final` (or Resist for magic). All values in parentheses for consistency.
 - **Crit system**: Hero crit rates from class coefficients (PhysCrit = 5 + Agi * k_PhysCrit); monster crit rates: Normal 5%, Elite 10%, Boss 10%. CritMultiplier = 1.5.
 - **Encounter message**: Each battle starts with "Your adventure party encountered [monster names]!" (Boss: "the fearsome [name]").
@@ -492,6 +493,7 @@ Then [expected result/verifiable behavior].
 | AC27 | Combat log displays an action                                                              | A hero or monster acts                                | The actor's Agility value is shown next to the actor name (e.g. "HeroName (AGI 12) used..."), so the player can see that higher agility acts first                           |
 | AC28 | Combat log displays a skill action                                                         | Player views the log                                  | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing                                    |
 | AC29 | A Mage casts a magic skill that deals damage and the log includes spell-strength breakdown | Player expands or views detail lines                  | A `weaponMechanicLines` sub-line can show weapon-segment vs flat-segment spell strength (when the engine attaches `spellPowerWeaponScaled` / `spellPowerFlatBonus`)          |
+| AC30 | A Mage has 0 MP (cannot cast) and takes a turn before the encounter ends                                              | The Mage performs a basic attack                    | Combat log shows the basic-attack hit as magic damage (e.g. damage type label for spell / blue styling per AC4), not physical                                                                                                                |
 
 
 ---
@@ -1088,7 +1090,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 - **Source**: `docs/design/06-equipment.md` section 7.3 (physical weapon table + spell weapon table).
 - **Code**: `frontend/src/game/weaponAffixPools.js` (two pools of 27 entries each); merged with `AFFIX_POOL` in `equipment.js` for magic/rare weapons only when `getWeaponAffixMode` matches the base (`physical` or `spell`).
-- **Combat**: Penetration, percent ignore, crit mult bonuses, on-hit healing/mana, added magic damage, and arcane follow-up are applied in `weaponAffixDamage.js`, `combat.js` (basic attack), `warriorSkills.js`, and `mageSkills.js`.
+- **Combat**: Penetration, percent ignore, crit mult bonuses, on-hit healing/mana, added magic damage, and arcane follow-up are applied in `weaponAffixDamage.js`, `combat.js` (basic attack is physical or magic by class `k_PhysAtk`; see Example 10 bullet *Hero basic attack damage type*), `warriorSkills.js`, and `mageSkills.js`.
 
 **Acceptance Criteria**
 

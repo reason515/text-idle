@@ -772,6 +772,12 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
 
 function actorDamage(actor, rng, round) {
   if (actor.side === 'hero') {
+    const coef = CLASS_COEFFICIENTS[actor.class]
+    const spellOnlyClass = coef != null && coef.k_PhysAtk == null
+    if (spellOnlyClass) {
+      const effSpell = getEffectiveSpellPower(actor, rng)
+      return { action: 'basic', damageType: 'magic', rawDamage: effSpell }
+    }
     const effPhys = getEffectivePhysAtk(actor, rng)
     return { action: 'basic', damageType: 'physical', rawDamage: effPhys }
   }
