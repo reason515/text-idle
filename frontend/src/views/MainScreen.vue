@@ -3069,7 +3069,7 @@ function logout() {
   router.push('/login')
 }
 
-function sleepMs(ms) {
+function sleepMs(ms, useRealTimer = false) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -3077,12 +3077,17 @@ async function sleepMsRespectingPause(ms) {
   let remaining = ms
   while (remaining > 0 && isRunning.value) {
     if (isPaused.value) {
-      await sleepMs(200)
+      await sleepMs(200, true)
       continue
     }
-    const chunk = Math.min(200, remaining)
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    // Hidden tabs heavily throttle short timers. Use one full wait and subtract real elapsed
+    // time so combat keeps moving in background without flooding the microtask queue.
+    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+    const chunk = isHidden ? remaining : Math.min(200, remaining)
     await sleepMs(chunk)
-    remaining -= chunk
+    const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    remaining -= Math.max(1, endedAt - startedAt)
   }
 }
 
@@ -3367,7 +3372,7 @@ async function runCombatLoop() {
   let lastMapId = null
   while (isRunning.value) {
     if (squad.value.length === 0) {
-      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.emptySquadPoll))
+      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.emptySquadPoll), true)
       continue
     }
 
