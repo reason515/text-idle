@@ -7,11 +7,11 @@ alwaysApply: true
 
 **Before ANY implementation, you MUST:**
 
-1. [ ] Read these rules fully
-2. [ ] Confirm: Will I write tests? (Unit + E2E per feature)
+1. [ ] Read `workflow.mdc` **Doc and Test Sync** and **Path → artifact triggers** for files you will touch
+2. [ ] Confirm: Unit tests for changed logic; E2E when triggers in `workflow.mdc` require it (or N/A with reason)
 3. [ ] Confirm: Will ALL code use ASCII only? (No Chinese in source)
-4. [ ] Confirm: Which **docs and tests** must move with this change? (`docs/design/`, `docs/requirements-format.md`, Vitest, Go `*_test.go`, Playwright per `workflow.mdc`)
-5. [ ] Confirm: Will my **final reply include a Sync summary** (what docs/tests updated or N/A)?
+4. [ ] Confirm: Which **docs and Examples** must move? (`docs/design/`, `docs/requirements-format.md`, `design-change-impact.md` per triggers)
+5. [ ] Confirm: Final reply will include the **Sync summary** block (mandatory; see `workflow.mdc`)
 
 ---
 

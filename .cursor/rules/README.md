@@ -5,7 +5,7 @@
 | File | Scope | Purpose |
 |------|---------|---------|
 | `core.mdc` | always | ASCII, TDD, Definition of Done, pre-implementation checklist |
-| `workflow.mdc` | always | Output order, **Doc and Test Sync** (artifacts, triggers, N/A, Sync summary), E2E definition, anti-hang |
+| `workflow.mdc` | always | Output order, **Doc and Test Sync** (path→artifact table, N/A rules, **Sync summary** template, incomplete-task definition), E2E definition, anti-hang |
 | `game-design.mdc` | always | Turn-based combat, idle game, no real-time units |
 | `shell.mdc` | always | PowerShell rules (no `&&`, prefer project tools) |
 | `frontend.mdc` | `frontend/**` | Vue/Vite layout, Vitest unit tests, pointer to UI tokens |
@@ -13,11 +13,13 @@
 | `frontend-tips-tooltips.mdc` | **always** | Tooltip pattern, no `title` for tips, modal hint blocks, equipment quality copy colors |
 | `backend.mdc` | `**/*.go` | Go packages, `go test`, handler/service boundaries |
 | `e2e-browser.mdc` | `e2e/browser/**` | Playwright specs, helpers, port script, E2E skill |
-| `docs-sync.mdc` | `docs/design/**`, `docs/requirements-format.md`, `docs/design-change-impact.md` | Index cross-refs, formula/UI alignment, impact checklist, requirements AC |
+| `docs-sync.mdc` | design docs, requirements, impact, **`frontend/src/game/**`, `frontend/src/views/**`** | Same as above + combat/log sync notes; loads when editing game/views so doc rules appear alongside code |
 | `equipment-affix-sync.mdc` | `frontend/src/game/equipment.js`, `docs/design/06-equipment.md`, `equipment.spec.js` | `AFFIX_POOL` / `EPITHET_POOL` must stay aligned with doc 7.2.1 / 7.2.3 |
 | `rules.md` | - | Full human reference (Cursor loads `.mdc`, not `.md`) |
 
 Rules with `globs` apply when the active context matches those paths (e.g. editing a file under `frontend/`). Always-applied rules still apply everywhere.
+
+**Enforcement:** Rules cannot run CI automatically. **`workflow.mdc` + Sync summary** are the project’s enforceable contract for the agent; humans should reject PRs that change behavior without the listed artifacts or an explicit N/A.
 
 ## Why .mdc?
 

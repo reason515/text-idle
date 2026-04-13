@@ -72,7 +72,8 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 - `baseAttr`：**牧师、法师** 为 Int×0.8 + Spirit×0.8；**其他法术职业** 为 Int×1.2 + Spirit×0.8
 - `weapon.spellPowerMin/Max`：法杖实例掉落时 roll 出的上下限
-- `spellPowerBonus`：非武器装备提供的固定 SpellPower
+- `spellPowerBonus`：非武器「武器骰」段的固定法强（含副手法术宝珠、戒指、防具等；与 `round(baseRoll * spellMultiplier)` 相加后再参与技能系数）。实现见 `getEquipmentBonuses` → `heroCombatStats.spellPowerBonus`。
+- **战斗日志**：法系技能伤害条目中，若存在武器段与固定段拆分，会追加一行「法术强度：武器段 *W* + 额外 *F* = …（技能结算前有效法术强度）」，与 `damageUtils.getEffectiveSpellPowerBreakdown` 一致。
 
 #### 2.2.4 怒气与能量规则（草案）
 

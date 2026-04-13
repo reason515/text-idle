@@ -4,10 +4,14 @@ globs:
   - docs/design/**/*
   - docs/requirements-format.md
   - docs/design-change-impact.md
+  - frontend/src/game/**/*
+  - frontend/src/views/**/*
 alwaysApply: false
 ---
 
 # Documentation sync (`docs/design/`, requirements, impact checklist)
+
+**Load this rule when** editing design docs, `requirements-format.md`, **or** implementing in `frontend/src/game/**` / `views/**` so doc sync stays tied to code changes (see **Path → artifact triggers** in `workflow.mdc`).
 
 ## Language
 
@@ -23,6 +27,10 @@ alwaysApply: false
 ## Core flow or UX changes
 
 - For squad, recruitment, skills, intro, routing, or similar: run through [docs/design-change-impact.md](docs/design-change-impact.md) (Examples, E2E, routing, requirements examples).
+
+## Combat, formulas, battle log
+
+- Changes to `damageUtils`, `mageSkills`, `priestSkills`, `combat.js`, `battleLogFormat.js`, or equipment aggregation affecting spell/phys damage: update [05-skills.md](docs/design/05-skills.md) (2.2.3.x), [03-combat.md](docs/design/03-combat.md) if needed, [06-equipment.md](docs/design/06-equipment.md) if item wording; **requirements-format.md** Examples (e.g. 10, 14, 20) if AC or formulas change; see **§7** in design-change-impact.md.
 
 ## Requirements and acceptance criteria
 

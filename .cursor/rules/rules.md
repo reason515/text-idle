@@ -144,6 +144,7 @@ A task is complete when:
 - Code is understandable
 - Errors are handled
 - Core logic has tests
+- Documentation, `requirements-format.md` Examples/AC, unit tests, and E2E (when `workflow.mdc` triggers apply) are updated or explicitly N/A; final reply includes the **Sync summary** from `workflow.mdc`
 
 ---
 

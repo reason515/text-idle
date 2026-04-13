@@ -10,12 +10,15 @@ alwaysApply: true
 1. Brief clarification (problem, expected behavior)
 2. Scenario summary (normal flow, edge cases)
 3. Implementation
-4. **Tests** (unit + E2E if applicable)
-5. Key notes
+4. **Tests** (unit + E2E per triggers below)
+5. **Doc / Example sync** (per triggers below)
+6. Key notes + **Sync summary** (mandatory)
 
-## Doc and Test Sync (MANDATORY)
+## Doc and Test Sync (MANDATORY — hard gate)
 
-**Intent:** A code change is not "done" if design docs, requirements examples/AC, or tests are left stale. **Evaluate every non-trivial change**; do not default to code-only.
+**Intent:** A code change is **not complete** until every applicable artifact is updated **or** explicitly marked **N/A** with reason. **Silent omission = violation of project rules.**
+
+This section is **enforceable**: the agent must treat it as a checklist, not guidance.
 
 ### Artifacts (what to keep aligned)
 
@@ -23,36 +26,55 @@ alwaysApply: true
 |----------|------------------|
 | Design | `docs/design/` (start at [index.md](docs/design/index.md)); UI tokens: [11-ui-tokens.md](docs/design/11-ui-tokens.md) |
 | Requirements (user stories, AC, examples) | [docs/requirements-format.md](docs/requirements-format.md) |
-| Impact checklist | [docs/design-change-impact.md](docs/design-change-impact.md) (core flows) |
+| Impact checklist | [docs/design-change-impact.md](docs/design-change-impact.md) (core flows + combat/log section) |
 | Unit (frontend) | `frontend/src/**/*.spec.js` (Vitest) |
 | Unit (backend) | `*_test.go` next to Go packages |
 | E2E (browser) | `e2e/browser/*.spec.js` (Playwright) |
 
+### Path → artifact triggers (if you edit files in the left column, update or N/A the right)
+
+Use this table **during** the task, not after. If multiple rows apply, satisfy all unless N/A.
+
+| You change | You MUST |
+|------------|----------|
+| `frontend/src/game/**` (combat, skills, equipment formulas, `damageUtils`, `battleLogFormat`, pacing) | **Vitest**: add/extend specs under `frontend/src/game/**/*.spec.js` for changed behavior. **Design**: at least one of `docs/design/03-combat.md`, `05-skills.md`, `06-equipment.md` if formulas, damage, loot, or affix behavior changed. **requirements-format.md**: any Example/AC that would be factually wrong. **design-change-impact.md** § combat/log if log strings or player-facing formulas change. **E2E**: update/add if combat **log text**, routing, or main-screen battle UI behavior changed; if only pure logic with identical UI strings, state **E2E N/A** (why). |
+| `frontend/src/views/**` or shared UI for main/game flow | **Vitest** if logic in components; **E2E** if user-visible flow or assertion-worthy text changed; else **E2E N/A**. **Design** `09-social-ui.md` / `11-ui-tokens.md` if layout or tokens change. |
+| `e2e/browser/**` | Keep helpers aligned with `testHelpers.js` / `workflow.mdc` / `e2e-browser.mdc`. |
+| `**/*.go` (backend) | **`go test`** for touched packages; update handler tests if API contract changes. **Design** if API behavior is documented. |
+| `docs/design/**` or `docs/requirements-format.md` | Cross-refs in [index.md](docs/design/index.md); ensure code still matches or note doc is source of truth. |
+
 ### When you MUST update (same change set as the code)
 
-Update the matching rows **before** considering the task complete:
+- **Design docs** — Formulas, skills, combat, equipment, UI flows described or implied by `docs/design/`.
+- **requirements-format.md** — Examples/AC that would be wrong after the change.
+- **Vitest** — Any behavior change in `frontend/src` logic you touched.
+- **Go tests** — Any Go behavior you changed.
+- **Playwright** — When **path triggers** above require E2E; otherwise **E2E N/A** with one line.
 
-- **Design docs** - Formulas, attributes, skills, combat rules, progression, or any UI/flow behavior that `docs/design/` already describes or should describe for the feature you touched.
-- **requirements-format.md** - User stories, acceptance criteria, or worked examples in that doc that would be wrong after your change.
-- **Vitest** - Any `frontend/` logic or derived behavior you changed; add or adjust specs so behavior stays locked.
-- **Go tests** - Any Go behavior you changed; add or adjust `*_test.go` in the same area.
-- **Playwright E2E** - Any user-visible flow, route, or UI copy/behavior covered or implied by E2E; add or update specs so regressions are caught.
-
-**Design change impact:** When modifying core flows (squad, recruitment, skills, intro, routing), walk [docs/design-change-impact.md](docs/design-change-impact.md) in the same change (Examples, E2E, routing, requirements examples).
+**Core flows** (squad, recruitment, skills, intro, routing): walk [docs/design-change-impact.md](docs/design-change-impact.md) in full for affected sections.
 
 ### When explicit N/A is allowed
 
-You may skip an artifact only if it truly does not apply, and you **state N/A with a one-line reason** in your final summary (e.g. doc-only edit; dependency bump with no behavior change; pure formatting). **Silent omission is not allowed.**
+Skip an artifact only if it **truly does not apply**, and state **`N/A: <one-line reason>`** in the **Sync summary**. Valid examples: dependency-only bump; comment-only; doc-only task; backend-only with no documented API change. **Silent omission is not allowed.**
 
-### Pre-close checklist (run mentally before finishing)
+### Pre-close checklist (mandatory — do not skip)
 
-1. Did I change behavior, data, API, UI, or docs that readers/tests rely on?
-2. If yes: which artifacts from the table did I update or explicitly mark N/A?
-3. Did I run `npm run test` (frontend) and/or `go test ./...` when those areas changed? E2E when UI/flow changed?
+1. Which rows in **Path → artifact triggers** applied to this task?
+2. For each applicable row: updated artifact, or **N/A** with reason?
+3. Ran `npm run test` in `frontend/` when `frontend/src` changed? Ran `go test ./...` when Go changed? Ran `npm run e2e` when E2E was required (not N/A)?
 
 ### Final response to the user (required)
 
-End with a short **Sync summary**: bullets for `docs/` (files or "N/A"), unit tests (files or "N/A"), E2E (files or "N/A"), and tests run (commands + pass/fail or "not run" + why).
+End with a **Sync summary** using this shape (fill or N/A each line):
+
+- **docs/design**: &lt;files or N/A&gt;
+- **docs/requirements-format.md**: &lt;files or N/A&gt;
+- **docs/design-change-impact.md**: &lt;sections or N/A&gt;
+- **Unit tests**: &lt;files or N/A&gt;
+- **E2E**: &lt;files or N/A&gt;
+- **Commands run**: &lt;e.g. npm run test PASS; npm run e2e skipped — reason&gt;
+
+**Incomplete task** if: behavior changed but Sync summary is missing, or N/A is missing where a trigger row applied.
 
 **Frontend / UI:** When editing `frontend/**`, follow `ui-design.mdc` (tokens, gold vs accent, tooltips, forms).
 

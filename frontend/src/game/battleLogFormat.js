@@ -86,6 +86,11 @@ export function weaponMechanicLines(entry) {
   } else if (entry.heroMitigationKind === 'magic') {
     lines.push('抗性抵消值为法术穿透与无视抗性百分比之后的有效抗性')
   }
+  if (entry.spellPowerWeaponScaled != null && entry.damageType === 'magic') {
+    const w = entry.spellPowerWeaponScaled
+    const f = entry.spellPowerFlatBonus ?? 0
+    lines.push(`法术强度：武器段 ${w} + 额外 ${f} = ${w + f}（技能结算前有效法术强度）`)
+  }
   if (
     entry.primaryFinalDamage != null &&
     entry.finalDamage != null &&

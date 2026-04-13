@@ -6,7 +6,7 @@
  */
 
 import { getLevelSkillById } from './mageLevelSkills.js'
-import { getEffectiveSpellPower } from './damageUtils.js'
+import { getEffectiveSpellPowerBreakdown } from './damageUtils.js'
 import { computeMagicDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
 
 const DEFAULT_SPELL_CRIT = 1.5
@@ -325,10 +325,11 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
   let totalMainMagic = 0
   let totalDamage = 0
 
+  const spBreak = getEffectiveSpellPowerBreakdown(mage, rng)
+  const effectiveSpellPower = spBreak.total
+
   for (const target of monsters) {
     if ((target.currentHP ?? 0) <= 0) continue
-
-    const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
     const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
     const rawAfterCrit = isHit && isCrit ? Math.round(baseRaw * critMult) : baseRaw
     const effectiveResistance = computeMagicDefenseAfterWeapon(target, {
@@ -406,6 +407,8 @@ export function executeFrostNova(mage, monsters, skill, opts = {}) {
     manaConsumed: manaCost,
     manaRefluxGain,
     manaOnCastGain,
+    spellPowerWeaponScaled: spBreak.weaponScaled,
+    spellPowerFlatBonus: spBreak.flatBonus,
   }
 }
 
@@ -453,7 +456,8 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
   }
 
 
-  const effectiveSpellPower = getEffectiveSpellPower(mage, rng)
+  const spBreak = getEffectiveSpellPowerBreakdown(mage, rng)
+  const effectiveSpellPower = spBreak.total
   const baseRaw = Math.round(effectiveSpellPower * coeff * (1 + (mage.spellDmgPct || 0) / 100))
   const rawAfterCrit = isCrit ? Math.round(baseRaw * critMult) : baseRaw
   const effectiveResistance = computeMagicDefenseAfterWeapon(target, {
@@ -528,5 +532,7 @@ export function executeMageSkill(mage, target, skill, opts = {}) {
     freezeSkipActions: skill.id === 'frostbolt' && freezeProcced ? 1 : undefined,
     /** Only set for Frostbolt: whether the Freeze roll succeeded (for battle log). */
     freezeProcced: skill.id === 'frostbolt' ? freezeProcced : undefined,
+    spellPowerWeaponScaled: spBreak.weaponScaled,
+    spellPowerFlatBonus: spBreak.flatBonus,
   }
 }

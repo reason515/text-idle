@@ -793,8 +793,8 @@
                       <span class="item-compare-detail-value">{{ replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null ? (replaceCompareCurrent.physAtkMin + '-' + replaceCompareCurrent.physAtkMax) : replaceCompareCurrent.physAtk }}</span>
                     </div>
                     <div v-if="((replaceCompareCurrent.spellPower || 0) > 0 || (replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">法强</span>
-                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null ? (replaceCompareCurrent.spellPowerMin + '-' + replaceCompareCurrent.spellPowerMax) : replaceCompareCurrent.spellPower }}</span>
+                      <span class="item-compare-detail-label">{{ spellPowerDetailLabel(replaceCompareCurrent) }}</span>
+                      <span class="item-compare-detail-value">{{ spellPowerDetailValue(replaceCompareCurrent) }}</span>
                     </div>
                     <div
                       v-if="(replaceCompareCurrent.prefixes?.length || 0) + (replaceCompareCurrent.suffixes?.length || 0) > 0"
@@ -802,8 +802,8 @@
                     >词缀</div>
                     <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
                       <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
-                        <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, replaceCompareCurrent) }}</span>
+                        <span v-if="formatAffixStat(p.stat, replaceCompareCurrent)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
                       </span>
                       <span class="item-compare-detail-value item-compare-affix-val">
                         <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
@@ -812,8 +812,8 @@
                     </div>
                     <div v-for="s in (replaceCompareCurrent.suffixes || [])" :key="'cs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
                       <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
-                        <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, replaceCompareCurrent) }}</span>
+                        <span v-if="formatAffixStat(s.stat, replaceCompareCurrent)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
                       </span>
                       <span class="item-compare-detail-value item-compare-affix-val">
                         <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
@@ -854,8 +854,8 @@
                       <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
                     </div>
                     <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">法强</span>
-                      <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
+                      <span class="item-compare-detail-label">{{ spellPowerDetailLabel(equipReplacePending.item) }}</span>
+                      <span class="item-compare-detail-value">{{ spellPowerDetailValue(equipReplacePending.item) }}</span>
                     </div>
                     <div
                       v-if="(equipReplacePending.item.prefixes?.length || 0) + (equipReplacePending.item.suffixes?.length || 0) > 0"
@@ -863,8 +863,8 @@
                     >词缀</div>
                     <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-detail-row item-compare-affix-row">
                       <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
-                        <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, equipReplacePending.item) }}</span>
+                        <span v-if="formatAffixStat(p.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
                       </span>
                       <span class="item-compare-detail-value item-compare-affix-val">
                         <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
@@ -873,8 +873,8 @@
                     </div>
                     <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ns-' + s.id" class="item-compare-detail-row item-compare-affix-row">
                       <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
-                        <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, equipReplacePending.item) }}</span>
+                        <span v-if="formatAffixStat(s.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
                       </span>
                       <span class="item-compare-detail-value item-compare-affix-val">
                         <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
@@ -926,8 +926,8 @@
                   <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
                 </div>
                 <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">法强</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null ? (equipReplacePending.item.spellPowerMin + '-' + equipReplacePending.item.spellPowerMax) : equipReplacePending.item.spellPower }}</span>
+                  <span class="item-compare-detail-label">{{ spellPowerDetailLabel(equipReplacePending.item) }}</span>
+                  <span class="item-compare-detail-value">{{ spellPowerDetailValue(equipReplacePending.item) }}</span>
                 </div>
                 <div v-if="(equipReplacePending.item.blockPct || 0) > 0" class="item-compare-detail-row">
                   <span class="item-compare-detail-label">格挡率</span>
@@ -939,8 +939,8 @@
                 >词缀</div>
                 <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'ecp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
                   <span class="item-compare-detail-label item-compare-affix-label">
-                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p) }}</span>
-                    <span v-if="formatAffixStat(p.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
+                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, equipReplacePending.item) }}</span>
+                    <span v-if="formatAffixStat(p.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
                   </span>
                   <span class="item-compare-detail-value item-compare-affix-val">
                     <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
@@ -949,8 +949,8 @@
                 </div>
                 <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ecs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
                   <span class="item-compare-detail-label item-compare-affix-label">
-                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s) }}</span>
-                    <span v-if="formatAffixStat(s.stat)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
+                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, equipReplacePending.item) }}</span>
+                    <span v-if="formatAffixStat(s.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
                   </span>
                   <span class="item-compare-detail-value item-compare-affix-val">
                     <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
@@ -1002,21 +1002,21 @@
               <span class="detail-value">{{ selectedItem.physAtkMin != null && selectedItem.physAtkMax != null ? (selectedItem.physAtkMin + '-' + selectedItem.physAtkMax) : selectedItem.physAtk }}</span>
             </div>
             <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">法强</span>
-              <span class="detail-value">{{ selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null ? (selectedItem.spellPowerMin + '-' + selectedItem.spellPowerMax) : selectedItem.spellPower }}</span>
+              <span class="detail-label">{{ spellPowerDetailLabel(selectedItem) }}</span>
+              <span class="detail-value">{{ spellPowerDetailValue(selectedItem) }}</span>
             </div>
             <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
             <div class="affix-list">
               <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
                 <span class="affix-num">+{{ formatAffixValue(p) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(p.stat, selectedItem) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
               <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
                 <span class="affix-num">+{{ formatAffixValue(s) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(s.stat, selectedItem) }}</span>
                 <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
               </div>
             </div>
@@ -1492,21 +1492,21 @@
               <span class="detail-value">{{ selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null ? (selectedEquippedItem.item.physAtkMin + '-' + selectedEquippedItem.item.physAtkMax) : selectedEquippedItem.item.physAtk }}</span>
             </div>
             <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">法强</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null ? (selectedEquippedItem.item.spellPowerMin + '-' + selectedEquippedItem.item.spellPowerMax) : selectedEquippedItem.item.spellPower }}</span>
+              <span class="detail-label">{{ spellPowerDetailLabel(selectedEquippedItem.item) }}</span>
+              <span class="detail-value">{{ spellPowerDetailValue(selectedEquippedItem.item) }}</span>
             </div>
             <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
             <div class="affix-list">
               <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
                 <span class="affix-num">+{{ formatAffixValue(p) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(p.stat) }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(p.stat, selectedEquippedItem.item) }}</span>
                 <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
               </div>
               <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-row">
                 <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
                 <span class="affix-num">+{{ formatAffixValue(s) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(s.stat) }}</span>
+                <span class="affix-stat-label">{{ formatAffixStat(s.stat, selectedEquippedItem.item) }}</span>
                 <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
               </div>
             </div>
@@ -1909,13 +1909,43 @@ const AFFIX_STAT_LABELS = {
   rageOnKill: '\u51fb\u6740\u6012\u6c14',
   doubleStrikePct: '\u8fde\u51fb\u7387',
 }
-function formatAffixStat(stat) {
+
+/** True for off-hand orb spell stats (flat damage added after main-hand spell roll; not shields). */
+function isOffHandOrbSpellItem(item) {
+  if (!item || item.slot !== 'OffHand') return false
+  return (
+    (item.spellPower || 0) > 0 ||
+    (item.spellPowerMin != null && item.spellPowerMax != null)
+  )
+}
+
+function spellPowerDetailLabel(item) {
+  return isOffHandOrbSpellItem(item) ? '\u6cd5\u672f\u4f24\u5bb3\u589e\u52a0' : '\u6cd5\u5f3a'
+}
+
+function spellPowerDetailValue(item) {
+  if (!item) return ''
+  if (item.spellPowerMin != null && item.spellPowerMax != null) {
+    if (isOffHandOrbSpellItem(item)) {
+      return item.spellPowerMin === item.spellPowerMax
+        ? `${item.spellPowerMin} \u70b9`
+        : `${item.spellPowerMin}\u2013${item.spellPowerMax} \u70b9`
+    }
+    return `${item.spellPowerMin}-${item.spellPowerMax}`
+  }
+  const n = item.spellPower ?? 0
+  if (isOffHandOrbSpellItem(item)) return `${n} \u70b9`
+  return String(n)
+}
+
+function formatAffixStat(stat, item = null) {
   if (!stat) return ''
+  if (item?.slot === 'OffHand' && stat === 'spellPowerFlat') return '\u6cd5\u672f\u4f24\u5bb3\u589e\u52a0'
   return AFFIX_STAT_LABELS[stat] ?? stat
 }
-function formatAffixStatLinePrimary(affix) {
+function formatAffixStatLinePrimary(affix, item = null) {
   if (!affix) return ''
-  const statLabel = formatAffixStat(affix.stat)
+  const statLabel = formatAffixStat(affix.stat, item)
   if (statLabel) return statLabel
   return formatAffixDisplayName(affix.name)
 }
@@ -2289,17 +2319,13 @@ function getItemTooltipLines(item) {
       (item.spellPower || 0) > 0 ||
       (item.spellPowerMin != null && item.spellPowerMax != null)
     if (hasSpell) {
-      const val =
-        item.spellPowerMin != null && item.spellPowerMax != null
-          ? item.spellPowerMin + '-' + item.spellPowerMax
-          : String(item.spellPower ?? 0)
-      lines.push({ label: '法强', value: val })
+      lines.push({ label: spellPowerDetailLabel(item), value: spellPowerDetailValue(item) })
     }
   }
   if ((item.blockPct || 0) > 0) lines.push({ label: '格挡率', value: String(item.blockPct) + '%' })
   for (const p of item.prefixes || []) {
     const name = formatAffixDisplayName(p.name)
-    const statZh = formatAffixStat(p.stat)
+    const statZh = formatAffixStat(p.stat, item)
     const val = formatAffixValue(p)
     lines.push({
       label: '前缀',
@@ -2313,7 +2339,7 @@ function getItemTooltipLines(item) {
   }
   for (const s of item.suffixes || []) {
     const name = formatAffixDisplayName(s.name)
-    const statZh = formatAffixStat(s.stat)
+    const statZh = formatAffixStat(s.stat, item)
     const val = formatAffixValue(s)
     lines.push({
       label: '后缀',

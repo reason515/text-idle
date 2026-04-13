@@ -422,7 +422,8 @@ Then [expected result/verifiable behavior].
 - **Battle separator**: Visual separator line between consecutive battles.
 - **Scrollbar**: Custom scrollbar matching the dark-green terminal theme (thin, dark track, green thumb).
 - **Font size**: All battle UI fonts increased by approximately one tier (~0.1rem).
-- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. Equipment-provided `hitPct` and `dodgePct` are merged into 命中 % / 闪避 % formulas. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). Warrior/Rogue/Hunter resource max is fixed 100.
+- **Character detail panel**: Left-label right-value alignment; hero name in light text (#eeffee), class tag in WoW class color; primary attributes (Str/Agi/Int/Sta/Spi) + secondary attributes with **Chinese row labels** (生命, resource row per class, 物攻, 法强, 护甲, 抗性, 物暴 %, 法暴 %, 闪避 %, 命中 %) and tooltip showing formula; internal keys remain HP, Resource, PhysAtk, etc. Equipment-provided `hitPct` and `dodgePct` are merged into 命中 % / 闪避 % formulas. When hero has a weapon with damage range, PhysAtk/SpellPower values are displayed as a range (e.g., 12–16). **Off-hand orb** base stat in item UI uses **「法术伤害增加 *N* 点」** (additive flat after main-hand spell roll × multiplier); main-hand wand/staff still shows **法强** as the weapon dice range. Warrior/Rogue/Hunter resource max is fixed 100.
+- **Weapon mechanic lines (magic)**: For hero magic skills, the log may show an extra line from `weaponMechanicLines` spelling out pre-coeff effective spell strength as weapon-scaled segment + flat segment (matches `getEffectiveSpellPowerBreakdown`). Narrative of the same split (main-hand dice × multiplier vs rings/armor/off-hand flat) is in **Example 14** and [05-skills.md](design/05-skills.md) 2.2.3.2.
 - **Monster detail panel**: Similar alignment; **物攻** shows **effective min–max per hit** (same 1–4 unarmed scaling as combat, e.g. `6-24` when the underlying PhysAtk stat is 15); includes Armor/Resistance with tooltip "Absorbs X damage per hit".
 - **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
 
@@ -458,6 +459,7 @@ Then [expected result/verifiable behavior].
 | AC26 | Combat log displays entries | Player views [Rx], used, on, for, (physical), (magic) | These elements use distinct colors/backgrounds for readability (e.g. #66aa88, #88bb99, #99ccaa) |
 | AC27 | Combat log displays an action | A hero or monster acts | The actor's Agility value is shown next to the actor name (e.g. "HeroName (AGI 12) used..."), so the player can see that higher agility acts first |
 | AC28 | Combat log displays a skill action | Player views the log | Skill name and damage dealt are shown in distinct colors (e.g. skill name in one color, damage value in another) for quick visual parsing |
+| AC29 | A Mage casts a magic skill that deals damage and the log includes spell-strength breakdown | Player expands or views detail lines | A `weaponMechanicLines` sub-line can show weapon-segment vs flat-segment spell strength (when the engine attaches `spellPowerWeaponScaled` / `spellPowerFlatBonus`) |
 
 ---
 
@@ -631,14 +633,16 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: 9 MP, 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced). Fireball: 13 MP, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: **9 MP**, 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced). Fireball: **13 MP**, 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x, **11 MP**, 2-round CD; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Spirit * 0.8 + equipment bonus, floored; see 05-skills.md 8.2.1). Skills consume Mana; insufficient Mana prevents use.
-- **Damage formula**: Same structure as physical: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)`.
-- **Initial skills (Mage recruitment: 2选1)**:
+- **Damage formula** (hero; see [05-skills.md](design/05-skills.md) 2.2.3.2): `baseRoll = [has wand/staff range ? random(weaponMin, weaponMax) : 0]`; `effectiveSpellPower = round(baseRoll * spellMultiplier) + spellPowerBonus` (rings, **off-hand orb flat**, armor affixes, main-hand `spellWeaponFlat`, etc.); `rawDamage = round(effectiveSpellPower * SkillCoeff * (1 + spellDmg%))`; `finalDamage = max(1, rawAfterCrit - targetResistance)`. Monsters still use 1–4 unarmed scaling vs `spellPower` in `getEffectiveSpellPower`. **Battle log**: magic skill entries may append `weaponMechanicLines` text such as `法术强度：武器段 W + 额外 F = …（技能结算前有效法术强度）` (breakdown of pre-coeff effective spell strength; implementation: `getEffectiveSpellPowerBreakdown`, `battleLogFormat.weaponMechanicLines`).
+- **Initial skills (Frost vs Fire identity — same skill ids as fixed trio; expansion Mage recruitment uses one spec)**:
   | Spec | Skill | English | Cost | Effect |
   |------|-------|---------|------|--------|
-  | Frost | Frostbolt | Frostbolt | 13 MP | 0.8x magic damage; 10% chance to Freeze: target skips 1 action when their turn comes (higher chance when skill is enhanced) |
-  | Fire | Fireball | Fireball | 18 MP | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
+  | Frost | Frostbolt | Frostbolt | **9 MP** | 0.8x magic damage; 10% chance to Freeze: target skips 1 action when their turn comes (higher chance when skill is enhanced) |
+  | Fire | Fireball | Fireball | **13 MP** | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT) |
+
+- **Source of truth (implementation)**: Mana cost, coefficient, cooldown, and freeze chances for each skill id are defined in [mageSkills.js](../../frontend/src/game/mageSkills.js) (`MAGE_INITIAL_SKILLS`) and [mageLevelSkills.js](../../frontend/src/game/mageLevelSkills.js) (`MAGE_LEVEL_SKILLS`). If this Example disagrees with code, **update the Example after changing code** (or fix code if the doc is the agreed design).
 
 - **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
 
@@ -800,7 +804,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 **Design Reference (from design doc)**
 
-- **Item detail shows**: base name, quality (color), slot type (e.g., Helm, Body Armor, Ring), level requirement, attribute requirements (Str/Agi/Int/Spi), affix list with current rolled value and roll range. **Weapons** show PhysAtk or SpellPower as a rolled range (e.g., PhysAtk: 3–5) from drop-time rolls.
+- **Item detail shows**: base name, quality (color), slot type (e.g., Helm, Body Armor, Ring), level requirement, attribute requirements (Str/Agi/Int/Spi), affix list with current rolled value and roll range. **Weapons** (main hand / two-hand) show PhysAtk or **法强** as a rolled range (e.g., PhysAtk: 3–5, SpellPower: 6–10) from drop-time rolls. **Off-hand spell orb** (not a weapon-dice slot): base flat spell contribution is labeled **「法术伤害增加 *N* 点」** in the item panel so it is not confused with main-hand **法强** weapon dice; orb affixes that use `spellPowerFlat` follow the same naming when the item is an Off-hand orb.
 - **Requirements highlighted red** if the inspecting hero does not meet them.
 - **Affix range transparency**: Roll range visible so player can evaluate whether the roll is near-max, mid, or low.
 - **Comparison**: When inspecting a new item while a hero has the same slot equipped, the detail view can show the current item alongside the new one.
@@ -820,6 +824,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC7 | Hero already has a Helm equipped and player inspects a new Helm | Player opens item detail | A comparison section shows the currently equipped Helm's key stats (Armor, affixes) alongside the new item's, so the player can tell at a glance if it is an upgrade |
 | AC8 | Item has no attribute requirement (e.g., Cap requires Str 0) | Player inspects the item | No attribute requirement line is shown (or it shows "No requirements"); level requirement still shown if applicable |
 | AC9 | Player inspects a weapon (e.g., Short Sword, Dagger, Wand) | Player views the item detail | The weapon displays its damage range (e.g., PhysAtk: 3–5 or SpellPower: 6–10); this is the rolled range from drop time; each physical/spell hit will roll within this range |
+| AC10 | Player inspects an Off-hand **spell orb** (not a shield) with flat spell damage | Player views the item detail | The detail shows a row labeled **法术伤害增加** with value **\*N* 点** (or a range if ever shown as min–max), not the same label as main-hand **法强** weapon dice |
 
 ---
 
@@ -835,8 +840,8 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 - **10 display slots per hero**: Main Hand, Off Hand, Helm, Armor, Gloves, Boots, Belt, Amulet, Ring × 2. TwoHand is not a slot; two-hand weapons equip to Main Hand and block Off Hand.
 - **Two-hand rule**: Equipping a Two-Hand weapon occupies Main Hand; Off Hand shows "—" (blocked) and cannot equip Shield or Orb.
-- **Orb vs. Scepter/Wand**: Orb is a passive OffHand (no weapon damage, only attribute bonuses); Scepter/Wand is a MainHand weapon (deals spell damage). They are distinct item types.
-- **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower, HP, etc.) update immediately. When the hero has a weapon with damage range, PhysAtk/SpellPower is displayed as a range (e.g., PhysAtk: 12–16).
+- **Orb vs. Scepter/Wand**: Orb is a passive OffHand (no weapon **dice** for spell scaling; its flat spell stat adds to `spellPowerBonus` with main-hand `round(weaponRoll × spellMultiplier)`); Scepter/Wand is a MainHand weapon (provides **法强** min–max dice). They are distinct item types. Item UI: orb uses **法术伤害增加 *N* 点**; main-hand wand/staff uses **法强** for the dice range.
+- **After equipping**: Hero's secondary attributes (Armor, Resistance, PhysAtk, SpellPower on the **character panel**, HP, etc.) update immediately. When the hero has a **main-hand** weapon with damage range, PhysAtk / panel **法强** may show a range from the weapon dice × multiplier plus flat equipment; tooltip text should remain consistent with [05-skills.md](design/05-skills.md) 2.2.3.2 (weapon segment vs additive flat).
 - **Cannot equip if requirements not met**: Level or attribute requirements block equipping.
 - **Ring stacking**: Two rings can have the same affix family; both bonuses apply.
 - **Equipment UI location**: Accessible via the hero detail modal (opened by clicking a hero card on the main screen).
@@ -848,7 +853,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC1 | Player has an unequipped item and opens the hero detail modal | Player clicks "Equip" for the matching slot | The item is equipped to that slot; the hero's relevant secondary attributes (Armor, Resistance, PhysAtk, HP, etc.) update immediately in the detail panel |
 | AC2 | Player equips a Two-Hand weapon (e.g., Claymore) to a hero | Equip action completes | Both MainHand and OffHand slots are occupied; attempting to equip a Shield or Orb to OffHand while a Two-Hand weapon is equipped is blocked |
 | AC3 | Hero has a Two-Hand weapon equipped | Player unequips the Two-Hand weapon | Both MainHand and OffHand slots become empty and available; player can now equip a one-hand weapon to MainHand and a Shield/Orb to OffHand |
-| AC4 | Player equips a one-hand weapon (MainHand) and an Orb (OffHand) | Both items are equipped | MainHand shows the weapon; OffHand shows the Orb; the Orb's attribute bonuses (SpellPower, Resistance, etc.) are added to hero stats; the Orb does not contribute weapon damage |
+| AC4 | Player equips a one-hand weapon (MainHand) and an Orb (OffHand) | Both items are equipped | MainHand shows the weapon; OffHand shows the Orb; the Orb's bonuses (e.g. **法术伤害增加** flat on the item, Resistance, Int) merge into hero stats; Orb flat spell damage does **not** add to main-hand **法强** dice — it adds to the same additive `spellPowerBonus` pool used after the weapon roll (see Example 14 / 05-skills 2.2.3.2) |
 | AC5 | Player opens the hero detail modal | Hero has items equipped in some slots | 10 slots are visible (Main Hand, Off Hand, Helm, etc.); slots with items show the item name and quality color; empty slots show "Empty"; Off Hand shows "—" when two-hand weapon is equipped |
 | AC6 | Player equips two rings with the same "+Str" affix family | Both Ring slots have rings equipped | Both rings' Str bonuses apply independently and stack (e.g., two rings each giving +5 Str = +10 Str total) |
 | AC7 | Player attempts to equip an item that requires Level 8, but hero is Level 5 | Player triggers equip | Action is blocked; an error or red highlight indicates the level requirement is not met; item remains unequipped |

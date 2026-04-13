@@ -1370,6 +1370,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             }
             if (sr.manaRefluxGain > 0) entry.weaponManaReflux = sr.manaRefluxGain
             if (sr.manaOnCastGain > 0) entry.weaponManaOnCast = sr.manaOnCastGain
+            if (sr.spellPowerWeaponScaled != null) {
+              entry.spellPowerWeaponScaled = sr.spellPowerWeaponScaled
+              entry.spellPowerFlatBonus = sr.spellPowerFlatBonus ?? 0
+            }
             const mhMag = heroMitigationNoteKind(actor, 'magic')
             if (mhMag) entry.heroMitigationKind = mhMag
             if (sr.hits.some((h) => h.freezeProcced)) {
@@ -1439,6 +1443,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
           if (sr.manaRefluxGain > 0) entry.weaponManaReflux = sr.manaRefluxGain
           if (sr.manaOnCastGain > 0) entry.weaponManaOnCast = sr.manaOnCastGain
+          if (sr.spellPowerWeaponScaled != null) {
+            entry.spellPowerWeaponScaled = sr.spellPowerWeaponScaled
+            entry.spellPowerFlatBonus = sr.spellPowerFlatBonus ?? 0
+          }
           const mhMag = heroMitigationNoteKind(actor, 'magic')
           if (mhMag) entry.heroMitigationKind = mhMag
           if (sr.debuffApplied || sr.debuffRefreshed) {

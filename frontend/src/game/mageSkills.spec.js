@@ -128,6 +128,21 @@ describe('Fireball', () => {
     expect(result.freezeProcced).toBeUndefined()
   })
 
+  it('returns spellPowerWeaponScaled and spellPowerFlatBonus for battle log', () => {
+    const mage = makeMage({
+      spellPower: 0,
+      spellMultiplier: 2,
+      spellPowerWeaponMin: 10,
+      spellPowerWeaponMax: 10,
+      spellPowerBonus: 3,
+      currentMP: 40,
+    })
+    const target = makeTarget({ resistance: 0, currentHP: 50 })
+    const result = executeMageSkill(mage, target, skill, { isCrit: false, rng: () => 0 })
+    expect(result.spellPowerWeaponScaled).toBe(20)
+    expect(result.spellPowerFlatBonus).toBe(3)
+  })
+
   it('Fireball enhanced 1x uses higher coefficient and spellCritBonus', () => {
     const mage = makeMage({ spellPower: 20, currentMP: 40, skillEnhancements: { fireball: { enhanceCount: 1 } } })
     const target = makeTarget({ resistance: 0, currentHP: 40 })

@@ -63,6 +63,19 @@ When modifying design documents (especially core flows like squad, recruitment, 
 | **LocalStorage** | Squad structure, progress flags | `introCompleted` vs `squad` initial state |
 | **Design doc 09-social-ui** | Layout says "英雄卡×1-5" | May need note on initial 3 |
 
+## 7. Combat formulas, equipment aggregation, battle log
+
+| Check | Affected areas | Notes |
+|-------|----------------|-------|
+| **Damage / heal formulas** | [05-skills.md](design/05-skills.md) 2.2.3.x, [03-combat.md](design/03-combat.md) | Keep in sync with `frontend/src/game/damageUtils.js`, skill execution (`*Skills.js`), `combat.js` |
+| **Equipment → stats** | [06-equipment.md](design/06-equipment.md), `getEquipmentBonuses`, `heroCombatStats` | Off-hand orb vs main-hand weapon dice; affix pools |
+| **Battle log strings** | [05-skills.md](design/05-skills.md), [06-equipment.md](design/06-equipment.md) 7.x weapon log notes | `battleLogFormat.js` (`damageFormulaEquation`, `weaponMechanicLines`); player-visible Chinese lines |
+| **Requirements Examples** | [requirements-format.md](../requirements-format.md) (e.g. 10, 14, 20) | AC / design reference if formulas or log behavior changes |
+| **Unit tests** | `frontend/src/game/*.spec.js` | Lock formula and log helpers |
+| **E2E** | `e2e/browser/*.spec.js` | When main-screen combat log or flow assertions need updating |
+
+**Examples to review**: 10 (battle log / detail), 14 (mage formula), 20 (equip / orb), plus any Example citing SpellPower or combat log.
+
 ## Usage
 
 Before committing design changes:

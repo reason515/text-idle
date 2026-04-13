@@ -2,6 +2,8 @@
 
 **Primary rules:** `.cursor/rules/*.mdc` (always-apply + path `globs` for `frontend/**`, `**/*.go`, `e2e/browser/**`, `docs/design/**`, and listed docs). Read these before implementation.
 
+**Definition of done (implementation tasks):** Follow `.cursor/rules/workflow.mdc` — **Path → artifact triggers**, unit/E2E tests, doc/Example sync, and end with a **Sync summary** (N/A lines must state reason). Silent omission is not allowed.
+
 ## Language & Encoding
 - **Language**: ALL code, variable names, function names, and comments MUST be written in English.
 - **Encoding Safety**: Do not use Chinese characters or any non-ASCII characters in source files to prevent encoding issues.

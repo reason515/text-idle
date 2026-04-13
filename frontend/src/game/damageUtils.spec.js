@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   getEffectivePhysAtk,
   getEffectiveSpellPower,
+  getEffectiveSpellPowerBreakdown,
   getMonsterPhysAtkEffectiveRange,
   formatMonsterPhysAtkRangeLabel,
   UNARMED_ROLL_EXPECTED,
@@ -95,6 +96,21 @@ describe('damageUtils', () => {
       }
       expect(getEffectiveSpellPower(hero, () => 0)).toBe(8)
       expect(getEffectiveSpellPower(hero, () => 0.99)).toBe(12)
+    })
+
+    it('getEffectiveSpellPowerBreakdown splits weapon scaled and flat bonus', () => {
+      const hero = {
+        side: 'hero',
+        spellMultiplier: 2,
+        spellPowerWeaponMin: 4,
+        spellPowerWeaponMax: 6,
+        spellPowerBonus: 5,
+      }
+      const b = getEffectiveSpellPowerBreakdown(hero, () => 0)
+      expect(b.weaponScaled).toBe(8)
+      expect(b.flatBonus).toBe(5)
+      expect(b.total).toBe(13)
+      expect(getEffectiveSpellPower(hero, () => 0)).toBe(b.total)
     })
   })
 

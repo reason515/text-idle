@@ -66,24 +66,38 @@ export function formatMonsterPhysAtkRangeLabel(physAtk) {
 }
 
 /**
- * Hero: baseRoll = weapon only; rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus.
- * Monster: baseRoll = unarmed(1-4); rawDamage = round(baseRoll * spellPower / 2.5). Expectation = spellPower.
+ * Hero: weaponScaled = round(weaponRoll * spellMultiplier); total = weaponScaled + spellPowerBonus.
+ * Monster: single scaled total (weaponScaled = total, flatBonus = 0).
+ * @param {Object} actor
+ * @param {function(number): number} rng
+ * @returns {{ total: number, weaponScaled: number, flatBonus: number, weaponRoll: number }}
  */
-export function getEffectiveSpellPower(actor, rng) {
+export function getEffectiveSpellPowerBreakdown(actor, rng) {
   if (actor.side === 'hero' && actor.spellMultiplier != null && rng) {
     const weaponRoll =
       actor.spellPowerWeaponMin != null && actor.spellPowerWeaponMax != null
         ? randomInRange(actor.spellPowerWeaponMin, actor.spellPowerWeaponMax, rng)
         : 0
-    const baseRoll = weaponRoll
-    const spellPowerBonus = actor.spellPowerBonus ?? 0
-    return Math.round(baseRoll * actor.spellMultiplier) + spellPowerBonus
+    const weaponScaled = Math.round(weaponRoll * actor.spellMultiplier)
+    const flatBonus = actor.spellPowerBonus ?? 0
+    return { total: weaponScaled + flatBonus, weaponScaled, flatBonus, weaponRoll }
   }
   const spellPower = actor.spellPower ?? 0
-  if (spellPower <= 0) return 0
-  if (actor.side === 'monster' && rng) {
-    const baseRoll = randomInRange(SPELL_UNARMED_MIN, SPELL_UNARMED_MAX, rng)
-    return Math.round((baseRoll * spellPower) / UNARMED_ROLL_EXPECTED)
+  if (spellPower <= 0) {
+    return { total: 0, weaponScaled: 0, flatBonus: 0, weaponRoll: 0 }
   }
-  return spellPower
+  if (actor.side === 'monster' && rng) {
+    const weaponRoll = randomInRange(SPELL_UNARMED_MIN, SPELL_UNARMED_MAX, rng)
+    const total = Math.round((weaponRoll * spellPower) / UNARMED_ROLL_EXPECTED)
+    return { total, weaponScaled: total, flatBonus: 0, weaponRoll }
+  }
+  return { total: spellPower, weaponScaled: spellPower, flatBonus: 0, weaponRoll: 0 }
+}
+
+/**
+ * Hero: baseRoll = weapon only; rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus.
+ * Monster: baseRoll = unarmed(1-4); rawDamage = round(baseRoll * spellPower / 2.5). Expectation = spellPower.
+ */
+export function getEffectiveSpellPower(actor, rng) {
+  return getEffectiveSpellPowerBreakdown(actor, rng).total
 }

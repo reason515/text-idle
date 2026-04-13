@@ -185,6 +185,15 @@ describe('weaponMechanicLines', () => {
     expect(lines).toContain('施法回蓝 +1')
     expect(lines).toContain('当前法力 90/100')
   })
+
+  it('includes spell power weapon vs flat breakdown for magic skill entries', () => {
+    const lines = weaponMechanicLines({
+      damageType: 'magic',
+      spellPowerWeaponScaled: 12,
+      spellPowerFlatBonus: 5,
+    })
+    expect(lines.some((l) => l.includes('法术强度：武器段 12 + 额外 5 = 17'))).toBe(true)
+  })
 })
 
 describe('supportSkillEffectLine', () => {
