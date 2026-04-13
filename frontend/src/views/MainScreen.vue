@@ -739,10 +739,18 @@
         <template v-if="getItemTooltipLines(hoveredBackpackItem).length">
           <div v-for="(line, i) in getItemTooltipLines(hoveredBackpackItem)" :key="i" class="tip-line">
             <span class="tip-label">{{ line.label }}:</span>
-            <span class="tip-value">{{ line.value }}</span>
+            <span v-if="line.affix" class="tip-value tip-affix-line">
+              <span v-if="line.affix.name" class="tip-affix-name">{{ line.affix.name }}</span>
+              <span
+                v-if="line.affix.valueText != null && line.affix.valueText !== ''"
+                class="tip-affix-num"
+              >+{{ line.affix.valueText }}</span>
+              <span v-if="line.affix.stat" class="tip-affix-stat">{{ line.affix.stat }}</span>
+            </span>
+            <span v-else class="tip-value">{{ line.value }}</span>
           </div>
         </template>
-        <div v-else class="tip-empty">No bonuses</div>
+        <div v-else class="tip-empty">无属性加成</div>
       </div>
     </Teleport>
 
@@ -2289,8 +2297,34 @@ function getItemTooltipLines(item) {
     }
   }
   if ((item.blockPct || 0) > 0) lines.push({ label: '格挡率', value: String(item.blockPct) + '%' })
-  for (const p of item.prefixes || []) lines.push({ label: '前缀', value: p.name + ' +' + p.value + ' ' + p.stat })
-  for (const s of item.suffixes || []) lines.push({ label: '后缀', value: s.name + ' +' + s.value + ' ' + s.stat })
+  for (const p of item.prefixes || []) {
+    const name = formatAffixDisplayName(p.name)
+    const statZh = formatAffixStat(p.stat)
+    const val = formatAffixValue(p)
+    lines.push({
+      label: '前缀',
+      value: '',
+      affix: {
+        name: name || '',
+        valueText: val !== '' ? val : '',
+        stat: statZh || '',
+      },
+    })
+  }
+  for (const s of item.suffixes || []) {
+    const name = formatAffixDisplayName(s.name)
+    const statZh = formatAffixStat(s.stat)
+    const val = formatAffixValue(s)
+    lines.push({
+      label: '后缀',
+      value: '',
+      affix: {
+        name: name || '',
+        valueText: val !== '' ? val : '',
+        stat: statZh || '',
+      },
+    })
+  }
   return lines
 }
 
@@ -3746,6 +3780,24 @@ onUnmounted(() => {
 }
 .inventory-slot-tooltip .tip-value {
   color: var(--text-value);
+}
+.inventory-slot-tooltip .tip-affix-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: inherit;
+}
+.inventory-slot-tooltip .tip-affix-name {
+  color: var(--text-label);
+  font-weight: 500;
+}
+.inventory-slot-tooltip .tip-affix-num {
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+}
+.inventory-slot-tooltip .tip-affix-stat {
+  color: var(--accent);
 }
 .inventory-slot-tooltip .tip-empty {
   color: var(--text-muted);
