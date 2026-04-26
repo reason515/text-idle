@@ -54,6 +54,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { PLAYER_STATS_STORAGE_KEY } from '../game/playerStatistics.js'
 
 const router = useRouter()
 const email = ref('')
@@ -113,6 +114,7 @@ async function submit() {
       localStorage.removeItem('combatProgress')
       localStorage.removeItem('playerGold')
       localStorage.removeItem('playerInventory')
+      localStorage.removeItem(PLAYER_STATS_STORAGE_KEY)
       router.push('/intro')
     } else {
       if (res.status === 409) {
