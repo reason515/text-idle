@@ -30,6 +30,33 @@ describe('damageFormulaEquation', () => {
     ).toBe('攻击(100) - 护甲抵消(20) = 80')
   })
 
+  it('uses physicalDamageBeforeBlock for formula rhs when a physical hit was blocked', () => {
+    expect(
+      damageFormulaEquation({
+        rawDamage: 40,
+        finalDamage: 8,
+        physicalDamageBeforeBlock: 20,
+        blockedPhysical: true,
+        damageType: 'physical',
+        targetDefense: 12,
+      }),
+    ).toBe('攻击(40) - 护甲抵消(12) = 20')
+  })
+
+  it('blocked physical hit with shield uses post-block finalDamage in shield suffix', () => {
+    expect(
+      damageFormulaEquation({
+        rawDamage: 30,
+        finalDamage: 10,
+        physicalDamageBeforeBlock: 25,
+        blockedPhysical: true,
+        damageType: 'physical',
+        targetDefense: 5,
+        shieldAbsorbed: 4,
+      }),
+    ).toBe('攻击(30) - 护甲抵消(5) = 25；护盾吸收 4，生命损失 6')
+  })
+
   it('formats miss line with hit and miss chances', () => {
     expect(
       damageFormulaEquation({
@@ -193,6 +220,31 @@ describe('weaponMechanicLines', () => {
       spellPowerFlatBonus: 5,
     })
     expect(lines.some((l) => l.includes('法术强度：武器段 12 + 额外 5 = 17'))).toBe(true)
+  })
+
+  it('includes block success, mitigation line, and block counter', () => {
+    const lines = weaponMechanicLines({
+      blockedPhysical: true,
+      damageType: 'physical',
+      physicalDamageBeforeBlock: 30,
+      finalDamage: 10,
+      blockCounterDamageToMonster: 5,
+      actorName: 'Wolf',
+    })
+    expect(lines).toContain('格挡成功')
+    expect(lines).toContain('格挡减伤后有效伤害 10')
+    expect(lines).toContain('格挡反击：对 Wolf 造成 5 点物理伤害')
+  })
+
+  it('block success without block DR omits mitigation-only line', () => {
+    const lines = weaponMechanicLines({
+      blockedPhysical: true,
+      damageType: 'physical',
+      physicalDamageBeforeBlock: 20,
+      finalDamage: 20,
+    })
+    expect(lines).toContain('格挡成功')
+    expect(lines.some((l) => l.includes('格挡减伤后'))).toBe(false)
   })
 })
 

@@ -22,49 +22,11 @@
           </div>
         </div>
       </div>
-      <div class="topbar-center">
-        <div class="gold-display tooltip-wrap">
-          <span class="gold-icon">&#9830;</span>
-          <span class="gold-value">{{ gold }}</span>
-          <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
-        </div>
-        <button
-          type="button"
-          class="stats-efficiency tooltip-wrap has-tip"
-          data-testid="player-stats-efficiency"
-          @click="showPlayerStatsModal = true"
-        >
-          <span class="stats-eff-label">效率</span>
-          <span class="stats-eff-values"
-            >{{ formattedGoldPerScale }} 金/{{ statsScaleLabel }}步 {{ formattedXpPerScale }} 经验/{{ statsScaleLabel }}步</span
-          >
-          <span class="tooltip-text tooltip-below stats-eff-tooltip"
-            >自上次清零起：探索步 {{ explorationStepsDisplay }}（战斗 {{ playerStats.combatActionSteps }} + 休息
-            {{ playerStats.restSteps }}）。点击打开详情与清零。</span
-          >
-        </button>
-      </div>
-      <div class="topbar-right">
-        <div class="topbar-action-group">
-          <span class="topbar-group-label">功能</span>
-          <div class="topbar-action-buttons">
-            <button class="backpack-btn topbar-btn" @click="showBackpackModal = true">
-              背包 {{ inventoryCount }}/100
-            </button>
-            <button class="shop-btn topbar-btn" @click="showShopModal = true">
-              商店
-            </button>
-          </div>
-        </div>
-        <div class="topbar-logout-group">
-          <span class="topbar-group-label">账号</span>
-          <button class="btn-logout" @click="logout">登出</button>
-        </div>
-      </div>
     </div>
 
     <div class="battle-content">
-      <div class="squad-col battle-panel">
+      <div class="battle-arena">
+        <div class="squad-col battle-panel">
         <div class="panel-header">
           <div class="panel-heading">
             <div class="col-header">{{ squadDisplayName }}</div>
@@ -85,7 +47,7 @@
               v-for="fn in getFloatingNumbers(hero.id)"
               :key="fn.id"
               class="float-num"
-              :class="[fn.type === 'heal' ? 'float-heal' : 'float-damage', fn.skillName ? 'float-skill' : '']"
+              :class="['float-' + fn.type, fn.skillName ? 'float-skill' : '', fn.moveKind ? 'float-move-' + fn.moveKind : '']"
             >
               <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
               <span class="float-value">{{ fn.text }}</span>
@@ -155,6 +117,12 @@
         <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ 招募</button>
       </div>
 
+      <div class="arena-vs" aria-hidden="true">
+        <span class="arena-vs-line" />
+        <span class="arena-vs-mark">VS</span>
+        <span class="arena-vs-line" />
+      </div>
+
       <div class="monsters-col battle-panel">
         <div class="panel-header">
           <div class="panel-heading">
@@ -175,7 +143,7 @@
               v-for="fn in getFloatingNumbers(m.id)"
               :key="fn.id"
               class="float-num"
-              :class="[fn.type === 'heal' ? 'float-heal' : 'float-damage', fn.skillName ? 'float-skill' : '']"
+              :class="['float-' + fn.type, fn.skillName ? 'float-skill' : '', fn.moveKind ? 'float-move-' + fn.moveKind : '']"
             >
               <span v-if="fn.skillName" class="float-skill-name">{{ fn.skillName }}</span>
               <span class="float-value">{{ fn.text }}</span>
@@ -233,7 +201,39 @@
           <div v-if="currentMonsters.length === 0" class="empty-hint">暂无遭遇。</div>
         </div>
       </div>
-      <div class="log-col battle-panel">
+      </div>
+
+      <aside class="feed-panel battle-panel" aria-label="战斗日志与世界聊天">
+        <div class="feed-tabs" role="tablist">
+          <button
+            type="button"
+            class="feed-tab"
+            role="tab"
+            :aria-selected="mainFeedTab === 'log'"
+            :class="{ active: mainFeedTab === 'log' }"
+            data-testid="feed-tab-log"
+            @click="mainFeedTab = 'log'"
+          >
+            战斗日志
+          </button>
+          <button
+            type="button"
+            class="feed-tab"
+            role="tab"
+            :aria-selected="mainFeedTab === 'chat'"
+            :class="{ active: mainFeedTab === 'chat' }"
+            data-testid="feed-tab-chat"
+            @click="mainFeedTab = 'chat'"
+          >
+            世界聊天
+          </button>
+        </div>
+
+        <div
+          v-show="mainFeedTab === 'log'"
+          class="feed-tab-panel feed-log-wrap"
+          role="tabpanel"
+        >
         <div class="log-col-header panel-header">
           <div class="panel-heading">
             <span class="col-header">战斗日志</span>
@@ -549,42 +549,99 @@
             </div>
           </template>
         </div>
-      </div>
+        </div>
+
+        <div
+          v-show="mainFeedTab === 'chat'"
+          class="feed-tab-panel feed-chat-wrap"
+          role="tabpanel"
+        >
+          <div class="feed-chat-hint panel-subtitle">频道与实时消息即将开放，以下为界面预览。</div>
+          <div class="chat-inline-messages">
+            <div class="chat-inline-item">
+              <span class="chat-channel-tag">世界</span>
+              <span class="chat-inline-author">系统</span>
+              <span class="chat-inline-text">世界聊天区域预留中，后续可用于实时频道与系统公告。</span>
+            </div>
+            <div class="chat-inline-item">
+              <span class="chat-channel-tag">示例</span>
+              <span class="chat-inline-author">玩家A</span>
+              <span class="chat-inline-text">有人准备挑战下一张地图的首领吗？</span>
+            </div>
+            <div class="chat-inline-item">
+              <span class="chat-channel-tag">示例</span>
+              <span class="chat-inline-author">玩家B</span>
+              <span class="chat-inline-text">我刚刷到一件不错的法系装备，晚点可以分享配置思路。</span>
+            </div>
+          </div>
+          <div class="chat-inline-composer">
+            <label class="chat-composer-label" for="worldChatPreview">世界消息</label>
+            <textarea
+              id="worldChatPreview"
+              class="chat-inline-input"
+              placeholder="世界聊天功能即将开放"
+              disabled
+            ></textarea>
+            <button type="button" class="btn chat-send-btn" disabled>发送</button>
+          </div>
+        </div>
+      </aside>
     </div>
 
-    <div class="bottom-bar">
-      <div class="bottom-bar-tabs">
-        <span class="bottom-bar-tab active">世界聊天</span>
-        <span class="bottom-bar-tab-soon">更多功能即将开放...</span>
+    <div class="command-deck" aria-label="资源、统计与功能">
+      <div class="command-resource-card">
+        <span class="command-label">资源</span>
+        <div class="gold-display tooltip-wrap">
+          <span class="gold-icon" aria-hidden="true">&#9830;</span>
+          <span class="gold-value">{{ gold }}</span>
+          <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
+        </div>
       </div>
-      <div class="bottom-bar-content">
-        <div class="chat-inline-messages">
-          <div class="chat-inline-item">
-            <span class="chat-channel-tag">世界</span>
-            <span class="chat-inline-author">系统</span>
-            <span class="chat-inline-text">世界聊天区域预留中，后续可用于实时频道与系统公告。</span>
-          </div>
-          <div class="chat-inline-item">
-            <span class="chat-channel-tag">示例</span>
-            <span class="chat-inline-author">玩家A</span>
-            <span class="chat-inline-text">有人准备挑战下一张地图的首领吗？</span>
-          </div>
-          <div class="chat-inline-item">
-            <span class="chat-channel-tag">示例</span>
-            <span class="chat-inline-author">玩家B</span>
-            <span class="chat-inline-text">我刚刷到一件不错的法系装备，晚点可以分享配置思路。</span>
-          </div>
+
+      <button
+        type="button"
+        class="stats-efficiency command-stats-card tooltip-wrap has-tip"
+        data-testid="player-stats-efficiency"
+        @click="showPlayerStatsModal = true"
+      >
+        <span class="command-label">战斗统计</span>
+        <span class="stats-eff-values">
+          <span class="stat-pill stat-pill-gold">
+            <span class="stat-label">金币</span>
+            <span class="stat-value">{{ formattedGoldPerScale }}</span>
+            <span class="stat-unit">/{{ statsScaleLabel }}步</span>
+          </span>
+          <span class="stat-pill stat-pill-exp">
+            <span class="stat-label">经验</span>
+            <span class="stat-value">{{ formattedXpPerScale }}</span>
+            <span class="stat-unit">/{{ statsScaleLabel }}步</span>
+          </span>
+        </span>
+        <span class="tooltip-text tooltip-below stats-eff-tooltip"
+          >自上次清零起：探索步 {{ explorationStepsDisplay }}（战斗 {{ playerStats.combatActionSteps }} + 休息
+          {{ playerStats.restSteps }}）。点击打开详情与清零。</span
+        >
+      </button>
+
+      <div class="command-actions-card">
+        <span class="command-label">功能</span>
+        <div class="command-action-buttons">
+          <button class="backpack-btn topbar-btn" @click="showBackpackModal = true">
+            背包 {{ inventoryCount }}/100
+          </button>
+          <button class="shop-btn topbar-btn" @click="showShopModal = true">
+            商店
+          </button>
+          <button class="topbar-btn command-placeholder" disabled>战术</button>
+          <button class="topbar-btn command-placeholder" disabled>任务</button>
+          <button class="topbar-btn command-placeholder" disabled>队伍</button>
+          <button class="topbar-btn command-placeholder" disabled>图鉴</button>
         </div>
-        <div class="chat-inline-composer">
-          <label class="chat-composer-label" for="worldChatPreview">世界消息</label>
-          <textarea
-            id="worldChatPreview"
-            class="chat-inline-input"
-            placeholder="世界聊天功能即将开放"
-            disabled
-          ></textarea>
-          <button type="button" class="btn chat-send-btn" disabled>发送</button>
-        </div>
+      </div>
+
+      <div class="command-account-card">
+        <span class="command-label">账号</span>
+        <button class="btn-logout" @click="logout">登出</button>
       </div>
     </div>
 
@@ -1830,7 +1887,6 @@ import {
 } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
-import { buildDeferredCombatLogEntries } from '../utils/backgroundCombatLog.js'
 import { buildDisplayHeroesFromSquad } from '../game/squadDisplaySync.js'
 import {
   applyCombatPacingDelayMs,
@@ -2119,6 +2175,8 @@ const backpackTooltipRect = ref(null)
 const formulaTooltip = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
+/** Right feed column: battle log vs world chat preview */
+const mainFeedTab = ref('log')
 const isRunning = ref(false)
 const isPaused = ref(false)
 const currentActorId = ref(null)
@@ -2171,11 +2229,11 @@ function getFloatingNumbers(unitId) {
   return unitFloatingNumbers.value[unitId] ?? []
 }
 
-function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } = {}) {
+function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', moveKind = null } = {}) {
   if (!unitId || isCombatUiDeferred()) return
   const id = ++floatNumId
   const list = unitFloatingNumbers.value[unitId] ?? []
-  list.push({ id, text, skillName, type })
+  list.push({ id, text, skillName, type, moveKind })
   unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: [...list] }
   setTimeout(() => {
     const arr = (unitFloatingNumbers.value[unitId] ?? []).filter((f) => f.id !== id)
@@ -2186,7 +2244,21 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage' } 
     } else {
       unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: arr }
     }
-  }, 1400)
+  }, 1900)
+}
+
+function combatMoveDisplay(entry) {
+  if (!entry || !entry.actorId) return null
+  if (entry.skillName) return { name: entry.skillName, kind: 'skill' }
+  if (entry.skillId) {
+    return {
+      name: getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name ?? entry.skillId,
+      kind: 'skill',
+    }
+  }
+  if (entry.action === 'basic' || entry.action === 'attack') return { name: '普通攻击', kind: 'basic' }
+  if (entry.type === 'actionSkipped') return null
+  return null
 }
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
@@ -3283,6 +3355,11 @@ function applyOneCombatEntry(entry) {
     return
   }
 
+  const move = combatMoveDisplay(entry)
+  if (move) {
+    pushFloatingNumber(entry.actorId, move.name, { type: 'skill-cast', moveKind: move.kind })
+  }
+
   const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
   if (
     (targetHpAfter != null && targetHpAfter <= 0) &&
@@ -3396,33 +3473,6 @@ async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
 
-  function cloneDebuffs(debuffs) {
-    return Array.isArray(debuffs) ? debuffs.map((debuff) => ({ ...debuff })) : []
-  }
-
-  function syncCombatResultImmediately(startIndex = 0) {
-    addLogEntries(buildDeferredCombatLogEntries(result.log, startIndex))
-    displayHeroes.value = result.heroesAfter.map((hero) => {
-      const display = computeHeroDisplay(hero)
-      return {
-        ...display,
-        currentHP: hero.currentHP ?? display.currentHP,
-        currentMP: hero.currentMP ?? display.currentMP,
-        debuffs: cloneDebuffs(hero.debuffs),
-        shield: hero.shield,
-      }
-    })
-    currentMonsters.value = result.monstersAfter.map((monster) => ({
-      ...monster,
-      debuffs: cloneDebuffs(monster.debuffs),
-    }))
-    monsterTargets.value = {}
-    unitFloatingNumbers.value = {}
-    currentActorId.value = null
-    currentTargetId.value = null
-    syncSelectedUnitsFromCombat()
-  }
-
   if (isE2eFastMode()) {
     for (let i = 0; i < result.log.length; i++) {
       if (!isRunning.value) return
@@ -3449,25 +3499,12 @@ async function animateCombatLog(result) {
     return
   }
 
-  if (isCombatUiDeferred()) {
-    syncCombatResultImmediately()
-    return
-  }
-
   const combatLogStepDelayMs = getCombatLogStepDelayMs()
   for (let i = 0; i < result.log.length; i++) {
     const entry = result.log[i]
     if (!isRunning.value) return
-    if (isCombatUiDeferred()) {
-      syncCombatResultImmediately(i)
-      return
-    }
     await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     if (!isRunning.value) return
-    if (isCombatUiDeferred()) {
-      syncCombatResultImmediately(i)
-      return
-    }
     applyOneCombatEntry(entry)
     await scrollLog()
 
@@ -3485,10 +3522,6 @@ async function animateCombatLog(result) {
       currentMonsters.value = [...currentMonsters.value]
       syncSelectedUnitsFromCombat()
       await scrollLog()
-      if (isCombatUiDeferred()) {
-        syncCombatResultImmediately(i + 1)
-        return
-      }
       await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     }
   }
@@ -3522,20 +3555,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     })
   }
 
-  function completeRestImmediately(nextRest) {
-    let resolved = nextRest
-    while (!resolved.isComplete) {
-      resolved = applyRestStep(resolved)
-    }
-    return resolved
-  }
-
   while (!rest.isComplete && isRunning.value) {
-    if (isCombatUiDeferred()) {
-      rest = completeRestImmediately(rest)
-      syncRestState(rest)
-      break
-    }
     rest = applyRestStep(rest)
     syncRestState(rest)
     addLogEntry({
@@ -3757,11 +3777,11 @@ onUnmounted(() => {
 .top-bar {
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  justify-content: stretch;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
   border-bottom: 2px solid var(--border-dark);
-  background: var(--bg-panel);
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-dark));
   flex-shrink: 0;
 }
 
@@ -3785,9 +3805,97 @@ onUnmounted(() => {
 .topbar-center {
   flex-shrink: 0;
   align-items: center;
-  flex-direction: column;
-  gap: 0.35rem;
   justify-content: center;
+  padding: 0;
+}
+
+.topbar-stats-cluster {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+.command-deck {
+  display: grid;
+  grid-template-columns: 12rem 32rem minmax(34rem, 1fr) 6rem;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 2px solid var(--border-dark);
+  background: linear-gradient(180deg, var(--bg-dark), var(--bg-panel));
+  flex-shrink: 0;
+}
+
+.command-resource-card,
+.command-stats-card,
+.command-actions-card,
+.command-account-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+.command-label {
+  color: var(--text-label);
+  font-size: var(--font-xs);
+  letter-spacing: 0.06em;
+}
+
+.command-stats-card {
+  align-items: stretch;
+  text-align: left;
+  cursor: pointer;
+}
+
+.command-stats-card.stats-efficiency {
+  max-width: none;
+}
+
+.command-stats-card.tooltip-wrap.has-tip {
+  display: flex;
+  width: auto;
+  border-bottom: none;
+}
+
+.command-stats-card:hover {
+  background: var(--bg-hover);
+}
+
+.command-actions-card,
+.command-account-card {
+  align-items: stretch;
+}
+
+.command-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.command-placeholder {
+  color: var(--text-muted);
+  border-color: var(--border-dark);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.topbar-btn:disabled {
+  background: var(--bg-dark);
+  color: var(--text-muted);
+  border-color: var(--border-dark);
+  cursor: not-allowed;
 }
 
 .topbar-action-group,
@@ -3795,10 +3903,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.3rem;
-  padding: 0.4rem 0.6rem;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
 }
 
 .topbar-action-buttons {
@@ -3818,9 +3928,10 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.45rem 0.65rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
+  border-radius: 6px;
 }
 
 .topbar-map-section {
@@ -3882,13 +3993,15 @@ onUnmounted(() => {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.7rem;
-  background: var(--bg-darker);
-  border: 1px solid rgba(255, 204, 68, 0.2);
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
   color: var(--color-gold);
   font-size: var(--font-base);
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 204, 68, 0.12);
 }
 .gold-icon {
   color: var(--color-gold);
@@ -3898,7 +4011,7 @@ onUnmounted(() => {
 .gold-value {
   font-weight: normal;
   min-width: 2ch;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   line-height: 1;
   color: var(--color-gold);
 }
@@ -3911,18 +4024,27 @@ onUnmounted(() => {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
+  justify-content: center;
+  gap: 0.12rem;
   margin: 0;
-  padding: 0.3rem 0.55rem;
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
-  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
   color: var(--text);
   font-family: inherit;
   font-size: var(--font-sm);
   cursor: pointer;
   text-align: left;
-  max-width: 22rem;
+  max-width: min(22rem, 36vw);
+  min-height: 0;
+}
+.stats-efficiency:hover {
+  background: var(--bg-hover);
+}
+.stats-efficiency:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .stats-eff-label {
   color: var(--text-label);
@@ -3930,9 +4052,49 @@ onUnmounted(() => {
   letter-spacing: 0.04em;
 }
 .stats-eff-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--text-value);
   font-size: var(--font-sm);
   line-height: 1.35;
+}
+.command-stats-card .stats-eff-values {
+  flex-wrap: nowrap;
+}
+.stat-pill {
+  min-width: 0;
+  display: inline-grid;
+  grid-template-columns: max-content minmax(2ch, max-content) max-content;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  font-variant-numeric: tabular-nums;
+}
+.command-stats-card .stat-pill {
+  flex: 1;
+}
+.stat-label {
+  color: var(--text-label);
+  font-size: var(--font-xs);
+}
+.stat-pill-gold .stat-value {
+  color: var(--color-gold);
+}
+.stat-pill-exp .stat-value {
+  color: var(--color-exp);
+}
+.stat-value {
+  font-size: var(--font-sm);
+  font-weight: normal;
+  line-height: 1;
+}
+.stat-unit {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
 }
 .stats-eff-tooltip {
   max-width: 18rem;
@@ -3985,12 +4147,14 @@ onUnmounted(() => {
 }
 
 .topbar-btn {
-  min-height: 1.8rem;
-  padding: 0.35rem 0.6rem;
+  min-height: 1.85rem;
+  padding: 0.4rem 0.75rem;
   font-family: inherit;
   font-size: var(--font-sm);
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 4px;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
 .modal-box.inventory-modal {
@@ -4140,7 +4304,7 @@ onUnmounted(() => {
     box-shadow: none;
   }
 }
-.log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: var(--font-base); }
+.log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: var(--font-sm); }
 
 .item-detail-modal .detail-value-req { color: var(--text-value); }
 .item-detail-modal .detail-value.val-gold { color: var(--color-gold); }
@@ -4316,8 +4480,38 @@ onUnmounted(() => {
   50% { opacity: 0.4; }
 }
 @keyframes damage-flash {
-  0% { background-color: rgba(255, 68, 68, 0.35); }
-  100% { background-color: var(--bg-dark); }
+  0% {
+    background-color: rgba(255, 68, 68, 0.45);
+    transform: translateX(0) scale(1);
+  }
+  18% {
+    background-color: rgba(255, 68, 68, 0.28);
+    transform: translateX(-0.18rem) scale(1.025);
+  }
+  34% {
+    background-color: rgba(255, 68, 68, 0.38);
+    transform: translateX(0.18rem) scale(1.02);
+  }
+  55% {
+    background-color: rgba(255, 68, 68, 0.18);
+    transform: translateX(-0.08rem) scale(1.01);
+  }
+  100% {
+    background-color: var(--bg-elevated);
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes hero-attack-lunge {
+  0% { transform: translateX(0) scale(1); }
+  22% { transform: translateX(0.45rem) scale(1.025); }
+  45% { transform: translateX(0.2rem) scale(1.015); }
+  100% { transform: translateX(0) scale(1); }
+}
+@keyframes monster-attack-lunge {
+  0% { transform: translateX(0) scale(1); }
+  22% { transform: translateX(-0.45rem) scale(1.025); }
+  45% { transform: translateX(-0.2rem) scale(1.015); }
+  100% { transform: translateX(0) scale(1); }
 }
 
 .btn-logout {
@@ -4337,7 +4531,7 @@ onUnmounted(() => {
 
 .battle-content {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr) 16rem;
+  grid-template-columns: minmax(0, 1fr) clamp(32rem, 42vw, 41rem);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -4346,38 +4540,196 @@ onUnmounted(() => {
   background: var(--bg-dark);
 }
 
+.battle-arena {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(25rem, 29rem) minmax(3.5rem, 5vw) minmax(17rem, 20rem);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.75rem, 2vw, 1.75rem);
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(0.75rem, 1.8vw, 1.5rem);
+  background:
+    radial-gradient(ellipse 48% 34% at 50% 50%, var(--bg-elevated) 0%, var(--bg-panel) 42%, transparent 70%),
+    linear-gradient(90deg, var(--bg-dark) 0%, var(--bg-panel) 28%, var(--bg-dark) 50%, var(--bg-panel) 72%, var(--bg-dark) 100%);
+  border-right: 1px solid var(--border-dark);
+  overflow: hidden;
+}
+
+.battle-arena::before {
+  content: '';
+  position: absolute;
+  inset: 12% 7%;
+  border-top: 1px solid var(--border-dark);
+  border-bottom: 1px solid var(--border-dark);
+  background:
+    linear-gradient(90deg, transparent 0%, var(--border-subtle) 50%, transparent 100%),
+    repeating-linear-gradient(90deg, transparent 0 3.5rem, var(--border-subtle) 3.5rem 3.55rem);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.battle-arena::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 11%;
+  bottom: 11%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--border), transparent);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.arena-vs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 100%;
+  min-width: 3.5rem;
+  height: min(68vh, 38rem);
+  padding: 0;
+  align-self: center;
+  background: transparent;
+  border: none;
+}
+
+.arena-vs-line {
+  flex: 1;
+  width: 1px;
+  min-height: 1.5rem;
+  background: linear-gradient(180deg, transparent, var(--border-dark), var(--border), var(--border-dark), transparent);
+}
+
+.arena-vs-mark {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: var(--font-md);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-value);
+  padding: 0;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 14px var(--focus-glow), inset 0 0 0 1px var(--border-subtle);
+}
+
 .battle-panel {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.75rem;
+  padding: 0.7rem;
   background: var(--bg-panel);
-  border: none;
-  border-left: 1px solid var(--border-dark);
-  border-right: 1px solid var(--border-dark);
+  border: 1px solid var(--border-dark);
+  box-shadow: 0 0 18px rgba(0, 204, 102, 0.14), inset 0 0 0 1px var(--border-subtle);
 }
 
 .squad-col {
-  grid-column: 1;
-  grid-row: 1;
+  width: 100%;
+  height: min(68vh, 38rem);
+  min-height: 0;
+  max-height: min(68vh, 38rem);
+  justify-self: end;
   border-left: 3px solid var(--accent);
-  border-right: 1px solid var(--border-dark);
-  background: linear-gradient(90deg, rgba(0, 255, 136, 0.03) 0%, var(--bg-panel) 40%);
+  background: linear-gradient(90deg, var(--bg-elevated) 0%, var(--bg-panel) 62%);
+  overflow: visible;
 }
 
 .monsters-col {
-  grid-column: 3;
-  grid-row: 1;
+  width: 100%;
+  height: min(68vh, 38rem);
+  min-height: 0;
+  max-height: min(68vh, 38rem);
+  justify-self: start;
   border-right: 3px solid var(--color-defeat);
-  border-left: 1px solid var(--border-dark);
-  background: linear-gradient(270deg, rgba(255, 68, 68, 0.03) 0%, var(--bg-panel) 40%);
+  background: linear-gradient(270deg, var(--bg-elevated) 0%, var(--bg-panel) 62%);
 }
 
-.log-col {
-  grid-column: 2;
-  grid-row: 1;
+.feed-panel {
+  grid-column: auto;
+  grid-row: auto;
+  border-left: none;
+  min-width: 0;
+  padding: 0.65rem;
+  background: var(--bg-panel);
   border-left: 1px solid var(--border-dark);
-  border-right: 1px solid var(--border-dark);
+}
+
+.feed-tabs {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+}
+
+.feed-tab {
+  flex: 1;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.feed-tab:hover {
+  color: var(--text-value);
+  background: var(--bg-hover);
+}
+
+.feed-tab.active {
+  color: var(--text-value);
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.feed-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.feed-tab-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.feed-log-wrap .log-col-header {
+  flex-shrink: 0;
+}
+
+.feed-chat-wrap {
+  gap: 0.45rem;
+}
+
+.feed-chat-hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 0.1rem 0.25rem;
+  border-bottom: 1px solid var(--border-dark);
 }
 
 .panel-header {
@@ -4385,8 +4737,8 @@ onUnmounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.4rem;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border-dark);
   flex-shrink: 0;
 }
@@ -4407,6 +4759,7 @@ onUnmounted(() => {
   margin: 0.2rem 0 0 0;
   color: var(--text-muted);
   font-size: var(--font-xs);
+  line-height: 1.35;
 }
 
 .panel-chip {
@@ -4792,49 +5145,7 @@ onUnmounted(() => {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Bottom bar (function area / chat) */
-.bottom-bar {
-  flex-shrink: 0;
-  border-top: 2px solid var(--border-dark);
-  background: var(--bg-panel);
-  display: flex;
-  flex-direction: column;
-  max-height: 9rem;
-}
-
-.bottom-bar-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0.75rem;
-  border-bottom: 1px solid var(--border-dark);
-  flex-shrink: 0;
-}
-
-.bottom-bar-tab {
-  font-size: var(--font-sm);
-  color: var(--accent);
-  padding: 0.25rem 0.5rem;
-  border-bottom: 2px solid var(--accent);
-  cursor: default;
-}
-
-.bottom-bar-tab-soon {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.bottom-bar-content {
-  display: flex;
-  align-items: stretch;
-  gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
+/* World chat preview (feed panel tab) */
 .chat-inline-messages {
   flex: 1;
   min-width: 0;
@@ -4936,35 +5247,106 @@ onUnmounted(() => {
   text-shadow: none;
 }
 
+.feed-chat-wrap .chat-inline-messages {
+  flex: 1;
+  min-height: 0;
+  padding: 0.35rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+}
+
+.feed-chat-wrap .chat-inline-text {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.feed-chat-wrap .chat-inline-composer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.35rem 0 0;
+}
+
+.feed-chat-wrap .chat-inline-input {
+  width: 100%;
+  max-width: none;
+  min-height: 2.5rem;
+  max-height: 4.5rem;
+}
+
+.feed-chat-wrap .chat-send-btn {
+  align-self: flex-end;
+}
+
+.feed-panel.battle-panel {
+  border-left: 1px solid var(--border-dark);
+  border-right: none;
+}
+
 /* Hero cards */
 .squad-list {
   flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.55rem;
+  overflow: visible;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.5rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+.squad-list::-webkit-scrollbar,
+.monster-list::-webkit-scrollbar {
+  width: 6px;
+}
+.squad-list::-webkit-scrollbar-track,
+.monster-list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+.squad-list::-webkit-scrollbar-thumb,
+.monster-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
 }
 .hero-card {
   border: 1px solid;
-  padding: 0.55rem 0.6rem;
+  padding: 0.5rem 0.55rem;
   background: var(--bg-elevated);
   cursor: pointer;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
   transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
   box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.hero-card:hover {
+  z-index: 20;
+}
+.hero-card:only-child,
+.hero-card:nth-child(3) {
+  grid-column: 1 / 3;
+  width: calc((100% - 0.4rem) / 2);
+  justify-self: center;
+}
+.squad-list .empty-hint {
+  grid-column: 1 / 3;
+  align-self: center;
 }
 .hero-card:hover {
   background: var(--bg-hover);
 }
 .hero-card.acting {
-  transform: translateY(-0.1rem);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--focus-glow);
+  animation: hero-attack-lunge 0.9s ease-out;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--focus-glow), inset 0 0 0 1px var(--accent);
 }
 .hero-card.targetHit {
-  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
-  animation: damage-flash 0.4s ease-out;
+  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 18px rgba(255, 68, 68, 0.65), inset 0 0 0 1px var(--color-defeat);
+  animation: damage-flash 0.9s ease-out;
 }
 .hero-card.defeated {
   opacity: 0.65;
@@ -4990,36 +5372,56 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: baseline;
   gap: 0.5rem;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.25rem;
+  min-width: 0;
 }
 .hero-name {
-  font-size: var(--font-base);
+  font-size: var(--font-base-sm);
   font-weight: bold;
   color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hero-class {
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   display: inline-block;
   padding: 0.12rem 0.38rem;
   border: 1px solid currentColor;
+  flex-shrink: 0;
 }
 .card-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.35rem;
 }
 .card-level {
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   color: var(--text-muted);
 }
 .card-role {
   color: var(--text-label);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   padding: 0.12rem 0.4rem;
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-card .bar-label,
+.hero-card .bar-num {
+  font-size: var(--font-xs);
+}
+.hero-card .bar-label {
+  width: 1.85rem;
+}
+.hero-card .bar-num {
+  min-width: 3.5rem;
 }
 .recruit-btn {
   margin-top: 0.65rem;
@@ -5048,12 +5450,12 @@ onUnmounted(() => {
 .bar-label {
   font-size: var(--font-sm);
   color: var(--text-label);
-  width: 2.2rem;
+  width: 2.25rem;
   flex-shrink: 0;
 }
 .bar-track {
   flex: 1;
-  height: 5px;
+  height: 0.4rem;
   background: var(--scrollbar-track);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
@@ -5073,8 +5475,9 @@ onUnmounted(() => {
   font-size: var(--font-sm);
   color: var(--text-muted);
   flex-shrink: 0;
-  min-width: 4rem;
+  min-width: 4.4rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Log column */
@@ -5083,10 +5486,11 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.85rem;
+  gap: 0.4rem;
+  padding: 0.7rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
+  font-size: var(--font-sm);
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -5121,7 +5525,7 @@ onUnmounted(() => {
 }
 
 .log-map-entry {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   padding: 0.75rem 0.85rem;
   margin: 0.15rem 0 0.35rem 0;
   background: var(--bg-elevated);
@@ -5134,7 +5538,7 @@ onUnmounted(() => {
 .log-map-entry-label {
   color: var(--color-exp);
   font-weight: bold;
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   display: block;
   margin-bottom: 0.3rem;
   letter-spacing: 0.02em;
@@ -5146,7 +5550,7 @@ onUnmounted(() => {
 }
 
 .log-encounter {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--accent);
   padding: 0.55rem 0.75rem;
   background: var(--bg-elevated);
@@ -5156,7 +5560,7 @@ onUnmounted(() => {
 }
 
 .log-summary {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   font-weight: bold;
   display: flex;
   flex-direction: column;
@@ -5194,7 +5598,7 @@ onUnmounted(() => {
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
 .log-summary .val-penalty { color: var(--error); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .log-victory-label {
-  font-size: 1.05em;
+  font-size: var(--font-sm);
   font-weight: bold;
   color: var(--color-victory);
   text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
@@ -5204,7 +5608,7 @@ onUnmounted(() => {
 .log-summary .log-monster-count { color: var(--color-exp); font-weight: bold; }
 .log-summary .log-rounds-num { color: var(--text-value); font-weight: bold; }
 .log-summary .log-defeat-label {
-  font-size: 1.05em;
+  font-size: var(--font-sm);
   font-weight: bold;
   color: var(--color-defeat);
   text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
@@ -5213,7 +5617,7 @@ onUnmounted(() => {
 .victory-text { color: var(--color-victory); }
 
 .log-levelup {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   font-weight: bold;
   padding: 0.55rem 0.7rem;
   margin: 0.15rem 0;
@@ -5227,7 +5631,7 @@ onUnmounted(() => {
   text-shadow: 0 0 6px rgba(136, 255, 170, 0.4);
 }
 .log-levelup-icon {
-  font-size: 1rem;
+  font-size: var(--font-sm);
   color: var(--color-exp);
 }
 .log-levelup-text { color: var(--text); }
@@ -5239,7 +5643,7 @@ onUnmounted(() => {
 .defeat-text { color: var(--color-defeat); }
 
 .log-defeated {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   font-weight: bold;
   padding: 0.5rem 0.65rem;
   margin: 0.15rem 0;
@@ -5254,7 +5658,7 @@ onUnmounted(() => {
   text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
 }
 .log-defeated-icon {
-  font-size: 1rem;
+  font-size: var(--font-sm);
   color: var(--color-defeat);
 }
 .log-defeated-name { font-weight: bold; }
@@ -5277,14 +5681,15 @@ onUnmounted(() => {
 }
 
 .log-entry {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   align-items: baseline;
-  padding: 0.45rem 0.65rem;
+  padding: 0.5rem 0.65rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
+  line-height: 1.45;
 }
 .log-round {
   color: var(--color-log-detail);
@@ -5328,7 +5733,7 @@ onUnmounted(() => {
 }
 /* Taunt expired: same body line as other log rows (no muted secondary line). */
 .log-entry.log-intent-taunt-ended {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--text-value);
 }
 .log-ot .log-ot-mark {
@@ -5418,14 +5823,16 @@ onUnmounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.55rem;
+  gap: 0.4rem;
+  padding: 0.5rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 .monster-card {
   border: 1px solid var(--border-dark);
-  padding: 0.55rem 0.6rem;
+  padding: 0.5rem 0.55rem;
   background: var(--bg-elevated);
   cursor: pointer;
   transition: background 0.12s, transform 0.2s ease-out, box-shadow 0.2s ease-out;
@@ -5435,23 +5842,31 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 .monster-card.acting {
-  transform: translateY(-0.1rem);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--focus-glow);
+  animation: monster-attack-lunge 0.9s ease-out;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--focus-glow), inset 0 0 0 1px var(--accent);
 }
 .monster-card.targetHit {
-  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.9), 0 0 12px rgba(255, 68, 68, 0.4);
-  animation: damage-flash 0.4s ease-out;
+  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 18px rgba(255, 68, 68, 0.65), inset 0 0 0 1px var(--color-defeat);
+  animation: damage-flash 0.9s ease-out;
 }
 .monster-card.defeated {
   opacity: 0.65;
   border-color: var(--color-defeat) !important;
   background: rgba(255, 68, 68, 0.06);
 }
-.monster-name { font-size: var(--font-base); color: var(--text); }
+.monster-name {
+  font-size: var(--font-base);
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .monster-tier {
   font-size: var(--font-sm);
   padding: 0 0.2rem;
   border: 1px solid currentColor;
+  flex-shrink: 0;
 }
 .tier-normal { color: var(--color-normal); }
 .tier-elite { color: var(--color-elite); }
@@ -6364,6 +6779,15 @@ input.tactics-condition-value[type="number"] {
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
 }
+.hero-tank-check .tooltip-text {
+  top: calc(100% + 4px);
+  bottom: auto;
+  left: 0;
+  right: auto;
+  max-width: 13rem;
+  white-space: normal;
+  z-index: 120;
+}
 .hero-tank-check input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
@@ -6440,7 +6864,7 @@ input.tactics-condition-value[type="number"] {
   flex-direction: column;
   align-items: center;
   gap: 0.05rem;
-  animation: float-up-fade 1.2s ease-out forwards;
+  animation: float-up-fade 1.8s ease-out forwards;
   white-space: nowrap;
 }
 .float-value {
@@ -6454,6 +6878,27 @@ input.tactics-condition-value[type="number"] {
 .float-heal .float-value {
   color: var(--color-heal);
 }
+.float-skill-cast {
+  top: 20%;
+  z-index: 6;
+  animation: skill-cast-flash 1.15s ease-out forwards;
+}
+.float-skill-cast .float-value {
+  padding: 0.18rem 0.45rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--color-skill);
+  color: var(--color-skill);
+  font-size: var(--font-sm);
+  font-weight: bold;
+  box-shadow: 0 0 12px rgba(255, 238, 102, 0.35);
+  text-shadow: 0 0 5px rgba(255, 238, 102, 0.45);
+}
+.float-skill-cast.float-move-basic .float-value {
+  border-color: var(--color-log-basic);
+  color: var(--color-log-basic);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.22);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.35);
+}
 .float-skill-name {
   font-size: var(--font-xs);
   color: var(--color-skill);
@@ -6463,15 +6908,37 @@ input.tactics-condition-value[type="number"] {
 @keyframes float-up-fade {
   0% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(0.95);
   }
-  30% {
+  18% {
     opacity: 1;
-    transform: translate(-50%, -80%) scale(1.15);
+    transform: translate(-50%, -72%) scale(1.18);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -110%) scale(1.1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -150%) scale(1.1);
+    transform: translate(-50%, -165%) scale(1.05);
+  }
+}
+@keyframes skill-cast-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -78%) scale(1.08);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-50%, -92%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -118%) scale(0.96);
   }
 }
 

@@ -278,7 +278,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(pauseBtn).toContainText('暂停')
   })
 
-  test('layout: squad left, log center, monsters right (battlefield)', async ({ page }) => {
+  test('layout: centered duel (squad vs monsters), log+chat feed panel', async ({ page }) => {
     const email = uniqueTestEmail('layout-e2e')
     await registerAndGoToMain(page, email)
 
@@ -286,14 +286,18 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     const battleContent = page.locator('.battle-content')
     await expect(battleContent).toBeVisible()
-    const cols = battleContent.locator('> div')
-    await expect(cols).toHaveCount(3)
-    await expect(cols.nth(0)).toHaveClass(/squad-col/)
-    await expect(cols.nth(1)).toHaveClass(/monsters-col/)
-    await expect(cols.nth(2)).toHaveClass(/log-col/)
+    const top = battleContent.locator('> *')
+    await expect(top).toHaveCount(2)
+    await expect(top.nth(0)).toHaveClass(/battle-arena/)
+    await expect(top.nth(1)).toHaveClass(/feed-panel/)
 
-    const bottomBar = page.locator('.bottom-bar')
-    await expect(bottomBar).toBeVisible()
+    const arena = page.locator('.battle-arena')
+    await expect(arena.locator('.squad-col')).toBeVisible()
+    await expect(arena.locator('.monsters-col')).toBeVisible()
+    await expect(arena.locator('.arena-vs')).toBeVisible()
+
+    await expect(page.getByTestId('feed-tab-log')).toBeVisible()
+    await expect(page.getByTestId('feed-tab-chat')).toBeVisible()
   })
 
   test('hero detail modal shows consistent HP in basic info and secondary attributes', async ({ page }) => {

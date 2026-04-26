@@ -1793,6 +1793,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           }
         }
       }
+      let physicalDamageBeforeBlock = null
       if (
         target.side === 'hero' &&
         hitResult.isHit &&
@@ -1805,6 +1806,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         let blockedPhysical = false
         const bc = target.blockPct || 0
         if (bc > 0 && rng() * 100 < Math.min(75, bc)) {
+          physicalDamageBeforeBlock = fd
           blockedPhysical = true
           const bdr = target.blockDrPct || 0
           fd = Math.max(0, Math.floor(fd * Math.max(0.1, 1 - Math.min(85, bdr) / 100)))
@@ -2089,6 +2091,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (rageOnKillGain > 0) logEntry.rageOnKillGain = rageOnKillGain
       if (doubleStrikeDamage > 0) logEntry.doubleStrikeDamage = doubleStrikeDamage
       if (damage.blockedPhysical) logEntry.blockedPhysical = true
+      if (physicalDamageBeforeBlock != null) logEntry.physicalDamageBeforeBlock = physicalDamageBeforeBlock
       if (
         actorHPBeforeWeaponHeal != null &&
         (weaponLifeStealHeal > 0 || weaponLifeOnHitHeal > 0)

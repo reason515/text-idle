@@ -41,7 +41,15 @@ export function damageFormulaEquation(entry) {
 
   const defLabel = entry.damageType === 'magic' ? '抗性抵消' : '护甲抵消'
   const defVal = Math.max(0, entry.targetDefense ?? 0)
-  const mainResult = entry.primaryFinalDamage != null ? entry.primaryFinalDamage : final
+  let mainResult = entry.primaryFinalDamage != null ? entry.primaryFinalDamage : final
+  if (
+    entry.blockedPhysical &&
+    entry.physicalDamageBeforeBlock != null &&
+    entry.damageType === 'physical' &&
+    entry.primaryFinalDamage == null
+  ) {
+    mainResult = entry.physicalDamageBeforeBlock
+  }
 
   function appendShieldSuffix(baseLine) {
     if (entry.shieldAbsorbed == null || entry.shieldAbsorbed <= 0) return baseLine
@@ -85,6 +93,25 @@ export function weaponMechanicLines(entry) {
     lines.push('护甲抵消值为穿透与无视护甲百分比之后的有效护甲')
   } else if (entry.heroMitigationKind === 'magic') {
     lines.push('抗性抵消值为法术穿透与无视抗性百分比之后的有效抗性')
+  }
+  if (
+    entry.blockedPhysical &&
+    entry.damageType === 'physical' &&
+    !entry.isMiss
+  ) {
+    lines.push('格挡成功')
+    if (
+      entry.physicalDamageBeforeBlock != null &&
+      entry.finalDamage != null &&
+      entry.finalDamage < entry.physicalDamageBeforeBlock
+    ) {
+      lines.push(`格挡减伤后有效伤害 ${entry.finalDamage}`)
+    }
+  }
+  if ((entry.blockCounterDamageToMonster ?? 0) > 0 && entry.actorName) {
+    lines.push(
+      `格挡反击：对 ${entry.actorName} 造成 ${entry.blockCounterDamageToMonster} 点物理伤害`,
+    )
   }
   if (entry.spellPowerWeaponScaled != null && entry.damageType === 'magic') {
     const w = entry.spellPowerWeaponScaled
