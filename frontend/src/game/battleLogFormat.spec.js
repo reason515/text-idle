@@ -1,10 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import {
   damageFormulaEquation,
+  formatBattleLogNum,
   supportSkillEffectLine,
   netDamageToHp,
   weaponMechanicLines,
 } from './battleLogFormat.js'
+
+describe('formatBattleLogNum', () => {
+  it('strips IEEE noise from coefficients', () => {
+    expect(formatBattleLogNum(0.8500000000000001)).toBe('0.85')
+  })
+
+  it('shows integers without decimals', () => {
+    expect(formatBattleLogNum(14)).toBe('14')
+    expect(formatBattleLogNum(14.000000000000002)).toBe('14')
+  })
+
+  it('trims trailing zeros on fractional values', () => {
+    expect(formatBattleLogNum(1.2)).toBe('1.2')
+    expect(formatBattleLogNum(0.75)).toBe('0.75')
+  })
+})
 
 describe('damageFormulaEquation', () => {
   it('returns empty for shield entry without raw/final damage numbers', () => {
@@ -103,6 +120,19 @@ describe('damageFormulaEquation', () => {
         targetDefense: 4,
       }),
     ).toBe('攻击(24) x 1.2 - 抗性抵消(4) = 20')
+  })
+
+  it('formats skill coefficient without float junk', () => {
+    expect(
+      damageFormulaEquation({
+        skillId: 'fireball',
+        skillCoefficient: 0.8500000000000001,
+        rawDamage: 17,
+        finalDamage: 14,
+        damageType: 'magic',
+        targetDefense: 3,
+      }),
+    ).toBe('攻击(17) x 0.85 - 抗性抵消(3) = 14')
   })
 
   it('appends shield absorb and net HP loss when shieldAbsorbed present', () => {

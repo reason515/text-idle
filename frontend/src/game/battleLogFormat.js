@@ -1,4 +1,17 @@
 /**
+ * Format a finite number for battle log display without IEEE-754 noise (e.g. 0.85 not 0.8500...001).
+ * @param {number} n
+ * @returns {string}
+ */
+export function formatBattleLogNum(n) {
+  if (n == null || !Number.isFinite(n)) return String(n)
+  const cleaned = Number.parseFloat(n.toPrecision(12))
+  const nearest = Math.round(cleaned)
+  if (Math.abs(cleaned - nearest) < 1e-9) return String(nearest)
+  return cleaned.toFixed(8).replace(/\.?0+$/, '')
+}
+
+/**
  * Build damage formula line for battle log detail (Chinese UI strings).
  * Returns empty string when entry is not a damage hit (e.g. heal, shield).
  * @param {Object} entry - Combat log entry
@@ -11,20 +24,20 @@ export function damageFormulaEquation(entry) {
     const gross = entry.damage
     if (entry.shieldAbsorbed != null && entry.shieldAbsorbed > 0) {
       const net = Math.max(0, gross - entry.shieldAbsorbed)
-      let line = `持续伤害 ${gross}；护盾吸收 ${entry.shieldAbsorbed}，生命损失 ${net}`
+      let line = `持续伤害 ${formatBattleLogNum(gross)}；护盾吸收 ${formatBattleLogNum(entry.shieldAbsorbed)}，生命损失 ${formatBattleLogNum(net)}`
       if (entry.shieldBroke) {
         line += '；护盾已破（吸收已耗尽）'
       } else if (entry.shieldAbsorbRemainingAfter != null || entry.shieldRemainingRoundsAfter != null) {
         const rem = entry.shieldAbsorbRemainingAfter ?? 0
         const rounds = entry.shieldRemainingRoundsAfter
-        line += `；护盾剩余吸收 ${rem}`
+        line += `；护盾剩余吸收 ${formatBattleLogNum(rem)}`
         if (rounds != null && rounds > 0) {
           line += `，剩余 ${rounds} 回合`
         }
       }
       return line
     }
-    return `持续伤害 ${gross}`
+    return `持续伤害 ${formatBattleLogNum(gross)}`
   }
 
   const raw = entry.rawDamage
@@ -54,13 +67,13 @@ export function damageFormulaEquation(entry) {
   function appendShieldSuffix(baseLine) {
     if (entry.shieldAbsorbed == null || entry.shieldAbsorbed <= 0) return baseLine
     const net = Math.max(0, final - entry.shieldAbsorbed)
-    let extra = `；护盾吸收 ${entry.shieldAbsorbed}，生命损失 ${net}`
+    let extra = `；护盾吸收 ${formatBattleLogNum(entry.shieldAbsorbed)}，生命损失 ${formatBattleLogNum(net)}`
     if (entry.shieldBroke) {
       extra += '；护盾已破（吸收已耗尽）'
     } else if (entry.shieldAbsorbRemainingAfter != null || entry.shieldRemainingRoundsAfter != null) {
       const rem = entry.shieldAbsorbRemainingAfter ?? 0
       const rounds = entry.shieldRemainingRoundsAfter
-      extra += `；护盾剩余吸收 ${rem}`
+      extra += `；护盾剩余吸收 ${formatBattleLogNum(rem)}`
       if (rounds != null && rounds > 0) {
         extra += `，剩余 ${rounds} 回合`
       }
@@ -68,17 +81,21 @@ export function damageFormulaEquation(entry) {
     return `${baseLine}${extra}`
   }
 
+  const rawStr = formatBattleLogNum(raw)
+  const defStr = formatBattleLogNum(defVal)
+  const mainStr = formatBattleLogNum(mainResult)
+
   if (entry.skillId && entry.skillCoefficient != null) {
-    const coeff = entry.skillCoefficient
+    const coeffStr = formatBattleLogNum(entry.skillCoefficient)
     if (entry.isCrit) {
-      return appendShieldSuffix(`攻击(${raw}) x ${coeff} x 1.5 - ${defLabel}(${defVal}) = ${mainResult}`)
+      return appendShieldSuffix(`攻击(${rawStr}) x ${coeffStr} x 1.5 - ${defLabel}(${defStr}) = ${mainStr}`)
     }
-    return appendShieldSuffix(`攻击(${raw}) x ${coeff} - ${defLabel}(${defVal}) = ${mainResult}`)
+    return appendShieldSuffix(`攻击(${rawStr}) x ${coeffStr} - ${defLabel}(${defStr}) = ${mainStr}`)
   }
   if (entry.isCrit) {
-    return appendShieldSuffix(`攻击(${raw}) x 1.5 - ${defLabel}(${defVal}) = ${mainResult}`)
+    return appendShieldSuffix(`攻击(${rawStr}) x 1.5 - ${defLabel}(${defStr}) = ${mainStr}`)
   }
-  return appendShieldSuffix(`攻击(${raw}) - ${defLabel}(${defVal}) = ${mainResult}`)
+  return appendShieldSuffix(`攻击(${rawStr}) - ${defLabel}(${defStr}) = ${mainStr}`)
 }
 
 /**
@@ -105,50 +122,55 @@ export function weaponMechanicLines(entry) {
       entry.finalDamage != null &&
       entry.finalDamage < entry.physicalDamageBeforeBlock
     ) {
-      lines.push(`格挡减伤后有效伤害 ${entry.finalDamage}`)
+      lines.push(`格挡减伤后有效伤害 ${formatBattleLogNum(entry.finalDamage)}`)
     }
   }
   if ((entry.blockCounterDamageToMonster ?? 0) > 0 && entry.actorName) {
     lines.push(
-      `格挡反击：对 ${entry.actorName} 造成 ${entry.blockCounterDamageToMonster} 点物理伤害`,
+      `格挡反击：对 ${entry.actorName} 造成 ${formatBattleLogNum(entry.blockCounterDamageToMonster)} 点物理伤害`,
     )
   }
   if (entry.spellPowerWeaponScaled != null && entry.damageType === 'magic') {
     const w = entry.spellPowerWeaponScaled
     const f = entry.spellPowerFlatBonus ?? 0
-    lines.push(`法术强度：武器段 ${w} + 额外 ${f} = ${w + f}（技能结算前有效法术强度）`)
+    const sum = w + f
+    lines.push(
+      `法术强度：武器段 ${formatBattleLogNum(w)} + 额外 ${formatBattleLogNum(f)} = ${formatBattleLogNum(sum)}（技能结算前有效法术强度）`,
+    )
   }
   if (
     entry.primaryFinalDamage != null &&
     entry.finalDamage != null &&
     entry.finalDamage !== entry.primaryFinalDamage
   ) {
-    lines.push(`合计对生命伤害 ${entry.finalDamage}`)
+    lines.push(`合计对生命伤害 ${formatBattleLogNum(entry.finalDamage)}`)
   }
   if ((entry.weaponAddedMagicDamage ?? 0) > 0) {
-    lines.push(`附加魔法伤害 ${entry.weaponAddedMagicDamage}`)
+    lines.push(`附加魔法伤害 ${formatBattleLogNum(entry.weaponAddedMagicDamage)}`)
   }
   if ((entry.weaponArcaneFollowupDamage ?? 0) > 0) {
-    lines.push(`奥术追伤 ${entry.weaponArcaneFollowupDamage}`)
+    lines.push(`奥术追伤 ${formatBattleLogNum(entry.weaponArcaneFollowupDamage)}`)
   }
   if ((entry.weaponLifeStealHeal ?? 0) > 0) {
-    lines.push(`生命偷取 +${entry.weaponLifeStealHeal}`)
+    lines.push(`生命偷取 +${formatBattleLogNum(entry.weaponLifeStealHeal)}`)
   }
   if ((entry.weaponLifeOnHitHeal ?? 0) > 0) {
-    lines.push(`命中回血 +${entry.weaponLifeOnHitHeal}`)
+    lines.push(`命中回血 +${formatBattleLogNum(entry.weaponLifeOnHitHeal)}`)
   }
   if ((entry.weaponManaReflux ?? 0) > 0) {
-    lines.push(`魔力回流 +${entry.weaponManaReflux} 法力`)
+    lines.push(`魔力回流 +${formatBattleLogNum(entry.weaponManaReflux)} 法力`)
   }
   if ((entry.weaponManaOnCast ?? 0) > 0) {
-    lines.push(`施法回蓝 +${entry.weaponManaOnCast}`)
+    lines.push(`施法回蓝 +${formatBattleLogNum(entry.weaponManaOnCast)}`)
   }
   if (
     entry.weaponAffixManaAfter != null &&
     entry.weaponAffixMaxMana != null &&
     entry.skillId == null
   ) {
-    lines.push(`当前法力 ${entry.weaponAffixManaAfter}/${entry.weaponAffixMaxMana}`)
+    lines.push(
+      `当前法力 ${formatBattleLogNum(entry.weaponAffixManaAfter)}/${formatBattleLogNum(entry.weaponAffixMaxMana)}`,
+    )
   }
   return lines
 }
