@@ -340,10 +340,13 @@ export function getExpansionHeroAttributePoints(level) {
   return 3 * (level - 1)
 }
 
+/** Points lost on defeat/draw when not victorious (applied before clamp to 0). */
+export const DEFEAT_EXPLORATION_DEDUCTION = 10
+
 export function addExplorationProgress(progress, killTier) {
   const gainTable = {
-    normal: 2,
-    elite: 4,
+    normal: 1,
+    elite: 2,
   }
   const gain = gainTable[killTier] ?? 0
   const nextProgress = clamp(progress.currentProgress + gain, 0, 100)
@@ -354,7 +357,7 @@ export function addExplorationProgress(progress, killTier) {
   }
 }
 
-export function deductExplorationProgress(progress, amount = 10) {
+export function deductExplorationProgress(progress, amount = DEFEAT_EXPLORATION_DEDUCTION) {
   const nextProgress = clamp(progress.currentProgress - amount, 0, 100)
   return {
     ...progress,
@@ -372,6 +375,44 @@ export function unlockNextMapAfterBoss(progress) {
     currentMapId: currentMap.id,
     currentProgress: 0,
     bossAvailable: false,
+  }
+}
+
+/**
+ * Victory settlement for map exploration UI and progress fields.
+ * @returns {{ progress: object, exploration: { mode: 'gain', delta: number } | { mode: 'boss_unlock' } }}
+ */
+export function settleVictoryExploration(progress, monsters) {
+  const isBossEncounter = monsters.some((m) => m.tier === 'boss')
+  if (isBossEncounter) {
+    return {
+      progress: unlockNextMapAfterBoss(progress),
+      exploration: { mode: 'boss_unlock' },
+    }
+  }
+  const before = progress.currentProgress
+  let p = progress
+  for (const m of monsters) {
+    if (m.tier === 'normal' || m.tier === 'elite') {
+      p = addExplorationProgress(p, m.tier)
+    }
+  }
+  return {
+    progress: p,
+    exploration: { mode: 'gain', delta: p.currentProgress - before },
+  }
+}
+
+/**
+ * Non-victory exploration penalty (defeat/draw paths use the same deduction in MainScreen).
+ * @returns {{ progress: object, exploration: { mode: 'penalty', delta: number } }}
+ */
+export function settleDefeatExploration(progress, amount = DEFEAT_EXPLORATION_DEDUCTION) {
+  const before = progress.currentProgress
+  const next = deductExplorationProgress(progress, amount)
+  return {
+    progress: next,
+    exploration: { mode: 'penalty', delta: next.currentProgress - before },
   }
 }
 

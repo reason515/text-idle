@@ -234,6 +234,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: 60000 })
     const summaryText = await page.locator('.log-summary').first().textContent()
     expect(summaryText).toMatch(/胜利！|失败！|平局/)
+    expect(summaryText).toMatch(/探索度|探索进度/)
   })
 
   test('rest phase is shown in combat log after victory', async ({ page }) => {

@@ -70,6 +70,7 @@ When modifying design documents (especially core flows like squad, recruitment, 
 | **Damage / heal formulas** | [05-skills.md](design/05-skills.md) 2.2.3.x, [03-combat.md](design/03-combat.md) | Keep in sync with `frontend/src/game/damageUtils.js`, skill execution (`*Skills.js`), `combat.js` |
 | **Equipment → stats** | [06-equipment.md](design/06-equipment.md), `getEquipmentBonuses`, `heroCombatStats` | Off-hand orb vs main-hand weapon dice; affix pools |
 | **Battle log strings** | [05-skills.md](design/05-skills.md), [06-equipment.md](design/06-equipment.md) 7.x weapon log notes | `battleLogFormat.js` (`damageFormulaEquation`, `weaponMechanicLines`); player-visible Chinese lines（含物理格挡、格挡反击明细） |
+| **Post-battle summary (exploration)** | [03-combat.md](design/03-combat.md) 胜负透明化、[02-levels-monsters.md](design/02-levels-monsters.md) 探索度口径 | MainScreen 结算小节：本场探索增减、BOSS 后进图重置文案 |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) (e.g. 10, 14, 20) | AC / design reference if formulas or log behavior changes |
 | **Unit tests** | `frontend/src/game/*.spec.js` | Lock formula and log helpers |
 | **E2E** | `e2e/browser/*.spec.js` | When main-screen combat log or flow assertions need updating |

@@ -12,6 +12,9 @@ import {
   monsterPowerFactorFromLevel,
   addExplorationProgress,
   deductExplorationProgress,
+  settleVictoryExploration,
+  settleDefeatExploration,
+  DEFEAT_EXPLORATION_DEDUCTION,
   unlockNextMapAfterBoss,
   generateEncounterSize,
   createMonster,
@@ -306,19 +309,53 @@ describe('combat progression and systems', () => {
     const afterNormal = addExplorationProgress(progress, 'normal')
     const afterElite = addExplorationProgress(progress, 'elite')
     expect(afterNormal.currentProgress).toBeLessThan(afterElite.currentProgress)
-    expect(afterNormal.currentProgress).toBe(2)
-    expect(afterElite.currentProgress).toBe(4)
+    expect(afterNormal.currentProgress).toBe(1)
+    expect(afterElite.currentProgress).toBe(2)
     expect(afterNormal.bossAvailable).toBe(false)
   })
 
   it('Example5: reaching 100 progress spawns map boss', () => {
     const progress = createInitialProgress()
     let next = progress
-    for (let i = 0; i < 25; i += 1) {
+    for (let i = 0; i < 50; i += 1) {
       next = addExplorationProgress(next, 'elite')
     }
     expect(next.currentProgress).toBe(100)
     expect(next.bossAvailable).toBe(true)
+  })
+
+  it('settleVictoryExploration applies kill gains with cap at 100', () => {
+    const progress = { ...createInitialProgress(), currentProgress: 99 }
+    const monsters = [{ tier: 'normal' }, { tier: 'elite' }]
+    const { progress: next, exploration } = settleVictoryExploration(progress, monsters)
+    expect(exploration).toEqual({ mode: 'gain', delta: 1 })
+    expect(next.currentProgress).toBe(100)
+    expect(next.bossAvailable).toBe(true)
+  })
+
+  it('settleVictoryExploration boss path unlocks map', () => {
+    const progress = {
+      ...createInitialProgress(),
+      currentProgress: 100,
+      bossAvailable: true,
+    }
+    const { progress: next, exploration } = settleVictoryExploration(progress, [
+      { tier: 'boss' },
+    ])
+    expect(exploration).toEqual({ mode: 'boss_unlock' })
+    expect(next.currentProgress).toBe(0)
+    expect(next.unlockedMapCount).toBe(2)
+  })
+
+  it('settleDefeatExploration reports clamped deduction delta', () => {
+    const progress = { ...createInitialProgress(), currentProgress: 3 }
+    const { progress: next, exploration } = settleDefeatExploration(progress)
+    expect(exploration).toEqual({ mode: 'penalty', delta: -3 })
+    expect(next.currentProgress).toBe(0)
+  })
+
+  it('DEFEAT_EXPLORATION_DEDUCTION matches deduct default', () => {
+    expect(DEFEAT_EXPLORATION_DEDUCTION).toBe(10)
   })
 
   it('Example5: defeat deducts exploration progress by fixed amount', () => {

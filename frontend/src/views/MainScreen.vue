@@ -283,6 +283,12 @@
                 <div class="log-rewards-box">
                   <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
                   <span class="val-gold">金币 +{{ entry.rewards.gold }}</span>
+                  <template v-if="entry.exploration?.mode === 'gain' && entry.exploration.delta > 0">
+                    <span class="val-explore">探索度 +{{ entry.exploration.delta }}</span>
+                  </template>
+                  <template v-else-if="entry.exploration?.mode === 'boss_unlock'">
+                    <span class="val-explore">已进入下一张地图，探索进度已重置</span>
+                  </template>
                   <template v-for="(eq, idx) in (entry.rewards.equipment || [])" :key="eq.id">
                     <span
                       class="log-item-drop tooltip-wrap has-tip"
@@ -300,11 +306,16 @@
                 <span class="log-defeat-label">失败！</span>
                 <span class="log-summary-body">你的队伍在 <span class="log-rounds-num">{{ entry.rounds }}</span> 回合后被击溃。</span>
                 <div class="log-rewards-box log-rewards-box-defeat">
-                  <span class="val-penalty">探索度 -10</span>
+                  <span v-if="entry.exploration?.mode === 'penalty'" class="val-penalty"
+                    >探索度 {{ entry.exploration.delta }}</span
+                  >
                 </div>
               </template>
               <template v-else>
-                {{ entry.rounds }} 回合后平局。
+                <span class="log-summary-body">{{ entry.rounds }} 回合后平局。</span>
+                <div v-if="entry.exploration?.mode === 'penalty'" class="log-rewards-box log-rewards-box-defeat">
+                  <span class="val-penalty">探索度 {{ entry.exploration.delta }}</span>
+                </div>
               </template>
             </div>
             <div v-else-if="entry.type === 'actionSkipped'" class="log-entry log-cc-skip">
@@ -1957,9 +1968,8 @@ import {
   MAPS,
   createInitialProgress,
   getRecruitLimit,
-  addExplorationProgress,
-  deductExplorationProgress,
-  unlockNextMapAfterBoss,
+  settleVictoryExploration,
+  settleDefeatExploration,
   buildEncounterMonsters,
   runAutoCombat,
   startRestPhase,
@@ -3898,6 +3908,9 @@ async function runCombatLoop() {
         if (!added) inventoryFullWarn = true
       }
       if ((result.rewards.equipment || []).length > 0) inventoryVersion.value++
+      const victoryExploration = settleVictoryExploration(progress.value, monsters)
+      progress.value = victoryExploration.progress
+      saveProgress()
       addLogEntry({
         type: 'summary',
         outcome: 'victory',
@@ -3905,6 +3918,7 @@ async function runCombatLoop() {
         monsterCount: monsters.length,
         rewards: result.rewards,
         inventoryFull: inventoryFullWarn,
+        exploration: victoryExploration.exploration,
       })
       await scrollLog()
 
@@ -3933,18 +3947,6 @@ async function runCombatLoop() {
         }
       }
       if (results.some((r) => r?.leveledUp)) await scrollLog()
-
-      const isBoss = monsters.some((m) => m.tier === 'boss')
-      if (isBoss) {
-        progress.value = unlockNextMapAfterBoss(progress.value)
-      } else {
-        for (const m of monsters) {
-          if (m.tier === 'normal' || m.tier === 'elite') {
-            progress.value = addExplorationProgress(progress.value, m.tier)
-          }
-        }
-      }
-      saveProgress()
       playerStats.value = applyBattleToPlayerStats(playerStats.value, {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: result.rewards.gold,
@@ -3956,17 +3958,18 @@ async function runCombatLoop() {
       savePlayerStats()
     } else {
       lastOutcome.value = result.outcome
+      const defeatExploration = settleDefeatExploration(progress.value)
+      progress.value = defeatExploration.progress
+      saveProgress()
       addLogEntry({
         type: 'summary',
         outcome: result.outcome,
         rounds: result.rounds,
         monsterCount: monsters.length,
         rewards: { exp: 0, gold: 0, equipment: [] },
+        exploration: defeatExploration.exploration,
       })
       await scrollLog()
-
-      progress.value = deductExplorationProgress(progress.value, 10)
-      saveProgress()
       await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.defeatBeforeRest))
       // E2E fast mode: autoRest heals in the same tick; one tick is enough for DOM
       if (isE2eFastMode()) {
@@ -6027,6 +6030,7 @@ onUnmounted(() => {
   background: var(--bg-dark);
 }
 .log-summary .log-rewards-box .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0; }
+.log-summary .log-rewards-box .val-explore { color: var(--color-exp); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .val-penalty { color: var(--error); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .log-inv-full { margin-left: 0; }
