@@ -612,7 +612,10 @@
         data-testid="player-stats-efficiency"
         @click="showPlayerStatsModal = true"
       >
-        <span class="command-label">战斗统计</span>
+        <span class="stats-eff-title-row">
+          <span class="command-label">战斗统计</span>
+          <span class="stats-eff-tap-hint">详情</span>
+        </span>
         <span class="stats-eff-values">
           <span class="stat-pill stat-pill-gold">
             <span class="stat-label">金币</span>
@@ -793,29 +796,170 @@
       >
         <div class="modal-box player-stats-modal">
           <div class="modal-title">数据统计</div>
-          <div class="detail-skill-choice-banner player-stats-banner">
-            <p>
-              探索步（战斗行动步 + 休息步）<strong>{{ explorationStepsDisplay }}</strong>；本周期累计获得金币
-              <strong class="val-gold">{{ playerStats.cumulativeGold }}</strong>、经验 <strong class="val-exp">{{ playerStats.cumulativeXp }}</strong>。
-            </p>
-            <p>
-              展示倍率：
-              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 1 }" @click="setStatsDisplayScale(1)">每步</button>
-              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 10 }" @click="setStatsDisplayScale(10)">每10步</button>
-              <button type="button" class="btn-scale" :class="{ active: statsScaleN === 100 }" @click="setStatsDisplayScale(100)">每100步</button>
-            </p>
+          <div class="player-stats-modal-tabs detail-tabs">
+            <button
+              type="button"
+              class="detail-tab"
+              data-testid="player-stats-tab-summary"
+              :class="{ active: playerStatsModalTab === 'summary' }"
+              @click="playerStatsModalTab = 'summary'"
+            >
+              概览
+            </button>
+            <button
+              type="button"
+              class="detail-tab"
+              data-testid="player-stats-tab-timeline"
+              :class="{ active: playerStatsModalTab === 'timeline' }"
+              @click="playerStatsModalTab = 'timeline'"
+            >
+              场次趋势
+            </button>
           </div>
-          <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
-            <p>确定清零统计数据？将重置本周期累计步数与收益统计。</p>
-            <div class="player-stats-reset-actions">
-              <button type="button" class="btn btn-danger" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
-              <button type="button" class="btn" @click="resetStatsConfirming = false">取消</button>
+
+          <div class="player-stats-modal-body">
+          <template v-if="playerStatsModalTab === 'summary'">
+            <div class="detail-skill-choice-banner player-stats-banner">
+              <p>
+                探索步（战斗行动步 + 休息步）<strong>{{ explorationStepsDisplay }}</strong>；本周期累计获得金币
+                <strong class="val-gold">{{ playerStats.cumulativeGold }}</strong>、经验 <strong class="val-exp">{{ playerStats.cumulativeXp }}</strong>。
+              </p>
+              <p>
+                展示倍率：
+                <button type="button" class="btn-scale" :class="{ active: statsScaleN === 1 }" @click="setStatsDisplayScale(1)">每步</button>
+                <button type="button" class="btn-scale" :class="{ active: statsScaleN === 10 }" @click="setStatsDisplayScale(10)">每10步</button>
+                <button type="button" class="btn-scale" :class="{ active: statsScaleN === 100 }" @click="setStatsDisplayScale(100)">每100步</button>
+              </p>
             </div>
+            <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
+              <p>确定清零统计数据？将重置本周期累计步数、收益与场次趋势列表。</p>
+              <div class="player-stats-reset-actions player-stats-modal-inline-btns">
+                <button type="button" class="btn btn-danger player-stats-compact-btn" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
+                <button type="button" class="btn player-stats-compact-btn" @click="resetStatsConfirming = false">取消</button>
+              </div>
+            </div>
+            <div v-else class="player-stats-actions player-stats-modal-inline-btns">
+              <button type="button" class="btn btn-danger player-stats-compact-btn" data-testid="player-stats-reset-open" @click="resetStatsConfirming = true">清零统计</button>
+            </div>
+          </template>
+
+          <template v-else>
+            <div v-if="playerStatsBattleTimeline.length === 0" class="player-stats-timeline-empty" data-testid="player-stats-timeline-empty">
+              本周期暂无战斗记录。开战后会自动追加；也可先在其他 Tab 查看概览。
+            </div>
+            <div
+              v-else
+              ref="playerStatsChartShellRef"
+              class="player-stats-chart-shell"
+              data-testid="player-stats-timeline-chart"
+              @mousemove="onPlayerStatsChartMouseMove"
+              @mouseleave="clearPlayerStatsChartHover"
+            >
+              <svg
+                class="player-stats-trend-svg"
+                :viewBox="playerStatsTimelineChartModel.viewBox"
+                preserveAspectRatio="xMidYMid meet"
+                aria-label="场次趋势图"
+              >
+                <rect
+                  class="player-stats-chart-grid-bg"
+                  :x="playerStatsTimelineChartModel.plot.x"
+                  :y="playerStatsTimelineChartModel.plot.y"
+                  :width="playerStatsTimelineChartModel.plot.w"
+                  :height="playerStatsTimelineChartModel.plot.h"
+                  rx="4"
+                />
+                <line
+                  v-for="(seg, gi) in playerStatsTimelineChartModel.hGrid"
+                  :key="'gh-' + gi"
+                  class="player-stats-grid-line"
+                  :x1="seg.x1"
+                  :y1="seg.y1"
+                  :x2="seg.x2"
+                  :y2="seg.y2"
+                />
+                <line
+                  v-for="(seg, gi) in playerStatsTimelineChartModel.vGrid"
+                  :key="'gv-' + gi"
+                  class="player-stats-grid-line player-stats-grid-line-v"
+                  :x1="seg.x1"
+                  :y1="seg.y1"
+                  :x2="seg.x2"
+                  :y2="seg.y2"
+                />
+                <text
+                  v-for="(t, ti) in playerStatsTimelineChartModel.yAxisTicks"
+                  :key="'yl-' + ti"
+                  class="player-stats-axis-label player-stats-axis-y-num"
+                  :x="playerStatsTimelineChartModel.plot.x - 6"
+                  :y="t.y + 4"
+                  text-anchor="end"
+                >{{ t.label }}</text>
+                <text
+                  v-for="(t, ti) in playerStatsTimelineChartModel.xBattleTicks"
+                  :key="'xb-' + ti"
+                  class="player-stats-axis-label player-stats-axis-x"
+                  :x="t.x"
+                  :y="playerStatsTimelineChartModel.plot.y + playerStatsTimelineChartModel.plot.h + 22"
+                  text-anchor="middle"
+                >{{ t.label }}</text>
+                <text class="player-stats-axis-title-x" :x="playerStatsTimelineChartModel.plot.x + playerStatsTimelineChartModel.plot.w / 2" :y="playerStatsTimelineChartModel.plot.y + playerStatsTimelineChartModel.plot.h + 38" text-anchor="middle">
+                  场次序号
+                </text>
+                <polyline
+                  v-if="playerStatsTimelineChartModel.roundsLine"
+                  fill="none"
+                  :points="playerStatsTimelineChartModel.roundsLine"
+                  class="player-stats-line-rounds"
+                />
+                <polyline
+                  v-if="playerStatsTimelineChartModel.xpLine"
+                  fill="none"
+                  :points="playerStatsTimelineChartModel.xpLine"
+                  class="player-stats-line-xp"
+                />
+                <polyline
+                  v-if="playerStatsTimelineChartModel.goldLine"
+                  fill="none"
+                  :points="playerStatsTimelineChartModel.goldLine"
+                  class="player-stats-line-gold"
+                />
+                <circle
+                  v-for="(mk, mi) in playerStatsTimelineChartModel.pointMarkers"
+                  :key="'mk-' + mi"
+                  :cx="mk.cx"
+                  :cy="mk.cy"
+                  r="3.5"
+                  class="player-stats-point-marker"
+                  :class="'marker-' + mk.kind"
+                />
+                <g class="player-stats-svg-legend" pointer-events="none">
+                  <text :x="playerStatsTimelineChartModel.plot.x + 6" :y="14" class="player-stats-svg-legend-label legend-svg-rounds">回合</text>
+                  <text :x="playerStatsTimelineChartModel.plot.x + 52" :y="14" class="player-stats-svg-legend-label legend-svg-gold">金币</text>
+                  <text :x="playerStatsTimelineChartModel.plot.x + 104" :y="14" class="player-stats-svg-legend-label legend-svg-xp">经验</text>
+                </g>
+              </svg>
+              <div
+                v-if="statsTimelineHoverIdx !== null && playerStatsBattleTimeline[statsTimelineHoverIdx]"
+                class="player-stats-chart-tooltip"
+                :style="{
+                  left: statsTimelineTooltipLeftPx + 'px',
+                  top: statsTimelineTooltipTopPx + 'px',
+                }"
+                role="tooltip"
+              >
+                <div class="player-stats-chart-tooltip-title">第 {{ statsTimelineHoverIdx + 1 }} 场</div>
+                <div>回合 <span class="tip-val-rounds">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].rounds }}</span></div>
+                <div>金币 <span class="tip-val-gold">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].goldGained }}</span></div>
+                <div>经验 <span class="tip-val-xp">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].xpGained }}</span></div>
+              </div>
+            </div>
+          </template>
           </div>
-          <div v-else class="player-stats-actions">
-            <button type="button" class="btn btn-danger" data-testid="player-stats-reset-open" @click="resetStatsConfirming = true">清零统计</button>
+
+          <div class="player-stats-modal-footer">
+            <button type="button" class="btn player-stats-compact-btn" data-testid="player-stats-modal-close" @click="showPlayerStatsModal = false; resetStatsConfirming = false">关闭</button>
           </div>
-          <button type="button" class="btn" data-testid="player-stats-modal-close" @click="showPlayerStatsModal = false; resetStatsConfirming = false">关闭</button>
         </div>
       </div>
     </Teleport>
@@ -1917,6 +2061,7 @@ import {
   isE2eFastMode,
 } from '../game/combatPacing.js'
 import {
+  MAX_BATTLE_TIMELINE_ENTRIES,
   PLAYER_STATS_STORAGE_KEY,
   applyBattleToPlayerStats,
   applyRestToPlayerStats,
@@ -1927,6 +2072,7 @@ import {
   scaledPerStep,
   xpPerExplorationStep,
 } from '../game/playerStatistics.js'
+import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -2173,6 +2319,11 @@ const gold = ref(0)
 const playerStats = ref(createEmptyPlayerStats())
 const showPlayerStatsModal = ref(false)
 const resetStatsConfirming = ref(false)
+const playerStatsModalTab = ref('summary')
+const playerStatsChartShellRef = ref(null)
+const statsTimelineHoverIdx = ref(null)
+const statsTimelineHoverTipLeft = ref(0)
+const statsTimelineHoverTipTop = ref(0)
 const showMapModal = ref(false)
 const showBackpackModal = ref(false)
 const showShopModal = ref(false)
@@ -2745,6 +2896,50 @@ const formattedXpPerScale = computed(() => {
   return v >= 100 ? v.toFixed(0) : v.toFixed(1)
 })
 
+const statsTimelineTooltipLeftPx = computed(() => {
+  const w = playerStatsChartShellRef.value?.offsetWidth ?? 360
+  const half = 76
+  const x = statsTimelineHoverTipLeft.value
+  return Math.max(half, Math.min(x, w - half))
+})
+
+const statsTimelineTooltipTopPx = computed(() => statsTimelineHoverTipTop.value)
+
+function onPlayerStatsChartMouseMove(e) {
+  const shell = e.currentTarget
+  const r = shell.getBoundingClientRect()
+  const nw = Math.max(1, r.width)
+  const list = playerStatsBattleTimeline.value
+  const n = list.length
+  if (n === 0) return
+  const frac = (e.clientX - r.left) / nw
+  let idx = n === 1 ? 0 : Math.round(frac * (n - 1))
+  idx = Math.min(n - 1, Math.max(0, idx))
+  statsTimelineHoverIdx.value = idx
+  statsTimelineHoverTipLeft.value = e.clientX - r.left
+  statsTimelineHoverTipTop.value = e.clientY - r.top
+}
+
+function clearPlayerStatsChartHover() {
+  statsTimelineHoverIdx.value = null
+}
+
+const playerStatsBattleTimeline = computed(() => {
+  const t = playerStats.value?.battleTimeline
+  return Array.isArray(t) ? t : []
+})
+
+const playerStatsTimelineChartModel = computed(() => buildTimelineTrendChartModel(playerStatsBattleTimeline.value))
+
+watch(showPlayerStatsModal, (open) => {
+  if (open) playerStatsModalTab.value = 'summary'
+  else clearPlayerStatsChartHover()
+})
+
+watch(playerStatsModalTab, () => {
+  clearPlayerStatsChartHover()
+})
+
 function loadPlayerStats() {
   try {
     const raw = localStorage.getItem(PLAYER_STATS_STORAGE_KEY)
@@ -3313,6 +3508,12 @@ function sleepMs(ms, useRealTimer = false) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+async function waitWhilePaused() {
+  while (isRunning.value && isPaused.value) {
+    await sleepMs(200, true)
+  }
+}
+
 async function sleepMsRespectingPause(ms) {
   let remaining = ms
   while (remaining > 0 && isRunning.value) {
@@ -3626,6 +3827,9 @@ async function runCombatLoop() {
       continue
     }
 
+    await waitWhilePaused()
+    if (!isRunning.value) break
+
     const currentMapId = progress.value.currentMapId
     const isNewMap = currentMapId !== lastMapId
 
@@ -3745,6 +3949,7 @@ async function runCombatLoop() {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: result.rewards.gold,
         xpGained: result.rewards.exp,
+        rounds: result.rounds ?? 0,
       })
       const restStepsVictory = await autoRest(result.heroesAfter)
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsVictory)
@@ -3771,6 +3976,7 @@ async function runCombatLoop() {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: 0,
         xpGained: 0,
+        rounds: result.rounds ?? 0,
       })
       const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsDefeat)
@@ -4064,14 +4270,13 @@ onUnmounted(() => {
 .stats-efficiency {
   display: inline-flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
-  gap: 0.12rem;
+  gap: 0.25rem;
   margin: 0;
-  padding: 0.25rem 0.55rem;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--text);
   font-family: inherit;
   font-size: var(--font-sm);
@@ -4079,13 +4284,38 @@ onUnmounted(() => {
   text-align: left;
   max-width: min(22rem, 36vw);
   min-height: 0;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .stats-efficiency:hover {
   background: var(--bg-hover);
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 0 var(--border-subtle), 0 0 12px var(--focus-glow);
 }
 .stats-efficiency:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.stats-eff-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+.stats-eff-tap-hint {
+  flex-shrink: 0;
+  font-size: var(--font-xs);
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.stats-efficiency:hover .stats-eff-tap-hint {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .stats-eff-label {
   color: var(--text-label);
@@ -4141,8 +4371,173 @@ onUnmounted(() => {
   max-width: 18rem;
   white-space: normal;
 }
-.player-stats-modal {
-  max-width: min(90vw, 26rem);
+.player-stats-modal-tabs {
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+}
+.player-stats-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-alt) var(--scrollbar-track);
+}
+.player-stats-modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding-top: 0.55rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border-dark);
+}
+.player-stats-modal .player-stats-compact-btn {
+  width: auto;
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 0.22rem 0.55rem;
+  font-size: var(--font-xs);
+  min-height: 0;
+  line-height: 1.35;
+}
+.player-stats-modal-inline-btns {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-start;
+}
+.player-stats-timeline-empty {
+  padding: 1rem 0.25rem;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  text-align: center;
+}
+.player-stats-chart-shell {
+  position: relative;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem 0.55rem;
+}
+.player-stats-chart-tooltip {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  min-width: 8.5rem;
+  padding: 0.45rem 0.55rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-size: var(--font-xs);
+  color: var(--text-label);
+  line-height: 1.45;
+}
+.player-stats-chart-tooltip-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+  font-size: var(--font-xs);
+}
+.player-stats-chart-tooltip .tip-val-rounds {
+  color: var(--color-mp);
+  font-weight: 600;
+}
+.player-stats-chart-tooltip .tip-val-gold {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+.player-stats-chart-tooltip .tip-val-xp {
+  color: var(--color-magic);
+  font-weight: 600;
+}
+.player-stats-svg-legend-label {
+  font-size: 11px;
+  font-family: inherit;
+}
+.legend-svg-rounds {
+  fill: var(--color-mp);
+}
+.legend-svg-gold {
+  fill: var(--color-gold);
+}
+.legend-svg-xp {
+  fill: var(--color-magic);
+}
+.player-stats-trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 18rem;
+  min-height: 14rem;
+}
+.player-stats-grid-line {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.player-stats-grid-line-v {
+  stroke-dasharray: 3 5;
+}
+.player-stats-axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+.player-stats-axis-y-num {
+  font-size: 11px;
+}
+.player-stats-axis-x {
+  font-size: 11px;
+}
+.player-stats-axis-title-x {
+  fill: var(--text-label);
+  font-size: 11px;
+  font-family: inherit;
+}
+.player-stats-line-gold {
+  fill: none;
+  stroke: var(--color-gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 7 5;
+}
+.player-stats-line-xp {
+  fill: none;
+  stroke: var(--color-magic);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.player-stats-point-marker {
+  stroke: var(--bg-dark);
+  stroke-width: 1;
+}
+.player-stats-point-marker.marker-rounds {
+  fill: var(--color-mp);
+}
+.player-stats-point-marker.marker-gold {
+  fill: var(--color-gold);
+}
+.player-stats-point-marker.marker-xp {
+  fill: var(--color-magic);
+}
+.player-stats-chart-grid-bg {
+  fill: var(--bg-dark);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+.player-stats-line-rounds {
+  fill: none;
+  stroke: var(--color-mp);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .player-stats-banner p {
   margin: 0 0 0.5rem;
@@ -5949,6 +6344,21 @@ onUnmounted(() => {
   min-width: 20rem;
   max-width: 32rem;
   box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
+}
+.modal-box.player-stats-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(88vw, 52rem);
+  max-width: min(88vw, 52rem);
+  min-width: min(88vw, 22rem);
+  height: min(76vh, 36rem);
+  min-height: min(76vh, 36rem);
+  max-height: min(76vh, 36rem);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.modal-box.player-stats-modal .modal-title {
+  flex-shrink: 0;
 }
 .modal-box.detail-modal {
   width: min(92vw, 48rem);

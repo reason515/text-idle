@@ -80,7 +80,7 @@ When modifying design documents (especially core flows like squad, recruitment, 
 
 | Check | Affected areas | Notes |
 |-------|----------------|-------|
-| **New metrics or event sources** | [13-player-statistics.md](design/13-player-statistics.md) | 唯一步数分母、无按回合统计、战斗行动步与休息步、探索步数、展示倍率、清零、每场战斗/休息后更新 |
+| **New metrics or event sources** | [13-player-statistics.md](design/13-player-statistics.md) | 唯一步数分母、无按回合**比率**、战斗行动步与休息步、探索步数、展示倍率、清零、每场战斗/休息后更新；**场次趋势 Tab**：每场回合数/本场金币/本场经验序列（归一化展示）、图内图例与悬停数值提示、`battleTimeline` 上限与清零 |
 | **Combat/rest log pacing** | [03-combat.md](design/03-combat.md) 1.3, `combatPacing.js`, MainScreen loop | 战斗日志步间 ms 与 `restStepReveal` 一致（[13-player-statistics.md](design/13-player-statistics.md) 7.5） |
 | **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎事件一致；护盾吸收是否计入「受到的伤害」 |
 | **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |

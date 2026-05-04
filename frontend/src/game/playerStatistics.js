@@ -5,7 +5,14 @@
 
 export const PLAYER_STATS_STORAGE_KEY = 'textIdlePlayerStats'
 
-/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number }} */
+/** Max battles kept for timeline chart (avoids huge localStorage payloads). */
+export const MAX_BATTLE_TIMELINE_ENTRIES = 250
+
+/**
+ * @typedef {{ endedAtMs: number, rounds: number, goldGained: number, xpGained: number }} BattleTimelineEntry
+ */
+
+/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleTimeline: BattleTimelineEntry[] }} */
 export function createEmptyPlayerStats() {
   return {
     combatActionSteps: 0,
@@ -13,7 +20,26 @@ export function createEmptyPlayerStats() {
     cumulativeGold: 0,
     cumulativeXp: 0,
     displayScaleN: 100,
+    battleTimeline: [],
   }
+}
+
+/** @param {unknown} raw */
+export function normalizeBattleTimeline(raw) {
+  if (!Array.isArray(raw)) return []
+  /** @type {BattleTimelineEntry[]} */
+  const out = []
+  for (const e of raw) {
+    if (!e || typeof e !== 'object') continue
+    const endedAtMs = Number(/** @type {{ endedAtMs?: unknown }} */ (e).endedAtMs)
+    if (!Number.isFinite(endedAtMs)) continue
+    const rounds = Math.max(0, Math.floor(Number(/** @type {{ rounds?: unknown }} */ (e).rounds) || 0))
+    const goldGained = Math.max(0, Math.floor(Number(/** @type {{ goldGained?: unknown }} */ (e).goldGained) || 0))
+    const xpGained = Math.max(0, Math.floor(Number(/** @type {{ xpGained?: unknown }} */ (e).xpGained) || 0))
+    out.push({ endedAtMs, rounds, goldGained, xpGained })
+  }
+  while (out.length > MAX_BATTLE_TIMELINE_ENTRIES) out.shift()
+  return out
 }
 
 /** @param {object} stats */
@@ -24,15 +50,27 @@ export function explorationSteps(stats) {
 
 /**
  * @param {object} stats
- * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number }} battle
+ * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number }} battle
  */
 export function applyBattleToPlayerStats(stats, battle) {
   const base = stats && typeof stats === 'object' ? { ...createEmptyPlayerStats(), ...stats } : createEmptyPlayerStats()
+  const prevTimeline = normalizeBattleTimeline(base.battleTimeline)
+  const endedRaw = battle.endedAtMs
+  const endedAtMs = Number.isFinite(Number(endedRaw)) ? Number(endedRaw) : Date.now()
+  const entry = {
+    endedAtMs,
+    rounds: Math.max(0, Math.floor(Number(battle.rounds) || 0)),
+    goldGained: Math.max(0, Math.floor(Number(battle.goldGained) || 0)),
+    xpGained: Math.max(0, Math.floor(Number(battle.xpGained) || 0)),
+  }
+  const battleTimeline = [...prevTimeline, entry]
+  while (battleTimeline.length > MAX_BATTLE_TIMELINE_ENTRIES) battleTimeline.shift()
   return {
     ...base,
     combatActionSteps: base.combatActionSteps + (battle.combatActionSteps || 0),
     cumulativeGold: base.cumulativeGold + (battle.goldGained || 0),
     cumulativeXp: base.cumulativeXp + (battle.xpGained || 0),
+    battleTimeline,
   }
 }
 
@@ -89,5 +127,6 @@ export function normalizePlayerStats(raw) {
     cumulativeGold: Math.max(0, Math.floor(Number(raw.cumulativeGold) || 0)),
     cumulativeXp: Math.max(0, Math.floor(Number(raw.cumulativeXp) || 0)),
     displayScaleN,
+    battleTimeline: normalizeBattleTimeline(raw.battleTimeline),
   }
 }
