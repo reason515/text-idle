@@ -160,6 +160,23 @@ describe('validateAiTactics', () => {
     expect(result.warnings.length).toBeGreaterThan(0)
   })
 
+  it('strips resource-below from basic-attack (spell unaffordable is engine skip, not a fixed MP threshold)', () => {
+    const mageSkills = ['frostbolt', 'fireball']
+    const raw = {
+      skillPriority: ['frostbolt', 'fireball'],
+      targetRule: 'lowest-hp',
+      conditions: [
+        { skillId: 'frostbolt', targetRule: 'lowest-hp', when: 'target-hp-above', value: 0.7 },
+        { skillId: 'fireball', targetRule: 'lowest-hp', when: 'target-hp-below', value: 0.7 },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp', when: 'resource-below', value: 100 },
+      ],
+    }
+    const result = validateAiTactics(raw, mageSkills, 'Mage')
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba).toEqual({ skillId: 'basic-attack', targetRule: 'lowest-hp' })
+    expect(result.warnings.some((w) => w.includes('已修正'))).toBe(true)
+  })
+
   it('validates targetRules array fallback chain', () => {
     const raw = {
       skillPriority: [],

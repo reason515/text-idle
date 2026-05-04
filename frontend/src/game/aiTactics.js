@@ -531,6 +531,91 @@ function isNonsensicalCondition(when, value) {
   return false
 }
 
+/** resource-below/above model fixed MP thresholds; "insufficient mana for spells" is handled by skill priority skip. */
+const RESOURCE_WHEN_NOT_ON_BASIC_ATTACK = new Set(['resource-below', 'resource-above'])
+
+/**
+ * Remove misleading resource gates from basic-attack (LLM often maps 法力不足 to resource-below 100).
+ * @param {Object} step
+ * @returns {{ step: string|object, changed: boolean }}
+ */
+function stripResourceGateFromTargetRuleStepForBasicAttack(step) {
+  if (typeof step === 'string') return { step, changed: false }
+  if (!step || typeof step !== 'object' || typeof step.rule !== 'string') return { step, changed: false }
+  let changed = false
+  const out = { ...step }
+  if (out.when && RESOURCE_WHEN_NOT_ON_BASIC_ATTACK.has(out.when)) {
+    delete out.when
+    delete out.value
+    changed = true
+  }
+  if (Array.isArray(out.whenAll)) {
+    const filtered = out.whenAll.filter((w) => w && !RESOURCE_WHEN_NOT_ON_BASIC_ATTACK.has(w.when))
+    if (filtered.length !== out.whenAll.length) {
+      changed = true
+      if (filtered.length === 0) {
+        delete out.whenAll
+      } else if (filtered.length === 1) {
+        out.when = filtered[0].when
+        if (filtered[0].value !== undefined) out.value = filtered[0].value
+        delete out.whenAll
+      } else {
+        out.whenAll = filtered
+      }
+    }
+  }
+  if (!out.when && !(Array.isArray(out.whenAll) && out.whenAll.length > 0)) {
+    return { step: out.rule, changed }
+  }
+  return { step: out, changed }
+}
+
+/**
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function stripMisleadingBasicAttackResourceGates(conditions, warnings) {
+  let any = false
+  for (const c of conditions) {
+    if (c.skillId !== 'basic-attack') continue
+    if (c.when && RESOURCE_WHEN_NOT_ON_BASIC_ATTACK.has(c.when)) {
+      delete c.when
+      delete c.value
+      any = true
+    }
+    if (Array.isArray(c.whenAll)) {
+      const filtered = c.whenAll.filter((w) => w && !RESOURCE_WHEN_NOT_ON_BASIC_ATTACK.has(w.when))
+      if (filtered.length !== c.whenAll.length) {
+        any = true
+        if (filtered.length === 0) {
+          delete c.whenAll
+        } else if (filtered.length === 1) {
+          c.when = filtered[0].when
+          if (filtered[0].value !== undefined) c.value = filtered[0].value
+          delete c.whenAll
+        } else {
+          c.whenAll = filtered
+        }
+      }
+    }
+    if (Array.isArray(c.targetRules)) {
+      const next = []
+      for (const step of c.targetRules) {
+        const { step: s, changed } = stripResourceGateFromTargetRuleStepForBasicAttack(step)
+        if (changed) any = true
+        next.push(s)
+      }
+      c.targetRules = next
+      if (c.targetRules.length === 0) delete c.targetRules
+    }
+  }
+  if (any) {
+    warnings.push(
+      '已修正：普通攻击由「技能优先级自动跳过无法支付的法术」触发，不应使用「资源低于/高于」数值条件（易误解为固定法力阈值）；已移除。',
+    )
+  }
+}
+
 const CONDITION_KEYWORDS = [
   /血量.{0,4}(低于|少于|不足|以下|小于|<)/,
   /血量.{0,4}(高于|大于|超过|以上|>)/,
@@ -1046,7 +1131,7 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
     targetRule = null
   }
 
-  const conditions = (raw.conditions || [])
+  let conditions = (raw.conditions || [])
     .filter((c) => c && c.skillId && conditionSkillSet.has(c.skillId))
     .map((c) => {
       const clean = { skillId: c.skillId }
@@ -1141,7 +1226,12 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
       }
       return clean
     })
-    .filter((c) => c.targetRule || c.targetRules?.length || c.when || (Array.isArray(c.whenAll) && c.whenAll.length > 0))
+
+  stripMisleadingBasicAttackResourceGates(conditions, warnings)
+
+  conditions = conditions.filter(
+    (c) => c.targetRule || c.targetRules?.length || c.when || (Array.isArray(c.whenAll) && c.whenAll.length > 0),
+  )
 
   const TAUNT_DISALLOWED_FALLBACK = new Set(['lowest-hp', 'first', 'random', 'highest-hp', 'sunder-first'])
   for (const c of conditions) {
