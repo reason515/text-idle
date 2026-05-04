@@ -964,9 +964,9 @@
           <template v-else-if="playerStatsModalTab === 'damage'">
             <div class="detail-skill-choice-banner player-stats-banner tooltip-wrap has-tip">
               <p>
-                自上次清零起累计<strong>对敌方伤害</strong>（区分普攻 / 技能）。不含无法在日志中单次归因的持续伤害等。
+                自上次清零起累计<strong>对敌方伤害</strong>；各角色饼图按<strong>普攻与各技能</strong>拆分。不含无法在日志中单次归因的持续伤害等。
               </p>
-              <span class="tooltip-text">每场战斗结束时根据本场日志增量汇总；点击「清零统计」将清空本节数据。</span>
+              <span class="tooltip-text">每场战斗结束时根据本场日志增量汇总；各角色饼图扇区或图例行悬停显示数值与占比。点击「清零统计」将清空本节数据。</span>
             </div>
             <div
               v-if="playerStatsDamageSquadTotal <= 0"
@@ -1037,36 +1037,49 @@
                   </div>
                   <div v-if="row.total <= 0" class="player-stats-damage-mini-empty">暂无累计伤害</div>
                   <template v-else>
-                    <div class="player-stats-pie-row player-stats-pie-row-compact">
+                    <div
+                      class="player-stats-pie-row player-stats-pie-row-compact player-stats-pie-hover-zone"
+                      @mouseleave="clearCompPieHover"
+                    >
                       <svg
                         class="player-stats-pie-svg player-stats-pie-svg-compact"
                         :viewBox="row.viewBox"
                         preserveAspectRatio="xMidYMid meet"
                         :aria-label="row.heroLabel + ' 伤害构成'"
+                        @mousemove="onCompPieHoverMove"
                       >
                         <template v-for="(sl, si) in row.model.slices" :key="'comp-' + row.heroId + '-' + si">
                           <circle
                             v-if="sl.kind === 'full'"
-                            class="player-stats-pie-slice"
+                            class="player-stats-pie-slice player-stats-pie-slice-hoverable"
                             :cx="sl.cx"
                             :cy="sl.cy"
                             :r="sl.r"
                             :fill="sl.fill"
+                            @mouseenter="onCompPieSliceHover($event, sl)"
                           />
                           <path
                             v-else
-                            class="player-stats-pie-slice"
+                            class="player-stats-pie-slice player-stats-pie-slice-hoverable"
                             :d="sl.d"
                             :fill="sl.fill"
+                            @mouseenter="onCompPieSliceHover($event, sl)"
                           />
                         </template>
                       </svg>
-                      <ul class="player-stats-pie-legend player-stats-pie-legend-compact">
-                        <li v-for="(sl, si) in row.model.slices" :key="'cleg-' + row.heroId + '-' + si">
-                          <span class="player-stats-legend-swatch" :style="{ background: sl.fill }" aria-hidden="true" />
-                          <span class="player-stats-legend-name">{{ sl.label }}</span>
-                          <span class="player-stats-legend-val">{{ sl.value }}</span>
-                          <span class="player-stats-legend-pct">{{ sl.pctLabel }}</span>
+                      <ul class="player-stats-pie-legend player-stats-pie-legend-compact player-stats-pie-legend-skill-only" :aria-label="row.heroLabel + ' 构成图例'">
+                        <li
+                          v-for="leg in row.legend"
+                          :key="'cleg-' + row.heroId + '-' + leg.key"
+                          @mouseenter="onCompPieLegendHover($event, row, leg)"
+                          @mousemove="onCompPieHoverMove"
+                        >
+                          <span class="player-stats-legend-swatch" :style="{ background: leg.fill }" aria-hidden="true" />
+                          <span
+                            class="player-stats-legend-name"
+                            :class="{ 'player-stats-legend-skill': leg.key !== '__basic__' }"
+                            :style="leg.key !== '__basic__' ? { color: 'var(--color-skill)', fontStyle: 'italic' } : {}"
+                          >{{ leg.label }}</span>
                         </li>
                       </ul>
                     </div>
@@ -1098,6 +1111,24 @@
         <div>回合 <span class="tip-val-rounds">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].rounds }}</span></div>
         <div>金币 <span class="tip-val-gold">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].goldGained }}</span></div>
         <div>经验 <span class="tip-val-xp">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].xpGained }}</span></div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="showPlayerStatsModal && playerStatsModalTab === 'damage' && compPieHover"
+        class="player-stats-chart-tooltip player-stats-chart-tooltip-floating player-stats-comp-pie-tooltip"
+        :style="{
+          left: compPieTooltipLeftPx + 'px',
+          top: compPieTooltipTopPx + 'px',
+        }"
+        role="tooltip"
+      >
+        <div class="player-stats-chart-tooltip-title">{{ compPieHover.label }}</div>
+        <div>
+          <span class="tip-val-dmg">{{ compPieHover.value }}</span>
+          <span class="player-stats-comp-pie-pct"> ({{ compPieHover.pctLabel }})</span>
+        </div>
       </div>
     </Teleport>
 
@@ -2210,6 +2241,7 @@ import {
   xpPerExplorationStep,
 } from '../game/playerStatistics.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
+import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
 
@@ -2462,6 +2494,8 @@ const playerStatsModalTab = ref('summary')
 const statsTimelineHoverIdx = ref(null)
 const statsTimelineHoverTipLeft = ref(0)
 const statsTimelineHoverTipTop = ref(0)
+/** @type {import('vue').Ref<{ label: string, value: number, pctLabel: string, left: number, top: number }|null>} */
+const compPieHover = ref(null)
 const showMapModal = ref(false)
 const showBackpackModal = ref(false)
 const showShopModal = ref(false)
@@ -3044,6 +3078,58 @@ const statsTimelineTooltipLeftPx = computed(() => {
 
 const statsTimelineTooltipTopPx = computed(() => statsTimelineHoverTipTop.value)
 
+const compPieTooltipLeftPx = computed(() => {
+  const vw =
+    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 800
+  const half = 72
+  const x = compPieHover.value?.left ?? 0
+  return Math.max(half, Math.min(x, vw - half))
+})
+
+const compPieTooltipTopPx = computed(() => compPieHover.value?.top ?? 0)
+
+function clearCompPieHover() {
+  compPieHover.value = null
+}
+
+/** @param {MouseEvent} e @param {{ label: string, value: number, pctLabel: string, key?: string }} sl */
+function onCompPieSliceHover(e, sl) {
+  compPieHover.value = {
+    label: sl.label,
+    value: sl.value,
+    pctLabel: sl.pctLabel,
+    left: e.clientX,
+    top: e.clientY,
+  }
+}
+
+/** @param {MouseEvent} e */
+function onCompPieHoverMove(e) {
+  if (!compPieHover.value) return
+  compPieHover.value = {
+    ...compPieHover.value,
+    left: e.clientX,
+    top: e.clientY,
+  }
+}
+
+/**
+ * @param {MouseEvent} e
+ * @param {{ model: { slices: { label: string, value: number, pctLabel: string, key?: string }[] }, legend: { key: string }[] }} row
+ * @param {{ key: string }} leg
+ */
+function onCompPieLegendHover(e, row, leg) {
+  const sl = row.model.slices.find((s) => s.key === leg.key)
+  if (!sl) return
+  compPieHover.value = {
+    label: sl.label,
+    value: sl.value,
+    pctLabel: sl.pctLabel,
+    left: e.clientX,
+    top: e.clientY,
+  }
+}
+
 function onPlayerStatsChartMouseMove(e) {
   const shell = e.currentTarget
   const r = shell.getBoundingClientRect()
@@ -3122,22 +3208,17 @@ const playerStatsPerHeroDamagePies = computed(() => {
   const heroes = squad.value || []
   return heroes.map((h) => {
     const r = book[h.id] || { basic: 0, skill: 0 }
-    const basic = r.basic
-    const skill = r.skill
-    const total = basic + skill
-    const segments = [
-      { label: '\u666e\u901a\u653b\u51fb', value: basic, fill: 'var(--color-log-basic)' },
-      { label: '\u6280\u80fd', value: skill, fill: 'var(--color-skill)' },
-    ]
+    const segments = buildHeroDamagePieSegments(r)
+    const total = segments.reduce((acc, s) => acc + s.value, 0)
     const model = buildPieChartModel(COMP_PIE_GEOM, segments)
+    const legend = segments.map((s) => ({ key: s.key, label: s.label, fill: s.fill }))
     return {
       heroId: String(h.id),
       heroLabel: heroDisplayName(h.name),
       heroClass: h.class,
-      basic,
-      skill,
       total,
       model,
+      legend,
       viewBox: COMP_PIE_VIEW_BOX,
     }
   })
@@ -3145,11 +3226,15 @@ const playerStatsPerHeroDamagePies = computed(() => {
 
 watch(showPlayerStatsModal, (open) => {
   if (open) playerStatsModalTab.value = 'summary'
-  else clearPlayerStatsChartHover()
+  else {
+    clearPlayerStatsChartHover()
+    clearCompPieHover()
+  }
 })
 
 watch(playerStatsModalTab, () => {
   clearPlayerStatsChartHover()
+  clearCompPieHover()
 })
 
 function loadPlayerStats() {
@@ -4716,6 +4801,25 @@ onUnmounted(() => {
 }
 .player-stats-pie-legend-compact {
   min-width: 7rem;
+}
+.player-stats-pie-legend-skill-only li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.45rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+.player-stats-pie-slice-hoverable {
+  cursor: default;
+}
+.player-stats-comp-pie-pct {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.player-stats-chart-tooltip .tip-val-dmg {
+  color: var(--text-value);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .player-stats-pie-legend li {
   display: grid;

@@ -15,7 +15,7 @@ function cartesianFromAngle(cx, cy, r, angleDeg) {
 
 /**
  * @param {{ cx: number, cy: number, r: number }} geom
- * @param {{ label?: string, value: number, fill?: string }[]} segments
+ * @param {{ key?: string, label?: string, value: number, fill?: string }[]} segments
  */
 export function buildPieChartModel(geom, segments) {
   const cx = geom.cx
@@ -49,6 +49,7 @@ export function buildPieChartModel(geom, segments) {
         label: s.label != null ? String(s.label) : '',
         value: Math.floor(val),
         pctLabel,
+        ...(s.key != null ? { key: String(s.key) } : {}),
       })
       angle += sweep
       continue
@@ -69,6 +70,7 @@ export function buildPieChartModel(geom, segments) {
       label: s.label != null ? String(s.label) : '',
       value: Math.floor(val),
       pctLabel,
+      ...(s.key != null ? { key: String(s.key) } : {}),
     })
   }
 

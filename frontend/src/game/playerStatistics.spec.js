@@ -118,14 +118,25 @@ describe('playerStatistics', () => {
       goldGained: 0,
       xpGained: 0,
       rounds: 1,
-      damageByHeroDelta: { a: { basic: 3, skill: 1 }, b: { basic: 0, skill: 8 } },
+      damageByHeroDelta: { a: { basic: 3, skill: 1, skillById: { x: 1 } }, b: { basic: 0, skill: 8 } },
     })
-    expect(s.damageByHero).toEqual({ a: { basic: 13, skill: 6 }, b: { basic: 0, skill: 8 } })
+    expect(s.damageByHero).toEqual({
+      a: { basic: 13, skill: 6, skillById: { x: 1 } },
+      b: { basic: 0, skill: 8 },
+    })
   })
 
   it('normalizeHeroDamageBook clamps entries', () => {
     expect(normalizeHeroDamageBook({ x: { basic: -2, skill: '7' } })).toEqual({ x: { basic: 0, skill: 7 } })
     expect(normalizeHeroDamageBook(null)).toEqual({})
+  })
+
+  it('normalizeHeroDamageBook parses skillById', () => {
+    expect(
+      normalizeHeroDamageBook({
+        h: { basic: 1, skill: 10, skillById: { a: 3, b: 4.2, z: -1 } },
+      }),
+    ).toEqual({ h: { basic: 1, skill: 10, skillById: { a: 3, b: 4 } } })
   })
 
   it('mergeHeroDamageBooks sums per hero id', () => {

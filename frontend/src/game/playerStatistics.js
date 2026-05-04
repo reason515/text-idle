@@ -12,7 +12,7 @@ export const MAX_BATTLE_TIMELINE_ENTRIES = 250
  * @typedef {{ endedAtMs: number, rounds: number, goldGained: number, xpGained: number }} BattleTimelineEntry
  */
 
-/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleTimeline: BattleTimelineEntry[], damageByHero: Record<string, { basic: number, skill: number }> }} */
+/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleTimeline: BattleTimelineEntry[], damageByHero: Record<string, { basic: number, skill: number, skillById?: Record<string, number> }> }} */
 export function createEmptyPlayerStats() {
   return {
     combatActionSteps: 0,
@@ -26,16 +26,49 @@ export function createEmptyPlayerStats() {
 }
 
 /** @param {unknown} raw */
+function normalizeSkillById(raw) {
+  if (!raw || typeof raw !== 'object') return undefined
+  /** @type {Record<string, number>} */
+  const out = {}
+  for (const [sid, val] of Object.entries(/** @type {Record<string, unknown>} */ (raw))) {
+    const n = Math.max(0, Math.floor(Number(val) || 0))
+    if (n > 0) out[String(sid)] = n
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+/**
+ * @param {Record<string, number>|undefined} a
+ * @param {Record<string, number>|undefined} b
+ */
+function mergeSkillByIdMaps(a, b) {
+  if (!a && !b) return undefined
+  /** @type {Record<string, number>} */
+  const o = { ...(a || {}) }
+  for (const [k, v] of Object.entries(b || {})) {
+    const add = Math.max(0, Math.floor(Number(v) || 0))
+    o[String(k)] = (o[String(k)] || 0) + add
+  }
+  for (const k of Object.keys(o)) {
+    if (o[k] <= 0) delete o[k]
+  }
+  return Object.keys(o).length ? o : undefined
+}
+
+/** @param {unknown} raw */
 export function normalizeHeroDamageBook(raw) {
   if (!raw || typeof raw !== 'object') return {}
-  /** @type {Record<string, { basic: number, skill: number }>} */
+  /** @type {Record<string, { basic: number, skill: number, skillById?: Record<string, number> }>} */
   const out = {}
   for (const [k, v] of Object.entries(raw)) {
     if (!v || typeof v !== 'object') continue
     const vo = /** @type {Record<string, unknown>} */ (v)
     const basic = Math.max(0, Math.floor(Number(vo.basic) || 0))
     const skill = Math.max(0, Math.floor(Number(vo.skill) || 0))
-    out[String(k)] = { basic, skill }
+    const skillById = normalizeSkillById(vo.skillById)
+    const row = { basic, skill }
+    if (skillById) row.skillById = skillById
+    out[String(k)] = row
   }
   return out
 }
@@ -48,7 +81,14 @@ export function mergeHeroDamageBooks(baseRaw, deltaRaw) {
   const out = normalizeHeroDamageBook(baseRaw)
   for (const [id, v] of Object.entries(normalizeHeroDamageBook(deltaRaw))) {
     const p = out[id] || { basic: 0, skill: 0 }
-    out[id] = { basic: p.basic + v.basic, skill: p.skill + v.skill }
+    const mergedById = mergeSkillByIdMaps(p.skillById, v.skillById)
+    /** @type {{ basic: number, skill: number, skillById?: Record<string, number> }} */
+    const row = {
+      basic: p.basic + v.basic,
+      skill: p.skill + v.skill,
+    }
+    if (mergedById) row.skillById = mergedById
+    out[id] = row
   }
   return out
 }
@@ -79,7 +119,7 @@ export function explorationSteps(stats) {
 
 /**
  * @param {object} stats
- * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number, damageByHeroDelta?: Record<string, { basic?: number, skill?: number }> }} battle
+ * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number, damageByHeroDelta?: Record<string, { basic?: number, skill?: number, skillById?: Record<string, number> }> }} battle
  */
 export function applyBattleToPlayerStats(stats, battle) {
   const base = stats && typeof stats === 'object' ? { ...createEmptyPlayerStats(), ...stats } : createEmptyPlayerStats()

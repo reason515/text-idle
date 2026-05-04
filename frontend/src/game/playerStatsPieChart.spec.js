@@ -20,10 +20,12 @@ describe('playerStatsPieChart', () => {
 
   it('builds two sectors for split totals', () => {
     const m = buildPieChartModel(g, [
-      { label: 'X', value: 25, fill: 'var(--color-gold)' },
-      { label: 'Y', value: 75, fill: 'var(--color-exp)' },
+      { key: 'a', label: 'X', value: 25, fill: 'var(--color-gold)' },
+      { key: 'b', label: 'Y', value: 75, fill: 'var(--color-exp)' },
     ])
     expect(m.slices).toHaveLength(2)
+    expect(m.slices[0].key).toBe('a')
+    expect(m.slices[1].key).toBe('b')
     expect(m.slices[0].kind).toBeUndefined()
     expect(m.slices[0].d).toMatch(/^M /)
     expect(m.total).toBe(100)

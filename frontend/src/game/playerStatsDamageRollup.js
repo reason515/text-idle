@@ -3,10 +3,10 @@
  * Uses attack log rows only (basic vs skill). Ignores DoT rows (no stable attribution).
  *
  * @param {unknown} log
- * @returns {Record<string, { basic: number, skill: number }>}
+ * @returns {Record<string, { basic: number, skill: number, skillById?: Record<string, number> }>}
  */
 export function rollupHeroDamageFromBattleLog(log) {
-  /** @type {Record<string, { basic: number, skill: number }>} */
+  /** @type {Record<string, { basic: number, skill: number, skillById: Record<string, number> }>} */
   const out = {}
   if (!Array.isArray(log)) return out
 
@@ -27,14 +27,22 @@ export function rollupHeroDamageFromBattleLog(log) {
     if (actorId == null || actorId === '') continue
 
     const id = String(actorId)
-    if (!out[id]) out[id] = { basic: 0, skill: 0 }
+    if (!out[id]) out[id] = { basic: 0, skill: 0, skillById: {} }
 
     const action = e.action
     if (action === 'skill') {
-      out[id].skill += Math.floor(fd)
+      const add = Math.floor(fd)
+      out[id].skill += add
+      const sidRaw = e.skillId
+      const sid = typeof sidRaw === 'string' && sidRaw ? sidRaw : '__unknown__'
+      out[id].skillById[sid] = (out[id].skillById[sid] || 0) + add
     } else if (action === 'basic') {
       out[id].basic += Math.floor(fd)
     }
+  }
+
+  for (const rec of Object.values(out)) {
+    if (Object.keys(rec.skillById).length === 0) delete rec.skillById
   }
 
   return out

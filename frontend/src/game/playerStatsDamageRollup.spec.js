@@ -20,7 +20,9 @@ describe('playerStatsDamageRollup', () => {
         finalDamage: 30,
       },
     ]
-    expect(rollupHeroDamageFromBattleLog(log)).toEqual({ h1: { basic: 12, skill: 30 } })
+    expect(rollupHeroDamageFromBattleLog(log)).toEqual({
+      h1: { basic: 12, skill: 30, skillById: { 'heavy-hit': 30 } },
+    })
   })
 
   it('skips misses, typed rows, monster attackers, and heals without monster target', () => {
@@ -57,6 +59,45 @@ describe('playerStatsDamageRollup', () => {
       },
     ]
     expect(rollupHeroDamageFromBattleLog(log)).toEqual({ h2: { basic: 4, skill: 0 } })
+  })
+
+  it('splits skill damage by skillId', () => {
+    const log = [
+      {
+        actorId: 'h1',
+        actorClass: 'Warrior',
+        targetTier: 'normal',
+        action: 'skill',
+        skillId: 'cleave',
+        finalDamage: 10,
+      },
+      {
+        actorId: 'h1',
+        actorClass: 'Warrior',
+        targetTier: 'normal',
+        action: 'skill',
+        skillId: 'heroic-strike',
+        finalDamage: 20,
+      },
+    ]
+    expect(rollupHeroDamageFromBattleLog(log)).toEqual({
+      h1: { basic: 0, skill: 30, skillById: { cleave: 10, 'heroic-strike': 20 } },
+    })
+  })
+
+  it('uses __unknown__ bucket when skill row has no skillId', () => {
+    const log = [
+      {
+        actorId: 'h1',
+        actorClass: 'Mage',
+        targetTier: 'normal',
+        action: 'skill',
+        finalDamage: 7,
+      },
+    ]
+    expect(rollupHeroDamageFromBattleLog(log)).toEqual({
+      h1: { basic: 0, skill: 7, skillById: { __unknown__: 7 } },
+    })
   })
 
   it('returns empty object for non-array', () => {
