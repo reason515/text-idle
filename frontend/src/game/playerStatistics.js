@@ -12,7 +12,7 @@ export const MAX_BATTLE_TIMELINE_ENTRIES = 250
  * @typedef {{ endedAtMs: number, rounds: number, goldGained: number, xpGained: number }} BattleTimelineEntry
  */
 
-/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleTimeline: BattleTimelineEntry[] }} */
+/** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleTimeline: BattleTimelineEntry[], damageByHero: Record<string, { basic: number, skill: number }> }} */
 export function createEmptyPlayerStats() {
   return {
     combatActionSteps: 0,
@@ -21,7 +21,36 @@ export function createEmptyPlayerStats() {
     cumulativeXp: 0,
     displayScaleN: 100,
     battleTimeline: [],
+    damageByHero: {},
   }
+}
+
+/** @param {unknown} raw */
+export function normalizeHeroDamageBook(raw) {
+  if (!raw || typeof raw !== 'object') return {}
+  /** @type {Record<string, { basic: number, skill: number }>} */
+  const out = {}
+  for (const [k, v] of Object.entries(raw)) {
+    if (!v || typeof v !== 'object') continue
+    const vo = /** @type {Record<string, unknown>} */ (v)
+    const basic = Math.max(0, Math.floor(Number(vo.basic) || 0))
+    const skill = Math.max(0, Math.floor(Number(vo.skill) || 0))
+    out[String(k)] = { basic, skill }
+  }
+  return out
+}
+
+/**
+ * @param {unknown} baseRaw
+ * @param {unknown} deltaRaw
+ */
+export function mergeHeroDamageBooks(baseRaw, deltaRaw) {
+  const out = normalizeHeroDamageBook(baseRaw)
+  for (const [id, v] of Object.entries(normalizeHeroDamageBook(deltaRaw))) {
+    const p = out[id] || { basic: 0, skill: 0 }
+    out[id] = { basic: p.basic + v.basic, skill: p.skill + v.skill }
+  }
+  return out
 }
 
 /** @param {unknown} raw */
@@ -50,10 +79,11 @@ export function explorationSteps(stats) {
 
 /**
  * @param {object} stats
- * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number }} battle
+ * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number, damageByHeroDelta?: Record<string, { basic?: number, skill?: number }> }} battle
  */
 export function applyBattleToPlayerStats(stats, battle) {
   const base = stats && typeof stats === 'object' ? { ...createEmptyPlayerStats(), ...stats } : createEmptyPlayerStats()
+  const damageByHero = mergeHeroDamageBooks(base.damageByHero, battle.damageByHeroDelta ?? {})
   const prevTimeline = normalizeBattleTimeline(base.battleTimeline)
   const endedRaw = battle.endedAtMs
   const endedAtMs = Number.isFinite(Number(endedRaw)) ? Number(endedRaw) : Date.now()
@@ -71,6 +101,7 @@ export function applyBattleToPlayerStats(stats, battle) {
     cumulativeGold: base.cumulativeGold + (battle.goldGained || 0),
     cumulativeXp: base.cumulativeXp + (battle.xpGained || 0),
     battleTimeline,
+    damageByHero,
   }
 }
 
@@ -128,5 +159,6 @@ export function normalizePlayerStats(raw) {
     cumulativeXp: Math.max(0, Math.floor(Number(raw.cumulativeXp) || 0)),
     displayScaleN,
     battleTimeline: normalizeBattleTimeline(raw.battleTimeline),
+    damageByHero: normalizeHeroDamageBook(raw.damageByHero),
   }
 }

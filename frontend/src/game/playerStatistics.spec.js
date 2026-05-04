@@ -6,7 +6,9 @@ import {
   createEmptyPlayerStats,
   explorationSteps,
   goldPerExplorationStep,
+  mergeHeroDamageBooks,
   normalizeBattleTimeline,
+  normalizeHeroDamageBook,
   normalizePlayerStats,
   scaledPerStep,
   xpPerExplorationStep,
@@ -21,6 +23,7 @@ describe('playerStatistics', () => {
     expect(s.cumulativeXp).toBe(0)
     expect(s.displayScaleN).toBe(100)
     expect(s.battleTimeline).toEqual([])
+    expect(s.damageByHero).toEqual({})
   })
 
   it('explorationSteps sums combat and rest', () => {
@@ -99,6 +102,49 @@ describe('playerStatistics', () => {
   it('normalizePlayerStats clamps displayScaleN', () => {
     expect(normalizePlayerStats({ displayScaleN: 10 }).displayScaleN).toBe(10)
     expect(normalizePlayerStats({ displayScaleN: 999 }).displayScaleN).toBe(100)
+  })
+
+  it('applyBattleToPlayerStats merges damageByHeroDelta', () => {
+    let s = applyBattleToPlayerStats(createEmptyPlayerStats(), {
+      combatActionSteps: 1,
+      goldGained: 0,
+      xpGained: 0,
+      rounds: 1,
+      damageByHeroDelta: { a: { basic: 10, skill: 5 } },
+    })
+    expect(s.damageByHero).toEqual({ a: { basic: 10, skill: 5 } })
+    s = applyBattleToPlayerStats(s, {
+      combatActionSteps: 1,
+      goldGained: 0,
+      xpGained: 0,
+      rounds: 1,
+      damageByHeroDelta: { a: { basic: 3, skill: 1 }, b: { basic: 0, skill: 8 } },
+    })
+    expect(s.damageByHero).toEqual({ a: { basic: 13, skill: 6 }, b: { basic: 0, skill: 8 } })
+  })
+
+  it('normalizeHeroDamageBook clamps entries', () => {
+    expect(normalizeHeroDamageBook({ x: { basic: -2, skill: '7' } })).toEqual({ x: { basic: 0, skill: 7 } })
+    expect(normalizeHeroDamageBook(null)).toEqual({})
+  })
+
+  it('mergeHeroDamageBooks sums per hero id', () => {
+    expect(
+      mergeHeroDamageBooks({ h: { basic: 1, skill: 2 } }, { h: { basic: 4, skill: 0 }, k: { basic: 0, skill: 3 } }),
+    ).toEqual({ h: { basic: 5, skill: 2 }, k: { basic: 0, skill: 3 } })
+  })
+
+  it('normalizePlayerStats parses damageByHero', () => {
+    const s = normalizePlayerStats({
+      combatActionSteps: 0,
+      restSteps: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      displayScaleN: 100,
+      battleTimeline: [],
+      damageByHero: { z: { basic: 12.9, skill: 3.1 } },
+    })
+    expect(s.damageByHero).toEqual({ z: { basic: 12, skill: 3 } })
   })
 
   it('normalizePlayerStats parses battleTimeline', () => {

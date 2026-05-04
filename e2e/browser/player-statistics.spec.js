@@ -25,6 +25,9 @@ test.describe('Player statistics (efficiency + modal)', () => {
     await page.getByTestId('player-stats-tab-timeline').click()
     await expect(page.getByTestId('player-stats-timeline-empty')).toBeVisible({ timeout: 15000 })
 
+    await page.getByTestId('player-stats-tab-damage').click()
+    await expect(page.getByTestId('player-stats-damage-empty')).toBeVisible({ timeout: 15000 })
+
     await page.getByTestId('player-stats-modal-close').click()
     await expect(overlay).toBeHidden()
   })

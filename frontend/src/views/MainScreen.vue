@@ -826,6 +826,15 @@
             >
               场次趋势
             </button>
+            <button
+              type="button"
+              class="detail-tab"
+              data-testid="player-stats-tab-damage"
+              :class="{ active: playerStatsModalTab === 'damage' }"
+              @click="playerStatsModalTab = 'damage'"
+            >
+              伤害统计
+            </button>
           </div>
 
           <div class="player-stats-modal-body">
@@ -843,7 +852,7 @@
               </p>
             </div>
             <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
-              <p>确定清零统计数据？将重置本周期累计步数、收益与场次趋势列表。</p>
+              <p>确定清零统计数据？将重置本周期累计步数、收益、场次趋势列表与伤害累计。</p>
               <div class="player-stats-reset-actions player-stats-modal-inline-btns">
                 <button type="button" class="btn btn-danger player-stats-compact-btn" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
                 <button type="button" class="btn player-stats-compact-btn" @click="resetStatsConfirming = false">取消</button>
@@ -854,7 +863,7 @@
             </div>
           </template>
 
-          <template v-else>
+          <template v-else-if="playerStatsModalTab === 'timeline'">
             <div v-if="playerStatsBattleTimeline.length === 0" class="player-stats-timeline-empty" data-testid="player-stats-timeline-empty">
               本周期暂无战斗记录。开战后会自动追加；也可先在其他 Tab 查看概览。
             </div>
@@ -949,6 +958,121 @@
                   <text :x="playerStatsTimelineChartModel.plot.x + 104" :y="14" class="player-stats-svg-legend-label legend-svg-xp">经验</text>
                 </g>
               </svg>
+            </div>
+          </template>
+
+          <template v-else-if="playerStatsModalTab === 'damage'">
+            <div class="detail-skill-choice-banner player-stats-banner tooltip-wrap has-tip">
+              <p>
+                自上次清零起累计<strong>对敌方伤害</strong>（区分普攻 / 技能）。不含无法在日志中单次归因的持续伤害等。
+              </p>
+              <span class="tooltip-text">每场战斗结束时根据本场日志增量汇总；点击「清零统计」将清空本节数据。</span>
+            </div>
+            <div
+              v-if="playerStatsDamageSquadTotal <= 0"
+              class="player-stats-damage-empty"
+              data-testid="player-stats-damage-empty"
+            >
+              本周期暂无累计伤害数据。进行战斗后会自动写入。
+            </div>
+            <div v-else class="player-stats-damage-layout" data-testid="player-stats-damage-section">
+              <div class="player-stats-damage-card player-stats-damage-card-wide">
+                <div class="player-stats-damage-card-title">小队伤害占比</div>
+                <div class="player-stats-pie-row">
+                  <svg
+                    class="player-stats-pie-svg"
+                    :viewBox="playerStatsDamageSharePie.viewBox"
+                    preserveAspectRatio="xMidYMid meet"
+                    aria-label="小队伤害占比饼图"
+                  >
+                    <template v-if="!playerStatsDamageSharePie.model.empty">
+                      <template v-for="(sl, si) in playerStatsDamageSharePie.model.slices" :key="'share-' + si">
+                        <circle
+                          v-if="sl.kind === 'full'"
+                          class="player-stats-pie-slice"
+                          :cx="sl.cx"
+                          :cy="sl.cy"
+                          :r="sl.r"
+                          :fill="sl.fill"
+                        />
+                        <path
+                          v-else
+                          class="player-stats-pie-slice"
+                          :d="sl.d"
+                          :fill="sl.fill"
+                        />
+                      </template>
+                    </template>
+                    <circle
+                      v-else
+                      class="player-stats-pie-hole-fallback"
+                      :cx="playerStatsDamageSharePie.model.cx"
+                      :cy="playerStatsDamageSharePie.model.cy"
+                      :r="playerStatsDamageSharePie.model.r"
+                      fill="none"
+                      stroke="var(--border-dark)"
+                      stroke-dasharray="4 3"
+                    />
+                  </svg>
+                  <ul class="player-stats-pie-legend" aria-label="占比图例">
+                    <li v-for="leg in playerStatsDamageSharePie.legend" :key="'leg-' + leg.heroId">
+                      <span class="player-stats-legend-swatch" :style="{ background: leg.color }" aria-hidden="true" />
+                      <span class="player-stats-legend-name" :style="{ color: leg.color }">{{ leg.heroLabel }}</span>
+                      <span class="player-stats-legend-val">{{ leg.total }}</span>
+                      <span class="player-stats-legend-pct">{{ leg.pctLabel }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="player-stats-damage-grid-title">各角色伤害构成</div>
+              <div class="player-stats-damage-grid">
+                <div
+                  v-for="row in playerStatsPerHeroDamagePies"
+                  :key="'dmg-' + row.heroId"
+                  class="player-stats-damage-card"
+                >
+                  <div class="player-stats-damage-card-title" :style="{ color: classColor(row.heroClass) }">
+                    {{ row.heroLabel }}
+                  </div>
+                  <div v-if="row.total <= 0" class="player-stats-damage-mini-empty">暂无累计伤害</div>
+                  <template v-else>
+                    <div class="player-stats-pie-row player-stats-pie-row-compact">
+                      <svg
+                        class="player-stats-pie-svg player-stats-pie-svg-compact"
+                        :viewBox="row.viewBox"
+                        preserveAspectRatio="xMidYMid meet"
+                        :aria-label="row.heroLabel + ' 伤害构成'"
+                      >
+                        <template v-for="(sl, si) in row.model.slices" :key="'comp-' + row.heroId + '-' + si">
+                          <circle
+                            v-if="sl.kind === 'full'"
+                            class="player-stats-pie-slice"
+                            :cx="sl.cx"
+                            :cy="sl.cy"
+                            :r="sl.r"
+                            :fill="sl.fill"
+                          />
+                          <path
+                            v-else
+                            class="player-stats-pie-slice"
+                            :d="sl.d"
+                            :fill="sl.fill"
+                          />
+                        </template>
+                      </svg>
+                      <ul class="player-stats-pie-legend player-stats-pie-legend-compact">
+                        <li v-for="(sl, si) in row.model.slices" :key="'cleg-' + row.heroId + '-' + si">
+                          <span class="player-stats-legend-swatch" :style="{ background: sl.fill }" aria-hidden="true" />
+                          <span class="player-stats-legend-name">{{ sl.label }}</span>
+                          <span class="player-stats-legend-val">{{ sl.value }}</span>
+                          <span class="player-stats-legend-pct">{{ sl.pctLabel }}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
           </template>
           </div>
@@ -2080,10 +2204,13 @@ import {
   createEmptyPlayerStats,
   explorationSteps,
   goldPerExplorationStep,
+  normalizeHeroDamageBook,
   normalizePlayerStats,
   scaledPerStep,
   xpPerExplorationStep,
 } from '../game/playerStatistics.js'
+import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
+import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
 
 const RESOURCE_MAP = {
@@ -2942,6 +3069,79 @@ const playerStatsBattleTimeline = computed(() => {
 })
 
 const playerStatsTimelineChartModel = computed(() => buildTimelineTrendChartModel(playerStatsBattleTimeline.value))
+
+const SHARE_PIE_GEOM = { cx: 84, cy: 84, r: 76 }
+const SHARE_PIE_VIEW_BOX = '0 0 168 168'
+const COMP_PIE_GEOM = { cx: 72, cy: 72, r: 62 }
+const COMP_PIE_VIEW_BOX = '0 0 144 144'
+
+const playerStatsDamageSquadTotal = computed(() => {
+  const book = normalizeHeroDamageBook(playerStats.value.damageByHero)
+  const heroes = squad.value || []
+  let sum = 0
+  for (const h of heroes) {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    sum += r.basic + r.skill
+  }
+  return sum
+})
+
+const playerStatsDamageSharePie = computed(() => {
+  const book = normalizeHeroDamageBook(playerStats.value.damageByHero)
+  const heroes = squad.value || []
+  let squadTotal = 0
+  /** @type {{ heroId: string, heroLabel: string, total: number, pctLabel: string, color: string }[]} */
+  const legend = []
+  const segments = []
+  for (const h of heroes) {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    const total = r.basic + r.skill
+    squadTotal += total
+    const heroLabel = heroDisplayName(h.name)
+    const color = classColor(h.class)
+    legend.push({
+      heroId: String(h.id),
+      heroLabel,
+      total,
+      pctLabel: '0%',
+      color,
+    })
+    if (total > 0) {
+      segments.push({ label: heroLabel, value: total, fill: color })
+    }
+  }
+  for (const row of legend) {
+    row.pctLabel = squadTotal > 0 ? `${Math.round((100 * row.total) / squadTotal)}%` : '0%'
+  }
+  const model = buildPieChartModel(SHARE_PIE_GEOM, segments)
+  return { model, legend, viewBox: SHARE_PIE_VIEW_BOX }
+})
+
+const playerStatsPerHeroDamagePies = computed(() => {
+  const book = normalizeHeroDamageBook(playerStats.value.damageByHero)
+  const heroes = squad.value || []
+  return heroes.map((h) => {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    const basic = r.basic
+    const skill = r.skill
+    const total = basic + skill
+    const segments = [
+      { label: '\u666e\u901a\u653b\u51fb', value: basic, fill: 'var(--color-log-basic)' },
+      { label: '\u6280\u80fd', value: skill, fill: 'var(--color-skill)' },
+    ]
+    const model = buildPieChartModel(COMP_PIE_GEOM, segments)
+    return {
+      heroId: String(h.id),
+      heroLabel: heroDisplayName(h.name),
+      heroClass: h.class,
+      basic,
+      skill,
+      total,
+      model,
+      viewBox: COMP_PIE_VIEW_BOX,
+    }
+  })
+})
 
 watch(showPlayerStatsModal, (open) => {
   if (open) playerStatsModalTab.value = 'summary'
@@ -3954,6 +4154,7 @@ async function runCombatLoop() {
         goldGained: result.rewards.gold,
         xpGained: result.rewards.exp,
         rounds: result.rounds ?? 0,
+        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
       })
       const restStepsVictory = await autoRest(result.heroesAfter)
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsVictory)
@@ -3982,6 +4183,7 @@ async function runCombatLoop() {
         goldGained: 0,
         xpGained: 0,
         rounds: result.rounds ?? 0,
+        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
       })
       const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsDefeat)
@@ -4423,6 +4625,123 @@ onUnmounted(() => {
   color: var(--text-muted);
   font-size: var(--font-sm);
   text-align: center;
+}
+.player-stats-damage-empty {
+  padding: 1rem 0.35rem;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  text-align: center;
+}
+.player-stats-damage-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.player-stats-damage-grid-title {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-label);
+  margin-top: 0.15rem;
+}
+.player-stats-damage-card {
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+.player-stats-damage-card-wide {
+  width: 100%;
+  box-sizing: border-box;
+}
+.player-stats-damage-card-title {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-label);
+  margin-bottom: 0.45rem;
+}
+.player-stats-damage-mini-empty {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  padding: 0.35rem 0;
+}
+.player-stats-damage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.55rem;
+}
+.player-stats-pie-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.player-stats-pie-row-compact {
+  gap: 0.45rem;
+}
+.player-stats-pie-svg {
+  flex-shrink: 0;
+  width: 10rem;
+  height: 10rem;
+  max-width: 42vw;
+}
+.player-stats-pie-svg-compact {
+  width: 7rem;
+  height: 7rem;
+  max-width: 38vw;
+}
+.player-stats-pie-slice {
+  stroke: var(--bg-darker);
+  stroke-width: 1px;
+}
+.player-stats-pie-hole-fallback {
+  opacity: 0.85;
+}
+.player-stats-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 9rem;
+  font-size: var(--font-xs);
+  color: var(--text-label);
+}
+.player-stats-pie-legend-compact {
+  min-width: 7rem;
+}
+.player-stats-pie-legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.35rem 0.45rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+.player-stats-pie-legend li:last-child {
+  margin-bottom: 0;
+}
+.player-stats-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.player-stats-legend-name {
+  font-weight: 500;
+  color: var(--text-value);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-stats-legend-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-value);
+  text-align: right;
+}
+.player-stats-legend-pct {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 2.25rem;
+  text-align: right;
 }
 .player-stats-chart-shell {
   position: relative;
