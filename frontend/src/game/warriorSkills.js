@@ -37,6 +37,7 @@ export const WARRIOR_INITIAL_SKILLS = [
 ]
 
 import { getLevelSkillById } from './warriorLevelSkills.js'
+import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
 
 /** Taunt is an initial skill for the fixed trio / Protection start; not in WARRIOR_INITIAL_SKILLS (recruitment 3-pick-1). */
 const WARRIOR_STANDALONE_SKILLS = [
@@ -79,7 +80,11 @@ export function getAnyWarriorSkillById(skillId) {
   return getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
 }
 
-const MAX_ENHANCE_COUNT = 3
+/** Per skill at enhanceCount = MAX_SKILL_ENHANCE_COUNT (same per-tier deltas as lower steps). */
+const HEROIC_STRIKE_COEFF_MAX = 2.0
+const BLOODTHIRST_COEFF_MAX = 1.6
+const BLOODTHIRST_HEAL_MAX = 0.35
+const DEFENSIVE_STANCE_DR_MAX = 24
 const PER_STACK_ARMOR_REDUCTION = 8
 
 /**
@@ -94,7 +99,7 @@ export function getSkillWithEnhancements(warrior, skillId) {
   if (!base) return null
 
   const enhanceCount = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     warrior?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
   if (enhanceCount === 0) return base
@@ -102,11 +107,11 @@ export function getSkillWithEnhancements(warrior, skillId) {
   const out = { ...base }
 
   if (skillId === 'heroic-strike') {
-    out.coefficient = Math.min(1.8, 1.2 + enhanceCount * 0.2)
+    out.coefficient = Math.min(HEROIC_STRIKE_COEFF_MAX, 1.2 + enhanceCount * 0.2)
     out.effectDesc = `对单体造成 ${out.coefficient} 倍物理伤害`
   } else if (skillId === 'bloodthirst') {
-    out.coefficient = Math.min(1.5, 1.2 + enhanceCount * 0.1)
-    out.healPercent = Math.min(0.3, 0.15 + enhanceCount * 0.05)
+    out.coefficient = Math.min(BLOODTHIRST_COEFF_MAX, 1.2 + enhanceCount * 0.1)
+    out.healPercent = Math.min(BLOODTHIRST_HEAL_MAX, 0.15 + enhanceCount * 0.05)
     out.effectDesc = `${out.coefficient} 倍物理伤害；治疗造成伤害的 ${Math.round(out.healPercent * 100)}%`
   } else if (skillId === 'sunder-armor') {
     const baseRage = base.rageCost ?? 15
@@ -121,7 +126,7 @@ export function getSkillWithEnhancements(warrior, skillId) {
     out.effectDesc = `强制目标攻击你 ${out.tauntForcedActions} 次行动，${out.cooldown} 回合 CD`
   } else if (skillId === 'defensive-stance') {
     const basePct = base.damageReductionPct ?? 12
-    out.damageReductionPct = Math.min(21, basePct + enhanceCount * 3)
+    out.damageReductionPct = Math.min(DEFENSIVE_STANCE_DR_MAX, basePct + enhanceCount * 3)
     out.stanceDuration = base.stanceDuration ?? 3
     out.effectDesc = `自身受到伤害 -${out.damageReductionPct}%，持续 ${out.stanceDuration} 回合，${out.cooldown ?? 4} 回合 CD`
   }
@@ -142,22 +147,22 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
   if (!base) return ''
 
   const current = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     hero?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
-  const next = Math.min(MAX_ENHANCE_COUNT, current + 1)
+  const next = Math.min(MAX_SKILL_ENHANCE_COUNT, current + 1)
   if (next <= current) return base.effectDesc ?? ''
 
   if (skillId === 'heroic-strike') {
-    const currCoeff = Math.min(1.8, 1.2 + current * 0.2)
-    const nextCoeff = Math.min(1.8, 1.2 + next * 0.2)
+    const currCoeff = Math.min(HEROIC_STRIKE_COEFF_MAX, 1.2 + current * 0.2)
+    const nextCoeff = Math.min(HEROIC_STRIKE_COEFF_MAX, 1.2 + next * 0.2)
     return `${currCoeff} -> ${nextCoeff} 倍物理伤害（单体）`
   }
   if (skillId === 'bloodthirst') {
-    const currCoeff = Math.min(1.5, 1.2 + current * 0.1)
-    const nextCoeff = Math.min(1.5, 1.2 + next * 0.1)
-    const currHeal = Math.min(30, Math.round((0.15 + current * 0.05) * 100))
-    const nextHeal = Math.min(30, Math.round((0.15 + next * 0.05) * 100))
+    const currCoeff = Math.min(BLOODTHIRST_COEFF_MAX, 1.2 + current * 0.1)
+    const nextCoeff = Math.min(BLOODTHIRST_COEFF_MAX, 1.2 + next * 0.1)
+    const currHeal = Math.round((0.15 + current * 0.05) * 100)
+    const nextHeal = Math.round((0.15 + next * 0.05) * 100)
     return `${currCoeff} -> ${nextCoeff} 倍物理伤害；治疗 ${currHeal}% -> ${nextHeal}%`
   }
   if (skillId === 'sunder-armor') {
@@ -179,8 +184,8 @@ export function getEnhancementPreviewEffectDesc(hero, skillId) {
   }
   if (skillId === 'defensive-stance') {
     const basePct = base.damageReductionPct ?? 12
-    const currPct = Math.min(21, basePct + current * 3)
-    const nextPct = Math.min(21, basePct + next * 3)
+    const currPct = Math.min(DEFENSIVE_STANCE_DR_MAX, basePct + current * 3)
+    const nextPct = Math.min(DEFENSIVE_STANCE_DR_MAX, basePct + next * 3)
     return `减伤 ${currPct}% -> ${nextPct}%`
   }
 

@@ -1665,11 +1665,10 @@
                   <span class="detail-label">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
                   <span class="detail-value skill-spec-tag">{{ getHeroSkillDisplay(skillId, selectedHero).spec }}</span>
                   <span
-                    v-if="(selectedHero.skillEnhancements?.[skillId]?.enhanceCount ?? 0) > 0"
                     class="skill-enhance-badge tooltip-wrap has-tip"
                   >
-                    {{ selectedHero.skillEnhancements[skillId].enhanceCount }}/3
-                    <span class="tooltip-text">已强化 {{ selectedHero.skillEnhancements[skillId].enhanceCount }}/3 次</span>
+                    Lv.{{ heroSkillDisplayLevel(selectedHero, skillId) }}/{{ MAX_SKILL_DISPLAY_LEVEL }}
+                    <span class="tooltip-text">技能等级 Lv.{{ heroSkillDisplayLevel(selectedHero, skillId) }}/{{ MAX_SKILL_DISPLAY_LEVEL }}；里程碑强化 {{ heroSkillEnhanceTimes(selectedHero, skillId) }}/{{ MAX_SKILL_ENHANCE_COUNT }} 次</span>
                   </span>
                 </div>
                 <div class="detail-row skill-desc-row">
@@ -2145,6 +2144,7 @@ import {
   applyEnhanceSkill,
   markSkillMilestoneResolved,
 } from '../game/skillChoice.js'
+import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillEnhancementLimits.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
@@ -3238,7 +3238,7 @@ function onSkillChoiceSkip() {
 function onSkillChoiceEnhance(skillId) {
   const choice = pendingSkillChoices.value[0]
   if (!choice) return
-  applyEnhanceSkill(choice.hero, skillId)
+  if (!applyEnhanceSkill(choice.hero, skillId)) return
   markSkillMilestoneResolved(choice.hero, choice.level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
@@ -3248,7 +3248,7 @@ function onSkillChoiceEnhance(skillId) {
 function onSkillChoiceLearn(skillId) {
   const choice = pendingSkillChoices.value[0]
   if (!choice) return
-  applyLearnNewSkill(choice.hero, skillId, choice.level)
+  if (!applyLearnNewSkill(choice.hero, skillId, choice.level)) return
   markSkillMilestoneResolved(choice.hero, choice.level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
@@ -3266,6 +3266,14 @@ function assignPoint(attr) {
 
 function heroSkillIds(hero) {
   return getHeroSkillIds(hero)
+}
+
+function heroSkillEnhanceTimes(hero, skillId) {
+  return hero?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
+}
+
+function heroSkillDisplayLevel(hero, skillId) {
+  return 1 + heroSkillEnhanceTimes(hero, skillId)
 }
 
 function aiTacticsSaveKey() {

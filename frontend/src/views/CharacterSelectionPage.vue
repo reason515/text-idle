@@ -418,11 +418,11 @@ function confirmLevelChoice(choice) {
   if (!h) return
   const milestone = getFirstUnresolvedSkillChoiceLevel(h)
   if (milestone == null) return
-  if (choice.type === 'enhance') {
-    applyEnhanceSkill(h, choice.skillId)
-  } else {
-    applyLearnNewSkill(h, choice.skillId, milestone)
-  }
+  const applied =
+    choice.type === 'enhance'
+      ? applyEnhanceSkill(h, choice.skillId)
+      : applyLearnNewSkill(h, choice.skillId, milestone)
+  if (!applied) return
   markSkillMilestoneResolved(h, milestone)
   if (getFirstUnresolvedSkillChoiceLevel(h) == null) {
     levelChoiceDone.value = true

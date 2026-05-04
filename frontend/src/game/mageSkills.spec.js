@@ -182,9 +182,10 @@ describe('Fireball', () => {
 // ---------------------------------------------------------------------------
 
 describe('Frost Nova', () => {
-  it('getFrostNovaFreezeChance scales and caps at 40%', () => {
+  it('getFrostNovaFreezeChance scales and caps at 45%', () => {
     expect(getFrostNovaFreezeChance(0)).toBeCloseTo(0.25, 5)
     expect(getFrostNovaFreezeChance(3)).toBeCloseTo(0.4, 5)
+    expect(getFrostNovaFreezeChance(4)).toBeCloseTo(0.45, 5)
   })
 
   it('executeFrostNova rolls freeze independently per enemy', () => {
@@ -223,10 +224,11 @@ describe('Frostbolt', () => {
   /** Deterministic low roll so Freeze procs (below 10% base / enhanced cap). */
   const rngFreezeProc = () => 0.05
 
-  it('getFrostboltFreezeChance scales with enhance and caps at 25%', () => {
+  it('getFrostboltFreezeChance scales with enhance and caps at 30%', () => {
     expect(getFrostboltFreezeChance(0)).toBeCloseTo(0.1, 5)
     expect(getFrostboltFreezeChance(1)).toBeCloseTo(0.15, 5)
     expect(getFrostboltFreezeChance(3)).toBeCloseTo(0.25, 5)
+    expect(getFrostboltFreezeChance(4)).toBeCloseTo(0.3, 5)
   })
 
   it('deals 0.8x damage and applies Freeze when proc succeeds (skip 1 action)', () => {

@@ -73,15 +73,15 @@ describe('skillChoice', () => {
       expect(opts.newSkills.length).toBe(2)
     })
 
-    it('returns enhanceableSkillIds (skills with enhanceCount < 3)', () => {
+    it('returns enhanceableSkillIds (skills with enhanceCount < max)', () => {
       const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 1 } } }
       const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.enhanceableSkillIds).toContain('heroic-strike')
       expect(opts.canEnhance).toBe(true)
     })
 
-    it('excludes skills at max enhance (3) from enhanceableSkillIds', () => {
-      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 3 } } }
+    it('excludes skills at max enhance from enhanceableSkillIds', () => {
+      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 4 } } }
       const opts = getSkillChoiceOptions(hero, 3)
       expect(opts.enhanceableSkillIds).not.toContain('heroic-strike')
       expect(opts.canEnhance).toBe(false)
@@ -154,11 +154,11 @@ describe('skillChoice', () => {
         level: 20,
         skills: ['sunder-armor', 'taunt', 'cleave', 'whirlwind', 'defensive-stance'],
         skillEnhancements: {
-          'sunder-armor': { enhanceCount: 3 },
-          taunt: { enhanceCount: 3 },
-          cleave: { enhanceCount: 3 },
-          whirlwind: { enhanceCount: 3 },
-          'defensive-stance': { enhanceCount: 3 },
+          'sunder-armor': { enhanceCount: 4 },
+          taunt: { enhanceCount: 4 },
+          cleave: { enhanceCount: 4 },
+          whirlwind: { enhanceCount: 4 },
+          'defensive-stance': { enhanceCount: 4 },
         },
         skillMilestonesResolved: [3, 6, 9, 10, 12, 15, 18],
       }
@@ -223,10 +223,17 @@ describe('skillChoice', () => {
       expect(applyEnhanceSkill(hero, 'cleave')).toBe(false)
     })
 
-    it('returns false when skill already at max enhance (3)', () => {
-      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 3 } } }
+    it('returns false when skill already at max enhance', () => {
+      const hero = { class: 'Warrior', skills: ['heroic-strike'], skillEnhancements: { 'heroic-strike': { enhanceCount: 4 } } }
       expect(applyEnhanceSkill(hero, 'heroic-strike')).toBe(false)
-      expect(hero.skillEnhancements['heroic-strike'].enhanceCount).toBe(3)
+      expect(hero.skillEnhancements['heroic-strike'].enhanceCount).toBe(4)
+    })
+
+    it('adds enhancement for standalone taunt (fixed trio tank)', () => {
+      const hero = { class: 'Warrior', skills: ['sunder-armor', 'taunt'] }
+      const ok = applyEnhanceSkill(hero, 'taunt')
+      expect(ok).toBe(true)
+      expect(hero.skillEnhancements.taunt.enhanceCount).toBe(1)
     })
   })
 })

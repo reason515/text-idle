@@ -399,6 +399,12 @@ describe('Example13: Sunder Armor', () => {
         'sunder-armor'
       ).rageCost
     ).toBe(12)
+    expect(
+      getSkillWithEnhancements(
+        makeWarrior({ skillEnhancements: { 'sunder-armor': { enhanceCount: 4 } } }),
+        'sunder-armor'
+      ).rageCost
+    ).toBe(11)
   })
 
   it('executeWarriorSkill uses enhanced rage cost for Sunder Armor', () => {
@@ -472,6 +478,11 @@ describe('Taunt enhancement', () => {
     const s3 = getSkillWithEnhancements(w3, 'taunt')
     expect(s3.tauntForcedActions).toBe(5)
     expect(s3.cooldown).toBe(5)
+
+    const w4 = makeWarrior({ skillEnhancements: { taunt: { enhanceCount: 4 } } })
+    const s4 = getSkillWithEnhancements(w4, 'taunt')
+    expect(s4.tauntForcedActions).toBe(6)
+    expect(s4.cooldown).toBe(6)
   })
 
   it('getEnhancementPreviewEffectDesc shows current to next for taunt', () => {
@@ -490,6 +501,9 @@ describe('Defensive Stance enhancement', () => {
     const w3 = makeWarrior({ skillEnhancements: { 'defensive-stance': { enhanceCount: 3 } } })
     const s3 = getSkillWithEnhancements(w3, 'defensive-stance')
     expect(s3.damageReductionPct).toBe(21)
+    const w4 = makeWarrior({ skillEnhancements: { 'defensive-stance': { enhanceCount: 4 } } })
+    const s4 = getSkillWithEnhancements(w4, 'defensive-stance')
+    expect(s4.damageReductionPct).toBe(24)
   })
 
   it('applyDefensiveStanceToIncomingDamage reduces final damage', () => {

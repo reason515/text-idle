@@ -6,8 +6,7 @@
 
 import { getEffectiveSpellPower } from './damageUtils.js'
 import { getPriestLevelSkillById } from './priestLevelSkills.js'
-
-const MAX_ENHANCE_COUNT = 3
+import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
 
 export const PRIEST_INITIAL_SKILLS = [
   {
@@ -61,7 +60,7 @@ export function getPriestSkillWithEnhancements(priest, skillId) {
   const base = getAnyPriestSkillById(skillId)
   if (!base) return null
   const enhanceCount = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     priest?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
   if (enhanceCount === 0) return base
@@ -89,10 +88,10 @@ export function getPriestEnhancementPreviewEffectDesc(hero, skillId) {
   const base = getAnyPriestSkillById(skillId)
   if (!base) return ''
   const current = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     hero?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
-  const next = Math.min(MAX_ENHANCE_COUNT, current + 1)
+  const next = Math.min(MAX_SKILL_ENHANCE_COUNT, current + 1)
   if (next <= current) return base.effectDesc ?? ''
 
   if (skillId === 'flash-heal') {

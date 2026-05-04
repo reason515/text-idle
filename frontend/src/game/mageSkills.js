@@ -8,6 +8,7 @@
 import { getLevelSkillById } from './mageLevelSkills.js'
 import { getEffectiveSpellPowerBreakdown } from './damageUtils.js'
 import { computeMagicDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
+import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
 
 const DEFAULT_SPELL_CRIT = 1.5
 
@@ -19,14 +20,16 @@ function randomInRange(min, max, rng) {
 /** Frostbolt: base chance to apply Freeze (skip 1 action); +5% per enhance, max 25%. */
 export const FROSTBOLT_FREEZE_CHANCE_BASE = 0.1
 export const FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE = 0.05
-export const FROSTBOLT_FREEZE_CHANCE_MAX = 0.25
+export const FROSTBOLT_FREEZE_CHANCE_MAX = 0.3
 
 /** Frost Nova: per-enemy independent freeze roll; enhanced raises chance for every enemy. */
 export const FROST_NOVA_FREEZE_CHANCE_BASE = 0.25
 export const FROST_NOVA_FREEZE_CHANCE_PER_ENHANCE = 0.05
-export const FROST_NOVA_FREEZE_CHANCE_MAX = 0.4
+export const FROST_NOVA_FREEZE_CHANCE_MAX = 0.45
 
-const MAX_ENHANCE_COUNT = 3
+const FIREBALL_COEFF_MAX = 1.5
+const FIREBALL_SPELL_CRIT_BONUS_MAX = 0.2
+const FROSTBOLT_COEFF_MAX = 1.0
 
 /**
  * Format spell damage coefficient for UI (no long float tails).
@@ -42,7 +45,7 @@ function fmtCoeffUi(n) {
  * @returns {number}
  */
 export function getFrostboltFreezeChance(enhanceCount) {
-  const c = Math.min(MAX_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
+  const c = Math.min(MAX_SKILL_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
   return Math.min(FROSTBOLT_FREEZE_CHANCE_MAX, FROSTBOLT_FREEZE_CHANCE_BASE + c * FROSTBOLT_FREEZE_CHANCE_PER_ENHANCE)
 }
 
@@ -51,7 +54,7 @@ export function getFrostboltFreezeChance(enhanceCount) {
  * @returns {number}
  */
 export function getFrostNovaFreezeChance(enhanceCount) {
-  const c = Math.min(MAX_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
+  const c = Math.min(MAX_SKILL_ENHANCE_COUNT, Math.max(0, enhanceCount ?? 0))
   return Math.min(
     FROST_NOVA_FREEZE_CHANCE_MAX,
     FROST_NOVA_FREEZE_CHANCE_BASE + c * FROST_NOVA_FREEZE_CHANCE_PER_ENHANCE
@@ -107,7 +110,7 @@ export function getMageSkillWithEnhancements(mage, skillId) {
   if (!base) return null
 
   const enhanceCount = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     mage?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
   if (enhanceCount === 0) return base
@@ -116,12 +119,12 @@ export function getMageSkillWithEnhancements(mage, skillId) {
 
   if (skillId === 'fireball') {
     out.manaCost = (base.manaCost ?? 0) + enhanceCount
-    out.coefficient = Math.min(1.45, 1.3 + enhanceCount * 0.05)
-    out.spellCritBonus = Math.min(0.18, 0.12 + enhanceCount * 0.02)
+    out.coefficient = Math.min(FIREBALL_COEFF_MAX, 1.3 + enhanceCount * 0.05)
+    out.spellCritBonus = Math.min(FIREBALL_SPELL_CRIT_BONUS_MAX, 0.12 + enhanceCount * 0.02)
     out.effectDesc = `${fmtCoeffUi(out.coefficient)} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
   } else if (skillId === 'frostbolt') {
     out.manaCost = (base.manaCost ?? 0) + enhanceCount
-    out.coefficient = Math.min(0.95, 0.8 + enhanceCount * 0.05)
+    out.coefficient = Math.min(FROSTBOLT_COEFF_MAX, 0.8 + enhanceCount * 0.05)
     out.freezeChance = getFrostboltFreezeChance(enhanceCount)
     const pct = Math.round(out.freezeChance * 100)
     out.effectDesc = `${fmtCoeffUi(out.coefficient)} 倍法术伤害；${pct}% 概率冰冻目标，使其跳过 1 次行动`
@@ -146,26 +149,26 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
   if (!base) return ''
 
   const current = Math.min(
-    MAX_ENHANCE_COUNT,
+    MAX_SKILL_ENHANCE_COUNT,
     hero?.skillEnhancements?.[skillId]?.enhanceCount ?? 0
   )
-  const next = Math.min(MAX_ENHANCE_COUNT, current + 1)
+  const next = Math.min(MAX_SKILL_ENHANCE_COUNT, current + 1)
   if (next <= current) return base.effectDesc ?? ''
 
   if (skillId === 'fireball') {
     const baseCost = base.manaCost ?? 0
-    const currCoeff = Math.min(1.45, 1.3 + current * 0.05)
-    const nextCoeff = Math.min(1.45, 1.3 + next * 0.05)
-    const currCrit = Math.min(0.18, 0.12 + current * 0.02)
-    const nextCrit = Math.min(0.18, 0.12 + next * 0.02)
+    const currCoeff = Math.min(FIREBALL_COEFF_MAX, 1.3 + current * 0.05)
+    const nextCoeff = Math.min(FIREBALL_COEFF_MAX, 1.3 + next * 0.05)
+    const currCrit = Math.min(FIREBALL_SPELL_CRIT_BONUS_MAX, 0.12 + current * 0.02)
+    const nextCrit = Math.min(FIREBALL_SPELL_CRIT_BONUS_MAX, 0.12 + next * 0.02)
     const currMp = baseCost + current
     const nextMp = baseCost + next
     return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%；法力 ${currMp} -> ${nextMp}`
   }
   if (skillId === 'frostbolt') {
     const baseCost = base.manaCost ?? 0
-    const currCoeff = Math.min(0.95, 0.8 + current * 0.05)
-    const nextCoeff = Math.min(0.95, 0.8 + next * 0.05)
+    const currCoeff = Math.min(FROSTBOLT_COEFF_MAX, 0.8 + current * 0.05)
+    const nextCoeff = Math.min(FROSTBOLT_COEFF_MAX, 0.8 + next * 0.05)
     const currPct = Math.round(getFrostboltFreezeChance(current) * 100)
     const nextPct = Math.round(getFrostboltFreezeChance(next) * 100)
     const currMp = baseCost + current

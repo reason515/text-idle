@@ -134,8 +134,8 @@ test.describe('Skill choice milestones', () => {
         priest.skills = ['flash-heal', 'power-word-shield']
         delete priest.skill
         priest.skillEnhancements = {
-          'flash-heal': { enhanceCount: 3 },
-          'power-word-shield': { enhanceCount: 3 },
+          'flash-heal': { enhanceCount: 4 },
+          'power-word-shield': { enhanceCount: 4 },
         }
         localStorage.setItem('squad', JSON.stringify(squad))
       }
@@ -186,7 +186,7 @@ test.describe('Skill choice milestones', () => {
     await expect(page.locator('.detail-modal')).toBeVisible()
     await dismissQueuedSkillChoiceModals(page)
     await clickHeroDetailSkillsTab(page)
-    await expect(page.locator('.skill-enhance-badge').filter({ hasText: '1/3' })).toBeVisible()
+    await expect(page.locator('.skill-enhance-badge').filter({ hasText: 'Lv.2/5' })).toBeVisible()
   })
 
   test('Level 20 learn pool shows legacy tier 15 skills (Thunder Clap, not Shield Slam)', async ({ page }) => {
@@ -205,11 +205,11 @@ test.describe('Skill choice milestones', () => {
         warrior.skills = ['sunder-armor', 'taunt', 'cleave', 'whirlwind', 'defensive-stance']
         delete warrior.skill
         warrior.skillEnhancements = {
-          'sunder-armor': { enhanceCount: 3 },
-          taunt: { enhanceCount: 3 },
-          cleave: { enhanceCount: 3 },
-          whirlwind: { enhanceCount: 3 },
-          'defensive-stance': { enhanceCount: 3 },
+          'sunder-armor': { enhanceCount: 4 },
+          taunt: { enhanceCount: 4 },
+          cleave: { enhanceCount: 4 },
+          whirlwind: { enhanceCount: 4 },
+          'defensive-stance': { enhanceCount: 4 },
         }
         localStorage.setItem('squad', JSON.stringify(squad))
       }

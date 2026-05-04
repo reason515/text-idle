@@ -4,8 +4,8 @@
  * Non-blocking: player may skip; game continues.
  */
 
-import { getWarriorSkillById } from './warriorSkills.js'
-import { getNewSkillsAtLevel, getLevelSkillById } from './warriorLevelSkills.js'
+import { getAnyWarriorSkillById } from './warriorSkills.js'
+import { getNewSkillsAtLevel } from './warriorLevelSkills.js'
 import { getMageSkillById } from './mageSkills.js'
 import {
   getMageNewSkillsAtLevel,
@@ -16,6 +16,9 @@ import {
   getPriestNewSkillsAtLevel,
   getPriestLevelSkillById,
 } from './priestLevelSkills.js'
+import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
+
+export { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from './skillEnhancementLimits.js'
 
 /**
  * Get hero's skill ids (supports both legacy 'skill' and 'skills' array).
@@ -31,8 +34,6 @@ export function getHeroSkillIds(hero) {
   }
   return []
 }
-
-const MAX_ENHANCE_COUNT = 3
 
 /** Sorted levels where a skill choice may occur (3..60: every 3; plus 10,20,...,60). */
 export const SKILL_MILESTONE_LEVELS = (() => {
@@ -69,7 +70,7 @@ function isLearnMilestone(level) {
 export function getSkillChoiceOptions(hero, level) {
   const existingIds = getHeroSkillIds(hero)
   const enhanceableSkillIds = existingIds.filter(
-    (id) => (hero.skillEnhancements?.[id]?.enhanceCount ?? 0) < MAX_ENHANCE_COUNT
+    (id) => (hero.skillEnhancements?.[id]?.enhanceCount ?? 0) < MAX_SKILL_ENHANCE_COUNT
   )
   const existingSet = new Set(existingIds)
 
@@ -261,7 +262,7 @@ export function applyEnhanceSkill(hero, skillId) {
 
   const def =
     hero.class === 'Warrior'
-      ? (getWarriorSkillById(skillId) ?? getLevelSkillById(skillId))
+      ? getAnyWarriorSkillById(skillId)
       : hero.class === 'Mage'
         ? (getMageSkillById(skillId) ?? getMageLevelSkillById(skillId))
         : hero.class === 'Priest'
@@ -270,7 +271,7 @@ export function applyEnhanceSkill(hero, skillId) {
   if (!def) return false
 
   const current = hero.skillEnhancements?.[skillId]?.enhanceCount ?? 0
-  if (current >= MAX_ENHANCE_COUNT) return false
+  if (current >= MAX_SKILL_ENHANCE_COUNT) return false
 
   if (!hero.skillEnhancements) hero.skillEnhancements = {}
   hero.skillEnhancements[skillId] = {

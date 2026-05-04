@@ -589,9 +589,9 @@ Then [expected result/verifiable behavior].
 
 - **Rage**: Warriors start combat at 0 Rage; fixed rage per attack (dealing or taking); crit doubles rage gain; dodge gives 0; max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
 - **Damage formula**: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * physMultiplier) + physAtkBonus`; `physMultiplier = 1 + baseAttr * 0.2`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)`. Unarmed baseRoll 1–4; with weapon, weapon roll adds to range. AC tests with fixed RNG for deterministic verification.
-- **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 3, cap 1.8).
-- **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 3; cap 1.5, 30%).
-- **Sunder Armor**: 15 Rage base, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. If armor below 0 after reduction, +2% damage per excess point. Enhancement: +1 max stack per enhance (max 3 enhances, 4 layers total); each layer -8 armor; stack and refresh on apply; **-1 Rage cost per enhance** (min 1 Rage).
+- **Heroic Strike**: 15 Rage, 0 CD, 1.2x coefficient. Pure damage. Enhancement: +0.2 coefficient per enhance (max 4 milestone picks, cap 2.0).
+- **Bloodthirst**: 20 Rage, 0 CD, 1.2x coefficient, heal = 15% of damage dealt. Enhancement: +0.1 coefficient and +5% heal per enhance (max 4; cap 1.6, 35%).
+- **Sunder Armor**: 15 Rage base, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. If armor below 0 after reduction, +2% damage per excess point. Enhancement: +1 max stack per enhance (max 4 milestone picks, 5 layers total); each layer -8 armor; stack and refresh on apply; **-1 Rage cost per enhance** (min 1 Rage).
 
 **Acceptance Criteria**
 
@@ -655,7 +655,7 @@ Then [expected result/verifiable behavior].
 
 - **Scope**: Fixed initial trio Warrior only. Has Sunder Armor + Taunt (no Heroic Strike or Bloodthirst).
 - **Sunder Armor**: 15 Rage, 0 CD. 0.8x damage, target Armor -8 for 3 rounds. Threat multiplier 1.5. See Example 13 AC5–AC7.
-- **Taunt**: 0 Rage, 2 round CD (base). Forces target monster to attack the Warrior for its next 2 actions (base). **Enhancement** (skill choice): each tier adds +1 to forced actions and +1 to CD rounds (max 3 tiers; see [05-skills.md](design/05-skills.md) 8.1.4). Threat = max(current highest, caster's) × 1.1 on target.
+- **Taunt**: 0 Rage, 2 round CD (base). Forces target monster to attack the Warrior for its next 2 actions (base). **Enhancement** (skill choice): each tier adds +1 to forced actions and +1 to CD rounds (max 4 milestone tiers; see [05-skills.md](design/05-skills.md) 8.1.6). Threat = max(current highest, caster's) × 1.1 on target.
 - **Rage**: Same as Example 13; starts at 0; gains from dealing/taking damage.
 - **Reference**: [05-skills.md](design/05-skills.md) 8.1; [12-threat.md](design/12-threat.md).
 
@@ -682,18 +682,18 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: **9 MP** base (**+1 MP per enhancement**, up to 12 at 3 enhancements), 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced). Fireball: **13 MP** base (**+1 MP per enhancement**, up to 16 at 3 enhancements), 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x, **11 MP**, 2-round CD; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: **9 MP** base (**+1 MP per enhancement**, up to 13 at 4 enhancements), 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced, up to 30%). Fireball: **13 MP** base (**+1 MP per enhancement**, up to 17 at 4 enhancements), 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x, **11 MP**, 2-round CD; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Spirit * 0.8 + equipment bonus, floored; see 05-skills.md 8.2.1). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula** (hero; see [05-skills.md](design/05-skills.md) 2.2.3.2): `baseRoll = [has wand/staff range ? random(weaponMin, weaponMax) : 0]`; `effectiveSpellPower = round(baseRoll * spellMultiplier) + spellPowerBonus` (rings, **off-hand orb flat**, armor affixes, main-hand `spellWeaponFlat`, etc.); `rawDamage = round(effectiveSpellPower * SkillCoeff * (1 + spellDmg%))`; `finalDamage = max(1, rawAfterCrit - targetResistance)`. Monsters still use 1–4 unarmed scaling vs `spellPower` in `getEffectiveSpellPower`. **Battle log**: magic skill entries may append `weaponMechanicLines` text such as `法术强度：武器段 W + 额外 F = …（技能结算前有效法术强度）` (breakdown of pre-coeff effective spell strength; implementation: `getEffectiveSpellPowerBreakdown`, `battleLogFormat.weaponMechanicLines`).
 - **Initial skills (Frost vs Fire identity — same skill ids as fixed trio; expansion Mage recruitment uses one spec)**:
 
   | Spec  | Skill     | English   | Cost      | Effect                                                                                                                      |
   | ----- | --------- | --------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
-  | Frost | Frostbolt | Frostbolt | **9 MP** (+1/enhance, max 12)  | 0.8x magic damage; 10% chance to Freeze: target skips 1 action when their turn comes (higher chance when skill is enhanced) |
-  | Fire  | Fireball  | Fireball  | **13 MP** (+1/enhance, max 16) | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT)                                                  |
+  | Frost | Frostbolt | Frostbolt | **9 MP** (+1/enhance, max 13)  | 0.8x magic damage; 10% chance to Freeze: target skips 1 action when their turn comes (higher chance when skill is enhanced) |
+  | Fire  | Fireball  | Fireball  | **13 MP** (+1/enhance, max 17) | 1.3x magic damage; +12% spell crit chance for this cast only (no Burn DoT)                                                  |
 
 - **Source of truth (implementation)**: Mana cost, coefficient, cooldown, and freeze chances for each skill id are defined in [mageSkills.js](../../frontend/src/game/mageSkills.js) (`MAGE_INITIAL_SKILLS`) and [mageLevelSkills.js](../../frontend/src/game/mageLevelSkills.js) (`MAGE_LEVEL_SKILLS`). If this Example disagrees with code, **update the Example after changing code** (or fix code if the doc is the agreed design).
-- **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 3 times. See 05-skills.md 8.2.6 for formulas.
+- **Enhancement**: Same pattern as Warrior; each skill can be enhanced up to 4 milestone times (UI skill level 1..5). See 05-skills.md 8.2.6 for formulas.
 
 ---
 
@@ -1163,7 +1163,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Overlap**: Levels **30** and **60** are both multiples of 3 and 10 — the same modal may show both "Enhance existing" and "Learn new" sections; the player still picks one action (or skip) per modal instance as implemented.
 - **Levels that are only learn (10, 20, 40, 50)**: Not multiples of 3 — **only** "Learn new" is offered (no enhance on that level-up).
 - **Choice window**: Modal appears; player may skip; reopen via **继续技能选择** on hero detail **技能** tab for the **lowest** unresolved milestone.
-- **Enhancement rules**: Each skill at most **3** enhances. (Heroic Strike / Bloodthirst / Sunder Armor formulas per [05-skills.md](design/05-skills.md) 8.1.4.)
+- **Enhancement rules**: Each skill at most **4** milestone enhancements (display level up to **5**). (Heroic Strike / Bloodthirst / Sunder Armor formulas per [05-skills.md](design/05-skills.md) 8.1.6.)
 
 **Acceptance Criteria**
 
@@ -1172,7 +1172,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | ---- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AC1  | A hero (e.g., Warrior) gains enough XP to level from 2 to 3                              | Level-up is triggered                                                               | A skill selection modal appears for **Lv 3**; player may enhance an existing skill or skip; **Learn new** is not shown (no learn pool at 3)                                                                         |
 | AC2  | Player is on the skill selection modal at Lv 3 (Warrior)                                 | Player views the options                                                            | "Enhance existing skill" lists current skills; no "Learn new" row for tier skills                                                                                                                                   |
-| AC3  | Player chooses "Enhance existing skill" at a valid milestone                             | Player confirms                                                                     | One skill's `enhanceCount` increases (max 3); modal closes                                                                                                                                                          |
+| AC3  | Player chooses "Enhance existing skill" at a valid milestone                             | Player confirms                                                                     | One skill's `enhanceCount` increases (max 4); modal closes                                                                                                                                                          |
 | AC4  | Player levels from 9 to 10 (Warrior)                                                     | Level-up is triggered                                                               | Modal for **Lv 10**; **Learn new** shows Cleave, Whirlwind, Defensive Stance (first learn pool); enhance section may be absent (10 is not a multiple of 3)                                                          |
 | AC5  | Player chooses "Learn new skill" at Lv 10 and picks Cleave                               | Player confirms                                                                     | Cleave is added to the hero's skills                                                                                                                                                                                |
 | AC5a | Priest levels from 9 to 10                                                               | Level-up is triggered                                                               | Modal for **Lv 10** shows Priest learn options: Greater Heal (Holy), Fade Mind (Discipline), Shadow Word: Pain (Shadow)                                                                                             |

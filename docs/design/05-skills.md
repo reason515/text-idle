@@ -195,7 +195,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 | **固定性** | 同一学新里程碑、同一职业的组合固定（非随机） |
 | **排除已学** | 已拥有的技能不会出现在可选列表中 |
 | **池耗尽** | 若该池未学技能不足 3 个，则显示剩余全部；若已学满该池，则学新区为空 |
-| **强化上限** | 每个技能最多强化 **3** 次（`enhanceCount` 上限 3）；某里程碑若所有已学技能均已满强化，且当次无学新，则该次可不出现有效选择（可跳过） |
+| **强化上限** | 每个技能在里程碑中最多再强化 **4** 次（`enhanceCount` 0..4）；**技能等级**在 UI 中显示为 **Lv.1（未强化）～ Lv.5（满强化）**，即显示等级 = 1 + enhanceCount；数值仍按与此前相同的「每次强化一档」递进（见各职业 8.x 公式）。某里程碑若所有已学技能均已满强化，且当次无学新，则该次可不出现有效选择（可跳过） |
 
 ### 4.4 成长节奏示例
 
@@ -402,43 +402,43 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 - **派系归属**：按 WoW 经典版三系划分；战斗怒吼归武器系（WoW 全职业基础）；反击风暴为武器系天赋，本作保留于武器系（见 8.1.2 典型技能列表）。
 - **等级递进**：初始最弱，随等级提升技能强度递增；40 级起出现被动，60 级为终极技能。
 - **回合制价值**：斩杀（收尾，仅低血量可用）、复仇（受击后反击）、嘲讽（强制接下来 2 次行动）、挫志怒吼（减伤）、挑战怒吼（多怪拉仇）等均针对回合制设计。
-- **加强说明**：选择「加强已有技能」时，从该技能的加强效果中选取一项生效；**每个技能最多强化 3 次**。
+- **加强说明**：选择「加强已有技能」时，从该技能的加强效果中选取一项生效；**每个技能最多再强化 4 次**（显示至 Lv.5）。
 - **数值平衡**：上述倍率、持续回合等为草案，后续根据实际战斗数据调整。
 
 #### 8.1.6 战士初始技能增强（实现规格）
 
-玩家在**强化里程碑**（等级为 3 的倍数）的技能选择窗口选择「强化已有技能」时，`hero.skillEnhancements[skillId].enhanceCount` 递增。**每个技能最多强化 3 次**（enhanceCount 上限 3）。战斗执行技能时，需根据 `enhanceCount` 计算**增强后的技能参数**，再参与伤害/治疗/debuff 计算。以下为战士三个初始技能的增强公式（实现时按 enhanceCount 应用）。
+玩家在**强化里程碑**（等级为 3 的倍数）的技能选择窗口选择「强化已有技能」时，`hero.skillEnhancements[skillId].enhanceCount` 递增。**每个技能最多强化 4 次**（enhanceCount 上限 4；界面显示技能等级 1～5）。战斗执行技能时，需根据 `enhanceCount` 计算**增强后的技能参数**，再参与伤害/治疗/debuff 计算。以下为战士三个初始技能的增强公式（实现时按 enhanceCount 应用）。
 
 | 技能 ID | 技能名 | 基础参数 | 增强类型 | 公式 | 上限 |
 |---------|--------|----------|----------|------|------|
-| heroic-strike | 英勇打击 | coefficient: 1.2 | 倍率 | coefficient = 1.2 + enhanceCount × 0.2 | 1.8 |
-| bloodthirst | 嗜血 | coefficient: 1.2, healPercent: 0.15 | 倍率 + 吸血 | coefficient = 1.2 + enhanceCount × 0.1；healPercent = 0.15 + enhanceCount × 0.05 | 1.5；0.30 |
-| sunder-armor | 破甲 | coefficient: 0.8, rageCost: 15, perStackArmorReduction: 8, excessDamagePercent: 2, debuffDuration: 3 | 可叠加层数 + 怒气 | maxStacks = 1 + enhanceCount；rageCost = max(1, 15 - enhanceCount)；每次施放叠加 1 层并刷新持续时间 | 4 层；最低 1 怒气 |
+| heroic-strike | 英勇打击 | coefficient: 1.2 | 倍率 | coefficient = 1.2 + enhanceCount × 0.2 | 2.0（第 4 次强化达顶） |
+| bloodthirst | 嗜血 | coefficient: 1.2, healPercent: 0.15 | 倍率 + 吸血 | coefficient = 1.2 + enhanceCount × 0.1；healPercent = 0.15 + enhanceCount × 0.05 | 1.6；0.35 |
+| sunder-armor | 破甲 | coefficient: 0.8, rageCost: 15, perStackArmorReduction: 8, excessDamagePercent: 2, debuffDuration: 3 | 可叠加层数 + 怒气 | maxStacks = 1 + enhanceCount；rageCost = max(1, 15 - enhanceCount)；每次施放叠加 1 层并刷新持续时间 | 满强化 5 层；最低 1 怒气 |
 
 **说明**：
 
-- **英勇打击**：每次增强 +0.2 倍率，最高 1.8；enhanceCount = 3 时达到上限（1.2 + 0.6 = 1.8）。
-- **嗜血**：每次增强同时提升伤害与回血：倍率 +0.1、吸血 +5%；3 次增强后 coefficient = 1.5，healPercent = 0.30（30%）。倍率增幅低于英勇打击，因另有吸血增益。
-- **破甲**：倍率固定 0.8；**基础怒气 15**；若护甲削减后低于 0，每超出 1 点本次伤害 +2%。增强后支持**叠加层数**：基础 1 层（每层 -8 护甲）；每增强 1 次，最大层数 +1（最高 4 层）；**怒气消耗每强化 1 次 -1**（`rageCost = max(1, 15 - enhanceCount)`，最低 1 怒气）。每次施放破甲时：目标已有破甲 debuff 则叠加 1 层（不超过 maxStacks），并**刷新持续时间**至 3 回合；无 debuff 则施加 1 层。总护甲削减 = 8 × 当前层数。超出值 = max(0, 本次削减量 - 削减前护甲)。
+- **英勇打击**：每次增强 +0.2 倍率，最高 2.0；enhanceCount = 4 时达到上限（1.2 + 0.8 = 2.0）。
+- **嗜血**：每次增强同时提升伤害与回血：倍率 +0.1、吸血 +5%；满强化（enhanceCount = 4）时 coefficient = 1.6，healPercent = 0.35（35%）。倍率增幅低于英勇打击，因另有吸血增益。
+- **破甲**：倍率固定 0.8；**基础怒气 15**；若护甲削减后低于 0，每超出 1 点本次伤害 +2%。增强后支持**叠加层数**：基础 1 层（每层 -8 护甲）；每增强 1 次，最大层数 +1（满强化 5 层）；**怒气消耗每强化 1 次 -1**（`rageCost = max(1, 15 - enhanceCount)`，最低 1 怒气）。每次施放破甲时：目标已有破甲 debuff 则叠加 1 层（不超过 maxStacks），并**刷新持续时间**至 3 回合；无 debuff 则施加 1 层。总护甲削减 = 8 × 当前层数。超出值 = max(0, 本次削减量 - 削减前护甲)。
 
 **实现要点**：
 
-- 战斗前或执行技能时，根据 `hero.skillEnhancements[skillId]?.enhanceCount ?? 0` 计算增强后的技能参数；enhanceCount 超过 3 时按 3 处理。
+- 战斗前或执行技能时，根据 `hero.skillEnhancements[skillId]?.enhanceCount ?? 0` 计算增强后的技能参数；enhanceCount 超过 4 时按 4 处理。
 - 破甲 debuff 结构需支持 `stacks` 字段；`armorReduction = perStackArmorReduction × stacks`。
 - 技能描述（effectDesc）在 UI 中应反映增强后的数值，便于玩家感知。
 
-**等级解锁技能的增强**：8.1.4 表中所列顺劈斩、旋风斩、防御姿态等（含通过学新池获得的技能），其增强公式在各等级表格的「加强效果」列中已有描述，实现时按相同模式扩展；**同样遵循每技能最多强化 3 次**。本小节仅规范战士**招募用**三个初始技能的增强（英勇打击 / 嗜血 / 破甲）。
+**等级解锁技能的增强**：8.1.4 表中所列顺劈斩、旋风斩、防御姿态等（含通过学新池获得的技能），其增强公式在各等级表格的「加强效果」列中已有描述，实现时按相同模式扩展；**同样遵循每技能最多再强化 4 次**。本小节仅规范战士**招募用**三个初始技能的增强（英勇打击 / 嗜血 / 破甲）。
 
 **嘲讽（`taunt`）实现规格**（固定三人组与扩展英雄的**初始**防护技能；非学新池技能）：
 
 - 基础：`tauntForcedActions = 2`，`cooldown = 2`（回合）。
-- 每次强化（`enhanceCount` 加 1，上限 3）：`tauntForcedActions = 2 + enhanceCount`，`cooldown = 2 + enhanceCount`。
+- 每次强化（`enhanceCount` 加 1，上限 4）：`tauntForcedActions = 2 + enhanceCount`，`cooldown = 2 + enhanceCount`。
 - 战斗内施放嘲讽时，以强化后的 `tauntForcedActions` 写入目标嘲讽剩余行动次数；冷却按强化后的 `cooldown` 判定。
 
 **防御姿态（`defensive-stance`）实现规格**（首档学新池防护系技能，于 **Lv 10** 学新窗口可选；对应 8.1.4 原「等级 5」行）：
 
 - 基础：`damageReductionPct = 12`，`stanceDuration = 3`（回合），`rageCost = 10`，`cooldown = 4`（回合）。
-- 每次强化：`damageReductionPct = min(21, 12 + enhanceCount * 3)`（采用「减伤 +3%/次」分支；若实现「持续 +1 回合」分支则与文档表一致二选一）。
+- 每次强化：`damageReductionPct = min(24, 12 + enhanceCount * 3)`（采用「减伤 +3%/次」分支；若实现「持续 +1 回合」分支则与文档表一致二选一）。
 - 施放于**自身**，刷新姿态持续时间；受到伤害时先结算护甲/抗性，再按百分比减免。
 
 ---
@@ -474,8 +474,8 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 | 派系 | 技能 | 英文 | 消耗 | 冷却 | 效果 | 加强效果 |
 |------|------|------|------|------|------|----------|
-| 冰霜 | 寒冰箭 | Frostbolt | 9 法力 | 0 | 对单体造成魔法伤害，倍率 **0.8**；**10% 概率**施加 **冰冻**：目标**跳过下一次行动**（轮到该单位时消耗）；若已有冰冻且本次触发则刷新为仍跳过 1 次行动 | 倍率 +0.05/次（最高 0.95，最多 3 次）；**冰冻触发概率 +5%/次**（最高 **25%**，即 3 次强化）；**法力消耗 +1/次**（基础 9，满强化 12）；触发时仍为跳过 1 次行动 |
-| 火焰 | 火球术 | Fireball | 13 法力 | 0 | 对单体造成魔法伤害，倍率 **1.3**；**本技能额外 +12% 法术暴击率**（加法叠于面板法术暴击，无持续伤害） | 倍率 +0.05/次（最高 1.45）；额外暴击率 +0.02/次（最高 +18%，最多 3 次）；**法力消耗 +1/次**（基础 13，满强化 16） |
+| 冰霜 | 寒冰箭 | Frostbolt | 9 法力 | 0 | 对单体造成魔法伤害，倍率 **0.8**；**10% 概率**施加 **冰冻**：目标**跳过下一次行动**（轮到该单位时消耗）；若已有冰冻且本次触发则刷新为仍跳过 1 次行动 | 倍率 +0.05/次（最高 **1.0**）；**冰冻触发概率 +5%/次**（最高 **30%**）；**法力消耗 +1/次**（基础 9，满强化 13）；触发时仍为跳过 1 次行动 |
+| 火焰 | 火球术 | Fireball | 13 法力 | 0 | 对单体造成魔法伤害，倍率 **1.3**；**本技能额外 +12% 法术暴击率**（加法叠于面板法术暴击，无持续伤害） | 倍率 +0.05/次（最高 **1.5**）；额外暴击率 +0.02/次（最高 **+20%**）；**法力消耗 +1/次**（基础 13，满强化 17） |
 
 - **寒冰箭**：伤害低于火球，以 **概率冰冻跳过行动** 提供控制（基础 10%，强化后提高）；与 [12-threat.md](./12-threat.md) 等回合顺序规则一致（消耗于该单位轮到行动时）。
 - **火球术**：**无灼烧 DoT**；以高倍率与额外暴击率体现火焰爆发。
@@ -489,7 +489,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 | 派系 | 技能 | 英文 | 消耗 | 冷却 | 效果 | 加强效果 |
 |------|------|------|------|------|------|----------|
 | 奥术 | 奥术飞弹 | Arcane Missiles | 11 法力 | 0 | 对单体造成魔法伤害（倍率 1.0），并恢复造成伤害 10% 的法力；奥术系续航 | 倍率 +0.1；或法力恢复 +3% |
-| 冰霜 | 冰霜新星 | Frost Nova | 11 法力 | 2 回合 | 对敌方全体造成魔法伤害（倍率 0.5）；**每名敌人独立判定**是否 **冰冻**（跳过 **1 次行动**），基础概率 **25%**；冰霜系 AOE 控场 | 冰冻概率 +5%/次（最高 **40%**）；或倍率 +0.05；或冷却 -1 回合 |
+| 冰霜 | 冰霜新星 | Frost Nova | 11 法力 | 2 回合 | 对敌方全体造成魔法伤害（倍率 0.5）；**每名敌人独立判定**是否 **冰冻**（跳过 **1 次行动**），基础概率 **25%**；冰霜系 AOE 控场 | 冰冻概率 +5%/次（实现中满强化最高 **45%**）；或倍率 +0.05；或冷却 -1 回合 |
 | 火焰 | 烈焰风暴 | Flamestrike | 14 法力 | 2 回合 | 对敌方全体造成魔法伤害（倍率 0.55），并施加灼烧：每回合 SpellPower×0.03 伤害，持续 2 回合；火焰系 AOE | 倍率 +0.05；或灼烧持续 +1 回合；或冷却 -1 回合 |
 
 **等级 10**
@@ -601,17 +601,17 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 - **派系归属**：按 WoW 经典版三系划分。
 - **等级递进**：初始最弱，随等级提升技能强度递增；30 级起出现被动，60 级为终极技能。
 - **回合制价值**：深度冻结（收尾，仅对冰霜 debuff 目标可用）、法术反制（打断）、变形术（控制）、燃烧/奥术强化（爆发）等均针对回合制设计。
-- **加强说明**：选择「加强已有技能」时，从该技能的加强效果中选取一项生效；**每个技能最多强化 3 次**。
+- **加强说明**：选择「加强已有技能」时，从该技能的加强效果中选取一项生效；**每个技能最多再强化 4 次**（显示至 Lv.5）。
 - **数值平衡**：上述倍率、持续回合等为草案，后续根据实际战斗数据调整。
 
 #### 8.2.6 法师初始技能增强（实现规格）
 
-玩家在**强化里程碑**（等级为 3 的倍数）的技能选择窗口选择「强化已有技能」时，`hero.skillEnhancements[skillId].enhanceCount` 递增。**每个技能最多强化 3 次**（enhanceCount 上限 3）。战斗执行技能时，需根据 `enhanceCount` 计算**增强后的技能参数**，再参与伤害/debuff 计算。以下为法师**两个**初始技能的增强公式（实现时按 enhanceCount 应用）。
+玩家在**强化里程碑**（等级为 3 的倍数）的技能选择窗口选择「强化已有技能」时，`hero.skillEnhancements[skillId].enhanceCount` 递增。**每个技能最多强化 4 次**（enhanceCount 上限 4）。战斗执行技能时，需根据 `enhanceCount` 计算**增强后的技能参数**，再参与伤害/debuff 计算。以下为法师**两个**初始技能的增强公式（实现时按 enhanceCount 应用）。
 
 | 技能 ID | 技能名 | 基础参数 | 增强类型 | 公式 | 上限 |
 |---------|--------|----------|----------|------|------|
-| fireball | 火球术 | coefficient: 1.3, spellCritBonus: 0.12, manaCost: 13 | 倍率 + 额外暴击 + 消耗 | manaCost = 13 + enhanceCount；coefficient = min(1.45, 1.3 + enhanceCount × 0.05)；spellCritBonus = min(0.18, 0.12 + enhanceCount × 0.02) | 满强化 manaCost 16 |
-| frostbolt | 寒冰箭 | coefficient: 0.8；manaCost: 9；冰冻 debuff：`type: freeze`，`skipActions: 1`（**仅当本次触发成功时**施加） | 倍率 + 冰冻概率 + 消耗 | manaCost = 9 + enhanceCount；coefficient = min(0.95, 0.8 + enhanceCount × 0.05)；freezeChance = min(0.25, 0.10 + enhanceCount × 0.05)；命中时 `rng() < freezeChance` 则施加/刷新冰冻 | 满强化 manaCost 12；倍率 0.95；概率 0.25 |
+| fireball | 火球术 | coefficient: 1.3, spellCritBonus: 0.12, manaCost: 13 | 倍率 + 额外暴击 + 消耗 | manaCost = 13 + enhanceCount；coefficient = min(1.5, 1.3 + enhanceCount × 0.05)；spellCritBonus = min(0.20, 0.12 + enhanceCount × 0.02) | 满强化 manaCost 17 |
+| frostbolt | 寒冰箭 | coefficient: 0.8；manaCost: 9；冰冻 debuff：`type: freeze`，`skipActions: 1`（**仅当本次触发成功时**施加） | 倍率 + 冰冻概率 + 消耗 | manaCost = 9 + enhanceCount；coefficient = min(1.0, 0.8 + enhanceCount × 0.05)；freezeChance = min(0.30, 0.10 + enhanceCount × 0.05)；命中时 `rng() < freezeChance` 则施加/刷新冰冻 | 满强化 manaCost 13；倍率 1.0；概率 0.30 |
 
 **说明**：
 
@@ -620,11 +620,11 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 **实现要点**：
 
-- 战斗前或执行技能时，根据 `hero.skillEnhancements[skillId]?.enhanceCount ?? 0` 计算增强后的技能参数；enhanceCount 超过 3 时按 3 处理。
+- 战斗前或执行技能时，根据 `hero.skillEnhancements[skillId]?.enhanceCount ?? 0` 计算增强后的技能参数；enhanceCount 超过 4 时按 4 处理。
 - 冰冻 debuff 使用 `skipActions`，**不**使用 `remainingRounds` 在回合末递减；与 `tickDebuffs` 兼容（跳过无 `remainingRounds` 的冻结条目）。
 - 技能描述（effectDesc）在 UI 中应反映增强后的数值，便于玩家感知。
 
-**等级解锁技能的增强**：8.2.4 表中所列奥术飞弹、冰霜新星、烈焰风暴等（含通过学新池获得的技能），其增强公式在各等级表格的「加强效果」列中已有描述，实现时按相同模式扩展；**同样遵循每技能最多强化 3 次**。本小节仅规范法师**两个**初始技能的增强。
+**等级解锁技能的增强**：8.2.4 表中所列奥术飞弹、冰霜新星、烈焰风暴等（含通过学新池获得的技能），其增强公式在各等级表格的「加强效果」列中已有描述，实现时按相同模式扩展；**同样遵循每技能最多再强化 4 次**。本小节仅规范法师**两个**初始技能的增强。
 
 ### 8.3 牧师 (Priest)
 
@@ -639,12 +639,12 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 #### 8.3.2 牧师初始技能增强（实现规格）
 
-玩家在**强化里程碑**选择强化时，`hero.skillEnhancements[skillId].enhanceCount` 递增（每技能上限 3）。
+玩家在**强化里程碑**选择强化时，`hero.skillEnhancements[skillId].enhanceCount` 递增（每技能上限 4；显示 Lv.1～Lv.5）。
 
-| 技能 ID | 技能名 | 基础参数 | 每次强化 | 3 次强化上限 |
+| 技能 ID | 技能名 | 基础参数 | 每次强化 | 满强化（4 次） |
 |---------|--------|----------|----------|--------------|
-| flash-heal | 快速治疗 | coefficient: 1.0, manaCost: 8 | coefficient +0.1；manaCost +1 | coefficient: 1.3；manaCost: 11 |
-| power-word-shield | 真言术：盾 | coefficient: 1.0, absorbDuration: 3, manaCost: 8 | coefficient +0.1；absorbDuration +1；manaCost +1 | coefficient: 1.3；absorbDuration: 6；manaCost: 11 |
+| flash-heal | 快速治疗 | coefficient: 1.0, manaCost: 8 | coefficient +0.1；manaCost +1 | coefficient: 1.4；manaCost: 12 |
+| power-word-shield | 真言术：盾 | coefficient: 1.0, absorbDuration: 3, manaCost: 8 | coefficient +0.1；absorbDuration +1；manaCost +1 | coefficient: 1.4；absorbDuration: 7；manaCost: 12 |
 
 说明：
 
