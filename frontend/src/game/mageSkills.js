@@ -115,10 +115,12 @@ export function getMageSkillWithEnhancements(mage, skillId) {
   const out = { ...base }
 
   if (skillId === 'fireball') {
+    out.manaCost = (base.manaCost ?? 0) + enhanceCount
     out.coefficient = Math.min(1.45, 1.3 + enhanceCount * 0.05)
     out.spellCritBonus = Math.min(0.18, 0.12 + enhanceCount * 0.02)
     out.effectDesc = `${fmtCoeffUi(out.coefficient)} 倍法术伤害；本技能额外 +${Math.round(out.spellCritBonus * 100)}% 法术暴击率（不含持续伤害）`
   } else if (skillId === 'frostbolt') {
+    out.manaCost = (base.manaCost ?? 0) + enhanceCount
     out.coefficient = Math.min(0.95, 0.8 + enhanceCount * 0.05)
     out.freezeChance = getFrostboltFreezeChance(enhanceCount)
     const pct = Math.round(out.freezeChance * 100)
@@ -151,18 +153,24 @@ export function getMageEnhancementPreviewEffectDesc(hero, skillId) {
   if (next <= current) return base.effectDesc ?? ''
 
   if (skillId === 'fireball') {
+    const baseCost = base.manaCost ?? 0
     const currCoeff = Math.min(1.45, 1.3 + current * 0.05)
     const nextCoeff = Math.min(1.45, 1.3 + next * 0.05)
     const currCrit = Math.min(0.18, 0.12 + current * 0.02)
     const nextCrit = Math.min(0.18, 0.12 + next * 0.02)
-    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%`
+    const currMp = baseCost + current
+    const nextMp = baseCost + next
+    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；额外暴击 ${Math.round(currCrit * 100)}% -> ${Math.round(nextCrit * 100)}%；法力 ${currMp} -> ${nextMp}`
   }
   if (skillId === 'frostbolt') {
+    const baseCost = base.manaCost ?? 0
     const currCoeff = Math.min(0.95, 0.8 + current * 0.05)
     const nextCoeff = Math.min(0.95, 0.8 + next * 0.05)
     const currPct = Math.round(getFrostboltFreezeChance(current) * 100)
     const nextPct = Math.round(getFrostboltFreezeChance(next) * 100)
-    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%`
+    const currMp = baseCost + current
+    const nextMp = baseCost + next
+    return `${fmtCoeffUi(currCoeff)} -> ${fmtCoeffUi(nextCoeff)} 倍伤害；冰冻概率 ${currPct}% -> ${nextPct}%；法力 ${currMp} -> ${nextMp}`
   }
   if (skillId === 'frost-nova') {
     const coeff = base.coefficient ?? 0.5

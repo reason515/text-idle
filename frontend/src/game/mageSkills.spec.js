@@ -143,13 +143,16 @@ describe('Fireball', () => {
     expect(result.spellPowerFlatBonus).toBe(3)
   })
 
-  it('Fireball enhanced 1x uses higher coefficient and spellCritBonus', () => {
+  it('Fireball enhanced 1x uses higher coefficient, spellCritBonus, and +1 mana cost', () => {
     const mage = makeMage({ spellPower: 20, currentMP: 40, skillEnhancements: { fireball: { enhanceCount: 1 } } })
     const target = makeTarget({ resistance: 0, currentHP: 40 })
     const skillEnhanced = getMageSkillWithEnhancements(mage, 'fireball')
+    expect(skillEnhanced.manaCost).toBe(14)
     const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false })
     expect(result.skillCoefficient).toBeCloseTo(1.35, 5)
     expect(skillEnhanced.spellCritBonus).toBeCloseTo(0.14, 5)
+    expect(result.manaConsumed).toBe(14)
+    expect(mage.currentMP).toBe(26)
   })
 
   it('missed cast still consumes mana but deals no damage', () => {
@@ -163,13 +166,14 @@ describe('Fireball', () => {
     expect(mage.currentMP).toBe(27)
   })
 
-  it('getMageEnhancementPreviewEffectDesc shows coeff and crit for fireball', () => {
+  it('getMageEnhancementPreviewEffectDesc shows coeff, crit, and mana for fireball', () => {
     const hero = makeMage({ skillEnhancements: {} })
     const desc = getMageEnhancementPreviewEffectDesc(hero, 'fireball')
     expect(desc).toContain('1.3')
     expect(desc).toContain('1.35')
     expect(desc).toContain('12%')
     expect(desc).toContain('14%')
+    expect(desc).toContain('法力 13 -> 14')
   })
 })
 
@@ -278,23 +282,27 @@ describe('Frostbolt', () => {
     expect(getFreezeDebuff(unit)).toBeNull()
   })
 
-  it('Frostbolt enhanced increases coefficient and freeze chance', () => {
+  it('Frostbolt enhanced increases coefficient, freeze chance, and mana cost +1 per tier', () => {
     const mage = makeMage({ spellPower: 15, currentMP: 40, skillEnhancements: { frostbolt: { enhanceCount: 1 } } })
     const target = makeTarget({ resistance: 0 })
     const skillEnhanced = getMageSkillWithEnhancements(mage, 'frostbolt')
+    expect(skillEnhanced.manaCost).toBe(10)
     expect(skillEnhanced.freezeChance).toBeCloseTo(0.15, 5)
     const result = executeMageSkill(mage, target, skillEnhanced, { isCrit: false, rng: rngFreezeProc })
     expect(result.skillCoefficient).toBeCloseTo(0.85, 5)
+    expect(result.manaConsumed).toBe(10)
     expect(result.freezeProcced).toBe(true)
+    expect(mage.currentMP).toBe(30)
   })
 
-  it('getMageEnhancementPreviewEffectDesc shows frostbolt damage and freeze chance delta', () => {
+  it('getMageEnhancementPreviewEffectDesc shows frostbolt damage, freeze chance, and mana delta', () => {
     const hero = makeMage({ skillEnhancements: {} })
     const desc = getMageEnhancementPreviewEffectDesc(hero, 'frostbolt')
     expect(desc).toContain('0.8')
     expect(desc).toContain('0.85')
     expect(desc).toContain('10%')
     expect(desc).toContain('15%')
+    expect(desc).toContain('法力 9 -> 10')
   })
 })
 

@@ -474,8 +474,8 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 | 派系 | 技能 | 英文 | 消耗 | 冷却 | 效果 | 加强效果 |
 |------|------|------|------|------|------|----------|
-| 冰霜 | 寒冰箭 | Frostbolt | 9 法力 | 0 | 对单体造成魔法伤害，倍率 **0.8**；**10% 概率**施加 **冰冻**：目标**跳过下一次行动**（轮到该单位时消耗）；若已有冰冻且本次触发则刷新为仍跳过 1 次行动 | 倍率 +0.05/次（最高 0.95，最多 3 次）；**冰冻触发概率 +5%/次**（最高 **25%**，即 3 次强化）；触发时仍为跳过 1 次行动 |
-| 火焰 | 火球术 | Fireball | 13 法力 | 0 | 对单体造成魔法伤害，倍率 **1.3**；**本技能额外 +12% 法术暴击率**（加法叠于面板法术暴击，无持续伤害） | 倍率 +0.05/次（最高 1.45）；额外暴击率 +0.02/次（最高 +18%，最多 3 次） |
+| 冰霜 | 寒冰箭 | Frostbolt | 9 法力 | 0 | 对单体造成魔法伤害，倍率 **0.8**；**10% 概率**施加 **冰冻**：目标**跳过下一次行动**（轮到该单位时消耗）；若已有冰冻且本次触发则刷新为仍跳过 1 次行动 | 倍率 +0.05/次（最高 0.95，最多 3 次）；**冰冻触发概率 +5%/次**（最高 **25%**，即 3 次强化）；**法力消耗 +1/次**（基础 9，满强化 12）；触发时仍为跳过 1 次行动 |
+| 火焰 | 火球术 | Fireball | 13 法力 | 0 | 对单体造成魔法伤害，倍率 **1.3**；**本技能额外 +12% 法术暴击率**（加法叠于面板法术暴击，无持续伤害） | 倍率 +0.05/次（最高 1.45）；额外暴击率 +0.02/次（最高 +18%，最多 3 次）；**法力消耗 +1/次**（基础 13，满强化 16） |
 
 - **寒冰箭**：伤害低于火球，以 **概率冰冻跳过行动** 提供控制（基础 10%，强化后提高）；与 [12-threat.md](./12-threat.md) 等回合顺序规则一致（消耗于该单位轮到行动时）。
 - **火球术**：**无灼烧 DoT**；以高倍率与额外暴击率体现火焰爆发。
@@ -610,8 +610,8 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 | 技能 ID | 技能名 | 基础参数 | 增强类型 | 公式 | 上限 |
 |---------|--------|----------|----------|------|------|
-| fireball | 火球术 | coefficient: 1.3, spellCritBonus: 0.12 | 倍率 + 额外暴击 | coefficient = min(1.45, 1.3 + enhanceCount × 0.05)；spellCritBonus = min(0.18, 0.12 + enhanceCount × 0.02) | 见公式 |
-| frostbolt | 寒冰箭 | coefficient: 0.8；冰冻 debuff：`type: freeze`，`skipActions: 1`（**仅当本次触发成功时**施加） | 倍率 + 冰冻概率 | coefficient = min(0.95, 0.8 + enhanceCount × 0.05)；freezeChance = min(0.25, 0.10 + enhanceCount × 0.05)；命中时 `rng() < freezeChance` 则施加/刷新冰冻 | 倍率 0.95；概率 0.25 |
+| fireball | 火球术 | coefficient: 1.3, spellCritBonus: 0.12, manaCost: 13 | 倍率 + 额外暴击 + 消耗 | manaCost = 13 + enhanceCount；coefficient = min(1.45, 1.3 + enhanceCount × 0.05)；spellCritBonus = min(0.18, 0.12 + enhanceCount × 0.02) | 满强化 manaCost 16 |
+| frostbolt | 寒冰箭 | coefficient: 0.8；manaCost: 9；冰冻 debuff：`type: freeze`，`skipActions: 1`（**仅当本次触发成功时**施加） | 倍率 + 冰冻概率 + 消耗 | manaCost = 9 + enhanceCount；coefficient = min(0.95, 0.8 + enhanceCount × 0.05)；freezeChance = min(0.25, 0.10 + enhanceCount × 0.05)；命中时 `rng() < freezeChance` 则施加/刷新冰冻 | 满强化 manaCost 12；倍率 0.95；概率 0.25 |
 
 **说明**：
 
