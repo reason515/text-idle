@@ -2224,6 +2224,7 @@ import {
   applyCombatPacingDelayMs,
   COMBAT_PACING_MS,
   getCombatLogStepDelayMs,
+  getDefeatBeforeRestPauseMs,
   getRestStepRevealMs,
   isE2eFastMode,
 } from '../game/combatPacing.js'
@@ -4266,8 +4267,7 @@ async function runCombatLoop() {
         exploration: defeatExploration.exploration,
       })
       await scrollLog()
-      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.defeatBeforeRest))
-      // E2E fast mode: autoRest heals in the same tick; one tick is enough for DOM
+      await sleepMs(getDefeatBeforeRestPauseMs())
       if (isE2eFastMode()) {
         await nextTick()
       }

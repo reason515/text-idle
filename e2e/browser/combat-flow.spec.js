@@ -118,8 +118,9 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
-    await expect(page.locator('.monster-card .monster-name').first()).toBeVisible({ timeout: 5000 })
+    const monsterRow = page.locator('.monster-list .monster-card').first()
+    await expect(monsterRow).toBeVisible({ timeout: 25000 })
+    await expect(monsterRow.locator('.monster-name')).toBeVisible({ timeout: 10000 })
   })
 
   test('battle log shows end-of-round mana recovery for mana heroes', async ({ page }) => {
@@ -588,9 +589,11 @@ test.describe('Experience and Leveling (Example 11)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
-    await pauseCombat(page)
     await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 15000 })
-    await expect(page.locator('.defeated-badge').filter({ hasText: 'DEFEATED' }).first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.defeated-badge').filter({ hasText: 'DEFEATED' }).first()).toBeVisible({
+      timeout: 15000,
+    })
+    await pauseCombat(page)
   })
 
   test('hero detail modal shows XP progress when level < 60', async ({ page }) => {

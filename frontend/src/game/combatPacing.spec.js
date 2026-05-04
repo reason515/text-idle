@@ -4,6 +4,7 @@ import {
   COMBAT_PACING_MS,
   DEFAULT_COMBAT_LOG_STEP_DELAY_MS,
   getCombatLogStepDelayMs,
+  getDefeatBeforeRestPauseMs,
   getRestStepRevealMs,
   isE2eFastMode,
 } from './combatPacing.js'
@@ -84,6 +85,26 @@ describe('combatPacing', () => {
       vi.stubGlobal('location', { search: '?e2e=1' })
       expect(isE2eFastMode()).toBe(true)
       expect(applyCombatPacingDelayMs(300)).toBe(0)
+    })
+  })
+
+  describe('getDefeatBeforeRestPauseMs', () => {
+    beforeEach(() => {
+      vi.stubGlobal('location', { search: '' })
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('matches defeatBeforeRest in normal play', () => {
+      expect(getDefeatBeforeRestPauseMs()).toBe(COMBAT_PACING_MS.defeatBeforeRest)
+    })
+
+    it('fixed short pause in E2E fast mode', () => {
+      localStorage.setItem('e2eFastCombat', '1')
+      expect(isE2eFastMode()).toBe(true)
+      expect(getDefeatBeforeRestPauseMs()).toBe(520)
     })
   })
 })

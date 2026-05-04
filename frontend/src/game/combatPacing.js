@@ -3,8 +3,9 @@
  * Game mechanics stay turn-based; this module only controls how fast the UI reveals
  * each log line and related transitions.
  *
- * Production values live here. E2E and automated tests use isE2eFastMode() so
- * applyCombatPacingDelayMs() returns 0 and does not use production timings.
+ * Production values live here. E2E and automated tests use isE2eFastMode so
+ * applyCombatPacingDelayMs() maps most production gaps to 0; see getDefeatBeforeRestPauseMs
+ * for one intentional exception between defeat summary and rest.
  */
 
 /** Default ms between each combat log step (before each line and after round tick). */
@@ -63,6 +64,19 @@ export function isE2eFastMode() {
  */
 export function applyCombatPacingDelayMs(normalMs) {
   return isE2eFastMode() ? 0 : normalMs
+}
+
+/**
+ * Real ms after defeat summary is logged before autoRest clears the encounter and heals.
+ * In normal play equals {@link COMBAT_PACING_MS}.defeatBeforeRest. In E2E fast mode other
+ * COMBAT_PACING_MS values are flattened to 0 via {@link applyCombatPacingDelayMs}; here we
+ * keep a short pause so defeated unit styling stays visible and browser tests are stable.
+ *
+ * @returns {number}
+ */
+export function getDefeatBeforeRestPauseMs() {
+  if (isE2eFastMode()) return 520
+  return COMBAT_PACING_MS.defeatBeforeRest
 }
 
 /**
