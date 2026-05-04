@@ -145,8 +145,8 @@ The player may describe one rule or many. Only output what the player mentioned;
 - Available skills (for skillPriority and conditions.skillId): hero skills ${JSON.stringify(skillIds)} plus **"basic-attack"** (normal attack target rules only — see below)
 ${existingCtx}
 ## basic-attack (normal attack) — per-skill tactics (CRITICAL)
-- When all skills in **skillPriority** are skipped (resource, cooldown, or no valid target), the engine uses **normal attack**. You can set **targetRule** / **targetRules** for it via **conditions** with **"skillId": "basic-attack"** — same as any other skill.
-- **NEVER** put **"basic-attack"** in **skillPriority**. It is always the implicit last step after listed skills.
+- When all skills in **skillPriority** are skipped (resource, cooldown, or no valid target), the engine uses **normal attack** as implicit fallback. Per-target rules come from **conditions** with **"skillId": "basic-attack"** (same as any other skill).
+- You **may** include **"basic-attack"** in **skillPriority** when the player wants **normal attack tried before** listed spells (e.g. Priest execute-first). Cost is zero; gates still use **conditions** on **basic-attack**. Omit from priority when implicit fallback order is enough.
 - **Chinese disambiguation (do NOT confuse)**:
   - Player wants **lowest current HP** enemy: use **"lowest-hp"**. Phrases: "血量最低", "HP最低", "血最少的敌人", "打残血的", "普攻打血量最低", "普通攻击优先血量最低".
   - Player wants **lowest threat on the tank** among monsters that are on the tank: use **"threat-tank-top-lowest-on-tank"**. Phrases: "仇恨最低", "对坦克仇恨最低", "快丢仇恨的怪" when clearly **threat**-based (not HP). If the player says **both** "普攻" and "血量最低", map **basic-attack** to **lowest-hp**, not threat-lowest.
@@ -207,6 +207,8 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "tank-hp-above" : designated tank HP% > value (e.g. "坦克血量高于70%才套盾")
 - "self-no-shield" : caster has **no** Power Word: Shield absorb on self (no value). Use for "自己身上没有真言术盾/没有盾buff". **NEVER** use target-has-debuff for this.
 - "tank-no-shield" : designated tank has no shield (no value). For "坦克身上没有盾".
+- "enemy-all-hp-above" : **every** alive enemy has HP ratio **>** value (strict). Default value \`0.05\` when player says enemies above 5%. Use on priest heal/shield steps/skill gates so spells **skip** while **any** enemy is at or below the execute band (engine tries basic attack next because heals/shields failed).
+- "every-ally-hp-gte" : **every** alive ally has HP ratio **>=** value (inclusive). Use for "全队/我方所有英雄 >= 70%" gates on **power-word-shield** skill-level **whenAll** (pairs with flash-heal **ally-hp-below** triage).
 
 ## Priest: shield buff vs debuff (CRITICAL — common model mistake)
 - **No shield / 没有盾 / 没有真言术盾** on an ally = **self-no-shield** (when target is self) or **tank-no-shield** (when target is tank). The engine checks \`unit.shield\` absorb, not debuffs.
@@ -224,6 +226,55 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - **Do NOT** put duplicate skill IDs in \`skillPriority\` (e.g. two "flash-heal"). **Do NOT** drop \`power-word-shield\` from priority unless the player asked.
 - If \`existingTactics\` is provided, output **only** the **delta** fields **or** the **full merged** flash-heal entry; never output a flash-heal condition that replaces the whole chain with only the new line.
 
+## Priest: enemy execute / finisher before heals (CRITICAL)
+- **Default order**: heals/shields before implicit fallback basic attack. Two ways to get **普攻斩杀优先** when enemies are very low HP:
+  - **Preferred when priority matters**: Put **"basic-attack"** **first** in **skillPriority**, then heals/shields (engine tries attack before spells).
+  - **Alternative**: Keep heals/shields first and gate them with **enemy-all-hp-above** on **flash-heal** / **power-word-shield** (step **whenAll** with ally gates) so spells skip while **any** enemy is at/below the execute band — **not** skill-level **when: target-hp-below** on **basic-attack** alone (that wrongly means "only basic attack when picked enemy below X%", hiding default lowest-HP flows).
+- Reference shape A — postpone heals via gates (ally below 70% heal; all allies >=70% shield unshielded; else lowest enemy attack; postpone heals/shields while any enemy <=5% HP ratio):
+{
+  "skillPriority": ["flash-heal", "power-word-shield"],
+  "conditions": [
+    {
+      "skillId": "flash-heal",
+      "targetRules": [{
+        "rule": "lowest-hp-ally",
+        "whenAll": [
+          { "when": "ally-hp-below", "value": 0.7 },
+          { "when": "enemy-all-hp-above", "value": 0.05 }
+        ]
+      }]
+    },
+    {
+      "skillId": "power-word-shield",
+      "whenAll": [
+        { "when": "every-ally-hp-gte", "value": 0.7 },
+        { "when": "enemy-all-hp-above", "value": 0.05 }
+      ],
+      "targetRules": ["lowest-hp-ally"]
+    },
+    { "skillId": "basic-attack", "targetRule": "lowest-hp" }
+  ],
+  "explanation": "..."
+}
+- **Omit global targetRule for Priest** in this pattern (do **not** default **tank**): heals/shields use explicit chains; basic attack uses **conditions** lowest-hp.
+
+- Reference shape B — explicit attack-first priority (**do NOT** put **enemy-all-hp-above** on **basic-attack**; only on heals/shield):
+{
+  "skillPriority": ["basic-attack", "flash-heal", "power-word-shield"],
+  "conditions": [
+    {
+      "skillId": "flash-heal",
+      "targetRules": [{ "rule": "lowest-hp-ally", "when": "ally-hp-below", "value": 0.7 }]
+    },
+    {
+      "skillId": "power-word-shield",
+      "whenAll": [{ "when": "every-ally-hp-gte", "value": 0.7 }],
+      "targetRules": ["lowest-hp-ally"]
+    },
+    { "skillId": "basic-attack", "targetRule": "lowest-hp" }
+  ]
+}
+
 ## Priest: flash-heal vs power-word-shield (CRITICAL - do not mix up)
 - **flash-heal** (快速治疗 / 治疗 / 加血 / 奶): **healing** only. If the player says "坦克血量低于X%时**治疗**", "**对坦克治疗**", "低血量时**奶**坦克", put **tank-hp-below** and tank targeting on **flash-heal**, NOT on power-word-shield.
 - **power-word-shield** (真言术：盾 / 盾 / 套盾 / 上盾): **absorb shield** only. If the player says "坦克血量**高**时套盾", "**盾**坦克", "给坦克**盾**", use power-word-shield. **Never** assign skill-level **when: tank-hp-below** to power-word-shield when the player clearly asked for **治疗** at low tank HP.
@@ -239,7 +290,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 ${getSkillNameMap(heroClass, skillIds)}
 
 ## Critical rules
-1. skillPriority: ONLY hero skill IDs from the list above (NOT "basic-attack"). Normal attack is automatic after priority; use **conditions** with **skillId "basic-attack"** to set **which enemy** to hit.
+1. skillPriority: hero skill IDs from the list above **plus optional "basic-attack"** when the player wants normal attack **before** other skills; otherwise omit **basic-attack** from priority (fallback still runs after skips). Always use **conditions** **skillId "basic-attack"** for **which enemy** to hit when it differs from inheritance.
 2. **NEVER** add **when: resource-below / cooldown** on **skills** — the engine auto-skips. **You MUST still output basic-attack in conditions** when the player names **普通攻击/普攻** together with **怒气不足/法力不足/否则…普攻** so **targeting** is explicit: use **targetRule** / **targetRules** only (not resource **when**).
 3. When the player describes priority only (嘲讽 then 破甲 then 普攻) **and** says **怒气不足则普通攻击** or **对HP最低…破甲…怒气不足则普通攻击**, output **skillPriority** plus **conditions** including **{ "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }** whenever **sunder-armor** uses **["threat-not-tank-random", "lowest-hp"]**, so normal attack matches the same fallback (non-tank first, else lowest HP).
 4. When player says "target enemies not targeting me" or "target enemies attacking allies": use "threat-not-tank-random".
@@ -406,7 +457,7 @@ WRONG 9 - omitting basic-attack when player names 怒气不足 + 普通攻击:
 Player: (same as tank Warrior full rule example above)
 WRONG: { "skillPriority": ["taunt", "sunder-armor"], "targetRule": "threat-not-tank-random", "conditions": [{ "skillId": "taunt", "targetRule": "threat-not-tank-random" }, { "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] }] }
 CORRECT: include **{ "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }** in **conditions** (see full example above).
-Reason: Player explicitly described **when** normal attack is used and expects **解析预览** to show **普通攻击** rules. **basic-attack** is not in **skillPriority** but must appear in **conditions** for target selection.
+Reason: Player explicitly described **when** normal attack is used and expects **解析预览** to show **普通攻击** rules. Put **basic-attack** in **conditions** for targeting (and optionally first in **skillPriority** when they want attack-before-spells).
 
 WRONG 10 (Mage) - frost vs fireball by enemy HP% modeled as targetRules **fallback** with two **lowest-hp** steps:
 Player: "攻击HP最低的敌人；若其HP高于70%用寒冰箭否则火球术；法力不足时普通攻击"
@@ -522,6 +573,7 @@ const VALID_WHEN = new Set([
   'resource-above', 'resource-below', 'round-gte',
   'enemy-targeting-self', 'enemy-not-targeting-self', 'tank-hp-below', 'tank-hp-above',
   'self-no-shield', 'tank-no-shield',
+  'enemy-all-hp-above', 'every-ally-hp-gte',
 ])
 
 function isNonsensicalCondition(when, value) {
@@ -840,6 +892,281 @@ function supplementMageHpBandTactics(userInput, priority, conditions, skillIds, 
   return { targetRule: 'lowest-hp' }
 }
 
+function flashHealEmergencySemanticKey(step) {
+  if (typeof step !== 'object' || step === null || step.rule !== 'lowest-hp-ally') return null
+  if (step.when === 'ally-hp-below') return typeof step.value === 'number' ? step.value : 0.3
+  if (Array.isArray(step.whenAll)) {
+    const w = step.whenAll.find((x) => x && x.when === 'ally-hp-below')
+    if (w) return typeof w.value === 'number' ? w.value : 0.3
+  }
+  return null
+}
+
+function flashHealStepsSemanticallyDuplicateEmergency(prev, step) {
+  const a = flashHealEmergencySemanticKey(prev)
+  const b = flashHealEmergencySemanticKey(step)
+  return a != null && b != null && Math.abs(a - b) < 1e-9
+}
+
+function normalizeFlashHealStepForDedupe(step) {
+  if (typeof step === 'string') return { __kind: 'str', v: step }
+  if (!step || typeof step !== 'object') return step
+  return {
+    rule: step.rule,
+    when: step.when,
+    value: step.value,
+    whenAll: step.whenAll,
+  }
+}
+
+function flashHealStepsLookEqual(a, b) {
+  try {
+    return JSON.stringify(normalizeFlashHealStepForDedupe(a)) === JSON.stringify(normalizeFlashHealStepForDedupe(b))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Model sometimes emits duplicate consecutive flash-heal chain steps (same JSON shape twice).
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function dedupeConsecutiveFlashHealSteps(conditions, warnings) {
+  const fh = conditions.find((c) => c.skillId === 'flash-heal')
+  if (!fh?.targetRules?.length) return
+  const next = []
+  for (const step of fh.targetRules) {
+    const prev = next[next.length - 1]
+    if (
+      prev !== undefined &&
+      (flashHealStepsLookEqual(prev, step) || flashHealStepsSemanticallyDuplicateEmergency(prev, step))
+    ) {
+      continue
+    }
+    next.push(step)
+  }
+  if (next.length !== fh.targetRules.length) {
+    fh.targetRules = next
+    warnings.push('已去重：快速治疗目标链中存在连续重复的步骤（常见于模型输出）。')
+  }
+}
+
+function conditionHasEnemyAllHpAbove(cond) {
+  if (!cond) return false
+  const scanWhenAll = (wa) =>
+    Array.isArray(wa) && wa.some((w) => w && w.when === 'enemy-all-hp-above')
+  if (cond.when === 'enemy-all-hp-above') return true
+  if (scanWhenAll(cond.whenAll)) return true
+  const chain = cond.targetRules
+  if (!Array.isArray(chain)) return false
+  for (const step of chain) {
+    if (typeof step !== 'object' || step === null) continue
+    if (step.when === 'enemy-all-hp-above') return true
+    if (scanWhenAll(step.whenAll)) return true
+  }
+  return false
+}
+
+/**
+ * AI tactics preview helper: priest execute-before-heal messaging (gates vs explicit basic-attack priority).
+ * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
+ * @returns {string}
+ */
+export function priestExecuteFinisherPreviewNote(tactics) {
+  const prio = tactics?.skillPriority
+  if (Array.isArray(prio) && prio.length > 0 && prio[0] === 'basic-attack') {
+    return '说明：技能优先级已将「普通攻击」置于首位；本回合会先尝试普攻，再上治疗/护盾（仍受各技能条件约束）。'
+  }
+  if (!tactics?.conditions?.length) return ''
+  const fh = tactics.conditions.find((c) => c.skillId === 'flash-heal')
+  const pw = tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+  if (!conditionHasEnemyAllHpAbove(fh) && !conditionHasEnemyAllHpAbove(pw)) return ''
+  return '说明：普攻固定排在法术之后尝试；当场上有极低血敌人时，治疗/护盾会因「全场敌人血量高于斩杀线」不满足而跳过，本回合会先打出普攻（斩杀优先）。'
+}
+
+function stripRedundantFlashHealSkillLevelAllyHpBelow(conditions, warnings) {
+  const fh = conditions.find((c) => c.skillId === 'flash-heal')
+  if (!fh || fh.when !== 'ally-hp-below') return
+  if (!fh.targetRules?.length) return
+  const first = fh.targetRules[0]
+  if (typeof first !== 'object' || first === null || first.rule !== 'lowest-hp-ally') return
+  let stepTh = null
+  if (first.when === 'ally-hp-below') stepTh = typeof first.value === 'number' ? first.value : 0.3
+  else if (Array.isArray(first.whenAll)) {
+    const w = first.whenAll.find((x) => x && x.when === 'ally-hp-below')
+    if (w) stepTh = typeof w.value === 'number' ? w.value : 0.3
+  }
+  const skillTh = typeof fh.value === 'number' ? fh.value : null
+  if (stepTh == null || skillTh == null || Math.abs(stepTh - skillTh) > 1e-9) return
+  delete fh.when
+  delete fh.value
+  warnings.push('已移除快速治疗技能级「己方任意血量低于」条件（与目标链第一步重复）。')
+}
+
+function supplementPriestEnemyExecutePostponeHeals(userInput, conditions, warnings) {
+  if (!userInput || typeof userInput !== 'string') return
+  const mentionsEnemyHpPct =
+    /(?:敌人|敌方)[^。\n]{0,24}(?:低于|小于)[^。\n]{0,14}(\d+)\s*%/.test(userInput) ||
+    /(?:低于|小于)[^。\n]{0,14}(\d+)\s*%[^。\n]{0,18}(?:敌人|敌方)/.test(userInput)
+  const mentionsBasicFirst =
+    /(?:优先|先)[^。\n]{0,24}(?:普攻|普通攻击)/.test(userInput) ||
+    /(?:普攻|普通攻击)[^。\n]{0,14}(?:优先|先)/.test(userInput.replace(/\s/g, ''))
+  if (!mentionsEnemyHpPct || !mentionsBasicFirst) return
+
+  let cutoff = 0.05
+  const m1 = userInput.match(/(?:敌人|敌方)[^%\n]{0,28}?(\d+)\s*%/)
+  const m2 = userInput.match(/(?:低于|小于)[^%\n]{0,18}(\d+)\s*%[^。\n]{0,22}(?:敌人|敌方)/)
+  const rawPct = m1?.[1] || m2?.[1]
+  if (rawPct) {
+    const n = Number(rawPct)
+    if (n >= 1 && n <= 99) cutoff = n / 100
+  }
+
+  const gate = { when: 'enemy-all-hp-above', value: cutoff }
+
+  function ensureGateOnStep(step) {
+    const base =
+      step === 'lowest-hp-ally'
+        ? { rule: 'lowest-hp-ally' }
+        : typeof step === 'object' && step !== null && typeof step.rule === 'string'
+          ? step
+          : null
+    if (!base) return step
+    if (base.when === 'enemy-all-hp-above') return typeof step === 'string' ? { ...base } : step
+    if (Array.isArray(base.whenAll) && base.whenAll.some((w) => w && w.when === 'enemy-all-hp-above')) {
+      return typeof step === 'string' ? { ...base } : step
+    }
+    const clauses = []
+    if (Array.isArray(base.whenAll) && base.whenAll.length > 0) {
+      clauses.push(...base.whenAll.filter((w) => w && w.when))
+    } else if (base.when) {
+      clauses.push({ when: base.when, value: base.value })
+    }
+    clauses.push(gate)
+    const out = { rule: base.rule }
+    if (clauses.length === 1) {
+      out.when = clauses[0].when
+      if (clauses[0].value !== undefined) out.value = clauses[0].value
+    } else {
+      out.whenAll = clauses
+    }
+    return out
+  }
+
+  let changed = false
+  const fh = conditions.find((c) => c.skillId === 'flash-heal')
+  if (fh?.targetRules?.length && !conditionHasEnemyAllHpAbove(fh)) {
+    const tr = [...fh.targetRules]
+    tr[0] = ensureGateOnStep(tr[0])
+    fh.targetRules = tr
+    if (fh.targetRules?.length) delete fh.targetRule
+    changed = true
+  }
+
+  const pw = conditions.find((c) => c.skillId === 'power-word-shield')
+  if (pw && !conditionHasEnemyAllHpAbove(pw)) {
+    const tr0 = pw.targetRules?.[0]
+    const stepHasGate =
+      typeof tr0 === 'object' &&
+      tr0 !== null &&
+      (tr0.when || (Array.isArray(tr0.whenAll) && tr0.whenAll.length > 0))
+    if (pw.targetRules?.length && stepHasGate) {
+      const tr = [...pw.targetRules]
+      tr[0] = ensureGateOnStep(tr[0])
+      pw.targetRules = tr
+      if (pw.targetRules?.length) delete pw.targetRule
+    } else {
+      const clauses = []
+      if (Array.isArray(pw.whenAll) && pw.whenAll.length > 0) {
+        clauses.push(...pw.whenAll.filter((w) => w && w.when))
+      } else if (pw.when) {
+        clauses.push({ when: pw.when, value: pw.value })
+      }
+      clauses.push(gate)
+      delete pw.when
+      delete pw.value
+      if (clauses.length === 1) {
+        pw.when = clauses[0].when
+        if (clauses[0].value !== undefined) pw.value = clauses[0].value
+      } else {
+        pw.whenAll = clauses
+      }
+    }
+    changed = true
+  }
+
+  if (changed) {
+    warnings.push(
+      `已补全：检测到「敌方血量低于阈值且优先普攻」，已为快速治疗与真言术：盾加入全场敌人血量高于 ${Math.round(cutoff * 100)}%（严格）门控，以实现斩杀优先。`,
+    )
+  }
+}
+
+/**
+ * Strip erroneous basic-attack skill gate target-hp-below when player wants execute-first via heals postpone + otherwise lowest enemy attack.
+ * @param {Object[]} conditions
+ * @param {string|undefined} userInput
+ * @param {string} heroClass
+ * @param {string[]} warnings
+ */
+function stripMisleadingPriestBasicAttackFinisherGate(conditions, userInput, heroClass, warnings) {
+  if (heroClass !== 'Priest') return
+  if (!userInput || typeof userInput !== 'string') return
+  const ba = conditions.find((c) => c.skillId === 'basic-attack')
+  if (!ba || ba.when !== 'target-hp-below') return
+  if (Array.isArray(ba.whenAll) && ba.whenAll.length > 0) return
+
+  const mentionsEnemyFinisher =
+    /(?:敌人|敌方)[^。\n]{0,16}(?:低于|小于)[^。\n]{0,8}5\s*%|5\s*%[^。\n]{0,16}(?:敌人|敌方)|(?:优先|斩杀)[^。\n]{0,16}(?:普攻|普通攻击)/.test(userInput)
+  const mentionsOtherwiseLowestEnemy =
+    /(?:其它|否则)[^。\n]{0,48}(?:血量最低|HP最低)[^。\n]{0,16}敌人/.test(userInput) ||
+    /(?:血量最低|HP最低)[^。\n]{0,16}敌人[^。\n]{0,24}(?:普攻|普通攻击)/.test(userInput)
+
+  if (!mentionsEnemyFinisher || !mentionsOtherwiseLowestEnemy) return
+
+  delete ba.when
+  delete ba.value
+  warnings.push(
+    '已修正：敌方斩杀优先时应推迟治疗/护盾（enemy-all-hp-above），普攻侧保持血量最低敌人；已移除普攻「目标血量低于」以免误认为仅在阈值以下才普攻。',
+  )
+}
+
+/**
+ * enemy-all-hp-above belongs on heals/shield to postpone casts; never on basic-attack (misleading in UI; ignored by combat gate path).
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ */
+function stripPriestBasicAttackMisplacedEnemyAllHpAbove(conditions, warnings) {
+  const ba = conditions.find((c) => c.skillId === 'basic-attack')
+  if (!ba) return
+  let changed = false
+  if (ba.when === 'enemy-all-hp-above') {
+    delete ba.when
+    delete ba.value
+    changed = true
+  }
+  if (Array.isArray(ba.whenAll)) {
+    const filtered = ba.whenAll.filter((w) => w && w.when !== 'enemy-all-hp-above')
+    if (filtered.length !== ba.whenAll.length) {
+      ba.whenAll = filtered
+      changed = true
+    }
+    if (ba.whenAll.length === 0) {
+      delete ba.whenAll
+    } else if (ba.whenAll.length === 1) {
+      ba.when = ba.whenAll[0].when
+      if (ba.whenAll[0].value !== undefined) ba.value = ba.whenAll[0].value
+      delete ba.whenAll
+    }
+  }
+  if (changed) {
+    warnings.push(
+      '已修正：「全场敌人血量高于」仅用于治疗/真言术：盾推迟施法；普攻只需血量最低敌人目标，已移除普攻上误加的门控。',
+    )
+  }
+}
+
 /**
  * Model often appends plain `lowest-hp-ally` after a triage step `{ rule: lowest-hp-ally, when: ally-hp-below }`.
  * When no ally is below the threshold, the first step yields an empty pool; the second step then picks
@@ -1107,7 +1434,12 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   const seenPriority = new Set()
   for (const id of raw.skillPriority || []) {
     if (id === 'basic-attack') {
-      warnings.push('已移除技能优先级中的「普通攻击」（普攻为自动兜底，请用 conditions 中 skillId basic-attack 配置普攻目标）')
+      if (seenPriority.has(id)) {
+        warnings.push('技能优先级已去重：移除重复的「普通攻击」')
+        continue
+      }
+      seenPriority.add(id)
+      priority.push(id)
       continue
     }
     if (!prioritySkillSet.has(id)) {
@@ -1261,6 +1593,9 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   }
 
   if (heroClass === 'Priest') {
+    dedupeConsecutiveFlashHealSteps(conditions, warnings)
+    stripRedundantFlashHealSkillLevelAllyHpBelow(conditions, warnings)
+    supplementPriestEnemyExecutePostponeHeals(userInput, conditions, warnings)
     stripFlashHealPlainLowestAfterAllyTriage(conditions, userInput, warnings)
     supplementPriestFlashHealTankHealWhenNoEnemyOnSelf(userInput, conditions, warnings)
     fixPriestPwsHealthyPartyShieldMistarget(conditions, warnings)
@@ -1272,6 +1607,24 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
       }
       warnings.push(
         '已转换：牧师顶层不能使用「血量最低敌人」；已写入「普通攻击」的敌人目标规则（与技能优先级中的普攻兜底一致）。',
+      )
+    }
+    stripMisleadingPriestBasicAttackFinisherGate(conditions, userInput, heroClass, warnings)
+    stripPriestBasicAttackMisplacedEnemyAllHpAbove(conditions, warnings)
+    const baLowestEnemy = conditions.some(
+      (c) =>
+        c.skillId === 'basic-attack' &&
+        (c.targetRule === 'lowest-hp' ||
+          (Array.isArray(c.targetRules) &&
+            c.targetRules.some(
+              (s) => s === 'lowest-hp' || (typeof s === 'object' && s && s.rule === 'lowest-hp'),
+            ))),
+    )
+    const fhHasChain = conditions.some((c) => c.skillId === 'flash-heal' && c.targetRules?.length > 0)
+    if (targetRule === 'tank' && baLowestEnemy && fhHasChain) {
+      targetRule = null
+      warnings.push(
+        '已移除牧师顶层默认目标「坦克」：治疗链已配置队友选取且普攻为血量最低敌人，保留坦克易造成预览误解。',
       )
     }
   }
@@ -1295,7 +1648,7 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
 
 /**
  * Merge validated AI tactics into existing hero tactics (used on Apply).
- * - skillPriority / targetRule: overwritten only when incoming provides them.
+ * - targetRule: incoming object always includes key from validateAiTactics (null clears stored default).
  * - conditions: merged by skillId (replace same skill, append new skills).
  * @param {Object|undefined} existing
  * @param {Object} incoming - Parsed tactics from validateAiTactics
@@ -1308,7 +1661,10 @@ export function mergeAiTacticsApply(existing, incoming) {
   if (!incoming || typeof incoming !== 'object') return out
   const t = incoming
   if (t.skillPriority?.length) out.skillPriority = [...t.skillPriority]
-  if (t.targetRule) out.targetRule = t.targetRule
+  if (Object.prototype.hasOwnProperty.call(t, 'targetRule')) {
+    if (t.targetRule) out.targetRule = t.targetRule
+    else delete out.targetRule
+  }
   if (Array.isArray(t.conditions) && t.conditions.length > 0) {
     if (!out.conditions) out.conditions = []
     for (const newCond of t.conditions) {
@@ -1413,6 +1769,8 @@ const WHEN_DISPLAY = {
   'tank-hp-above': '坦克血量高于',
   'self-no-shield': '自身无真言术：盾',
   'tank-no-shield': '坦克无真言术：盾',
+  'enemy-all-hp-above': '全场敌人血量比例均高于（严格高于）',
+  'every-ally-hp-gte': '己方全员血量比例不低于（含等于）',
 }
 
 /**
@@ -1554,9 +1912,18 @@ export function conditionValueDisplay(when, value) {
     when === 'self-hp-above' ||
     when === 'ally-hp-below' ||
     when === 'tank-hp-below' ||
-    when === 'tank-hp-above'
+    when === 'tank-hp-above' ||
+    when === 'enemy-all-hp-above' ||
+    when === 'every-ally-hp-gte'
   ) {
-    const def = when === 'self-hp-above' || when === 'tank-hp-above' ? 0.6 : 0.3
+    const def =
+      when === 'self-hp-above' || when === 'tank-hp-above'
+        ? 0.6
+        : when === 'enemy-all-hp-above'
+          ? 0.05
+          : when === 'every-ally-hp-gte'
+            ? 0.7
+            : 0.3
     return Math.round((typeof value === 'number' ? value : def) * 100) + '%'
   }
   if (when === 'target-has-debuff') {

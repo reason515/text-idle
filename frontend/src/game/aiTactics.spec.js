@@ -11,6 +11,7 @@ import {
   parseAiTacticsResponseContent,
   extractFirstBalancedJsonObject,
   stripTrailingCommasInJson,
+  priestExecuteFinisherPreviewNote,
 } from './aiTactics.js'
 
 describe('parseAiTacticsResponseContent', () => {
@@ -89,6 +90,123 @@ describe('validateAiTactics', () => {
       value: 0.4,
     })
     expect(result.explanation).toBe('Shield self, heal lowest ally when ally HP below 40%')
+  })
+
+  it('dedupes consecutive duplicate flash-heal targetRules steps', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 },
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', '')
+    expect(result.tactics.conditions[0].targetRules).toHaveLength(1)
+    expect(result.warnings.some((w) => w.includes('去重'))).toBe(true)
+  })
+
+  it('dedupes flash-heal emergency steps when ally-hp-below repeats via when vs whenAll', () => {
+    const raw = {
+      skillPriority: ['flash-heal'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 },
+            { rule: 'lowest-hp-ally', whenAll: [{ when: 'ally-hp-below', value: 0.7 }] },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', '')
+    expect(result.tactics.conditions[0].targetRules).toHaveLength(1)
+  })
+
+  it('strips redundant flash-heal skill-level ally-hp-below when same gate exists on first chain step', () => {
+    const raw = {
+      skillPriority: ['flash-heal'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          when: 'ally-hp-below',
+          value: 0.7,
+          targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', '')
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.when).toBeUndefined()
+    expect(result.warnings.some((w) => w.includes('技能级'))).toBe(true)
+  })
+
+  it('clears misleading priest global tank when flash-heal chain and basic attack lowest-hp enemy', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      targetRule: 'tank',
+      conditions: [
+        { skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] },
+        { skillId: 'power-word-shield', targetRules: ['lowest-hp-ally'] },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', '')
+    expect(result.tactics.targetRule).toBeNull()
+    expect(result.warnings.some((w) => w.includes('顶层默认目标'))).toBe(true)
+  })
+
+  it('supplements enemy-all-hp-above when user text mentions enemy low HP percent and basic attack priority', () => {
+    const user =
+      '若存在HP低于5%的敌人优先对其普通攻击；低于70%快速治疗；全队不低于70%套盾'
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRules: [{ rule: 'lowest-hp-ally', whenAll: [{ when: 'every-ally-hp-gte', value: 0.7 }] }],
+        },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', user)
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    const pw = result.tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+    const fhStep = fh.targetRules[0]
+    const fhWa = fhStep.whenAll || []
+    expect(fhWa.some((w) => w.when === 'enemy-all-hp-above') || fhStep.when === 'enemy-all-hp-above').toBe(true)
+    const pwStep = pw.targetRules[0]
+    const pwWa = pwStep.whenAll || []
+    expect(pwWa.some((w) => w.when === 'enemy-all-hp-above')).toBe(true)
+    expect(result.warnings.some((w) => w.includes('斩杀优先'))).toBe(true)
+  })
+
+  it('strips misleading priest basic-attack target-hp-below when user describes finisher plus otherwise lowest enemy', () => {
+    const user =
+      '1.若存在HP低于5%的敌人，优先对其施放普通攻击 2.若存在HP低于70%的我方英雄，对其施放快速治疗 3.若我方所有英雄HP均大于等于70%，则对无真言术盾buff的我方英雄施放真言术盾 4.其它情况下对HP最低的敌人施放普通攻击'
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'basic-attack',
+          targetRule: 'lowest-hp',
+          when: 'target-hp-below',
+          value: 0.05,
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', user)
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.when).toBeUndefined()
+    expect(result.warnings.some((w) => w.includes('斩杀'))).toBe(true)
   })
 
   it('removes unknown skill IDs from priority and warns', () => {
@@ -239,15 +357,25 @@ describe('validateAiTactics', () => {
     expect(result.warnings.some((w) => w.includes('已补充'))).toBe(false)
   })
 
-  it('strips basic-attack from skillPriority and warns', () => {
+  it('allows basic-attack in skillPriority (deduped)', () => {
     const raw = {
       skillPriority: ['taunt', 'basic-attack', 'sunder-armor'],
       targetRule: 'first',
       conditions: [],
     }
     const result = validateAiTactics(raw, warriorSkills, 'Warrior')
-    expect(result.tactics.skillPriority).toEqual(['taunt', 'sunder-armor'])
-    expect(result.warnings.some((w) => w.includes('普通攻击'))).toBe(true)
+    expect(result.tactics.skillPriority).toEqual(['taunt', 'basic-attack', 'sunder-armor'])
+    expect(result.warnings).toEqual([])
+  })
+
+  it('dedupes duplicate basic-attack in skillPriority', () => {
+    const raw = {
+      skillPriority: ['basic-attack', 'basic-attack', 'flash-heal'],
+      conditions: [],
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest')
+    expect(result.tactics.skillPriority).toEqual(['basic-attack', 'flash-heal'])
+    expect(result.warnings.some((w) => w.includes('去重'))).toBe(true)
   })
 
   it('truncates taunt targetRules when AI adds lowest-hp fallback (taunt must not inherit sunder chain)', () => {
@@ -459,6 +587,48 @@ describe('mergeAiTacticsApply', () => {
     const merged = mergeAiTacticsApply(existing, incoming)
     const fh = merged.conditions.find((c) => c.skillId === 'flash-heal')
     expect(fh.targetRules).toEqual([{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }])
+  })
+
+  it('clears stored targetRule when incoming targetRule is null', () => {
+    const existing = {
+      skillPriority: ['flash-heal'],
+      targetRule: 'tank',
+      conditions: [],
+    }
+    const merged = mergeAiTacticsApply(existing, {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      targetRule: null,
+      conditions: [{ skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] }],
+    })
+    expect(merged.targetRule).toBeUndefined()
+  })
+})
+
+describe('validateAiTactics Priest basic-attack cleanup', () => {
+  it('strips enemy-all-hp-above from basic-attack (gate belongs on heals/shield only)', () => {
+    const raw = {
+      skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'ally-hp-below', value: 0.7 },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp', when: 'enemy-all-hp-above', value: 0.05 },
+      ],
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest')
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.when).toBeUndefined()
+    expect(ba.targetRule).toBe('lowest-hp')
+    expect(result.warnings.some((w) => w.includes('普攻') && w.includes('全场敌人血量高于'))).toBe(true)
   })
 })
 
@@ -996,6 +1166,48 @@ describe('validateAiTactics Mage HP band and skill-level whenAll', () => {
     expect(ba.when).toBe('target-hp-below')
     expect(ba.value).toBe(0.05)
     expect(result.warnings.some((w) => w.includes('补全'))).toBe(true)
+  })
+})
+
+describe('priestExecuteFinisherPreviewNote', () => {
+  it('returns empty when priest heals lack enemy-all-hp-above gate', () => {
+    expect(
+      priestExecuteFinisherPreviewNote({
+        conditions: [
+          { skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] },
+        ],
+      }),
+    ).toBe('')
+  })
+
+  it('returns hint when flash-heal uses enemy-all-hp-above', () => {
+    const s = priestExecuteFinisherPreviewNote({
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'ally-hp-below', value: 0.7 },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(s.length).toBeGreaterThan(15)
+    expect(s).toContain('斩杀')
+  })
+
+  it('returns attack-first hint when skillPriority starts with basic-attack', () => {
+    const s = priestExecuteFinisherPreviewNote({
+      skillPriority: ['basic-attack', 'flash-heal'],
+      conditions: [{ skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] }],
+    })
+    expect(s).toContain('普通攻击')
+    expect(s).toContain('首位')
   })
 })
 

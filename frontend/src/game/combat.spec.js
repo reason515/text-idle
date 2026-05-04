@@ -1969,6 +1969,37 @@ describe('combat progression and systems', () => {
     expect(lowHpTargets.length).toBeGreaterThan(0)
   })
 
+  it('skillPriority may include basic-attack before spells so normal attack runs first when affordable', () => {
+    const mage = sampleHero({
+      id: 'mPri',
+      name: 'EarlyBA',
+      class: 'Mage',
+      agility: 99,
+      intellect: 40,
+      skills: ['frostbolt'],
+      tactics: {
+        skillPriority: ['basic-attack', 'frostbolt'],
+        targetRule: 'first',
+      },
+    })
+    const monster = createMonster(
+      {
+        id: 'mx',
+        name: 'Mob',
+        damageType: 'physical',
+        base: { hp: 5000, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    const rng = fixedRng(Array(400).fill(0.01))
+    const result = runAutoCombat({ heroes: [mage], monsters: [monster], rng, maxRounds: 6 })
+    const mageActs = result.log.filter(
+      (e) => e.actorName === 'EarlyBA' && (e.action === 'basic' || e.skillId === 'frostbolt'),
+    )
+    expect(mageActs.length).toBeGreaterThan(0)
+    expect(mageActs.every((e) => e.action === 'basic')).toBe(true)
+  })
+
   it('tactics targetRules chain uses second rule when first yields no target', () => {
     const warrior = sampleHero({
       id: 'w1',

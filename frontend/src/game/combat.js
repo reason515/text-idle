@@ -694,6 +694,7 @@ const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal']
  * True when every skill in tactics skillPriority costs more MP/rage than the actor currently has
  * (or the skill definition is missing). Used so Mage/Priest basic-attack tactic gates do not consume
  * the turn when no spell in priority can be paid for (idle rule: resource skip then fallback attack).
+ * Entry basic-attack is always affordable (cost 0); if present in priority, this returns false.
  * Also combined with per-turn flags when priority was non-empty but no spell fired (cooldown/conditions).
  * Warrior rage fallback keeps full basic-attack conditions so per-target rules stay consistent.
  * @param {{ class?: string, currentMP?: number }} actor
@@ -705,6 +706,7 @@ export function heroAllPrioritySkillsUnaffordable(actor, priority) {
   const mp = actor.currentMP || 0
   const cls = actor.class
   for (const skillId of priority) {
+    if (skillId === 'basic-attack') return false
     if (cls === 'Mage') {
       const skill = getMageSkillWithEnhancements(actor, skillId) ?? getAnyMageSkillById(skillId)
       const cost = skill?.manaCost ?? skill?.rageCost ?? 999
@@ -981,6 +983,436 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   /** One per living unit turn slot in round order (design: combat action step). */
   let combatActionSteps = 0
 
+  /**
+   * Basic attack damage resolution after target is chosen (hero or monster).
+   * @returns {string[]} Monster ids whose taunt expired after this swing (empty for heroes).
+   */
+  function executeBasicAttackDamagePhase(actor, target) {
+    const action = actorDamage(actor, rng, round)
+    const critRate = action.damageType === 'magic'
+      ? (actor.spellCrit || 0)
+      : (actor.physCrit || 0)
+    const attackRoll = rng()
+    const hitResult = rollHitCheck(actor, target, () => attackRoll)
+    const isCrit = hitResult.isHit ? attackRoll < critRate : false
+    let rawBase = action.rawDamage
+    if (actor.side === 'hero') {
+      if (action.damageType === 'physical') {
+        rawBase = Math.round(rawBase * (1 + (actor.physDmgPct || 0) / 100))
+      } else if (action.damageType === 'magic') {
+        rawBase = Math.round(rawBase * (1 + (actor.spellDmgPct || 0) / 100))
+      }
+    }
+    const critMultUse =
+      actor.side === 'hero'
+        ? action.damageType === 'magic'
+          ? actor.spellCritMult ?? CRIT_MULTIPLIER
+          : actor.physCritMult ?? CRIT_MULTIPLIER
+        : CRIT_MULTIPLIER
+    const rawAfterCrit = isCrit ? Math.round(rawBase * critMultUse) : rawBase
+    const targetHPBefore = target.currentHP
+    const weaponOpts =
+      actor.side === 'hero' && action.damageType === 'physical'
+        ? { armorPen: actor.physArmorPen ?? 0, ignoreArmorPct: actor.physIgnoreArmorPct ?? 0 }
+        : actor.side === 'hero' && action.damageType === 'magic'
+          ? { spellPen: actor.spellPen ?? 0, ignoreResistPct: actor.spellIgnoreResistPct ?? 0 }
+          : {}
+    let damage = hitResult.isHit
+      ? actor.side === 'hero'
+        ? applyDamageWithWeaponAffixes(rawAfterCrit, action.damageType, target, weaponOpts)
+        : applyDamage(rawAfterCrit, action.damageType, target)
+      : {
+          damageType: action.damageType,
+          absorbed: 0,
+          finalDamage: 0,
+          effectiveDefense: 0,
+          nextHP: target.currentHP ?? 0,
+        }
+    if (target.side === 'hero') {
+      const ds = applyDefensiveStanceToIncomingDamage(target, damage.finalDamage)
+      if (ds.stanceMitigated > 0) {
+        damage = {
+          ...damage,
+          finalDamage: ds.finalDamage,
+          nextHP: Math.max(0, (target.currentHP || 0) - ds.finalDamage),
+          defensiveStanceMitigated: ds.stanceMitigated,
+        }
+      }
+    }
+    let physicalDamageBeforeBlock = null
+    if (
+      target.side === 'hero' &&
+      hitResult.isHit &&
+      damage.finalDamage > 0 &&
+      damage.damageType === 'physical'
+    ) {
+      let fd = damage.finalDamage
+      const pdr = target.physDrPct || 0
+      if (pdr > 0) fd = Math.max(0, Math.floor(fd * (1 - Math.min(75, pdr) / 100)))
+      let blockedPhysical = false
+      const bc = target.blockPct || 0
+      if (bc > 0 && rng() * 100 < Math.min(75, bc)) {
+        physicalDamageBeforeBlock = fd
+        blockedPhysical = true
+        const bdr = target.blockDrPct || 0
+        fd = Math.max(0, Math.floor(fd * Math.max(0.1, 1 - Math.min(85, bdr) / 100)))
+      }
+      damage = {
+        ...damage,
+        finalDamage: fd,
+        nextHP: Math.max(0, (target.currentHP || 0) - fd),
+        blockedPhysical,
+      }
+    }
+    let blockCounterDamageToMonster = 0
+    if (
+      actor.side === 'monster' &&
+      target.side === 'hero' &&
+      damage.blockedPhysical &&
+      (target.blockCounter || 0) > 0
+    ) {
+      blockCounterDamageToMonster = Math.min(target.blockCounter || 0, actor.currentHP || 0)
+      actor.currentHP = Math.max(0, (actor.currentHP || 0) - blockCounterDamageToMonster)
+    }
+    if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
+      const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
+      damage.absorbedByShield = shieldResult.absorbed
+      damage.overflowDamage = shieldResult.overflow
+      damage.shieldBroke = shieldResult.shieldBroke
+      damage.shieldAbsorbRemainingAfter = target.shield?.absorbRemaining ?? 0
+      damage.shieldRemainingRoundsAfter = target.shield?.remainingRounds ?? null
+    } else {
+      target.currentHP = damage.nextHP
+    }
+    if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
+     let thornsDamageToMonster = 0
+    if (
+      actor.side === 'monster' &&
+      target.side === 'hero' &&
+      action.damageType === 'physical' &&
+      damage.finalDamage > 0
+    ) {
+      const tn = target.thorns || 0
+      if (tn > 0) {
+        thornsDamageToMonster = Math.min(tn, actor.currentHP || 0)
+        actor.currentHP = Math.max(0, (actor.currentHP || 0) - thornsDamageToMonster)
+      }
+    }
+     let lifeOnKillHeal = 0
+    let rageOnKillGain = 0
+    if (
+      actor.side === 'hero' &&
+      target.side === 'monster' &&
+      targetHPBefore > 0 &&
+      (target.currentHP ?? 0) <= 0
+    ) {
+      const lk = actor.lifeOnKill || 0
+      if (lk > 0) {
+        lifeOnKillHeal = lk
+        actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
+      }
+      if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
+        rageOnKillGain = actor.rageOnKill
+        actor.currentMP = Math.min(100, (actor.currentMP || 0) + rageOnKillGain)
+      }
+    }
+     const shieldOnMain = damage.absorbedByShield != null && damage.absorbedByShield > 0
+     let weaponAddedMagicDamage = 0
+    let weaponArcaneFollowupDamage = 0
+    let weaponLifeStealHeal = 0
+    let weaponLifeOnHitHeal = 0
+    let weaponManaReflux = 0
+    let weaponManaOnCast = 0
+    let actorHPBeforeWeaponHeal = null
+    if (actor.side === 'hero' && action.damageType === 'physical' && damage.finalDamage > 0) {
+      actorHPBeforeWeaponHeal = actor.currentHP ?? 0
+      if (actor.lifeStealPct) {
+        weaponLifeStealHeal += Math.floor(damage.finalDamage * (actor.lifeStealPct / 100))
+      }
+      if (actor.lifeOnHit) {
+        weaponLifeOnHitHeal += actor.lifeOnHit
+      }
+      const lsHeal = weaponLifeStealHeal + weaponLifeOnHitHeal
+      if (lsHeal > 0) {
+        actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lsHeal)
+      }
+      const maxA = actor.addedMagicDmgMax ?? 0
+      const minA = actor.addedMagicDmgMin ?? 0
+      if (maxA > 0 && minA <= maxA) {
+        const addRoll = randomInRange(minA, maxA, rng)
+        const md = applyDamageWithWeaponAffixes(addRoll, 'magic', target, { spellPen: 0, ignoreResistPct: 0 })
+        if (target.side === 'hero' && target.shield && md.finalDamage > 0) {
+          applyDamageToShieldedUnit(target, md.finalDamage)
+        } else {
+          target.currentHP = md.nextHP
+        }
+        weaponAddedMagicDamage = md.finalDamage
+        if (actor.side === 'hero' && target.side === 'monster' && md.finalDamage > 0) {
+          addThreatFromDamage(threat, target.id, actor.id, md.finalDamage, 1)
+        }
+      }
+    }
+    if (actor.side === 'hero' && action.damageType === 'magic' && damage.finalDamage > 0) {
+      if (actor.manaRefluxPct) {
+        weaponManaReflux += Math.floor(damage.finalDamage * (actor.manaRefluxPct / 100))
+      }
+      if (actor.manaOnCast) {
+        weaponManaOnCast += actor.manaOnCast
+      }
+      const mpGain = weaponManaReflux + weaponManaOnCast
+      if (mpGain > 0) {
+        actor.currentMP = Math.min(actor.maxMP ?? 99999, (actor.currentMP || 0) + mpGain)
+      }
+      const fMax = actor.arcaneFollowupMax ?? 0
+      const fMin = actor.arcaneFollowupMin ?? 0
+      if (fMax > 0 && fMin <= fMax) {
+        const fu = randomInRange(fMin, fMax, rng)
+        const md = applyDamageWithWeaponAffixes(fu, 'magic', target, {
+          spellPen: actor.spellPen ?? 0,
+          ignoreResistPct: actor.spellIgnoreResistPct ?? 0,
+        })
+        if (target.side === 'hero' && target.shield && md.finalDamage > 0) {
+          applyDamageToShieldedUnit(target, md.finalDamage)
+        } else {
+          target.currentHP = md.nextHP
+        }
+        weaponArcaneFollowupDamage = md.finalDamage
+        if (actor.side === 'hero' && target.side === 'monster' && md.finalDamage > 0) {
+          addThreatFromDamage(threat, target.id, actor.id, md.finalDamage, 1)
+        }
+      }
+    }
+     let doubleStrikeDamage = 0
+    if (
+      actor.side === 'hero' &&
+      action.action === 'basic' &&
+      action.damageType === 'physical' &&
+      hitResult.isHit &&
+      target.side === 'monster' &&
+      (target.currentHP ?? 0) > 0 &&
+      (actor.doubleStrikePct || 0) > 0 &&
+      rng() * 100 < (actor.doubleStrikePct || 0)
+    ) {
+      const dsRaw = Math.round(rawBase * 0.6)
+      const dsCritRoll = rng()
+      const dsIsCrit = dsCritRoll < (actor.physCrit || 0)
+      const dsAfterCrit = dsIsCrit
+        ? Math.round(dsRaw * (actor.physCritMult ?? CRIT_MULTIPLIER))
+        : dsRaw
+      const dsDmg = applyDamageWithWeaponAffixes(dsAfterCrit, 'physical', target, weaponOpts)
+      if (dsDmg.finalDamage > 0) {
+        target.currentHP = dsDmg.nextHP
+        doubleStrikeDamage = dsDmg.finalDamage
+        addThreatFromDamage(threat, target.id, actor.id, dsDmg.finalDamage, 1)
+        if ((target.currentHP ?? 0) <= 0) {
+          const lk = actor.lifeOnKill || 0
+          if (lk > 0) {
+            actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
+          }
+          if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
+            actor.currentMP = Math.min(100, (actor.currentMP || 0) + (actor.rageOnKill || 0))
+          }
+        }
+      }
+    }
+     const reportedFinalDamage =
+      damage.finalDamage +
+      weaponAddedMagicDamage +
+      weaponArcaneFollowupDamage +
+      doubleStrikeDamage
+     const hasWeaponDamageSegments = weaponAddedMagicDamage > 0 || weaponArcaneFollowupDamage > 0
+    const primaryFinalDamage =
+      actor.side === 'hero' && hasWeaponDamageSegments && !shieldOnMain ? damage.finalDamage : undefined
+     if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
+      addThreatFromDamage(threat, target.id, actor.id, damage.finalDamage, 1)
+    }
+    const targetReason = actor.side === 'monster'
+      ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
+      : null
+    /** OT line is logged immediately before this attack so the log reads: switch target, then the hit. */
+    let pendingOtEntry = null
+    if (actor.side === 'monster') {
+      const lastTargetId = monsterLastTarget[actor.id]
+      if (lastTargetId != null && lastTargetId !== target.id) {
+        const tank = getTank(heroUnits, monsterUnits, threat, designatedTankUnit)
+        if (tank && target.id !== tank.id) {
+          const stablePreviewId = monsterIntendedTargetIds[actor.id]
+          const redundantWithIntent =
+            stablePreviewId != null && target.id === stablePreviewId
+          if (!redundantWithIntent) {
+            const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
+            const lastTargetName = lastTarget?.name ?? 'Unknown'
+            pendingOtEntry = {
+              round,
+              type: 'ot',
+              monsterId: actor.id,
+              monsterName: actor.name,
+              monsterTier: actor.tier ?? null,
+              previousTargetName: lastTargetName,
+              newTargetId: target.id,
+              newTargetName: target.name,
+              newTargetClass: target.class || null,
+            }
+          }
+        }
+      }
+      if (action.skillId) actor.lastSkillRound = round
+    }
+     let debuffResult = null
+    if (actor.side === 'monster' && action.skillId) {
+      const skillDef = getMonsterSkillById(actor.skill)
+      debuffResult = applyMonsterSkillDebuff(target, skillDef)
+    }
+     // Rage gain for Warriors: fixed per attack; crit doubles; dodge (no hit) gives 0; ring 怒气获取率
+    if (damage.finalDamage > 0) {
+      if (actor.side === 'hero' && actor.class === 'Warrior') {
+        let gained = rageFromAttack(isCrit)
+        gained = Math.floor(gained * (1 + (actor.rageGenPct || 0) / 100))
+        actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
+      }
+      if (target.side === 'hero' && target.class === 'Warrior') {
+        let gained = rageFromAttack(isCrit)
+        gained = Math.floor(gained * (1 + (target.rageGenPct || 0) / 100))
+        target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
+      }
+    }
+     const logEntry = {
+      round,
+      actorId: actor.id,
+      actorName: actor.name,
+      actorAgility: actor.agility ?? 0,
+      actorClass: actor.class || null,
+      actorTier: actor.tier || null,
+      action: action.action,
+      ...(action.skillId && { skillId: action.skillId }),
+      ...(damage.absorbedByShield != null &&
+        damage.absorbedByShield > 0 && {
+          shieldAbsorbed: damage.absorbedByShield,
+          shieldBroke: damage.shieldBroke,
+          shieldAbsorbRemainingAfter: damage.shieldAbsorbRemainingAfter ?? 0,
+          shieldRemainingRoundsAfter: damage.shieldRemainingRoundsAfter ?? null,
+        }),
+      ...(action.skillName && { skillName: action.skillName }),
+      targetId: target.id,
+      targetName: target.name,
+      targetClass: target.class || null,
+      targetTier: target.tier || null,
+      damageType: damage.damageType,
+      rawDamage: action.rawDamage,
+      isCrit,
+      isMiss: !hitResult.isHit,
+      finalHitChance: hitResult.finalHitChance,
+      missChance: hitResult.missChance,
+      attackerHit: hitResult.attackerHit,
+      defenderDodge: hitResult.defenderDodge,
+      levelAdjust: hitResult.levelAdjust,
+      finalDamage: reportedFinalDamage,
+      absorbed: damage.absorbed,
+      targetDefense: damage.effectiveDefense,
+      targetHPBefore,
+      targetHPAfter: target.currentHP,
+      targetMaxHP: target.maxHP,
+    }
+    if (primaryFinalDamage != null) logEntry.primaryFinalDamage = primaryFinalDamage
+    if (weaponAddedMagicDamage > 0) logEntry.weaponAddedMagicDamage = weaponAddedMagicDamage
+    if (weaponArcaneFollowupDamage > 0) logEntry.weaponArcaneFollowupDamage = weaponArcaneFollowupDamage
+    if (weaponLifeStealHeal > 0) logEntry.weaponLifeStealHeal = weaponLifeStealHeal
+    if (weaponLifeOnHitHeal > 0) logEntry.weaponLifeOnHitHeal = weaponLifeOnHitHeal
+    if (weaponManaReflux > 0) logEntry.weaponManaReflux = weaponManaReflux
+    if (weaponManaOnCast > 0) logEntry.weaponManaOnCast = weaponManaOnCast
+    if (thornsDamageToMonster > 0) logEntry.thornsDamageToMonster = thornsDamageToMonster
+    if (blockCounterDamageToMonster > 0) logEntry.blockCounterDamageToMonster = blockCounterDamageToMonster
+    if (lifeOnKillHeal > 0) logEntry.lifeOnKillHeal = lifeOnKillHeal
+    if (rageOnKillGain > 0) logEntry.rageOnKillGain = rageOnKillGain
+    if (doubleStrikeDamage > 0) logEntry.doubleStrikeDamage = doubleStrikeDamage
+    if (damage.blockedPhysical) logEntry.blockedPhysical = true
+    if (physicalDamageBeforeBlock != null) logEntry.physicalDamageBeforeBlock = physicalDamageBeforeBlock
+    if (
+      actorHPBeforeWeaponHeal != null &&
+      (weaponLifeStealHeal > 0 || weaponLifeOnHitHeal > 0)
+    ) {
+      logEntry.actorHPBefore = actorHPBeforeWeaponHeal
+      logEntry.actorHPAfter = actor.currentHP
+      logEntry.actorMaxHP = actor.maxHP
+    }
+    if (
+      (weaponManaReflux > 0 || weaponManaOnCast > 0) &&
+      actor.side === 'hero' &&
+      actor.class === 'Mage'
+    ) {
+      logEntry.weaponAffixManaAfter = actor.currentMP
+      logEntry.weaponAffixMaxMana = actor.maxMP
+    }
+    const mh = heroMitigationNoteKind(actor, damage.damageType)
+    if (mh) logEntry.heroMitigationKind = mh
+    if (targetReason) logEntry.targetReason = targetReason
+    if (actor.side === 'hero' && target.side === 'monster' && reportedFinalDamage > 0) {
+      const threatMult = 1
+      logEntry.threatAmount = Math.round(reportedFinalDamage * threatMult)
+      logEntry.threatTargetName = target.name
+    }
+    if (actor.side === 'hero' && actor.class === 'Warrior') {
+      logEntry.actorRageAfter = actor.currentMP
+    }
+    if (target.side === 'hero' && target.class === 'Warrior') {
+      logEntry.targetRageAfter = target.currentMP
+    }
+    if (debuffResult) {
+      logEntry.debuffApplied = !debuffResult.refreshed
+      logEntry.debuffRefreshed = debuffResult.refreshed
+      logEntry.debuffType = debuffResult.type
+      logEntry.debuffDuration = debuffResult.duration ?? 2
+      if (debuffResult.armorReduction != null) logEntry.debuffArmorReduction = debuffResult.armorReduction
+      if (debuffResult.resistanceReduction != null) logEntry.debuffResistanceReduction = debuffResult.resistanceReduction
+      if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound
+      if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
+    }
+    if (pendingOtEntry) log.push(pendingOtEntry)
+    log.push(logEntry)
+
+    let tauntExpiredMonsterIdsAfterSwing = []
+    if (actor.side === 'monster') {
+      monsterLastTarget[actor.id] = target.id
+      const tauntDec = decrementTauntActions(tauntState, actor.id)
+      if (tauntDec.expired) tauntExpiredMonsterIdsAfterSwing = [actor.id]
+    }
+    return tauntExpiredMonsterIdsAfterSwing
+  }
+
+  function tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget) {
+    const conditionsForBasicAttack = conditions || []
+    const target =
+      pickTarget(actor, heroUnits, monsterUnits, {
+        skillId: 'basic-attack',
+        conditions: conditionsForBasicAttack,
+        rng,
+        threat,
+        tauntState,
+        designatedTank: designatedTankUnit,
+      }) ?? defaultTarget
+    const baCond = conditions.find((c) => c.skillId === 'basic-attack')
+    if (
+      baCond &&
+      tacticsConditionWhenRequiresPickedTarget(baCond) &&
+      !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)
+    ) {
+      log.push({
+        round,
+        type: 'actionSkipped',
+        skipReason: 'tactics-gate',
+        actorId: actor.id,
+        actorName: actor.name,
+        actorClass: actor.class || null,
+        actorTier: null,
+        actorAgility: actor.agility ?? 0,
+      })
+      return { ok: false }
+    }
+    const tauntExpiredMonsterIds = executeBasicAttackDamagePhase(actor, target)
+    return { ok: true, tauntExpiredMonsterIds }
+  }
+
+
   while (round <= maxRounds && alive(heroUnits).length > 0 && alive(monsterUnits).length > 0) {
     for (const h of heroUnits) h.hitThisRound = false
     const roundOrder = buildRoundOrder(heroUnits, monsterUnits, rng, {
@@ -1031,12 +1463,24 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       /** Mage/Priest: set when skillPriority was non-empty but no spell fired (MP/CD/conditions). Used with resource check to relax basic-attack gates. */
       let magePriorityNoCastThisTurn = false
       let priestPriorityNoCastThisTurn = false
+      /** True after hero resolves basic-attack from tactics skillPriority (skip implicit fallback swing). */
+      let heroConsumedExplicitPriorityBasicAttack = false
       const skillPriority = getSkillPriority(actor)
 
       // Warrior skill path: use first affordable skill from priority (tactics or skills)
       if (actor.side === 'hero' && actor.class === 'Warrior' && skillPriority.length > 0) {
         let usedSkill = false
         for (const skillId of skillPriority) {
+          if (skillId === 'basic-attack') {
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            if (!ba.ok) {
+              emitMonsterIntentChangesIfNeeded()
+              continue
+            }
+            usedSkill = true
+            heroConsumedExplicitPriorityBasicAttack = true
+            break
+          }
           const skill = getSkillWithEnhancements(actor, skillId) ?? getAnyWarriorSkillById(skillId)
           if (!skill || (skill.rageCost ?? 0) > (actor.currentMP || 0)) continue
           const cooldown = skill.cooldown ?? 0
@@ -1317,6 +1761,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.side === 'hero' && actor.class === 'Mage' && mageSkillPriority.length > 0) {
         let usedSkill = false
         for (const skillId of mageSkillPriority) {
+          if (skillId === 'basic-attack') {
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            if (!ba.ok) {
+              emitMonsterIntentChangesIfNeeded()
+              continue
+            }
+            usedSkill = true
+            heroConsumedExplicitPriorityBasicAttack = true
+            break
+          }
           const skill = getMageSkillWithEnhancements(actor, skillId) ?? getAnyMageSkillById(skillId)
           const manaCost = skill?.manaCost ?? skill?.rageCost ?? 999
           if (!skill || manaCost > (actor.currentMP || 0)) continue
@@ -1533,6 +1987,17 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.side === 'hero' && actor.class === 'Priest' && priestSkillPriority.length > 0) {
         let usedSkill = false
         for (const skillId of priestSkillPriority) {
+          if (skillId === 'basic-attack') {
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            if (!ba.ok) {
+              emitMonsterIntentChangesIfNeeded()
+              continue
+            }
+            emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds: ba.tauntExpiredMonsterIds })
+            usedSkill = true
+            heroConsumedExplicitPriorityBasicAttack = true
+            break
+          }
           const skill = getPriestSkillWithEnhancements(actor, skillId) ?? getAnyPriestSkillById(skillId)
           const manaCost = skill?.manaCost ?? 999
           if (!skill || manaCost > (actor.currentMP || 0)) continue
@@ -1738,6 +2203,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         priestPriorityNoCastThisTurn = true
       }
 
+      if (actor.side === 'hero' && heroConsumedExplicitPriorityBasicAttack) {
+        emitMonsterIntentChangesIfNeeded()
+        continue
+      }
+
       const priorityForResource = getSkillPriority(actor)
       const relaxBasicAttackTacticGates =
         actor.side === 'hero' &&
@@ -1783,404 +2253,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           continue
         }
       }
-      const action = actorDamage(actor, rng, round)
-      const critRate = action.damageType === 'magic'
-        ? (actor.spellCrit || 0)
-        : (actor.physCrit || 0)
-      const attackRoll = rng()
-      const hitResult = rollHitCheck(actor, target, () => attackRoll)
-      const isCrit = hitResult.isHit ? attackRoll < critRate : false
-      let rawBase = action.rawDamage
-      if (actor.side === 'hero') {
-        if (action.damageType === 'physical') {
-          rawBase = Math.round(rawBase * (1 + (actor.physDmgPct || 0) / 100))
-        } else if (action.damageType === 'magic') {
-          rawBase = Math.round(rawBase * (1 + (actor.spellDmgPct || 0) / 100))
-        }
-      }
-      const critMultUse =
-        actor.side === 'hero'
-          ? action.damageType === 'magic'
-            ? actor.spellCritMult ?? CRIT_MULTIPLIER
-            : actor.physCritMult ?? CRIT_MULTIPLIER
-          : CRIT_MULTIPLIER
-      const rawAfterCrit = isCrit ? Math.round(rawBase * critMultUse) : rawBase
-      const targetHPBefore = target.currentHP
-      const weaponOpts =
-        actor.side === 'hero' && action.damageType === 'physical'
-          ? { armorPen: actor.physArmorPen ?? 0, ignoreArmorPct: actor.physIgnoreArmorPct ?? 0 }
-          : actor.side === 'hero' && action.damageType === 'magic'
-            ? { spellPen: actor.spellPen ?? 0, ignoreResistPct: actor.spellIgnoreResistPct ?? 0 }
-            : {}
-      let damage = hitResult.isHit
-        ? actor.side === 'hero'
-          ? applyDamageWithWeaponAffixes(rawAfterCrit, action.damageType, target, weaponOpts)
-          : applyDamage(rawAfterCrit, action.damageType, target)
-        : {
-            damageType: action.damageType,
-            absorbed: 0,
-            finalDamage: 0,
-            effectiveDefense: 0,
-            nextHP: target.currentHP ?? 0,
-          }
-      if (target.side === 'hero') {
-        const ds = applyDefensiveStanceToIncomingDamage(target, damage.finalDamage)
-        if (ds.stanceMitigated > 0) {
-          damage = {
-            ...damage,
-            finalDamage: ds.finalDamage,
-            nextHP: Math.max(0, (target.currentHP || 0) - ds.finalDamage),
-            defensiveStanceMitigated: ds.stanceMitigated,
-          }
-        }
-      }
-      let physicalDamageBeforeBlock = null
-      if (
-        target.side === 'hero' &&
-        hitResult.isHit &&
-        damage.finalDamage > 0 &&
-        damage.damageType === 'physical'
-      ) {
-        let fd = damage.finalDamage
-        const pdr = target.physDrPct || 0
-        if (pdr > 0) fd = Math.max(0, Math.floor(fd * (1 - Math.min(75, pdr) / 100)))
-        let blockedPhysical = false
-        const bc = target.blockPct || 0
-        if (bc > 0 && rng() * 100 < Math.min(75, bc)) {
-          physicalDamageBeforeBlock = fd
-          blockedPhysical = true
-          const bdr = target.blockDrPct || 0
-          fd = Math.max(0, Math.floor(fd * Math.max(0.1, 1 - Math.min(85, bdr) / 100)))
-        }
-        damage = {
-          ...damage,
-          finalDamage: fd,
-          nextHP: Math.max(0, (target.currentHP || 0) - fd),
-          blockedPhysical,
-        }
-      }
-      let blockCounterDamageToMonster = 0
-      if (
-        actor.side === 'monster' &&
-        target.side === 'hero' &&
-        damage.blockedPhysical &&
-        (target.blockCounter || 0) > 0
-      ) {
-        blockCounterDamageToMonster = Math.min(target.blockCounter || 0, actor.currentHP || 0)
-        actor.currentHP = Math.max(0, (actor.currentHP || 0) - blockCounterDamageToMonster)
-      }
-      if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
-        const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
-        damage.absorbedByShield = shieldResult.absorbed
-        damage.overflowDamage = shieldResult.overflow
-        damage.shieldBroke = shieldResult.shieldBroke
-        damage.shieldAbsorbRemainingAfter = target.shield?.absorbRemaining ?? 0
-        damage.shieldRemainingRoundsAfter = target.shield?.remainingRounds ?? null
-      } else {
-        target.currentHP = damage.nextHP
-      }
-      if (target.side === 'hero' && damage.finalDamage > 0) target.hitThisRound = true
-
-      let thornsDamageToMonster = 0
-      if (
-        actor.side === 'monster' &&
-        target.side === 'hero' &&
-        action.damageType === 'physical' &&
-        damage.finalDamage > 0
-      ) {
-        const tn = target.thorns || 0
-        if (tn > 0) {
-          thornsDamageToMonster = Math.min(tn, actor.currentHP || 0)
-          actor.currentHP = Math.max(0, (actor.currentHP || 0) - thornsDamageToMonster)
-        }
-      }
-
-      let lifeOnKillHeal = 0
-      let rageOnKillGain = 0
-      if (
-        actor.side === 'hero' &&
-        target.side === 'monster' &&
-        targetHPBefore > 0 &&
-        (target.currentHP ?? 0) <= 0
-      ) {
-        const lk = actor.lifeOnKill || 0
-        if (lk > 0) {
-          lifeOnKillHeal = lk
-          actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
-        }
-        if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
-          rageOnKillGain = actor.rageOnKill
-          actor.currentMP = Math.min(100, (actor.currentMP || 0) + rageOnKillGain)
-        }
-      }
-
-      const shieldOnMain = damage.absorbedByShield != null && damage.absorbedByShield > 0
-
-      let weaponAddedMagicDamage = 0
-      let weaponArcaneFollowupDamage = 0
-      let weaponLifeStealHeal = 0
-      let weaponLifeOnHitHeal = 0
-      let weaponManaReflux = 0
-      let weaponManaOnCast = 0
-      let actorHPBeforeWeaponHeal = null
-      if (actor.side === 'hero' && action.damageType === 'physical' && damage.finalDamage > 0) {
-        actorHPBeforeWeaponHeal = actor.currentHP ?? 0
-        if (actor.lifeStealPct) {
-          weaponLifeStealHeal += Math.floor(damage.finalDamage * (actor.lifeStealPct / 100))
-        }
-        if (actor.lifeOnHit) {
-          weaponLifeOnHitHeal += actor.lifeOnHit
-        }
-        const lsHeal = weaponLifeStealHeal + weaponLifeOnHitHeal
-        if (lsHeal > 0) {
-          actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lsHeal)
-        }
-        const maxA = actor.addedMagicDmgMax ?? 0
-        const minA = actor.addedMagicDmgMin ?? 0
-        if (maxA > 0 && minA <= maxA) {
-          const addRoll = randomInRange(minA, maxA, rng)
-          const md = applyDamageWithWeaponAffixes(addRoll, 'magic', target, { spellPen: 0, ignoreResistPct: 0 })
-          if (target.side === 'hero' && target.shield && md.finalDamage > 0) {
-            applyDamageToShieldedUnit(target, md.finalDamage)
-          } else {
-            target.currentHP = md.nextHP
-          }
-          weaponAddedMagicDamage = md.finalDamage
-          if (actor.side === 'hero' && target.side === 'monster' && md.finalDamage > 0) {
-            addThreatFromDamage(threat, target.id, actor.id, md.finalDamage, 1)
-          }
-        }
-      }
-      if (actor.side === 'hero' && action.damageType === 'magic' && damage.finalDamage > 0) {
-        if (actor.manaRefluxPct) {
-          weaponManaReflux += Math.floor(damage.finalDamage * (actor.manaRefluxPct / 100))
-        }
-        if (actor.manaOnCast) {
-          weaponManaOnCast += actor.manaOnCast
-        }
-        const mpGain = weaponManaReflux + weaponManaOnCast
-        if (mpGain > 0) {
-          actor.currentMP = Math.min(actor.maxMP ?? 99999, (actor.currentMP || 0) + mpGain)
-        }
-        const fMax = actor.arcaneFollowupMax ?? 0
-        const fMin = actor.arcaneFollowupMin ?? 0
-        if (fMax > 0 && fMin <= fMax) {
-          const fu = randomInRange(fMin, fMax, rng)
-          const md = applyDamageWithWeaponAffixes(fu, 'magic', target, {
-            spellPen: actor.spellPen ?? 0,
-            ignoreResistPct: actor.spellIgnoreResistPct ?? 0,
-          })
-          if (target.side === 'hero' && target.shield && md.finalDamage > 0) {
-            applyDamageToShieldedUnit(target, md.finalDamage)
-          } else {
-            target.currentHP = md.nextHP
-          }
-          weaponArcaneFollowupDamage = md.finalDamage
-          if (actor.side === 'hero' && target.side === 'monster' && md.finalDamage > 0) {
-            addThreatFromDamage(threat, target.id, actor.id, md.finalDamage, 1)
-          }
-        }
-      }
-
-      let doubleStrikeDamage = 0
-      if (
-        actor.side === 'hero' &&
-        action.action === 'basic' &&
-        action.damageType === 'physical' &&
-        hitResult.isHit &&
-        target.side === 'monster' &&
-        (target.currentHP ?? 0) > 0 &&
-        (actor.doubleStrikePct || 0) > 0 &&
-        rng() * 100 < (actor.doubleStrikePct || 0)
-      ) {
-        const dsRaw = Math.round(rawBase * 0.6)
-        const dsCritRoll = rng()
-        const dsIsCrit = dsCritRoll < (actor.physCrit || 0)
-        const dsAfterCrit = dsIsCrit
-          ? Math.round(dsRaw * (actor.physCritMult ?? CRIT_MULTIPLIER))
-          : dsRaw
-        const dsDmg = applyDamageWithWeaponAffixes(dsAfterCrit, 'physical', target, weaponOpts)
-        if (dsDmg.finalDamage > 0) {
-          target.currentHP = dsDmg.nextHP
-          doubleStrikeDamage = dsDmg.finalDamage
-          addThreatFromDamage(threat, target.id, actor.id, dsDmg.finalDamage, 1)
-          if ((target.currentHP ?? 0) <= 0) {
-            const lk = actor.lifeOnKill || 0
-            if (lk > 0) {
-              actor.currentHP = Math.min(actor.maxHP ?? 99999, (actor.currentHP || 0) + lk)
-            }
-            if (actor.class === 'Warrior' && (actor.rageOnKill || 0) > 0) {
-              actor.currentMP = Math.min(100, (actor.currentMP || 0) + (actor.rageOnKill || 0))
-            }
-          }
-        }
-      }
-
-      const reportedFinalDamage =
-        damage.finalDamage +
-        weaponAddedMagicDamage +
-        weaponArcaneFollowupDamage +
-        doubleStrikeDamage
-
-      const hasWeaponDamageSegments = weaponAddedMagicDamage > 0 || weaponArcaneFollowupDamage > 0
-      const primaryFinalDamage =
-        actor.side === 'hero' && hasWeaponDamageSegments && !shieldOnMain ? damage.finalDamage : undefined
-
-      if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
-        addThreatFromDamage(threat, target.id, actor.id, damage.finalDamage, 1)
-      }
-      const targetReason = actor.side === 'monster'
-        ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
-        : null
-      /** OT line is logged immediately before this attack so the log reads: switch target, then the hit. */
-      let pendingOtEntry = null
-      if (actor.side === 'monster') {
-        const lastTargetId = monsterLastTarget[actor.id]
-        if (lastTargetId != null && lastTargetId !== target.id) {
-          const tank = getTank(heroUnits, monsterUnits, threat, designatedTankUnit)
-          if (tank && target.id !== tank.id) {
-            const stablePreviewId = monsterIntendedTargetIds[actor.id]
-            const redundantWithIntent =
-              stablePreviewId != null && target.id === stablePreviewId
-            if (!redundantWithIntent) {
-              const lastTarget = heroUnits.find((h) => h.id === lastTargetId)
-              const lastTargetName = lastTarget?.name ?? 'Unknown'
-              pendingOtEntry = {
-                round,
-                type: 'ot',
-                monsterId: actor.id,
-                monsterName: actor.name,
-                monsterTier: actor.tier ?? null,
-                previousTargetName: lastTargetName,
-                newTargetId: target.id,
-                newTargetName: target.name,
-                newTargetClass: target.class || null,
-              }
-            }
-          }
-        }
-        if (action.skillId) actor.lastSkillRound = round
-      }
-
-      let debuffResult = null
-      if (actor.side === 'monster' && action.skillId) {
-        const skillDef = getMonsterSkillById(actor.skill)
-        debuffResult = applyMonsterSkillDebuff(target, skillDef)
-      }
-
-      // Rage gain for Warriors: fixed per attack; crit doubles; dodge (no hit) gives 0; ring 怒气获取率
-      if (damage.finalDamage > 0) {
-        if (actor.side === 'hero' && actor.class === 'Warrior') {
-          let gained = rageFromAttack(isCrit)
-          gained = Math.floor(gained * (1 + (actor.rageGenPct || 0) / 100))
-          actor.currentMP = Math.min(100, (actor.currentMP || 0) + gained)
-        }
-        if (target.side === 'hero' && target.class === 'Warrior') {
-          let gained = rageFromAttack(isCrit)
-          gained = Math.floor(gained * (1 + (target.rageGenPct || 0) / 100))
-          target.currentMP = Math.min(100, (target.currentMP || 0) + gained)
-        }
-      }
-
-      const logEntry = {
-        round,
-        actorId: actor.id,
-        actorName: actor.name,
-        actorAgility: actor.agility ?? 0,
-        actorClass: actor.class || null,
-        actorTier: actor.tier || null,
-        action: action.action,
-        ...(action.skillId && { skillId: action.skillId }),
-        ...(damage.absorbedByShield != null &&
-          damage.absorbedByShield > 0 && {
-            shieldAbsorbed: damage.absorbedByShield,
-            shieldBroke: damage.shieldBroke,
-            shieldAbsorbRemainingAfter: damage.shieldAbsorbRemainingAfter ?? 0,
-            shieldRemainingRoundsAfter: damage.shieldRemainingRoundsAfter ?? null,
-          }),
-        ...(action.skillName && { skillName: action.skillName }),
-        targetId: target.id,
-        targetName: target.name,
-        targetClass: target.class || null,
-        targetTier: target.tier || null,
-        damageType: damage.damageType,
-        rawDamage: action.rawDamage,
-        isCrit,
-        isMiss: !hitResult.isHit,
-        finalHitChance: hitResult.finalHitChance,
-        missChance: hitResult.missChance,
-        attackerHit: hitResult.attackerHit,
-        defenderDodge: hitResult.defenderDodge,
-        levelAdjust: hitResult.levelAdjust,
-        finalDamage: reportedFinalDamage,
-        absorbed: damage.absorbed,
-        targetDefense: damage.effectiveDefense,
-        targetHPBefore,
-        targetHPAfter: target.currentHP,
-        targetMaxHP: target.maxHP,
-      }
-      if (primaryFinalDamage != null) logEntry.primaryFinalDamage = primaryFinalDamage
-      if (weaponAddedMagicDamage > 0) logEntry.weaponAddedMagicDamage = weaponAddedMagicDamage
-      if (weaponArcaneFollowupDamage > 0) logEntry.weaponArcaneFollowupDamage = weaponArcaneFollowupDamage
-      if (weaponLifeStealHeal > 0) logEntry.weaponLifeStealHeal = weaponLifeStealHeal
-      if (weaponLifeOnHitHeal > 0) logEntry.weaponLifeOnHitHeal = weaponLifeOnHitHeal
-      if (weaponManaReflux > 0) logEntry.weaponManaReflux = weaponManaReflux
-      if (weaponManaOnCast > 0) logEntry.weaponManaOnCast = weaponManaOnCast
-      if (thornsDamageToMonster > 0) logEntry.thornsDamageToMonster = thornsDamageToMonster
-      if (blockCounterDamageToMonster > 0) logEntry.blockCounterDamageToMonster = blockCounterDamageToMonster
-      if (lifeOnKillHeal > 0) logEntry.lifeOnKillHeal = lifeOnKillHeal
-      if (rageOnKillGain > 0) logEntry.rageOnKillGain = rageOnKillGain
-      if (doubleStrikeDamage > 0) logEntry.doubleStrikeDamage = doubleStrikeDamage
-      if (damage.blockedPhysical) logEntry.blockedPhysical = true
-      if (physicalDamageBeforeBlock != null) logEntry.physicalDamageBeforeBlock = physicalDamageBeforeBlock
-      if (
-        actorHPBeforeWeaponHeal != null &&
-        (weaponLifeStealHeal > 0 || weaponLifeOnHitHeal > 0)
-      ) {
-        logEntry.actorHPBefore = actorHPBeforeWeaponHeal
-        logEntry.actorHPAfter = actor.currentHP
-        logEntry.actorMaxHP = actor.maxHP
-      }
-      if (
-        (weaponManaReflux > 0 || weaponManaOnCast > 0) &&
-        actor.side === 'hero' &&
-        actor.class === 'Mage'
-      ) {
-        logEntry.weaponAffixManaAfter = actor.currentMP
-        logEntry.weaponAffixMaxMana = actor.maxMP
-      }
-      const mh = heroMitigationNoteKind(actor, damage.damageType)
-      if (mh) logEntry.heroMitigationKind = mh
-      if (targetReason) logEntry.targetReason = targetReason
-      if (actor.side === 'hero' && target.side === 'monster' && reportedFinalDamage > 0) {
-        const threatMult = 1
-        logEntry.threatAmount = Math.round(reportedFinalDamage * threatMult)
-        logEntry.threatTargetName = target.name
-      }
-      if (actor.side === 'hero' && actor.class === 'Warrior') {
-        logEntry.actorRageAfter = actor.currentMP
-      }
-      if (target.side === 'hero' && target.class === 'Warrior') {
-        logEntry.targetRageAfter = target.currentMP
-      }
-      if (debuffResult) {
-        logEntry.debuffApplied = !debuffResult.refreshed
-        logEntry.debuffRefreshed = debuffResult.refreshed
-        logEntry.debuffType = debuffResult.type
-        logEntry.debuffDuration = debuffResult.duration ?? 2
-        if (debuffResult.armorReduction != null) logEntry.debuffArmorReduction = debuffResult.armorReduction
-        if (debuffResult.resistanceReduction != null) logEntry.debuffResistanceReduction = debuffResult.resistanceReduction
-        if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound
-        if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
-      }
-      if (pendingOtEntry) log.push(pendingOtEntry)
-      log.push(logEntry)
-      if (actor.side === 'monster') {
-        monsterLastTarget[actor.id] = target.id
-        const tauntDec = decrementTauntActions(tauntState, actor.id)
-        if (tauntDec.expired) tauntExpiredMonsterIds = [actor.id]
-      }
-      emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds })
+      const tauntExpiredMonsterIdsAfterSwing = executeBasicAttackDamagePhase(actor, target)
+      emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds: tauntExpiredMonsterIdsAfterSwing })
     }
 
     // Process DOT (bleed, burn, etc) at end of round

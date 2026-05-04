@@ -73,6 +73,7 @@ When modifying design documents (especially core flows like squad, recruitment, 
 | **Post-battle summary (exploration)** | [03-combat.md](design/03-combat.md) 胜负透明化、[02-levels-monsters.md](design/02-levels-monsters.md) 探索度口径 | MainScreen 结算小节：本场探索增减、BOSS 后进图重置文案 |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) (e.g. 10, 14, 20) | AC / design reference if formulas or log behavior changes |
 | **Unit tests** | `frontend/src/game/*.spec.js` | Lock formula and log helpers |
+| **Tactics schema** | `tactics.js`, `combat.js`, `aiTactics.js`, `docs/design/10-tactics.md` | `skillPriority` 含 `basic-attack`、新的 `when` 类型或牧师 fast-heal 预检 → 同步设计与 Vitest |
 | **E2E** | `e2e/browser/*.spec.js` | When main-screen combat log or flow assertions need updating |
 
 **Examples to review**: 10 (battle log / detail), 14 (mage formula), 20 (equip / orb), plus any Example citing SpellPower or combat log.

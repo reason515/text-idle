@@ -61,7 +61,15 @@ export function getSkillPriority(actor) {
   const tactics = actor.tactics
   if (tactics?.skillPriority && Array.isArray(tactics.skillPriority) && tactics.skillPriority.length > 0) {
     const available = new Set(actor.skills || [])
-    const filtered = tactics.skillPriority.filter((id) => available.has(id))
+    const seen = new Set()
+    const filtered = []
+    for (const id of tactics.skillPriority) {
+      const ok = id === 'basic-attack' || available.has(id)
+      if (!ok) continue
+      if (seen.has(id)) continue
+      seen.add(id)
+      filtered.push(id)
+    }
     if (filtered.length > 0) return filtered
   }
   return actor.skills || []
@@ -280,6 +288,28 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     return (ctx?.round ?? 0) >= minRound
   }
 
+  /** Every alive enemy strictly above threshold (ratio > value). Used to postpone heals/shields while a execute-range enemy exists (pairs with inclusive <= on target-hp-below bands). */
+  if (when === 'enemy-all-hp-above') {
+    const threshold = typeof value === 'number' ? value : 0.05
+    const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
+    if (aliveMonsters.length === 0) return false
+    return aliveMonsters.every((m) => {
+      const ratio = (m.currentHP ?? 0) / Math.max(1, m.maxHP ?? 1)
+      return ratio > threshold
+    })
+  }
+
+  /** Every alive ally HP ratio >= threshold (inclusive). Used for PW:S when party must all be healthy first. */
+  if (when === 'every-ally-hp-gte') {
+    const threshold = typeof value === 'number' ? value : 0.7
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    if (aliveHeroes.length === 0) return false
+    return aliveHeroes.every((h) => {
+      const ratio = (h.currentHP ?? 0) / Math.max(1, h.maxHP ?? 1)
+      return ratio >= threshold
+    })
+  }
+
   return true
 }
 
@@ -364,7 +394,9 @@ export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, mons
     const th = getAllyHpBelowThresholdFromStep(first)
     if (th != null) {
       const emergency = { when: 'ally-hp-below', value: th }
-      if (checkCondition(emergency, actor, null, heroes, monsters, ctx)) return true
+      if (checkCondition(emergency, actor, null, heroes, monsters, ctx)) {
+        if (evaluateTargetRuleStepGates(first, actor, heroes, monsters, ctx)) return true
+      }
       // Emergency failed: skill-level `when` that is empty/inactive must not mean "always cast";
       // otherwise checkCondition(priestCond) returns true and flash-heal spams lowest-hp-ally on full-HP party.
       if (isTacticsConditionInactive(priestCond)) {

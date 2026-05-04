@@ -51,6 +51,22 @@ describe('tactics', () => {
       }
       expect(getSkillPriority(actor)).toEqual(['taunt', 'heroic-strike'])
     })
+
+    it('allows basic-attack alongside learned skills and drops unknown ids', () => {
+      const actor = {
+        skills: ['flash-heal'],
+        tactics: { skillPriority: ['basic-attack', 'fake-skill', 'flash-heal'] },
+      }
+      expect(getSkillPriority(actor)).toEqual(['basic-attack', 'flash-heal'])
+    })
+
+    it('dedupes duplicate entries in tactics.skillPriority', () => {
+      const actor = {
+        skills: ['taunt', 'sunder-armor'],
+        tactics: { skillPriority: ['taunt', 'basic-attack', 'taunt'] },
+      }
+      expect(getSkillPriority(actor)).toEqual(['taunt', 'basic-attack'])
+    })
   })
 
   describe('getTargetRule', () => {
@@ -238,6 +254,28 @@ describe('tactics', () => {
           ],
         }),
       ).toBe(true)
+    })
+
+    it('enemy-all-hp-above passes only when every enemy strictly above threshold', () => {
+      const priest = { id: 'p' }
+      const monsters = [
+        { id: 'm1', currentHP: 5, maxHP: 100 },
+        { id: 'm2', currentHP: 50, maxHP: 100 },
+      ]
+      expect(checkCondition({ when: 'enemy-all-hp-above', value: 0.05 }, priest, null, [], monsters, {})).toBe(false)
+      expect(checkCondition({ when: 'enemy-all-hp-above', value: 0.05 }, priest, null, [], [{ ...monsters[1] }], {})).toBe(true)
+    })
+
+    it('every-ally-hp-gte passes when all allies meet minimum ratio (inclusive)', () => {
+      const priest = { id: 'p', currentHP: 70, maxHP: 100 }
+      const ally = { id: 'a', currentHP: 70, maxHP: 100 }
+      expect(
+        checkCondition({ when: 'every-ally-hp-gte', value: 0.7 }, priest, null, [priest, ally], [], {}),
+      ).toBe(true)
+      const hurt = { id: 'b', currentHP: 69, maxHP: 100 }
+      expect(
+        checkCondition({ when: 'every-ally-hp-gte', value: 0.7 }, priest, null, [priest, hurt], [], {}),
+      ).toBe(false)
     })
 
     it('self-hit-this-round passes when actor was hit', () => {
@@ -465,6 +503,25 @@ describe('tactics', () => {
   })
 
   describe('checkPriestFlashHealSkillAllowed', () => {
+    it('blocks flash-heal when ally triage passes but first-step whenAll includes failing enemy-all-hp-above', () => {
+      const priest = { id: 'p', currentHP: 100, maxHP: 100 }
+      const tank = { id: 't', currentHP: 10, maxHP: 100 }
+      const monsters = [{ id: 'm1', currentHP: 3, maxHP: 100 }]
+      const cond = {
+        skillId: 'flash-heal',
+        targetRules: [
+          {
+            rule: 'lowest-hp-ally',
+            whenAll: [
+              { when: 'ally-hp-below', value: 0.7 },
+              { when: 'enemy-all-hp-above', value: 0.05 },
+            ],
+          },
+        ],
+      }
+      expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], monsters, {})).toBe(false)
+    })
+
     it('allows flash-heal when emergency ally-hp-below step passes even if skill when fails', () => {
       const priest = { id: 'p', currentHP: 100, maxHP: 100 }
       const tank = { id: 't', currentHP: 10, maxHP: 100 }

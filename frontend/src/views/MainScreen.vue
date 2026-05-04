@@ -1778,11 +1778,32 @@
                     <div v-if="aiTacticsResult.tactics.skillPriority?.length" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key">技能优先级</span>
                       <span class="ai-tactics-preview-val ai-tactics-priority-chain">
-                        <template v-for="(skillId, priorityIndex) in aiTacticsResult.tactics.skillPriority" :key="skillId">
-                          <span class="ai-tactics-priority-token ai-tactics-priority-token-skill">{{ skillDisplayName(skillId, selectedHero.class) }}</span>
-                          <span v-if="priorityIndex < aiTacticsResult.tactics.skillPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                        <template v-for="(skillId, pi) in aiTacticsResult.tactics.skillPriority" :key="`${skillId}-${pi}`">
+                          <span
+                            class="ai-tactics-priority-token"
+                            :class="skillId === 'basic-attack' ? 'ai-tactics-priority-token-basic' : 'ai-tactics-priority-token-skill'"
+                            >{{ skillDisplayName(skillId, selectedHero.class) }}</span
+                          >
+                          <span v-if="pi < aiTacticsResult.tactics.skillPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                        </template>
+                        <template
+                          v-if="
+                            !aiTacticsResult.tactics.skillPriority.includes('basic-attack') &&
+                            aiTacticsResult.tactics.skillPriority[aiTacticsResult.tactics.skillPriority.length - 1] !==
+                              'basic-attack'
+                          "
+                        >
+                          <span class="ai-tactics-priority-arrow">&gt;</span>
+                          <span class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
                         </template>
                       </span>
+                    </div>
+                    <div
+                      v-if="aiTacticsPriestExecuteHint"
+                      class="ai-tactics-preview-row ai-tactics-preview-note-row"
+                    >
+                      <span class="ai-tactics-preview-key">说明</span>
+                      <span class="ai-tactics-preview-val ai-tactics-preview-note-val">{{ aiTacticsPriestExecuteHint }}</span>
                     </div>
                     <div v-if="aiTacticsResult.tactics.targetRule" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key">默认目标</span>
@@ -1823,10 +1844,17 @@
                   <span class="ai-tactics-current-label">技能优先级</span>
                   <span class="ai-tactics-current-val ai-tactics-priority-chain">
                     <template v-if="tacticsSkillPriority(selectedHero).length">
-                      <template v-for="(sid, pi) in tacticsSkillPriority(selectedHero)" :key="sid">
-                        <span class="ai-tactics-priority-token ai-tactics-priority-token-skill">{{ getHeroSkillDisplay(sid, selectedHero).name }}</span>
+                      <template v-for="(sid, pi) in tacticsSkillPriority(selectedHero)" :key="`${sid}-${pi}`">
+                        <span
+                          class="ai-tactics-priority-token"
+                          :class="sid === 'basic-attack' ? 'ai-tactics-priority-token-basic' : 'ai-tactics-priority-token-skill'"
+                          >{{ getHeroSkillDisplay(sid, selectedHero).name }}</span
+                        >
+                        <span v-if="pi < tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                      </template>
+                      <template v-if="tacticsShowsImplicitBasicFallback(selectedHero)">
                         <span class="ai-tactics-priority-arrow">&gt;</span>
-                        <span v-if="pi === tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
+                        <span class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
                       </template>
                     </template>
                     <span v-else class="ai-tactics-current-empty">未设置（按默认顺序）</span>
@@ -1836,7 +1864,7 @@
                   <span class="ai-tactics-current-label">默认目标</span>
                   <span class="ai-tactics-current-val">
                     <span class="ai-tactics-rule-item">
-                      <span class="ai-tactics-rule-value">{{ targetRuleDisplayName(tacticsTargetRule(selectedHero)) }}</span>
+                      <span class="ai-tactics-rule-value">{{ tacticsGlobalTargetRuleDisplay(selectedHero) }}</span>
                     </span>
                   </span>
                 </div>
@@ -2134,7 +2162,7 @@ import {
 import { applyXPToHeroes, calculateXPRequired, assignAttributePoint, POINTS_PER_LEVEL } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
-import { TACTICS_TARGET_RULE_INHERIT } from '../game/tactics.js'
+import { TACTICS_TARGET_RULE_INHERIT, getSkillPriority } from '../game/tactics.js'
 import {
   ENEMY_TARGET_L1,
   ENEMY_TARGET_L1_INHERIT,
@@ -2190,7 +2218,20 @@ import {
   unitDebuffs,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
-import { parseNaturalLanguageTactics, validateAiTactics, mergeAiTacticsApply, hasApiKey, getApiKey, setApiKey, skillDisplayName, targetRuleDisplayName, targetRulesChainDisplay, tacticsSkillWhenDisplay, conditionValueDisplay } from '../game/aiTactics.js'
+import {
+  parseNaturalLanguageTactics,
+  validateAiTactics,
+  mergeAiTacticsApply,
+  hasApiKey,
+  getApiKey,
+  setApiKey,
+  skillDisplayName,
+  targetRuleDisplayName,
+  targetRulesChainDisplay,
+  tacticsSkillWhenDisplay,
+  conditionValueDisplay,
+  priestExecuteFinisherPreviewNote,
+} from '../game/aiTactics.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'
@@ -2505,6 +2546,10 @@ const heroDetailTab = ref('attrs')
 const aiTacticsInput = ref('')
 const aiTacticsLoading = ref(false)
 const aiTacticsResult = ref(null)
+const aiTacticsPriestExecuteHint = computed(() => {
+  const t = aiTacticsResult.value?.tactics
+  return t ? priestExecuteFinisherPreviewNote(t) : ''
+})
 const aiTacticsError = ref('')
 const aiTacticsKeyInput = ref(getApiKey())
 const aiTacticsShowKey = ref(!hasApiKey())
@@ -3415,21 +3460,39 @@ function aiTacticsClearAll(hero) {
 }
 
 function tacticsSkillPriority(hero) {
-  const tactics = hero?.tactics
-  const skills = heroSkillIds(hero)
-  if (tactics?.skillPriority?.length) {
-    return tactics.skillPriority.filter((id) => skills.includes(id))
-  }
-  return skills
+  return getSkillPriority({
+    tactics: hero?.tactics,
+    skills: heroSkillIds(hero),
+  })
+}
+
+/** Engine fallback swing UI: omit when skillPriority already lists basic-attack (no duplicate implicit swing). */
+function tacticsShowsImplicitBasicFallback(hero) {
+  const ids = tacticsSkillPriority(hero)
+  if (ids.length === 0) return false
+  if (ids.includes('basic-attack')) return false
+  return ids[ids.length - 1] !== 'basic-attack'
 }
 
 function tacticsDisplaySkillList(hero) {
-  return [...tacticsSkillPriority(hero), 'basic-attack']
+  const ids = tacticsSkillPriority(hero)
+  if (!ids.length) return []
+  if (ids.includes('basic-attack')) return [...ids]
+  if (ids[ids.length - 1] !== 'basic-attack') return [...ids, 'basic-attack']
+  return [...ids]
 }
 
+/** Raw tactics.targetRule (null / undefined when unset). */
 function tacticsTargetRule(hero) {
-  const def = hero?.class === 'Priest' ? 'tank' : 'first'
-  return hero?.tactics?.targetRule || def
+  const tr = hero?.tactics?.targetRule
+  return tr === '' ? null : tr ?? null
+}
+
+function tacticsGlobalTargetRuleDisplay(hero) {
+  const tr = tacticsTargetRule(hero)
+  if (tr != null) return targetRuleDisplayName(tr)
+  if (hero?.class === 'Priest') return '未设置（治疗/盾使用各技能规则；普攻见下方）'
+  return targetRuleDisplayName('first')
 }
 
 function tacticsDefaultTargetOptions() {
@@ -3465,14 +3528,14 @@ function row2NoneLabel() {
 }
 
 function getGlobalEnemyTargetL1(hero) {
-  const tr = tacticsTargetRule(hero)
+  const tr = tacticsTargetRule(hero) ?? 'first'
   if (hero?.class === 'Priest') return ''
   const p = enemyTargetRuleToParts(tr)
   return p?.l1 ?? 'hp'
 }
 
 function getGlobalEnemyTargetL2(hero) {
-  const tr = tacticsTargetRule(hero)
+  const tr = tacticsTargetRule(hero) ?? 'first'
   if (hero?.class === 'Priest') return ''
   const p = enemyTargetRuleToParts(tr)
   return p?.l2 ?? 'low'
@@ -7286,6 +7349,11 @@ input.tactics-condition-value[type="number"] {
 .ai-tactics-preview-skill-key {
   color: var(--color-skill);
   font-style: italic;
+}
+.ai-tactics-preview-note-row .ai-tactics-preview-note-val {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.4;
 }
 .ai-tactics-priority-chain {
   display: flex;

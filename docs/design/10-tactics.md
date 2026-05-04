@@ -41,8 +41,8 @@
 |--------|------|
 | **skillPriority** | 技能 ID 的有序列表，按顺序尝试 |
 | **执行逻辑** | 第一个满足「资源 + 冷却 + 条件」的技能被使用 |
-| **普攻** | 若所有技能均不可用，则普攻。引擎视同为在优先级末尾隐式追加 `basic-attack`。**单技能目标**与其它技能相同：在 `conditions` 中使用 `skillId: 'basic-attack'` 配置 `targetRule` / `targetRules`（含 `lowest-hp`、`threat-tank-top-lowest-on-tank` 等）；未配置时继承全局 `targetRule`。**AI 解析**时 `basic-attack` 只能出现在 `conditions`，不得写入 `skillPriority`。 |
-| **与已学技能交集** | `skillPriority` 仅保留当前英雄 **已学会** 的技能 ID；若交集为空（例如存档里残留了旧 ID），则 **回退** 为 `skills` 数组顺序，避免整段优先级被清空后只剩普攻。 |
+| **普攻** | 若所有优先级内技能均不可用（资源 / 冷却 / 条件），则 **普攻**。引擎仍会 **隐式** 在末尾尝试普攻（等价于在优先级末尾追加 `basic-attack`）；玩家也可 **显式** 把 **`basic-attack`** 写入 **`skillPriority`**（通常在列表 **靠前**），以便优先尝试普攻再上法术。**普攻目标**与其它技能相同：在 `conditions` 中用 `skillId: 'basic-attack'` 配置 `targetRule` / `targetRules`（含 `lowest-hp`、`threat-tank-top-lowest-on-tank` 等）；未配置时继承全局 `targetRule`。同一回合若已通过显式槽位打出普攻，则 **不再** 走末尾隐式普攻，避免双击。**AI 解析**允许将 `basic-attack` 写入 `skillPriority`（常见于牧师斩杀优先）；仍需用 `conditions` 写明普攻目标（除非仅靠全局默认继承）。 |
+| **与已学技能交集** | `skillPriority` 保留 **`basic-attack`** 以及当前英雄 **已学会** 的技能 ID（未知 ID 丢弃）；若过滤后列表为空则 **回退** 为 `skills` 数组顺序。列表内同一 ID **去重**（保留首次出现）。 |
 | **条件「无」** | 数据上「无」表示不检查 `when`；若 `when` 为仅空白字符，实现上亦视为无条件。 |
 
 默认值：`hero.skills` 的当前顺序，或按职业预设。
@@ -106,6 +106,8 @@
 | tank-hp-above | 指定坦克 HP 比例高于 X | 牧师：坦克血线安全时套盾 |
 | self-no-shield | 施法者身上**无**真言术：盾吸收（`shield` 数据）。非 debuff。 | 套盾前判断 |
 | tank-no-shield | 指定坦克身上无真言术：盾 | 对坦克套盾前判断 |
+| enemy-all-hp-above | **每个**存活敌方 HP 比例均 **>** X（严格高于）。用于在治疗/护盾侧门控「全场怪物仍高于斩杀线」，以便技能跳过、优先级落到普攻（配合牧师「敌方极低血量时先普攻」意图）。**不要**写在 **`basic-attack`** 的技能条件上（斩杀应由优先级与法术侧门控表达）；校验会剥离普攻上的误挂门控。 | 牧师斩杀让路 |
+| every-ally-hp-gte | **每个**存活己方 HP 比例 **≥** X（含等于）。用于「我方全员不低于 70%」等与 `ally-hp-below` 互补的全队血线门控（常见于真言术：盾）。 | 牧师全队偏高血线套盾 |
 
 **说明**：
 
@@ -134,7 +136,7 @@
 
 **回归测试（与需求文档对齐）**：`docs/requirements-format.md` Example 33 列出可验收行为；前端用 Vitest（`tactics.js` / `combat.js` 相关 `*.spec.js`）锁定条件顺序、`targetRules` 链与牧师快速治疗门控；E2E `e2e/browser/tactics.spec.js` 可校验持久化战术在「当前战术」摘要中的展示。
 
-**牧师「快速治疗」预检（与目标链首步 `ally-hp-below`）**：若 `targetRules` **仅含一步**且该步为「血量最低的队友 + `ally-hp-below`」，且**未**配置技能级 `when`，则当全队当前无人满足该血量阈值时，**不得**施放快速治疗（避免把「无技能级条件」当成始终可用，从而对满血队友施放治疗）。
+**牧师「快速治疗」预检（与目标链首步 `ally-hp-below`）**：若 `targetRules` **仅含一步**且该步为「血量最低的队友 + `ally-hp-below`」，且**未**配置技能级 `when`，则当全队当前无人满足该血量阈值时，**不得**施放快速治疗（避免把「无技能级条件」当成始终可用，从而对满血队友施放治疗）。若首步使用 **`whenAll`** 同时包含 `ally-hp-below` 与其它门控（如 **`enemy-all-hp-above`**），急诊分支在允许施法前必须 **整步门控全部通过**（实现见 `checkPriestFlashHealSkillAllowed` + `evaluateTargetRuleStepGates`）。
 
 **勿误加无门控兜底**：若玩家意图仅为「存在低于 X% 的成员（含自己）时对其快速治疗」，则 `targetRules` **不应**在急诊步后再接**纯** `lowest-hp-ally`（无 `when` / `whenAll`）。否则在「全员比例都高于 X%」时，第一步候选为空会落到第二步，按**当前 HP 绝对值**选最低者，可能奶到比例健康但血条数字最小的自己。`validateAiTactics` 会移除急诊步（`ally-hp-below`，含 `when` 或单条 `whenAll`）之后**任意位置**的无门控 `lowest-hp-ally`；该校验在「坦克低血补充步」等启发式**之前**执行，以免中间插入其它步骤后漏删末尾兜底。点击 **应用** 合并战术时，`mergeAiTacticsApply` 会再次执行同一剥离，避免「仅合并急诊补充」路径把旧存档里的错误第二段保留下来。需要「否则仍奶最少血」时须在规则中显式描述。
 
@@ -228,19 +230,20 @@
 
 ## 七、UI 与 AI 解析（当前实现）
 
-**主界面战术页**：选择英雄 → **AI 战术配置**（自然语言）→ **AI 解析** → **解析预览** → **应用** / **放弃**；下方为 **当前战术** 只读摘要（技能优先级、默认目标、单技能规则），可 **清空全部战术**。
+**主界面战术页**：选择英雄 → **AI 战术配置**（自然语言）→ **AI 解析** → **解析预览** → **应用** / **放弃**；下方为 **当前战术** 只读摘要（技能优先级、默认目标、单技能规则），可 **清空全部战术**。解析预览中的 **技能优先级** 若未显式包含 **普通攻击**，会在列表末尾追加 **普通攻击**（与引擎「优先级遍历结束后隐式普攻」一致）；若模型已将 **`basic-attack`** 写入 **`skillPriority`**（例如斩杀优先），则按结构化顺序展示、通常不再重复追加末尾普攻说明。若配置含 **`enemy-all-hp-above`** 斩杀门控且首位 **不是** 显式普攻，预览下方追加 **说明** 一行，提示极低血敌人时法术会因门控跳过而先普攻；若 **`skillPriority` 首位为 `basic-attack`**，说明文案侧重「普攻先于法术尝试」。
 
 **自然语言 → 结构化配置**：前端调用 SiliconFlow（OpenAI 兼容接口）的 **Qwen3-8B** 模型，将玩家输入解析为 `skillPriority`、`targetRule`、`conditions`（与第二节数据模型一致）。实现见 `frontend/src/game/aiTactics.js`（系统提示词、输出校验、合并逻辑）。客户端对模型原文做 **JSON 容错**（请求侧启用 **JSON object** 输出模式；解析侧去掉代码围栏、提取首个平衡花括号对象、去除尾随逗号，必要时用 **jsonrepair** 修复后再 `JSON.parse`），减少偶发解析失败。**校验补充**：若玩家原文同时出现 **怒气不足/法力不足…普通攻击（或普攻）** 或 **否则普通攻击**，而模型未输出 `conditions` 中的 **basic-attack**，`validateAiTactics` 会 **自动追加** `{ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] }` 并给出「已补充」类警告，避免解析预览缺少普攻目标链。若原文同时出现 **无敌人以自己为目标 / 没有目标为自己的敌人**、**坦克血量低于 70%**、**快速治疗（或治疗坦克）**，而 **flash-heal** 未含任何 `tank-hp-below` 门控，会 **自动插入** 目标链一步：`{ rule: 'tank', whenAll: [ tank-hp-below 0.7, enemy-not-targeting-self ] }`（插在紧急 `ally-hp-below` 步之后），并给出「已补充」类警告，避免模型只写盾链、漏写坦克低血量治疗链。
 
-**牧师专项**：若模型将 **真言术：盾** 的「全员血量达标时套自己」写成了 `self-if-enemy-targeting` + `self-hp-above` + `self-no-shield`，而玩家原文 **未** 提及被盯上 / 敌人目标是自己等，校验会把该步 **改回** `rule: self`（保留 `whenAll`），避免解析预览出现多余的「仅当被敌人盯上」。若顶层 `targetRule` 为 **`lowest-hp`**（牧师顶层枚举不含敌人规则），会 **转为** `conditions` 里 **普通攻击** 的 `targetRule: lowest-hp` 并提示「已转换」，避免「默认目标无效」类警告。
+**牧师专项**：若模型将 **真言术：盾** 的「全员血量达标时套自己」写成了 `self-if-enemy-targeting` + `self-hp-above` + `self-no-shield`，而玩家原文 **未** 提及被盯上 / 敌人目标是自己等，校验会把该步 **改回** `rule: self`（保留 `whenAll`），避免解析预览出现多余的「仅当被敌人盯上」。若顶层 `targetRule` 为 **`lowest-hp`**（牧师顶层枚举不含敌人规则），会 **转为** `conditions` 里 **普通攻击** 的 `targetRule: lowest-hp` 并提示「已转换」，避免「默认目标无效」类警告。另：`flash-heal` 目标链中 **连续重复**的急诊步（含 `when` 与 `whenAll` 写法相同阈值）会去重；若技能级 `ally-hp-below` 与链首步急诊 **重复**，会移除技能级条件；玩家原文含 **敌方血量低于某阈值且优先普攻** 而模型未写 **`enemy-all-hp-above`** 时，会为快速治疗首步与真言术：盾补全该门控（阈值尽量从原文百分比推断）；若顶层为 **`tank`**、且已配置 **快速治疗目标链** 与 **普攻指向血量最低敌人**，会 **清空顶层默认目标** 以免预览显示误导性的「默认目标：坦克」。
 
 **牧师 AI 提示（易错点）**：系统提示词明确要求「治疗 / 加血」对应 **flash-heal**，「盾 / 套盾」对应 **power-word-shield**。玩家说「坦克血量低于 X% 时**治疗**」时，`tank-hp-below` 应配在 **flash-heal**（技能级 `when` 或目标链步骤），不应单独绑在 **power-word-shield** 上。`validateAiTactics` 若检测到「真言术：盾」含 `tank-hp-below` 而「快速治疗」完全未使用 `tank-hp-below`，会追加一条 **提示** 类警告（不自动改数据）。
 
 **API Key**：玩家在界面中配置 SiliconFlow API Key，保存在浏览器 **localStorage**（键名由实现定义）。未配置 Key 时无法发起解析。
 
-**应用（合并）**：点击「应用」时，将本次解析结果 **合并** 进英雄已有 `tactics`：
-- 若解析结果包含 `skillPriority` / `targetRule`，则 **覆盖** 对应字段；
-- `conditions` 按 **skillId** 合并：同 skillId **一般**为整段替换，新 skillId 则追加。
+**应用（合并）**：点击「应用」时，将本次解析结果 **合并** 进英雄已有 `tactics`（`mergeAiTacticsApply`，`frontend/src/game/aiTactics.js`）：
+- **`skillPriority`**：解析结果中非空数组则整体覆盖存档中的优先级。
+- **`targetRule`**：解析结果对象 **始终携带 `targetRule` 字段**（可为合法枚举字符串或 **`null`**）。为 **`null` / 假值** 时会 **删除** 存档里已有的顶层默认目标，避免牧师斩杀模板清空顶层后仍残留旧的「坦克」等与战斗不符的配置。
+- **`conditions`**：按 **skillId** 合并：同 skillId **一般**为整段替换，新 skillId 则追加。
 - **牧师快速治疗例外**：若本次解析仅给出「任意己方血量低于 X% + 治疗血最少队友」类 **紧急补充**（`ally-hp-below` + `lowest-hp-ally`，且无完整 `targetRules` 链），合并时会将该步 **插入到** 已有 `flash-heal` 的 `targetRules` **最前**，并保留原有技能级 `when` 与后续链，避免覆盖整条战术。
 
 **战斗执行（牧师快速治疗门控）**：若 `flash-heal` 的 `targetRules` **首步**为 `{ when: ally-hp-below }`（紧急抬血），则当 **任意存活己方（含牧师自身）** 生命比例低于该阈值时，**允许**在本回合尝试快速治疗，即使技能级 `when`（如 `self-hp-below`）未满足；否则仍按技能级条件判定。实现见 `checkPriestFlashHealSkillAllowed`（`frontend/src/game/tactics.js`）与牧师技能路径（`frontend/src/game/combat.js`）。
