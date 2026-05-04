@@ -83,7 +83,12 @@
               <span class="bar-num val-exp">{{ hero.xp ?? 0 }}/{{ hero.xpRequired }}</span>
             </div>
             <div class="card-footer-row">
-              <label class="hero-tank-check tooltip-wrap has-tip" @click.stop>
+              <label
+                class="hero-tank-check tooltip-wrap has-tip"
+                @click.stop
+                @mouseenter="(e) => showBattlePanelFloatTip(e, TANK_ROLE_TIP_TEXT)"
+                @mouseleave="clearBattlePanelFloatTip"
+              >
                 <input
                   type="checkbox"
                   :checked="hero.isTank === true"
@@ -91,23 +96,24 @@
                   @change="setHeroAsTank(hero, $event.target.checked)"
                 />
                 <span class="tank-check-label">坦克</span>
-                <span class="tooltip-text">指定为小队坦克，用于仇恨相关战术</span>
               </label>
               <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
                 <span
                   v-if="getShieldBuff(hero)"
                   class="status-badge status-buff tooltip-wrap has-tip"
+                  @mouseenter="(e) => showBattlePanelFloatTip(e, `${BUFF_DISPLAY.shield.name}: ${getShieldTip(hero)}`)"
+                  @mouseleave="clearBattlePanelFloatTip"
                 >
                   {{ BUFF_DISPLAY.shield.short }}
-                  <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}: {{ getShieldTip(hero) }}</span>
                 </span>
                 <span
                   v-for="d in unitDebuffs(hero)"
                   :key="d.type + '-' + (d.remainingRounds ?? 0)"
                   class="status-badge status-debuff tooltip-wrap has-tip"
+                  @mouseenter="(e) => showBattlePanelFloatTip(e, `${(DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name}: ${getDebuffTip(d)}`)"
+                  @mouseleave="clearBattlePanelFloatTip"
                 >
                   {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
-                  <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
                 </span>
               </div>
             </div>
@@ -183,17 +189,19 @@
                 <span
                   v-if="m.taunt"
                   class="status-badge status-taunt tooltip-wrap has-tip"
+                  @mouseenter="(e) => showBattlePanelFloatTip(e, `${TAUNT_DISPLAY.name}: ${getTauntTip(m.taunt)}`)"
+                  @mouseleave="clearBattlePanelFloatTip"
                 >
                   {{ TAUNT_DISPLAY.short }}
-                  <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}: {{ getTauntTip(m.taunt) }}</span>
                 </span>
                 <span
                   v-for="d in unitDebuffs(m)"
                   :key="d.type + '-' + (d.remainingRounds ?? 0)"
                   class="status-badge status-debuff tooltip-wrap has-tip"
+                  @mouseenter="(e) => showBattlePanelFloatTip(e, `${(DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name}: ${getDebuffTip(d)}`)"
+                  @mouseleave="clearBattlePanelFloatTip"
                 >
                   {{ (DEBUFF_DISPLAY[d.type] ?? { short: d.type }).short }}
-                  <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
                 </span>
               </div>
             </div>
@@ -1745,6 +1753,19 @@
     </Teleport>
 
     <Teleport to="body">
+      <div
+        v-if="battlePanelFloatTip"
+        class="battle-panel-float-tooltip"
+        :style="{
+          top: battlePanelFloatTip.top + 'px',
+          left: battlePanelFloatTip.left + 'px',
+        }"
+      >
+        <span class="tooltip-text">{{ battlePanelFloatTip.text }}</span>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div class="toast-container">
         <div
           v-for="t in toastMessages"
@@ -2172,6 +2193,9 @@ const equippedUnequipConfirming = ref(false)
 const pendingEquipSlot = ref(null)
 const hoveredBackpackItem = ref(null)
 const backpackTooltipRect = ref(null)
+/** Fixed tooltips: tank line + unit buff/debuff badges (escapes battle-arena overflow) */
+const battlePanelFloatTip = ref(null)
+const TANK_ROLE_TIP_TEXT = '指定为小队坦克，用于仇恨相关战术'
 const formulaTooltip = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
@@ -2752,6 +2776,23 @@ function confirmResetPlayerStats() {
   playerStats.value = createEmptyPlayerStats()
   resetStatsConfirming.value = false
   savePlayerStats()
+}
+
+const BATTLE_FLOAT_TIP_MAX_REM = 22
+
+function showBattlePanelFloatTip(e, text) {
+  if (text == null || String(text) === '') return
+  const el = e.currentTarget
+  const r = el.getBoundingClientRect()
+  const margin = 8
+  const rootFont = typeof window !== 'undefined' ? parseFloat(getComputedStyle(document.documentElement).fontSize) || 16 : 16
+  const maxWidthPx = Math.min(BATTLE_FLOAT_TIP_MAX_REM * rootFont, window.innerWidth - 2 * margin)
+  const left = Math.max(margin, Math.min(r.left, window.innerWidth - margin - maxWidthPx))
+  battlePanelFloatTip.value = { top: r.bottom + 4, left, text: String(text) }
+}
+
+function clearBattlePanelFloatTip() {
+  battlePanelFloatTip.value = null
 }
 
 function setHeroAsTank(hero, checked) {
@@ -6779,14 +6820,20 @@ input.tactics-condition-value[type="number"] {
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
 }
-.hero-tank-check .tooltip-text {
-  top: calc(100% + 4px);
-  bottom: auto;
-  left: 0;
-  right: auto;
-  max-width: 13rem;
+/* Teleport + fixed: tank line + buff/debuff badges (escapes battle-arena overflow) */
+.battle-panel-float-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+.battle-panel-float-tooltip .tooltip-text {
+  display: block;
+  position: static;
+  max-width: min(22rem, calc(100vw - 1rem));
   white-space: normal;
-  z-index: 120;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
 }
 .hero-tank-check input[type="checkbox"] {
   appearance: none;
@@ -6842,10 +6889,6 @@ input.tactics-condition-value[type="number"] {
   background: var(--bg-darker);
   border: 1px solid var(--warning);
   color: var(--warning);
-}
-.status-badge.tooltip-wrap .tooltip-text {
-  white-space: normal;
-  max-width: 12rem;
 }
 
 /* Floating damage/heal numbers on unit panels */

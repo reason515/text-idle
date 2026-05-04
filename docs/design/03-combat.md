@@ -40,7 +40,7 @@
 | 项目 | 说明 |
 |------|------|
 | **含义** | 主界面战斗日志**逐条播放**时，相邻两条之间的等待时间（毫秒），便于观察单次行动与回合结束后的状态；**不改变**服务端或本地战斗结算的回合规则与数值。 |
-| **默认** | 每条日志步骤间隔 **5000ms**（含「行动前」与「回合分隔后」两处与步骤相关的停顿，与实现一致）。 |
+| **默认** | 每条日志步骤间隔 **3000ms**（含「行动前」与「回合分隔后」两处与步骤相关的停顿，与实现一致）。 |
 | **可调** | 代码常量 `DEFAULT_COMBAT_LOG_STEP_DELAY_MS`；构建时可设环境变量 `VITE_COMBAT_LOG_STEP_DELAY_MS`；运行时可在浏览器 `localStorage` 设置键 `textIdleCombatLogStepDelayMs`（非负整数，优先级高于 Vite 环境变量）。 |
 | **与休息步一致** | 战后休息**每一步**在日志中的 reveal 间隔，须与**本条**「每条日志步骤间隔」使用**同一毫秒值**（单一配置源），使统计上的**战斗行动步**与**休息步**在观感上等长；设计依据见 [13-player-statistics.md](./13-player-statistics.md) 7.5。实现上 `COMBAT_PACING_MS.restStepReveal` 应与 `getCombatLogStepDelayMs()` 对齐（或其一派生自另一）。 |
 | **其他正式服节奏** | 地图切换分隔、地图描述展示、遭遇信息、战败后间隔、战后循环间隔等毫秒数集中在 `frontend/src/game/combatPacing.js` 的 `COMBAT_PACING_MS`（与回合结算逻辑无关，仅 UI 表现）。 |

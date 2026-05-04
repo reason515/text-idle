@@ -8,7 +8,7 @@
  */
 
 /** Default ms between each combat log step (before each line and after round tick). */
-export const DEFAULT_COMBAT_LOG_STEP_DELAY_MS = 5000
+export const DEFAULT_COMBAT_LOG_STEP_DELAY_MS = 3000
 
 /**
  * Production-only gaps (ms) for MainScreen combat loop and rest animation.

@@ -33,12 +33,12 @@ describe('combatPacing', () => {
     vi.unstubAllGlobals()
   })
 
-  it('default constant is 5000ms', () => {
-    expect(DEFAULT_COMBAT_LOG_STEP_DELAY_MS).toBe(5000)
+  it('default constant is 3000ms', () => {
+    expect(DEFAULT_COMBAT_LOG_STEP_DELAY_MS).toBe(3000)
   })
 
   it('getCombatLogStepDelayMs returns default when localStorage empty', () => {
-    expect(getCombatLogStepDelayMs()).toBe(5000)
+    expect(getCombatLogStepDelayMs()).toBe(3000)
   })
 
   it('getRestStepRevealMs matches getCombatLogStepDelayMs', () => {
@@ -55,7 +55,7 @@ describe('combatPacing', () => {
 
   it('invalid localStorage value falls back to default', () => {
     localStorage.setItem('textIdleCombatLogStepDelayMs', 'bad')
-    expect(getCombatLogStepDelayMs()).toBe(5000)
+    expect(getCombatLogStepDelayMs()).toBe(3000)
   })
 
   it('allows 0ms from localStorage', () => {
