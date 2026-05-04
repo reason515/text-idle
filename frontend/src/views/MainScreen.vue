@@ -860,7 +860,6 @@
             </div>
             <div
               v-else
-              ref="playerStatsChartShellRef"
               class="player-stats-chart-shell"
               data-testid="player-stats-timeline-chart"
               @mousemove="onPlayerStatsChartMouseMove"
@@ -950,20 +949,6 @@
                   <text :x="playerStatsTimelineChartModel.plot.x + 104" :y="14" class="player-stats-svg-legend-label legend-svg-xp">经验</text>
                 </g>
               </svg>
-              <div
-                v-if="statsTimelineHoverIdx !== null && playerStatsBattleTimeline[statsTimelineHoverIdx]"
-                class="player-stats-chart-tooltip"
-                :style="{
-                  left: statsTimelineTooltipLeftPx + 'px',
-                  top: statsTimelineTooltipTopPx + 'px',
-                }"
-                role="tooltip"
-              >
-                <div class="player-stats-chart-tooltip-title">第 {{ statsTimelineHoverIdx + 1 }} 场</div>
-                <div>回合 <span class="tip-val-rounds">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].rounds }}</span></div>
-                <div>金币 <span class="tip-val-gold">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].goldGained }}</span></div>
-                <div>经验 <span class="tip-val-xp">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].xpGained }}</span></div>
-              </div>
             </div>
           </template>
           </div>
@@ -972,6 +957,23 @@
             <button type="button" class="btn player-stats-compact-btn" data-testid="player-stats-modal-close" @click="showPlayerStatsModal = false; resetStatsConfirming = false">关闭</button>
           </div>
         </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="showPlayerStatsModal && playerStatsModalTab === 'timeline' && statsTimelineHoverIdx !== null && playerStatsBattleTimeline[statsTimelineHoverIdx]"
+        class="player-stats-chart-tooltip player-stats-chart-tooltip-floating"
+        :style="{
+          left: statsTimelineTooltipLeftPx + 'px',
+          top: statsTimelineTooltipTopPx + 'px',
+        }"
+        role="tooltip"
+      >
+        <div class="player-stats-chart-tooltip-title">第 {{ statsTimelineHoverIdx + 1 }} 场</div>
+        <div>回合 <span class="tip-val-rounds">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].rounds }}</span></div>
+        <div>金币 <span class="tip-val-gold">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].goldGained }}</span></div>
+        <div>经验 <span class="tip-val-xp">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].xpGained }}</span></div>
       </div>
     </Teleport>
 
@@ -2330,7 +2332,6 @@ const playerStats = ref(createEmptyPlayerStats())
 const showPlayerStatsModal = ref(false)
 const resetStatsConfirming = ref(false)
 const playerStatsModalTab = ref('summary')
-const playerStatsChartShellRef = ref(null)
 const statsTimelineHoverIdx = ref(null)
 const statsTimelineHoverTipLeft = ref(0)
 const statsTimelineHoverTipTop = ref(0)
@@ -2907,10 +2908,11 @@ const formattedXpPerScale = computed(() => {
 })
 
 const statsTimelineTooltipLeftPx = computed(() => {
-  const w = playerStatsChartShellRef.value?.offsetWidth ?? 360
+  const vw =
+    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 800
   const half = 76
   const x = statsTimelineHoverTipLeft.value
-  return Math.max(half, Math.min(x, w - half))
+  return Math.max(half, Math.min(x, vw - half))
 })
 
 const statsTimelineTooltipTopPx = computed(() => statsTimelineHoverTipTop.value)
@@ -2926,8 +2928,8 @@ function onPlayerStatsChartMouseMove(e) {
   let idx = n === 1 ? 0 : Math.round(frac * (n - 1))
   idx = Math.min(n - 1, Math.max(0, idx))
   statsTimelineHoverIdx.value = idx
-  statsTimelineHoverTipLeft.value = e.clientX - r.left
-  statsTimelineHoverTipTop.value = e.clientY - r.top
+  statsTimelineHoverTipLeft.value = e.clientX
+  statsTimelineHoverTipTop.value = e.clientY
 }
 
 function clearPlayerStatsChartHover() {
@@ -4439,6 +4441,10 @@ onUnmounted(() => {
   font-size: var(--font-xs);
   color: var(--text-label);
   line-height: 1.45;
+}
+.player-stats-chart-tooltip-floating {
+  position: fixed;
+  z-index: 220;
 }
 .player-stats-chart-tooltip-title {
   font-weight: 600;
