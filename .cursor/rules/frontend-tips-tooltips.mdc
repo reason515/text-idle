@@ -11,7 +11,7 @@ Applies whenever you add or change **hints, explainers, odds copy, or hover tips
 
 - Use `class="tooltip-wrap has-tip"` on the trigger and a child `<span class="tooltip-text">` for the body.
 - Do **not** use the HTML `title` attribute for gameplay or explanatory copy (browser chrome is inconsistent and does not match game styling).
-- If a scrollable or clipped ancestor hides the popup, add `tooltip-below` (or the same pattern used elsewhere in `MainScreen.vue` for that context).
+- If a scrollable or clipped ancestor hides the popup, add `tooltip-below` (or the same pattern used elsewhere in `MainScreen.vue` for that context). Do **not** use `tooltip-below` for triggers pinned to the **bottom** of the main screen when the root layout uses `overflow: hidden`; pop downward and get clipped (show above the trigger instead).
 
 ## Persistent in-panel helper blocks (MANDATORY)
 

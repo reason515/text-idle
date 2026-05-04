@@ -613,7 +613,7 @@
         <div class="gold-display tooltip-wrap">
           <span class="gold-icon" aria-hidden="true">&#9830;</span>
           <span class="gold-value">{{ gold }}</span>
-          <span class="tooltip-text tooltip-below gold-tooltip">当前持有金币：{{ gold }}</span>
+          <span class="tooltip-text gold-tooltip">当前持有金币：{{ gold }}</span>
         </div>
       </div>
 
@@ -639,7 +639,7 @@
             <span class="stat-unit">/{{ statsScaleLabel }}步</span>
           </span>
         </span>
-        <span class="tooltip-text tooltip-below stats-eff-tooltip"
+        <span class="tooltip-text stats-eff-tooltip"
           >自上次清零起：探索步 {{ explorationStepsDisplay }}（战斗 {{ playerStats.combatActionSteps }} + 休息
           {{ playerStats.restSteps }}）。点击打开详情与清零。</span
         >
@@ -4271,6 +4271,14 @@ onUnmounted(() => {
   white-space: nowrap;
   min-width: max-content;
 }
+/* Above trigger: battle-screen overflow:hidden clips downward popovers */
+.gold-display .tooltip-text.gold-tooltip {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
 
 .stats-efficiency {
   display: inline-flex;
@@ -4371,10 +4379,6 @@ onUnmounted(() => {
 .stat-unit {
   color: var(--text-muted);
   font-size: var(--font-xs);
-}
-.stats-eff-tooltip {
-  max-width: 18rem;
-  white-space: normal;
 }
 .player-stats-modal-tabs {
   margin-bottom: 0.45rem;
@@ -7130,12 +7134,18 @@ input.tactics-condition-value[type="number"] {
   bottom: auto;
   top: calc(100% + 4px);
 }
-.gold-display .tooltip-text.tooltip-below {
-  bottom: auto;
-  top: calc(100% + 0.35rem);
-  left: 50%;
+/* Overrides .tooltip-text nowrap; above trigger (see .gold-display .tooltip-text.gold-tooltip) */
+.stats-efficiency .tooltip-text.stats-eff-tooltip {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
   right: auto;
-  transform: translateX(-50%);
+  white-space: normal;
+  max-width: min(18rem, 92vw);
+  line-height: 1.45;
+  text-align: left;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
 }
 .gold-display:hover {
   border-color: rgba(255, 204, 68, 0.4);

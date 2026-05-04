@@ -238,7 +238,7 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 
 **悬停提示**
 
-- 统一使用 `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`（必要时加 `tooltip-below`，避免被 `overflow` 裁切）。
+- 统一使用 `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`（必要时加 `tooltip-below`，避免被**上方或侧向**区域的 `overflow` 裁切；**固定在屏幕底部的栏位**朝外展开易被根布局 `overflow: hidden` 裁成一条线时，应保持默认**朝触发元素上方**展示，或通过专用样式放在上方）。
 - **禁止**使用 `title=` 作为游戏内说明（样式与可访问性不一致于本项目 Tooltip）。
 
 **模态框 / 面板内的固定说明文案**（如商店购买品质概率、技能选择提示等）
