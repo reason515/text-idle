@@ -88,6 +88,16 @@ When modifying design documents (especially core flows like squad, recruitment, 
 | **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) | 若用户故事或 AC 引用统计面板或清零流程 |
 
+## 9. Audio (client-only presentation)
+
+| Check | Affected areas | Notes |
+|-------|----------------|------|
+| **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible** (`visibilityState !== 'visible'`); bind SFX kinds to combat log (damage / miss / dot / defeat / summary) |
+| **Samples & licensing** | `frontend/public/audio/sfx/`, [docs/audio-attributions.md](../audio-attributions.md), `SAMPLE_MANIFEST` in `audioBus.js` | All current SFX are Kenney CC0 (no attribution required); adding/replacing a file must update both the manifest and the attribution table |
+| **Preferences** | `audioPreferences.js`, MainScreen modal | `textIdleAudioMuted`, `textIdleAudioMasterVolume`; default master 0.85 |
+| **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 36 | `e2e/browser/audio-settings.spec.js` |
+| **Unit tests** | `frontend/src/audio/audioBus.spec.js` | Preferences + suppression + synthetic + sample fallback paths |
+
 ## Usage
 
 Before committing design changes:

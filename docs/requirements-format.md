@@ -1521,6 +1521,33 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 ---
 
+## Example 36: Audio Settings and Combat Hit Sound (Step 1)
+
+**User Story**
+
+> As a player,  
+> I want optional short sounds tied to combat feedback and a simple volume/mute control,  
+> So that the text-first UI feels more visceral without changing turn-based rules.
+
+**Design Reference (from design doc)**
+
+- **Primary**: [14-audio.md](design/14-audio.md) (preferences keys, E2E suppression, log-sync contract).
+- **Combat pacing / E2E**: [03-combat.md](design/03-combat.md) 1.3, `frontend/src/game/combatPacing.js` (`isE2eFastMode`).
+- **UI placement**: [09-social-ui.md](design/09-social-ui.md) (bottom command deck: **音效**).
+
+**Acceptance Criteria**
+
+
+| #   | Given                                                                 | When                                                                      | Then                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Player is on the main screen                                          | Player opens **音效** (or equivalent entry)                               | A modal shows mute, master volume, and at least one **preview** control |
+| AC2 | Player changes mute or master volume                                  | Player confirms or the control commits                                    | Values persist in `localStorage` under the documented keys in [14-audio.md](design/14-audio.md) |
+| AC3 | Player is on the main screen in production (not E2E fast mode)       | Combat resolves a hit that deals HP damage (same condition as floating damage numbers) | A short hit sound may play in sync with that combat log line; **physical / magic / mixed** and related events use distinct timbres per [14-audio.md](design/14-audio.md) (browser autoplay may require a prior user gesture; **mute** disables output) |
+| AC4 | Automated E2E tests run with `e2eFastCombat` / `?e2e=1`              | Combat log advances                                                       | **No** audio output is produced from the game's audio bus (suppressed with fast combat pacing) |
+| AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again |
+
+---
+
 ## Document Structure for Individual Requirements
 
 When writing a new requirement document, use the following structure:

@@ -654,6 +654,9 @@
           <button class="shop-btn topbar-btn" @click="showShopModal = true">
             商店
           </button>
+          <button type="button" class="topbar-btn" data-testid="audio-settings-open" @click="openAudioSettingsModal">
+            音效
+          </button>
           <button class="topbar-btn command-placeholder" disabled>战术</button>
           <button class="topbar-btn command-placeholder" disabled>任务</button>
           <button class="topbar-btn command-placeholder" disabled>队伍</button>
@@ -794,6 +797,61 @@
             </button>
           </div>
           <button class="btn" @click="showMapModal = false">关闭</button>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="showAudioSettingsModal"
+        class="modal-overlay"
+        data-testid="audio-settings-modal-overlay"
+        @click.self="showAudioSettingsModal = false"
+      >
+        <div class="modal-box audio-settings-modal" data-testid="audio-settings-modal" @click.stop>
+          <div class="modal-title">音效</div>
+          <div class="detail-skill-choice-banner audio-settings-banner">
+            <p>音量与静音将保存在本机浏览器。战斗音效与日志逐条揭示同步；自动化测试（E2E 快速模式）下不播放。</p>
+            <p class="audio-settings-banner-tip tooltip-wrap has-tip">
+              <strong>试听</strong>用于解锁浏览器音频并在本机验收：即使勾选静音也会发声（战斗中仍遵守静音）。若仍无声，请确认系统音量与输出设备。
+              <span class="tooltip-text">与战斗日志节奏相同：回合制规则不变，音效仅增强表现层。</span>
+            </p>
+          </div>
+          <label class="audio-setting-row audio-muted-row">
+            <input
+              type="checkbox"
+              data-testid="audio-muted-toggle"
+              class="audio-muted-checkbox"
+              :checked="audioSettingsMuted"
+              @change="onAudioMutedInput"
+            />
+            <span class="audio-setting-label">静音</span>
+          </label>
+          <div class="audio-setting-row audio-master-row">
+            <label class="audio-setting-label" for="audio-master-range">主音量</label>
+            <input
+              id="audio-master-range"
+              type="range"
+              class="audio-master-range"
+              min="0"
+              max="100"
+              :value="audioSettingsMasterPct"
+              data-testid="audio-master-range"
+              @input="onAudioMasterVolumeInput"
+            />
+            <span class="audio-master-pct">{{ audioSettingsMasterPct }}%</span>
+          </div>
+          <div class="audio-preview-actions">
+            <button type="button" class="btn btn-sm" data-testid="audio-preview-hit" @click="previewAudioHitNormal">
+              试听打击
+            </button>
+            <button type="button" class="btn btn-sm" data-testid="audio-preview-crit" @click="previewAudioHitCrit">
+              试听暴击
+            </button>
+          </div>
+          <button type="button" class="btn" data-testid="audio-settings-close" @click="showAudioSettingsModal = false">
+            关闭
+          </button>
         </div>
       </div>
     </Teleport>
@@ -2270,6 +2328,19 @@ import {
   isE2eFastMode,
 } from '../game/combatPacing.js'
 import {
+  playCombatDamageLineSound,
+  playCombatDefeatSound,
+  playCombatHitPreview,
+  playCombatUnitDeathSound,
+  playCombatVictorySound,
+} from '../audio/audioBus.js'
+import {
+  getAudioMasterVolume,
+  getAudioMuted,
+  setAudioMasterVolume,
+  setAudioMuted,
+} from '../audio/audioPreferences.js'
+import {
   MAX_BATTLE_TIMELINE_ENTRIES,
   PLAYER_STATS_STORAGE_KEY,
   applyBattleToPlayerStats,
@@ -2539,6 +2610,9 @@ const statsTimelineHoverTipTop = ref(0)
 /** @type {import('vue').Ref<{ label: string, value: number, pctLabel: string, left: number, top: number }|null>} */
 const compPieHover = ref(null)
 const showMapModal = ref(false)
+const showAudioSettingsModal = ref(false)
+const audioSettingsMuted = ref(false)
+const audioSettingsMasterPct = ref(85)
 const showBackpackModal = ref(false)
 const showShopModal = ref(false)
 const selectedHero = ref(null)
@@ -3068,6 +3142,12 @@ function addLogEntry(entry) {
 
 function addLogEntries(entries) {
   if (!Array.isArray(entries) || entries.length === 0) return
+  for (const e of entries) {
+    if (e && e.type === 'summary') {
+      if (e.outcome === 'victory') playCombatVictorySound()
+      else if (e.outcome === 'defeat') playCombatDefeatSound()
+    }
+  }
   displayedLog.value = [...displayedLog.value, ...entries]
   if (displayedLog.value.length > MAX_LOG_ENTRIES) {
     displayedLog.value = displayedLog.value.slice(-200)
@@ -3873,6 +3953,37 @@ function logout() {
   router.push('/login')
 }
 
+function openAudioSettingsModal() {
+  audioSettingsMuted.value = getAudioMuted()
+  audioSettingsMasterPct.value = Math.round(getAudioMasterVolume() * 100)
+  showAudioSettingsModal.value = true
+}
+
+/** @param {Event} e */
+function onAudioMutedInput(e) {
+  const checked = e.target instanceof HTMLInputElement ? e.target.checked : false
+  audioSettingsMuted.value = checked
+  setAudioMuted(checked)
+}
+
+/** @param {Event} e */
+function onAudioMasterVolumeInput(e) {
+  const t = e.target instanceof HTMLInputElement ? e.target : null
+  if (!t) return
+  const n = Number.parseInt(String(t.value), 10)
+  const pct = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0
+  audioSettingsMasterPct.value = pct
+  setAudioMasterVolume(pct / 100)
+}
+
+function previewAudioHitNormal() {
+  playCombatHitPreview({ isCrit: false })
+}
+
+function previewAudioHitCrit() {
+  playCombatHitPreview({ isCrit: true })
+}
+
 function sleepMs(ms, useRealTimer = false) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -3983,6 +4094,7 @@ function applyOneCombatEntry(entry) {
       targetClass: entry.targetClass,
       targetTier: entry.targetTier,
     })
+    playCombatUnitDeathSound()
   }
 
   if (entry.type === 'dot') {
@@ -4076,6 +4188,8 @@ function applyOneCombatEntry(entry) {
       }
     }
   }
+
+  playCombatDamageLineSound(entry)
 
   syncSelectedUnitsFromCombat()
 }
@@ -7798,6 +7912,89 @@ input.tactics-condition-value[type="number"] {
 }
 .tank-check-label {
   user-select: none;
+}
+.audio-settings-modal {
+  max-width: 22rem;
+}
+.audio-settings-banner {
+  margin-bottom: 0.75rem;
+}
+.audio-settings-banner-tip {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+.audio-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+label.audio-muted-row {
+  cursor: pointer;
+}
+.audio-master-row {
+  flex-wrap: wrap;
+}
+.audio-setting-label {
+  font-size: var(--font-sm);
+  color: var(--text-label);
+  min-width: 3.5rem;
+  cursor: default;
+}
+label.audio-setting-label {
+  cursor: pointer;
+}
+.audio-muted-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  min-width: 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dark);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: grid;
+  place-content: center;
+}
+.audio-muted-checkbox:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+.audio-muted-checkbox:checked {
+  border-color: var(--accent);
+  background: var(--bg-selected);
+  box-shadow: 0 0 3px var(--focus-glow);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%2388ddff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2 6l3 3 5-6'/%3E%3C/svg%3E");
+  background-size: 65% 65%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.audio-muted-checkbox:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 4px var(--focus-glow);
+}
+.audio-master-range {
+  flex: 1;
+  min-width: 6rem;
+  height: 0.45rem;
+  cursor: pointer;
+  accent-color: var(--accent);
+  background: var(--bg-dark);
+  border-radius: 3px;
+}
+.audio-master-pct {
+  font-size: var(--font-sm);
+  color: var(--text-value);
+  min-width: 2.75rem;
+  text-align: right;
+}
+.audio-preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.75rem;
 }
 .status-badge {
   font-size: var(--font-xs);
