@@ -132,7 +132,7 @@
 3. 若无一技能可用，执行普攻（目标仍按 targetRule）
 ```
 
-**法师 / 牧师：普攻门控放宽**（满足其一即可）：**(1)** 法力不足以施放优先级内**任一**法术；**(2)** 本回合已按 `skillPriority` 尝试但**没有任何**优先级内法术实际出手（冷却、或资源只够低顺位法术但该法术的血量条件不满足、或高顺位法术缺蓝而低顺位又不满足条件等）。此时普攻阶段会**忽略** `conditions` 中 `skillId: basic-attack` 的条目（含 `target-hp-below` / `target-hp-above` 等），仍按全局 `targetRule` 或该条默认目标规则选取敌人并出手，避免「能付得起某个技能的蓝量却因血量分段与当前目标不匹配、同时火球等又缺蓝而整回合 `actionSkipped`」。**战士**在怒气不足以施放优先级内技能时**不**做此放宽，普攻仍完全遵守 `basic-attack` 条件，以免破坏依赖目标链的破甲/切换逻辑。实现见 `heroAllPrioritySkillsUnaffordable`、本回合「优先级内未出手」标志与普攻路径（`frontend/src/game/combat.js`）。
+**法师 / 牧师：普攻门控放宽**（满足 **全部** 前提）：**(1)** `skillPriority` **未**显式包含 `basic-attack`（隐式末尾普攻路径）；**(2)** 且满足其一——法力不足以施放优先级内**任一**法术，或本回合已按 `skillPriority` 尝试但**没有任何**优先级内法术实际出手（冷却、血量分段、缺蓝等）。此时隐式普攻阶段会**忽略** `conditions` 中 `skillId: basic-attack` 的条目（含 `target-hp-below` / `target-hp-above` 等），仍按全局 `targetRule` 或该条默认目标规则选取敌人并出手，避免整回合 `actionSkipped`。**若 `skillPriority` 已显式列出 `basic-attack`**（常见于牧师斩杀优先），则本回合 **不再** 走末尾隐式普攻，也 **不适用** 上述放宽；显式槽位未通过门控时继续尝试后续法术，全部跳过后本回合可不出手（例如仅套盾或跳过）。**targetRules** 步骤上的 `target-hp-below` / `target-hp-above` 在 **选出目标之后** 再校验（先按规则选最低血等，再比对比例），避免误用 `defaultTarget` 绕过斩杀线。**战士**在怒气不足以施放优先级内技能时**不**做此放宽，普攻仍完全遵守 `basic-attack` 条件，以免破坏依赖目标链的破甲/切换逻辑。实现见 `heroAllPrioritySkillsUnaffordable`、本回合「优先级内未出手」标志、`evaluateTargetRuleStepPostPickGates` 与普攻路径（`frontend/src/game/combat.js`）。
 
 **回归测试（与需求文档对齐）**：`docs/requirements-format.md` Example 33 列出可验收行为；前端用 Vitest（`tactics.js` / `combat.js` 相关 `*.spec.js`）锁定条件顺序、`targetRules` 链与牧师快速治疗门控；E2E `e2e/browser/tactics.spec.js` 可校验持久化战术在「当前战术」摘要中的展示。
 

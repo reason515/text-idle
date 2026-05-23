@@ -8,6 +8,7 @@ import {
   checkCondition,
   checkPriestFlashHealSkillAllowed,
   evaluateTargetRuleStepGates,
+  evaluateTargetRuleStepPostPickGates,
   getAllyHpBelowThresholdFromStep,
   filterTargetsByCondition,
   pickTargetByRule,
@@ -488,6 +489,21 @@ describe('tactics', () => {
         whenAll: [{ when: 'self-no-shield' }],
       }
       expect(evaluateTargetRuleStepGates(step, priest, [priest], [], {})).toBe(false)
+    })
+  })
+
+  describe('evaluateTargetRuleStepPostPickGates', () => {
+    it('defers target-hp-below on step until after pick', () => {
+      const enemyHigh = { id: 'm1', currentHP: 80, maxHP: 100 }
+      const enemyLow = { id: 'm2', currentHP: 3, maxHP: 100 }
+      const step = { rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }
+      expect(evaluateTargetRuleStepPostPickGates(step, enemyHigh, {}, [], [enemyHigh], {})).toBe(false)
+      expect(evaluateTargetRuleStepPostPickGates(step, enemyLow, {}, [], [enemyLow], {})).toBe(true)
+    })
+
+    it('pre-pick gate passes for target-hp-below step so pickTarget can run', () => {
+      const step = { rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }
+      expect(evaluateTargetRuleStepGates(step, {}, [], [{ currentHP: 100, maxHP: 100 }], {})).toBe(true)
     })
   })
 

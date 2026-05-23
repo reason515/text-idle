@@ -1969,6 +1969,167 @@ describe('combat progression and systems', () => {
     expect(lowHpTargets.length).toBeGreaterThan(0)
   })
 
+  it('Priest attack-first: basic-attack below 5% gate skips attack and heals injured ally', () => {
+    const priest = sampleHero({
+      id: 'p1',
+      name: 'Anduin',
+      class: 'Priest',
+      agility: 99,
+      intellect: 40,
+      spirit: 15,
+      currentMP: 200,
+      skills: ['flash-heal', 'power-word-shield'],
+      tactics: {
+        skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+        conditions: [
+          {
+            skillId: 'basic-attack',
+            targetRules: [{ rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }],
+          },
+          {
+            skillId: 'flash-heal',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'ally-hp-below', value: 0.7 },
+                  { when: 'enemy-all-hp-above', value: 0.05 },
+                ],
+              },
+            ],
+          },
+          {
+            skillId: 'power-word-shield',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'every-ally-hp-gte', value: 0.7 },
+                  { when: 'self-no-shield' },
+                  { when: 'enemy-all-hp-above', value: 0.05 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    const tank = sampleHero({
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 5,
+      strength: 20,
+      isTank: true,
+      currentHP: 20,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'] },
+    })
+    const monster = createMonster(
+      {
+        id: 'm1',
+        name: 'Full Mob',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    monster.currentHP = 200
+    monster.maxHP = 200
+    const result = runAutoCombat({
+      heroes: [tank, priest],
+      monsters: [monster],
+      rng: () => 0.5,
+      maxRounds: 1,
+    })
+    const heal = result.log.find((e) => e.actorName === 'Anduin' && e.skillId === 'flash-heal')
+    expect(heal).toBeDefined()
+    expect(heal.targetName).toBe('Tank')
+    const basic = result.log.find((e) => e.actorName === 'Anduin' && e.action === 'basic')
+    expect(basic).toBeUndefined()
+  })
+
+  it('Priest attack-first: no basic attack when enemy above execute band and party healthy', () => {
+    const priest = sampleHero({
+      id: 'p1',
+      name: 'Anduin',
+      class: 'Priest',
+      agility: 99,
+      intellect: 40,
+      spirit: 15,
+      currentMP: 200,
+      skills: ['flash-heal', 'power-word-shield'],
+      tactics: {
+        skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+        conditions: [
+          {
+            skillId: 'basic-attack',
+            targetRules: [{ rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }],
+          },
+          {
+            skillId: 'flash-heal',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'ally-hp-below', value: 0.7 },
+                  { when: 'enemy-all-hp-above', value: 0.05 },
+                ],
+              },
+            ],
+          },
+          {
+            skillId: 'power-word-shield',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'every-ally-hp-gte', value: 0.7 },
+                  { when: 'self-no-shield' },
+                  { when: 'enemy-all-hp-above', value: 0.05 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    const tank = sampleHero({
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 5,
+      strength: 20,
+      isTank: true,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'] },
+    })
+    const monster = createMonster(
+      {
+        id: 'm1',
+        name: 'Full Mob',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    monster.currentHP = 200
+    monster.maxHP = 200
+    const result = runAutoCombat({
+      heroes: [tank, priest],
+      monsters: [monster],
+      rng: () => 0.5,
+      maxRounds: 1,
+    })
+    const priestActs = result.log.filter(
+      (e) =>
+        e.actorName === 'Anduin' &&
+        (e.action === 'basic' || e.skillId === 'flash-heal' || e.skillId === 'power-word-shield'),
+    )
+    expect(priestActs.every((e) => e.action !== 'basic')).toBe(true)
+    expect(priestActs.some((e) => e.skillId === 'power-word-shield')).toBe(true)
+  })
+
   it('skillPriority may include basic-attack before spells so normal attack runs first when affordable', () => {
     const mage = sampleHero({
       id: 'mPri',

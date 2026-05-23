@@ -51,6 +51,7 @@ import {
   checkCondition,
   checkPriestFlashHealSkillAllowed,
   evaluateTargetRuleStepGates,
+  evaluateTargetRuleStepPostPickGates,
   filterTargetsByCondition,
   getAllyHpBelowThresholdFromStep,
   pickTargetByRule,
@@ -803,7 +804,16 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
           ? { actor }
           : {}
     const chosen = pickTargetByRule(pool, rule, rng, pickOpts)
-    if (chosen) return chosen
+    if (chosen) {
+      if (
+        typeof step === 'object' &&
+        step !== null &&
+        !evaluateTargetRuleStepPostPickGates(step, chosen, actor, heroes, monsters, stepCtx)
+      ) {
+        continue
+      }
+      return chosen
+    }
   }
 
   const aliveFiltered = filtered.filter((u) => (u.currentHP ?? 0) > 0)
@@ -1379,17 +1389,19 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     return tauntExpiredMonsterIdsAfterSwing
   }
 
-  function tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget) {
+  function tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx) {
     const conditionsForBasicAttack = conditions || []
-    const target =
-      pickTarget(actor, heroUnits, monsterUnits, {
-        skillId: 'basic-attack',
-        conditions: conditionsForBasicAttack,
-        rng,
-        threat,
-        tauntState,
-        designatedTank: designatedTankUnit,
-      }) ?? defaultTarget
+    const target = pickTarget(actor, heroUnits, monsterUnits, {
+      skillId: 'basic-attack',
+      conditions: conditionsForBasicAttack,
+      rng,
+      threat,
+      tauntState,
+      designatedTank: designatedTankUnit,
+    })
+    if (!target) {
+      return { ok: false }
+    }
     const baCond = conditions.find((c) => c.skillId === 'basic-attack')
     if (
       baCond &&
@@ -1472,7 +1484,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         let usedSkill = false
         for (const skillId of skillPriority) {
           if (skillId === 'basic-attack') {
-            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx)
             if (!ba.ok) {
               emitMonsterIntentChangesIfNeeded()
               continue
@@ -1762,7 +1774,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         let usedSkill = false
         for (const skillId of mageSkillPriority) {
           if (skillId === 'basic-attack') {
-            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx)
             if (!ba.ok) {
               emitMonsterIntentChangesIfNeeded()
               continue
@@ -1988,7 +2000,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         let usedSkill = false
         for (const skillId of priestSkillPriority) {
           if (skillId === 'basic-attack') {
-            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx, defaultTarget)
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx)
             if (!ba.ok) {
               emitMonsterIntentChangesIfNeeded()
               continue
@@ -2209,9 +2221,16 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
 
       const priorityForResource = getSkillPriority(actor)
+      const basicAttackInPriority = priorityForResource.includes('basic-attack')
+      if (actor.side === 'hero' && basicAttackInPriority) {
+        emitMonsterIntentChangesIfNeeded()
+        continue
+      }
+
       const relaxBasicAttackTacticGates =
         actor.side === 'hero' &&
         (actor.class === 'Mage' || actor.class === 'Priest') &&
+        !basicAttackInPriority &&
         (heroAllPrioritySkillsUnaffordable(actor, priorityForResource) ||
           (actor.class === 'Mage' && magePriorityNoCastThisTurn) ||
           (actor.class === 'Priest' && priestPriorityNoCastThisTurn))
@@ -2221,17 +2240,22 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           : conditions
 
       // Basic attack / monster skill path
-      const target =
-        actor.side === 'hero'
-          ? pickTarget(actor, heroUnits, monsterUnits, {
-              skillId: 'basic-attack',
-              conditions: conditionsForBasicAttack,
-              rng,
-              threat,
-              tauntState,
-              designatedTank: designatedTankUnit,
-            }) ?? defaultTarget
-          : defaultTarget
+      let target = defaultTarget
+      if (actor.side === 'hero') {
+        target =
+          pickTarget(actor, heroUnits, monsterUnits, {
+            skillId: 'basic-attack',
+            conditions: conditionsForBasicAttack,
+            rng,
+            threat,
+            tauntState,
+            designatedTank: designatedTankUnit,
+          }) ?? null
+        if (!target) {
+          emitMonsterIntentChangesIfNeeded()
+          continue
+        }
+      }
       if (actor.side === 'hero') {
         const baCond = conditions.find((c) => c.skillId === 'basic-attack')
         if (

@@ -341,7 +341,16 @@ function ignoreSelfNoShieldForStepGate(step) {
 }
 
 /**
- * All per-step gates must pass before pickTargetByRule runs for that step.
+ * @param {string|undefined} when
+ * @returns {boolean}
+ */
+function whenClauseNeedsPickedTarget(when) {
+  return when === 'target-hp-below' || when === 'target-hp-above' || when === 'target-has-debuff'
+}
+
+/**
+ * All per-step gates that do not depend on the picked unit must pass before pickTargetByRule runs.
+ * target-hp-* / target-has-debuff on a step are deferred to evaluateTargetRuleStepPostPickGates.
  * Supports legacy { when, value } or { whenAll: [{ when, value }, ...] } (AND).
  * @param {string|TargetRuleStep} step
  * @param {Object} actor
@@ -354,20 +363,47 @@ export function evaluateTargetRuleStepGates(step, actor, heroes, monsters, ctx) 
   if (typeof step !== 'object' || step === null) return true
   const c = ctx || {}
   const skipSelfNoShield = ignoreSelfNoShieldForStepGate(step)
+  const evalPrePick = (w) => {
+    if (!w || !w.when) return true
+    if (whenClauseNeedsPickedTarget(w.when)) return true
+    if (skipSelfNoShield && w.when === 'self-no-shield') return true
+    return checkCondition({ when: w.when, value: w.value }, actor, null, heroes, monsters, c)
+  }
   if (Array.isArray(step.whenAll) && step.whenAll.length > 0) {
-    const whenAll = skipSelfNoShield
-      ? step.whenAll.filter((w) => w && w.when !== 'self-no-shield')
-      : step.whenAll
-    return whenAll.every((w) => {
-      if (!w || !w.when) return true
-      return checkCondition({ when: w.when, value: w.value }, actor, null, heroes, monsters, c)
-    })
+    return step.whenAll.every(evalPrePick)
   }
   if (step.when) {
-    if (skipSelfNoShield && step.when === 'self-no-shield') return true
-    return checkCondition({ when: step.when, value: step.value }, actor, null, heroes, monsters, c)
+    return evalPrePick({ when: step.when, value: step.value })
   }
   return true
+}
+
+/**
+ * Per-step gates that compare the chosen target (HP ratio, debuffs). Called after pickTargetByRule.
+ * @param {string|TargetRuleStep} step
+ * @param {Object} target
+ * @param {Object} actor
+ * @param {Object[]} heroes
+ * @param {Object[]} monsters
+ * @param {Object} ctx
+ * @returns {boolean}
+ */
+export function evaluateTargetRuleStepPostPickGates(step, target, actor, heroes, monsters, ctx) {
+  if (typeof step !== 'object' || step === null) return true
+  const c = ctx || {}
+  const clauses = []
+  if (step.when && whenClauseNeedsPickedTarget(step.when)) {
+    clauses.push({ when: step.when, value: step.value })
+  }
+  if (Array.isArray(step.whenAll)) {
+    for (const w of step.whenAll) {
+      if (w && w.when && whenClauseNeedsPickedTarget(w.when)) clauses.push(w)
+    }
+  }
+  if (clauses.length === 0) return true
+  return clauses.every((w) =>
+    checkCondition({ when: w.when, value: w.value }, actor, target, heroes, monsters, c),
+  )
 }
 
 /**
