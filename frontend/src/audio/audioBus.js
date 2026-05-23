@@ -1,7 +1,8 @@
 /**
  * Client-only combat SFX. Two paths:
- *   1. Sample-based (preferred): CC0 OGG samples in /audio/sfx/, lazily fetched + decoded
- *      into AudioBuffers on the first user gesture. See docs/audio-attributions.md.
+ *   1. Sample-based (preferred): CC0 originals from Freesound.org in /audio/sfx/,
+ *      lazily fetched + decoded into AudioBuffers on the first user gesture.
+ *      See docs/audio-attributions.md.
  *   2. Web Audio synthesis fallback (always available): used when samples are not yet
  *      loaded, fail to load, or the browser cannot decode.
  *
@@ -12,6 +13,8 @@
 
 import { isE2eFastMode } from '../game/combatPacing.js'
 import { netDamageToHp } from '../game/battleLogFormat.js'
+import { resolveUnitDefeatedSide } from '../game/combatLogDefeat.js'
+import { getSkillSfxCategory, isSkillOnlyCastLine } from './skillSfxMap.js'
 import { getAudioMasterVolume, getAudioMuted } from './audioPreferences.js'
 
 /** @type {AudioContext | null} */
@@ -25,26 +28,48 @@ const impactNoiseBuffersByRate = new Map()
 
 /** Manifest: event category -> sample URLs (random pick among loaded variants). */
 const SAMPLE_MANIFEST = {
-  physHit: [
-    '/audio/sfx/impactPlank_medium_000.ogg',
-    '/audio/sfx/impactPlank_medium_002.ogg',
-    '/audio/sfx/impactPlank_medium_004.ogg',
-  ],
-  physCrit: [
-    '/audio/sfx/impactMetal_heavy_000.ogg',
-    '/audio/sfx/impactMetal_heavy_002.ogg',
-  ],
-  magicHit: [
-    '/audio/sfx/impactBell_heavy_002.ogg',
-    '/audio/sfx/impactBell_heavy_004.ogg',
-  ],
-  magicCrit: ['/audio/sfx/impactBell_heavy_000.ogg'],
-  dotPhys: ['/audio/sfx/impactPlank_medium_001.ogg'],
-  dotMagic: ['/audio/sfx/impactBell_heavy_001.ogg'],
-  dodge: ['/audio/sfx/clothBelt2.ogg'],
-  death: ['/audio/sfx/lowThreeTone.ogg'],
-  victory: ['/audio/sfx/jingles-hit_00.ogg'],
-  defeat: ['/audio/sfx/jingles-hit_07.ogg'],
+  physHit: ['/audio/sfx/fs_phys_hit.wav'],
+  physCrit: ['/audio/sfx/fs_phys_crit.wav'],
+  magicHit: ['/audio/sfx/fs_magic_hit.wav'],
+  magicCrit: ['/audio/sfx/fs_magic_crit.wav'],
+  dotPhys: ['/audio/sfx/fs_dot_phys.wav'],
+  dotMagic: ['/audio/sfx/fs_dot_magic.wav'],
+  dodge: ['/audio/sfx/fs_dodge.wav'],
+  encounter: ['/audio/sfx/fs_dodge.wav'],
+  encounterBoss: ['/audio/sfx/fs_phys_crit.wav'],
+  heroDeath: ['/audio/sfx/fs_death.wav'],
+  monsterDeath: ['/audio/sfx/fs_dot_phys.wav'],
+  victory: ['/audio/sfx/fs_victory.wav'],
+  defeat: ['/audio/sfx/fs_defeat.wav'],
+  skillFire: ['/audio/sfx/fs_skill_fire.wav'],
+  skillFrost: ['/audio/sfx/fs_skill_frost.wav'],
+  skillHeal: ['/audio/sfx/fs_skill_heal.wav'],
+  skillTaunt: ['/audio/sfx/fs_skill_taunt.mp3'],
+  skillSunder: ['/audio/sfx/fs_skill_sunder.wav'],
+  skillShield: ['/audio/sfx/fs_skill_shield.wav'],
+}
+
+/** Max playback length (sec) per category; trims long Freesound HQ previews. */
+const SAMPLE_MAX_DURATION_SEC = {
+  physHit: 0.75,
+  physCrit: 0.9,
+  magicHit: 1.0,
+  magicCrit: 1.0,
+  dotPhys: 0.45,
+  dotMagic: 0.55,
+  dodge: 0.35,
+  encounter: 0.5,
+  encounterBoss: 0.85,
+  heroDeath: 0.9,
+  monsterDeath: 0.45,
+  victory: 2.2,
+  defeat: 1.8,
+  skillFire: 0.85,
+  skillFrost: 0.75,
+  skillHeal: 0.9,
+  skillTaunt: 0.42,
+  skillSunder: 0.55,
+  skillShield: 0.8,
 }
 
 /** url -> AudioBuffer | null (failed) | undefined (not attempted). */
@@ -227,20 +252,24 @@ function pickLoadedSample(category) {
  * @param {AudioBuffer} buffer
  * @param {number} [gainScale]
  */
-function playBufferOnce(ctx, buffer, gainScale = 1) {
+function playBufferOnce(ctx, buffer, gainScale = 1, maxDurationSec = null) {
   const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
   if (master <= 0) return
   const src = ctx.createBufferSource()
   src.buffer = buffer
   const gain = ctx.createGain()
+  const t0 = ctx.currentTime
   if (gain.gain && typeof gain.gain.setValueAtTime === 'function') {
-    gain.gain.setValueAtTime(master, ctx.currentTime)
+    gain.gain.setValueAtTime(master, t0)
   } else {
     gain.gain.value = master
   }
   src.connect(gain)
   gain.connect(ctx.destination)
-  src.start(ctx.currentTime)
+  src.start(t0)
+  if (maxDurationSec != null && buffer.duration > maxDurationSec) {
+    src.stop(t0 + maxDurationSec)
+  }
 }
 
 function resumeContextIfNeeded(ctx) {
@@ -527,6 +556,64 @@ function scheduleDodge(ctx) {
 }
 
 /**
+ * Monster encounter alert (pull / aggro).
+ * @param {AudioContext} ctx
+ * @param {{ isBoss?: boolean }} opts
+ */
+function scheduleEncounter(ctx, opts = {}) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const isBoss = !!opts.isBoss
+
+  const sweep = ctx.createOscillator()
+  sweep.type = 'sawtooth'
+  const startHz = isBoss ? 95 : 130
+  const endHz = isBoss ? 210 : 360
+  sweep.frequency.setValueAtTime(startHz, t)
+  sweep.frequency.exponentialRampToValueAtTime(endHz, t + (isBoss ? 0.22 : 0.16))
+  const sg = ctx.createGain()
+  sg.gain.setValueAtTime(FLOOR, t)
+  sg.gain.linearRampToValueAtTime((isBoss ? 0.14 : 0.11) * master, t + 0.015)
+  sg.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.28 : 0.2))
+  sweep.connect(sg)
+  sg.connect(ctx.destination)
+  sweep.start(t)
+  sweep.stop(t + (isBoss ? 0.3 : 0.22))
+
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.setValueAtTime(isBoss ? 420 : 620, t)
+  bp.Q.setValueAtTime(1.1, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime((isBoss ? 0.16 : 0.12) * master, t + 0.01)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.24 : 0.14))
+  noiseSrc.connect(bp)
+  bp.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + (isBoss ? 0.26 : 0.16))
+
+  if (isBoss) {
+    const hit = ctx.createOscillator()
+    hit.type = 'square'
+    hit.frequency.setValueAtTime(72, t + 0.08)
+    const hg = ctx.createGain()
+    hg.gain.setValueAtTime(FLOOR, t + 0.08)
+    hg.gain.linearRampToValueAtTime(0.08 * master, t + 0.1)
+    hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.34)
+    hit.connect(hg)
+    hg.connect(ctx.destination)
+    hit.start(t + 0.08)
+    hit.stop(t + 0.36)
+  }
+}
+
+/**
  * DoT tick (softer than direct hit).
  * @param {AudioContext} ctx
  * @param {'physical'|'magic'} damageKind
@@ -569,10 +656,10 @@ function scheduleDotTick(ctx, damageKind) {
 }
 
 /**
- * Unit defeated (hero or monster).
+ * Hero defeated (ally).
  * @param {AudioContext} ctx
  */
-function scheduleUnitDeath(ctx) {
+function scheduleHeroDeath(ctx) {
   const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
   if (master <= 0) return
   const t = ctx.currentTime
@@ -606,6 +693,46 @@ function scheduleUnitDeath(ctx) {
   ng.connect(ctx.destination)
   noiseSrc.start(t)
   noiseSrc.stop(t + 0.24)
+}
+
+/**
+ * Monster defeated (enemy kill confirm).
+ * @param {AudioContext} ctx
+ */
+function scheduleMonsterDeath(ctx) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  if (master <= 0) return
+  const t = ctx.currentTime
+
+  const thud = ctx.createOscillator()
+  thud.type = 'triangle'
+  thud.frequency.setValueAtTime(240, t)
+  thud.frequency.exponentialRampToValueAtTime(90, t + 0.12)
+  const tg = ctx.createGain()
+  tg.gain.setValueAtTime(FLOOR, t)
+  tg.gain.linearRampToValueAtTime(0.28 * master, t + 0.01)
+  tg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.16)
+  thud.connect(tg)
+  tg.connect(ctx.destination)
+  thud.start(t)
+  thud.stop(t + 0.18)
+
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.setValueAtTime(680, t)
+  bp.Q.setValueAtTime(1.2, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.12 * master, t + 0.004)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.1)
+  noiseSrc.connect(bp)
+  bp.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.11)
 }
 
 /**
@@ -664,10 +791,192 @@ function scheduleDefeat(ctx) {
   osc.stop(t + 0.48)
 }
 
+function scheduleSkillFireSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const band = ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.setValueAtTime(900, t)
+  band.frequency.exponentialRampToValueAtTime(2200, t + 0.04)
+  band.Q.setValueAtTime(1.2, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.34 * master, t + 0.004)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.09)
+  noiseSrc.connect(band)
+  band.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.1)
+  const boom = ctx.createOscillator()
+  boom.type = 'sine'
+  boom.frequency.setValueAtTime(140, t)
+  boom.frequency.exponentialRampToValueAtTime(55, t + 0.12)
+  const bg = ctx.createGain()
+  bg.gain.setValueAtTime(FLOOR, t)
+  bg.gain.linearRampToValueAtTime(0.28 * master, t + 0.01)
+  bg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.14)
+  boom.connect(bg)
+  bg.connect(ctx.destination)
+  boom.start(t)
+  boom.stop(t + 0.15)
+}
+
+function scheduleSkillFrostSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const ping = ctx.createOscillator()
+  ping.type = 'triangle'
+  ping.frequency.setValueAtTime(920, t)
+  ping.frequency.exponentialRampToValueAtTime(420, t + 0.07)
+  const pg = ctx.createGain()
+  pg.gain.setValueAtTime(FLOOR, t)
+  pg.gain.linearRampToValueAtTime(0.22 * master, t + 0.003)
+  pg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.1)
+  ping.connect(pg)
+  pg.connect(ctx.destination)
+  ping.start(t)
+  ping.stop(t + 0.11)
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const band = ctx.createBiquadFilter()
+  band.type = 'highpass'
+  band.frequency.setValueAtTime(2400, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.12 * master, t + 0.001)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.045)
+  noiseSrc.connect(band)
+  band.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.05)
+}
+
+function scheduleSkillHealSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const a = ctx.createOscillator()
+  a.type = 'sine'
+  a.frequency.setValueAtTime(523.25, t)
+  const ag = ctx.createGain()
+  ag.gain.setValueAtTime(FLOOR, t)
+  ag.gain.linearRampToValueAtTime(0.18 * master, t + 0.02)
+  ag.gain.exponentialRampToValueAtTime(FLOOR, t + 0.22)
+  a.connect(ag)
+  ag.connect(ctx.destination)
+  a.start(t)
+  a.stop(t + 0.24)
+  const b = ctx.createOscillator()
+  b.type = 'sine'
+  b.frequency.setValueAtTime(659.25, t + 0.05)
+  const bg = ctx.createGain()
+  bg.gain.setValueAtTime(FLOOR, t + 0.05)
+  bg.gain.linearRampToValueAtTime(0.14 * master, t + 0.07)
+  bg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.28)
+  b.connect(bg)
+  bg.connect(ctx.destination)
+  b.start(t + 0.05)
+  b.stop(t + 0.3)
+}
+
+function scheduleSkillTauntSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const band = ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.setValueAtTime(420, t)
+  band.Q.setValueAtTime(0.9, t)
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(FLOOR, t)
+  g.gain.linearRampToValueAtTime(0.32 * master, t + 0.004)
+  g.gain.exponentialRampToValueAtTime(FLOOR, t + 0.14)
+  noiseSrc.connect(band)
+  band.connect(g)
+  g.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.15)
+}
+
+function scheduleSkillSunderSynth(ctx, gainScale = 1) {
+  schedulePhysHitLayers(ctx, { isCrit: false }, 0.72 * gainScale)
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const ring = ctx.createOscillator()
+  ring.type = 'triangle'
+  ring.frequency.setValueAtTime(280, t)
+  ring.frequency.exponentialRampToValueAtTime(120, t + 0.08)
+  const rg = ctx.createGain()
+  rg.gain.setValueAtTime(FLOOR, t)
+  rg.gain.linearRampToValueAtTime(0.16 * master, t + 0.006)
+  rg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.1)
+  ring.connect(rg)
+  rg.connect(ctx.destination)
+  ring.start(t)
+  ring.stop(t + 0.11)
+}
+
+function scheduleSkillShieldSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const osc = ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(660, t)
+  osc.frequency.exponentialRampToValueAtTime(880, t + 0.06)
+  osc.frequency.exponentialRampToValueAtTime(520, t + 0.18)
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(FLOOR, t)
+  g.gain.linearRampToValueAtTime(0.2 * master, t + 0.015)
+  g.gain.exponentialRampToValueAtTime(FLOOR, t + 0.22)
+  osc.connect(g)
+  g.connect(ctx.destination)
+  osc.start(t)
+  osc.stop(t + 0.24)
+}
+
 /**
- * Route combat log damage lines to the right SFX.
- * @param {object} entry
+ * @param {AudioContext} ctx
+ * @param {string} category
+ * @param {number} [gainScale]
  */
+function scheduleSkillSynth(ctx, category, gainScale = 1) {
+  switch (category) {
+    case 'skillFire':
+      scheduleSkillFireSynth(ctx, gainScale)
+      break
+    case 'skillFrost':
+      scheduleSkillFrostSynth(ctx, gainScale)
+      break
+    case 'skillHeal':
+      scheduleSkillHealSynth(ctx, gainScale)
+      break
+    case 'skillTaunt':
+      scheduleSkillTauntSynth(ctx, gainScale)
+      break
+    case 'skillSunder':
+      scheduleSkillSunderSynth(ctx, gainScale)
+      break
+    case 'skillShield':
+      scheduleSkillShieldSynth(ctx, gainScale)
+      break
+    default:
+      break
+  }
+}
+
 /**
  * Try to play a sample for the given category. Returns true on success.
  * @param {AudioContext} ctx
@@ -677,20 +986,45 @@ function scheduleDefeat(ctx) {
 function tryPlaySample(ctx, category, gainScale = 1) {
   const buf = pickLoadedSample(category)
   if (!buf) return false
+  const maxDur = SAMPLE_MAX_DURATION_SEC[category]
   try {
-    playBufferOnce(ctx, buf, gainScale)
+    playBufferOnce(ctx, buf, gainScale, maxDur)
     return true
   } catch (_) {
     return false
   }
 }
 
-export function playCombatDamageLineSound(entry) {
+/**
+ * @param {AudioContext} ctx
+ * @param {string} category
+ * @param {number} [gainScale]
+ * @returns {boolean}
+ */
+function playSkillCategory(ctx, category, gainScale = 1) {
+  if (tryPlaySample(ctx, category, gainScale)) return true
+  scheduleSkillSynth(ctx, category, gainScale)
+  return true
+}
+
+/**
+ * Route combat log lines to generic or skill-specific SFX.
+ * @param {object} entry
+ */
+export function playCombatLogLineSound(entry) {
   if (!canPlayCombatSfx()) return
-  if (entry == null || entry.type === 'manaRegenBatch') return
+  if (entry == null || entry.type === 'manaRegenBatch' || entry.type === 'unitDefeated') return
   const ctx = getOrCreateAudioContext()
   if (!ctx) return
   preloadSamples(ctx)
+
+  const skillCat = getSkillSfxCategory(entry)
+
+  if (skillCat && isSkillOnlyCastLine(entry)) {
+    playSkillCategory(ctx, skillCat, 1.0)
+    resumeContextIfNeeded(ctx)
+    return
+  }
 
   if (entry.isMiss === true && entry.actorId && entry.targetId) {
     if (!tryPlaySample(ctx, 'dodge', 0.9)) scheduleDodge(ctx)
@@ -713,6 +1047,11 @@ export function playCombatDamageLineSound(entry) {
     const hpLoss = netDamageToHp(entry)
     if (hpLoss > 0) {
       const isCrit = !!entry.isCrit
+      if (skillCat) {
+        playSkillCategory(ctx, skillCat, isCrit ? 1.0 : 0.92)
+        resumeContextIfNeeded(ctx)
+        return
+      }
       const dt = entry.damageType || 'physical'
       if (dt === 'magic') {
         const cat = isCrit ? 'magicCrit' : 'magicHit'
@@ -730,12 +1069,43 @@ export function playCombatDamageLineSound(entry) {
   }
 }
 
-export function playCombatUnitDeathSound() {
+/** @deprecated alias; use playCombatLogLineSound */
+export function playCombatDamageLineSound(entry) {
+  playCombatLogLineSound(entry)
+}
+
+/**
+ * Unit defeated SFX (hero vs monster).
+ * @param {object | null | undefined} defeatEntry unitDefeated log entry
+ */
+export function playCombatUnitDeathSound(defeatEntry) {
   if (!canPlayCombatSfx()) return
   const ctx = getOrCreateAudioContext()
   if (!ctx) return
   preloadSamples(ctx)
-  if (!tryPlaySample(ctx, 'death', 0.95)) scheduleUnitDeath(ctx)
+  const side = resolveUnitDefeatedSide(defeatEntry)
+  const category = side === 'hero' ? 'heroDeath' : 'monsterDeath'
+  const gain = side === 'hero' ? 0.95 : 0.82
+  if (!tryPlaySample(ctx, category, gain)) {
+    if (side === 'hero') scheduleHeroDeath(ctx)
+    else scheduleMonsterDeath(ctx)
+  }
+  resumeContextIfNeeded(ctx)
+}
+
+/**
+ * Encounter log line (monsters appear before combat).
+ * @param {{ isBoss?: boolean }} [opts]
+ */
+export function playCombatEncounterSound(opts = {}) {
+  if (!canPlayCombatSfx()) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  const isBoss = !!opts.isBoss
+  const category = isBoss ? 'encounterBoss' : 'encounter'
+  const gain = isBoss ? 0.88 : 0.78
+  if (!tryPlaySample(ctx, category, gain)) scheduleEncounter(ctx, { isBoss })
   resumeContextIfNeeded(ctx)
 }
 

@@ -1,3 +1,8 @@
+import {
+  buildUnitDefeatedEntry,
+  shouldEmitUnitDefeated,
+} from '../game/combatLogDefeat.js'
+
 export function buildDeferredCombatLogEntries(entries, startIndex = 0) {
   if (!Array.isArray(entries) || entries.length === 0) return []
   const begin = Math.max(0, startIndex)
@@ -6,18 +11,8 @@ export function buildDeferredCombatLogEntries(entries, startIndex = 0) {
     const entry = entries[i]
     out.push(entry)
 
-    if (
-      entry?.targetHPAfter != null &&
-      entry.targetHPAfter <= 0 &&
-      entry.targetId &&
-      entry.targetName
-    ) {
-      out.push({
-        type: 'unitDefeated',
-        targetName: entry.targetName,
-        targetClass: entry.targetClass,
-        targetTier: entry.targetTier,
-      })
+    if (shouldEmitUnitDefeated(entry)) {
+      out.push(buildUnitDefeatedEntry(entry))
     }
 
     const nextEntry = entries[i + 1]

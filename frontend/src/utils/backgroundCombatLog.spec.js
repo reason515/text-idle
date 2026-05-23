@@ -8,7 +8,7 @@ describe('buildDeferredCombatLogEntries', () => {
 
     expect(buildDeferredCombatLogEntries([first, second])).toEqual([
       first,
-      { type: 'unitDefeated', targetName: 'Slime', targetClass: undefined, targetTier: 'normal' },
+      { type: 'unitDefeated', targetId: 'm1', targetName: 'Slime', targetClass: null, targetTier: 'normal' },
       { type: 'roundSeparator' },
       second,
       { type: 'roundSeparator' },
@@ -24,7 +24,7 @@ describe('buildDeferredCombatLogEntries', () => {
 
     expect(buildDeferredCombatLogEntries(entries, 1)).toEqual([
       entries[1],
-      { type: 'unitDefeated', targetName: 'Slime', targetClass: undefined, targetTier: 'normal' },
+      { type: 'unitDefeated', targetId: 'm1', targetName: 'Slime', targetClass: null, targetTier: 'normal' },
       { type: 'roundSeparator' },
       entries[2],
       { type: 'roundSeparator' },

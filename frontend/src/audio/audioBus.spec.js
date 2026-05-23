@@ -12,7 +12,9 @@ import {
   __setSampleBufferForTests,
   getOrCreateAudioContext,
   playCombatDamageLineSound,
+  playCombatLogLineSound,
   playCombatDefeatSound,
+  playCombatEncounterSound,
   playCombatHitPreview,
   playCombatHitSound,
   playCombatUnitDeathSound,
@@ -238,11 +240,73 @@ describe('audioBus', () => {
     expect(ctx.createOscillator).toHaveBeenCalled()
   })
 
-  it('plays unit death synthesis when no samples loaded', () => {
-    playCombatUnitDeathSound()
+  it('plays encounter synthesis for normal and boss when no samples loaded', () => {
+    playCombatEncounterSound({ isBoss: false })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+    ctx.createOscillator.mockClear()
+    playCombatEncounterSound({ isBoss: true })
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses encounter sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_dodge.wav', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatEncounterSound({ isBoss: false })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('plays hero and monster death synthesis when no samples loaded', () => {
+    playCombatUnitDeathSound({
+      type: 'unitDefeated',
+      targetClass: 'Warrior',
+      targetName: 'Tank',
+    })
     const ctx = getOrCreateAudioContext()
     expect(ctx.createOscillator).toHaveBeenCalled()
     expect(ctx.createBufferSource).toHaveBeenCalled()
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatUnitDeathSound({
+      type: 'unitDefeated',
+      targetTier: 'normal',
+      targetName: 'Slime',
+    })
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses hero death sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_death.wav', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatUnitDeathSound({
+      type: 'unitDefeated',
+      targetClass: 'Warrior',
+      targetName: 'Tank',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('uses monster death sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_dot_phys.wav', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatUnitDeathSound({
+      type: 'unitDefeated',
+      targetTier: 'normal',
+      targetName: 'Slime',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
   it('preloadSamples does nothing when decodeAudioData is absent (test env)', () => {
@@ -257,9 +321,7 @@ describe('audioBus', () => {
   it('uses sample path when buffer is cached for the category', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/impactPlank_medium_000.ogg', fakeBuffer)
-    __setSampleBufferForTests('/audio/sfx/impactPlank_medium_002.ogg', fakeBuffer)
-    __setSampleBufferForTests('/audio/sfx/impactPlank_medium_004.ogg', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_phys_hit.wav', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatHitSound({ isCrit: false })
@@ -267,13 +329,39 @@ describe('audioBus', () => {
     expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
-  it('falls back to synthesis when sample buffer load failed (null in cache)', () => {
+  it('playCombatLogLineSound uses skill fire sample when cached', () => {
     const ctx = getOrCreateAudioContext()
-    for (const u of [
-      '/audio/sfx/impactPlank_medium_000.ogg',
-      '/audio/sfx/impactPlank_medium_002.ogg',
-      '/audio/sfx/impactPlank_medium_004.ogg',
-    ]) {
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_skill_fire.wav', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatLogLineSound({
+      skillId: 'fireball',
+      targetId: 'm1',
+      finalDamage: 12,
+      damageType: 'magic',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('playCombatLogLineSound taunt cast uses skill taunt category', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.3, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_skill_taunt.mp3', fakeBuffer)
+    ctx.createBufferSource.mockClear()
+    playCombatLogLineSound({
+      skillId: 'taunt',
+      tauntApplied: true,
+      targetId: 'm1',
+      action: 'skill',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+  })
+
+  it('falls back to synthesis when sample buffer is null', () => {
+    const ctx = getOrCreateAudioContext()
+    for (const u of ['/audio/sfx/fs_phys_hit.wav']) {
       __setSampleBufferForTests(u, null)
     }
     ctx.createOscillator.mockClear()

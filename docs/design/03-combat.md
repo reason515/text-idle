@@ -40,12 +40,12 @@
 | 项目 | 说明 |
 |------|------|
 | **含义** | 主界面战斗日志**逐条播放**时，相邻两条之间的等待时间（毫秒），便于观察单次行动与回合结束后的状态；**不改变**服务端或本地战斗结算的回合规则与数值。 |
-| **默认** | 每条日志步骤间隔 **3000ms**（含「行动前」与「回合分隔后」两处与步骤相关的停顿，与实现一致）。 |
+| **默认** | 每条日志步骤间隔 **3000ms**（含「行动前」与「回合分隔后」两处与步骤相关的停顿，与实现一致）。**致死行**后追加的 `DEFEATED!` 行亦占用**一步**间隔（与行动步同长）。 |
 | **可调** | 代码常量 `DEFAULT_COMBAT_LOG_STEP_DELAY_MS`；构建时可设环境变量 `VITE_COMBAT_LOG_STEP_DELAY_MS`；运行时可在浏览器 `localStorage` 设置键 `textIdleCombatLogStepDelayMs`（非负整数，优先级高于 Vite 环境变量）。 |
 | **与休息步一致** | 战后休息**每一步**在日志中的 reveal 间隔，须与**本条**「每条日志步骤间隔」使用**同一毫秒值**（单一配置源），使统计上的**战斗行动步**与**休息步**在观感上等长；设计依据见 [13-player-statistics.md](./13-player-statistics.md) 7.5。实现上 `COMBAT_PACING_MS.restStepReveal` 应与 `getCombatLogStepDelayMs()` 对齐（或其一派生自另一）。 |
 | **其他正式服节奏** | 地图切换分隔、地图描述展示、遭遇信息、战败后间隔、战后循环间隔等毫秒数集中在 `frontend/src/game/combatPacing.js` 的 `COMBAT_PACING_MS`（与回合结算逻辑无关，仅 UI 表现）。 |
 | **E2E** | 自动化测试通过 `localStorage` 键 `e2eFastCombat=1` 或 URL 查询 `?e2e=1` 进入快速模式；`applyCombatPacingDelayMs` 对上述正式服毫秒数与日志步骤间隔一律返回 **0ms**，与玩家正式运行时的节奏**明确区分**（不依赖 `navigator.webdriver` 等隐式检测）。**例外**：战败结算小结出现后、进入战后休息前的真实停顿长度由 **`getDefeatBeforeRestPauseMs()`** 单独供给（正式服仍等价于 `COMBAT_PACING_MS.defeatBeforeRest`；快速模式下为约 **520ms**），避免因 `autoRest` 瞬时清空遭遇/回血导致界面留不住「阵亡态」而产生自动化竞态或难以人工观察的细节帧。 |
-| **音效（表现层）** | 与每条战斗日志揭示**同一时刻**触发短音（物理 / 魔法 / 混合 / 闪避 / DoT / 阵亡 / 胜负结算等按设计区分）；扣血条件与伤害飘字一致。**E2E 快速模式**与**浏览器标签页不可见**时不播放（`isE2eFastMode()`、`document.visibilityState`）。详见 [14-audio.md](./14-audio.md)。 |
+| **音效（表现层）** | 与每条战斗日志揭示**同一时刻**触发短音（遭遇、物理 / 魔法 / 混合 / 闪避 / DoT / 胜负结算等按设计区分）；**遭遇**行与 `playCombatEncounterSound` 同步；扣血条件与伤害飘字一致。**阵亡**：致死伤害/DoT 行揭示后，**再占用一步**间隔揭示 `DEFEATED!` 行，并按我方/敌方播放 `heroDeath` / `monsterDeath`。**E2E 快速模式**与**浏览器标签页不可见**时不播放（`isE2eFastMode()`、`document.visibilityState`）。详见 [14-audio.md](./14-audio.md)。 |
 
 ---
 

@@ -2328,8 +2328,13 @@ import {
   isE2eFastMode,
 } from '../game/combatPacing.js'
 import {
+  buildUnitDefeatedEntry,
+  shouldEmitUnitDefeated,
+} from '../game/combatLogDefeat.js'
+import {
   playCombatDamageLineSound,
   playCombatDefeatSound,
+  playCombatEncounterSound,
   playCombatHitPreview,
   playCombatUnitDeathSound,
   playCombatVictorySound,
@@ -4033,6 +4038,19 @@ function syncSelectedUnitsFromCombat() {
   }
 }
 
+function applyUnitDefeatedLogEntry(defeatEntry) {
+  currentTargetId.value = defeatEntry.targetId ?? null
+  addLogEntry(defeatEntry)
+  playCombatUnitDeathSound(defeatEntry)
+}
+
+async function revealUnitDefeatedStep(defeatEntry, stepDelayMs) {
+  await sleepMsRespectingPause(applyCombatPacingDelayMs(stepDelayMs))
+  if (!isRunning.value) return
+  applyUnitDefeatedLogEntry(defeatEntry)
+  await scrollLog()
+}
+
 function applyOneCombatEntry(entry) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
@@ -4083,19 +4101,6 @@ function applyOneCombatEntry(entry) {
   }
 
   const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
-  if (
-    (targetHpAfter != null && targetHpAfter <= 0) &&
-    entry.targetId &&
-    entry.targetName
-  ) {
-    addLogEntry({
-      type: 'unitDefeated',
-      targetName: entry.targetName,
-      targetClass: entry.targetClass,
-      targetTier: entry.targetTier,
-    })
-    playCombatUnitDeathSound()
-  }
 
   if (entry.type === 'dot') {
     const dotHpLoss = netDamageToHp(entry)
@@ -4203,6 +4208,9 @@ async function animateCombatLog(result) {
       if (!isRunning.value) return
       const entry = result.log[i]
       applyOneCombatEntry(entry)
+      if (shouldEmitUnitDefeated(entry)) {
+        applyUnitDefeatedLogEntry(buildUnitDefeatedEntry(entry))
+      }
       const nextEntry = result.log[i + 1]
       const isLastOfRound = !nextEntry || nextEntry.round !== entry.round
       if (isLastOfRound) {
@@ -4232,6 +4240,10 @@ async function animateCombatLog(result) {
     if (!isRunning.value) return
     applyOneCombatEntry(entry)
     await scrollLog()
+
+    if (shouldEmitUnitDefeated(entry)) {
+      await revealUnitDefeatedStep(buildUnitDefeatedEntry(entry), combatLogStepDelayMs)
+    }
 
     const nextEntry = result.log[i + 1]
     const isLastOfRound = !nextEntry || nextEntry.round !== entry.round
@@ -4364,6 +4376,7 @@ async function runCombatLoop() {
       monsters: monsters.map((m) => ({ name: m.name, tier: m.tier })),
       isBoss: isBossEncounter,
     })
+    playCombatEncounterSound({ isBoss: isBossEncounter })
     await scrollLog()
     await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.afterEncounterMessage))
 

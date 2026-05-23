@@ -92,11 +92,11 @@ When modifying design documents (especially core flows like squad, recruitment, 
 
 | Check | Affected areas | Notes |
 |-------|----------------|------|
-| **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible** (`visibilityState !== 'visible'`); bind SFX kinds to combat log (damage / miss / dot / defeat / summary) |
-| **Samples & licensing** | `frontend/public/audio/sfx/`, [docs/audio-attributions.md](../audio-attributions.md), `SAMPLE_MANIFEST` in `audioBus.js` | All current SFX are Kenney CC0 (no attribution required); adding/replacing a file must update both the manifest and the attribution table |
+| **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js`, `frontend/src/game/combatLogDefeat.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible**; bind SFX to combat log (encounter, damage, unitDefeated step, summary); **heroDeath** vs **monsterDeath** |
+| **Samples & licensing** | `frontend/public/audio/sfx/`, [docs/audio-attributions.md](../audio-attributions.md), `scripts/download-freesound-sfx.ps1` | Freesound CC0 original WAV via OAuth download script; `fs_skill_taunt.mp3` from public HQ preview (not OAuth) |
 | **Preferences** | `audioPreferences.js`, MainScreen modal | `textIdleAudioMuted`, `textIdleAudioMasterVolume`; default master 0.85 |
 | **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 36 | `e2e/browser/audio-settings.spec.js` |
-| **Unit tests** | `frontend/src/audio/audioBus.spec.js` | Preferences + suppression + synthetic + sample fallback paths |
+| **Unit tests** | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/skillSfxMap.spec.js`, `frontend/src/game/combatLogDefeat.spec.js` | Preferences + suppression + hero/monster death + skill category paths |
 
 ## Usage
 
