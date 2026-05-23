@@ -20,6 +20,8 @@ import {
   playCombatHitSound,
   playCombatUnitDeathSound,
   playCombatVictorySound,
+  playLevelUpSound,
+  playLootDropSound,
   playMapEntrySound,
   preloadSamples,
   resetSharedAudioContextForTests,
@@ -242,6 +244,37 @@ describe('audioBus', () => {
     ctx.createOscillator.mockClear()
     playCombatDefeatSound()
     expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('plays level up and loot drop synthesis when no samples loaded', () => {
+    playLevelUpSound()
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+    ctx.createOscillator.mockClear()
+    playLootDropSound()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses level up sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_level_up.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playLevelUpSound()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('uses loot drop sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_loot_drop.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playLootDropSound()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
   it('plays encounter synthesis for normal and boss when no samples loaded', () => {

@@ -64,6 +64,8 @@ $files = [ordered]@{
     fs_skill_heal   = 562292
     fs_skill_sunder = 812592
     fs_skill_shield = 570853
+    fs_level_up     = 442943
+    fs_loot_drop    = 735168
 }
 
 foreach ($entry in $files.GetEnumerator()) {

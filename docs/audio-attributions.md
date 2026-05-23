@@ -24,6 +24,8 @@ See `.env.example` for required variables. Playback may trim long files per cate
 | `fs_death.wav` | 616504 weapon drop.wav | Empiremonkey | https://freesound.org/s/616504/ |
 | `fs_victory.wav` | 844831 Victory Jingle | JoanStar | https://freesound.org/s/844831/ |
 | `fs_defeat.wav` | 253174 Retro You Lose SFX | see Freesound page | https://freesound.org/s/253174/ |
+| `fs_level_up.ogg` | 442943 Level Up | qubodup | https://freesound.org/s/442943/ |
+| `fs_loot_drop.ogg` | 735168 Item Pickup Chime | Irolan | https://freesound.org/s/735168/ |
 
 ## Unit defeated SFX (`unitDefeated` log line)
 
@@ -56,7 +58,16 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 | `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam | https://freesound.org/s/812592/ |
 | `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor | https://freesound.org/s/570853/ |
 
-Note: `fs_skill_taunt.mp3` is the public CDN HQ preview (CC0); other skill files are OAuth originals.
+Note: `fs_skill_taunt.mp3` is the public CDN HQ preview (CC0); `fs_level_up.ogg` and `fs_loot_drop.ogg` are CC0 HQ previews from the same CDN when OAuth download is unavailable. Other skill files are OAuth originals.
+
+## Progression and loot SFX
+
+Playback: `playLevelUpSound()` when a `levelUp` log line is revealed; `playLootDropSound()` when a victory `summary` includes equipment rewards (alongside victory SFX).
+
+| Manifest key | Local file | When |
+|--------------|------------|------|
+| `levelUp` | `fs_level_up.ogg` | Hero level-up log line (`type: 'levelUp'`) |
+| `lootDrop` | `fs_loot_drop.ogg` | Victory summary with one or more equipment drops |
 
 ## Map entry SFX (`mapEntry` log line)
 

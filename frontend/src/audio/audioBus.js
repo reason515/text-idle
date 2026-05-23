@@ -53,6 +53,8 @@ const SAMPLE_MANIFEST = {
   mapEntryDuskwood: ['/audio/sfx/lowThreeTone.ogg'],
   mapEntryRedridge: ['/audio/sfx/impactMetal_heavy_000.ogg'],
   mapEntryStranglethorn: ['/audio/sfx/jingles-hit_07.ogg'],
+  levelUp: ['/audio/sfx/fs_level_up.ogg'],
+  lootDrop: ['/audio/sfx/fs_loot_drop.ogg'],
 }
 
 /** Max playback length (sec) per category; trims long Freesound HQ previews. */
@@ -81,6 +83,8 @@ const SAMPLE_MAX_DURATION_SEC = {
   mapEntryDuskwood: 1.6,
   mapEntryRedridge: 1.3,
   mapEntryStranglethorn: 1.5,
+  levelUp: 1.7,
+  lootDrop: 1.2,
 }
 
 /** url -> AudioBuffer | null (failed) | undefined (not attempted). */
@@ -782,6 +786,70 @@ function scheduleMonsterDeath(ctx) {
 }
 
 /**
+ * Level-up stinger (bright ascending triad + shimmer).
+ * @param {AudioContext} ctx
+ */
+function scheduleLevelUp(ctx) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const notes = [523.25, 659.25, 783.99]
+  notes.forEach((hz, i) => {
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    const start = t + i * 0.05
+    osc.frequency.setValueAtTime(hz, start)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(FLOOR, start)
+    g.gain.linearRampToValueAtTime((0.18 - i * 0.02) * master, start + 0.015)
+    g.gain.exponentialRampToValueAtTime(FLOOR, start + 0.28)
+    osc.connect(g)
+    g.connect(ctx.destination)
+    osc.start(start)
+    osc.stop(start + 0.3)
+  })
+  scheduleMagicShimmerLayer(ctx, t + 0.08, master * 0.55, false)
+}
+
+/**
+ * Loot drop chime (short bell + soft transient).
+ * @param {AudioContext} ctx
+ */
+function scheduleLootDrop(ctx) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const bell = ctx.createOscillator()
+  bell.type = 'triangle'
+  bell.frequency.setValueAtTime(880, t)
+  bell.frequency.exponentialRampToValueAtTime(660, t + 0.08)
+  const bg = ctx.createGain()
+  bg.gain.setValueAtTime(FLOOR, t)
+  bg.gain.linearRampToValueAtTime(0.2 * master, t + 0.004)
+  bg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.22)
+  bell.connect(bg)
+  bg.connect(ctx.destination)
+  bell.start(t)
+  bell.stop(t + 0.24)
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const band = ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.setValueAtTime(2400, t)
+  band.Q.setValueAtTime(1.8, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.1 * master, t + 0.002)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.05)
+  noiseSrc.connect(band)
+  band.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.055)
+}
+
+/**
  * Victory fanfare (short two-tone).
  * @param {AudioContext} ctx
  */
@@ -1370,6 +1438,30 @@ export function playCombatDefeatSound() {
   if (!ctx) return
   preloadSamples(ctx)
   if (!tryPlaySample(ctx, 'defeat', 1.0)) scheduleDefeat(ctx)
+  resumeContextIfNeeded(ctx)
+}
+
+/**
+ * Hero level-up log line (after victory summary).
+ */
+export function playLevelUpSound() {
+  if (!canPlayCombatSfx()) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  if (!tryPlaySample(ctx, 'levelUp', 0.92)) scheduleLevelUp(ctx)
+  resumeContextIfNeeded(ctx)
+}
+
+/**
+ * Equipment loot on victory summary (when rewards include gear).
+ */
+export function playLootDropSound() {
+  if (!canPlayCombatSfx()) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  if (!tryPlaySample(ctx, 'lootDrop', 0.85)) scheduleLootDrop(ctx)
   resumeContextIfNeeded(ctx)
 }
 

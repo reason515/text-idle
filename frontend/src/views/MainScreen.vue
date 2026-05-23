@@ -2339,6 +2339,8 @@ import {
   playCombatHitPreview,
   playCombatUnitDeathSound,
   playCombatVictorySound,
+  playLevelUpSound,
+  playLootDropSound,
   playMapEntrySound,
   unlockAudioContext,
 } from '../audio/audioBus.js'
@@ -3138,8 +3140,12 @@ function addLogEntries(entries) {
   if (!Array.isArray(entries) || entries.length === 0) return
   for (const e of entries) {
     if (e && e.type === 'summary') {
-      if (e.outcome === 'victory') playCombatVictorySound()
-      else if (e.outcome === 'defeat') playCombatDefeatSound()
+      if (e.outcome === 'victory') {
+        playCombatVictorySound()
+        if ((e.rewards?.equipment || []).length > 0) playLootDropSound()
+      } else if (e.outcome === 'defeat') playCombatDefeatSound()
+    } else if (e && e.type === 'levelUp') {
+      playLevelUpSound()
     }
   }
   displayedLog.value = [...displayedLog.value, ...entries]
