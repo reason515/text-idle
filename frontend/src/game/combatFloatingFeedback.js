@@ -39,7 +39,7 @@ export function buildCombatFloatingPushes(entry, helpers) {
   if (!entry) return pushes
 
   const move = combatMoveDisplay(entry, helpers.resolveSkillName)
-  let targetDamagePushed = false
+  let targetOutcomePushed = false
 
   if (entry.type === 'dot') {
     const dotHpLoss = netDamageToHp(entry)
@@ -52,7 +52,7 @@ export function buildCombatFloatingPushes(entry, helpers) {
           type: 'damage',
         },
       })
-      targetDamagePushed = true
+      targetOutcomePushed = true
     }
   } else if (entry.targetId && entry.finalDamage > 0) {
     const hpLoss = netDamageToHp(entry)
@@ -65,8 +65,23 @@ export function buildCombatFloatingPushes(entry, helpers) {
           type: 'damage',
         },
       })
-      targetDamagePushed = true
+      targetOutcomePushed = true
     }
+  } else if (entry.isMiss && entry.targetId) {
+    const atkName =
+      resolveDamageSkillName(entry, helpers.resolveSkillName) ??
+      (move?.kind === 'basic' ? move.name : move?.name) ??
+      null
+    pushes.push({
+      unitId: entry.targetId,
+      text: '未命中',
+      opts: {
+        skillName: atkName,
+        type: 'miss',
+        moveKind: move?.kind ?? null,
+      },
+    })
+    targetOutcomePushed = true
   }
 
   let actorFloatShown = false
@@ -81,7 +96,7 @@ export function buildCombatFloatingPushes(entry, helpers) {
     actorFloatShown = true
   }
 
-  if (move && !targetDamagePushed) {
+  if (move && !targetOutcomePushed) {
     if (entry.targetId) {
       pushes.push({
         unitId: entry.targetId,

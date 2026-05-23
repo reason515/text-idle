@@ -8123,6 +8123,28 @@ label.audio-setting-label {
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.22);
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.35);
 }
+.float-miss {
+  top: 20%;
+  z-index: 6;
+  animation: skill-cast-flash 1.15s ease-out forwards;
+}
+.float-miss .float-value {
+  padding: 0.18rem 0.45rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font-size: var(--font-sm);
+  font-weight: bold;
+  box-shadow: 0 0 12px rgba(255, 204, 102, 0.35);
+  text-shadow: 0 0 5px rgba(255, 204, 102, 0.45);
+}
+.float-miss .float-skill-name {
+  color: var(--color-skill);
+}
+.float-miss.float-move-basic .float-skill-name {
+  color: var(--color-log-basic);
+  font-style: normal;
+}
 .float-skill-name {
   font-size: var(--font-xs);
   color: var(--color-skill);

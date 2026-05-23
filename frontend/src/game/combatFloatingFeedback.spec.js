@@ -89,6 +89,48 @@ describe('buildCombatFloatingPushes', () => {
     ])
   })
 
+  it('shows miss on target with skill name and no duplicate skill-cast', () => {
+    const pushes = buildCombatFloatingPushes(
+      {
+        actorId: 'hero-1',
+        targetId: 'mob-1',
+        action: 'skill',
+        skillId: 'heroic-strike',
+        skillName: 'Heroic Strike',
+        isMiss: true,
+        finalDamage: 0,
+      },
+      { resolveSkillName: resolve, debuffDisplayName: debuffName }
+    )
+    expect(pushes).toEqual([
+      {
+        unitId: 'mob-1',
+        text: '未命中',
+        opts: { skillName: 'Heroic Strike', type: 'miss', moveKind: 'skill' },
+      },
+    ])
+  })
+
+  it('shows miss on target for basic attack with basic moveKind', () => {
+    const pushes = buildCombatFloatingPushes(
+      {
+        actorId: 'hero-1',
+        targetId: 'mob-1',
+        action: 'basic',
+        isMiss: true,
+        finalDamage: 0,
+      },
+      { resolveSkillName: resolve, debuffDisplayName: debuffName }
+    )
+    expect(pushes).toEqual([
+      {
+        unitId: 'mob-1',
+        text: '未命中',
+        opts: { skillName: '普通攻击', type: 'miss', moveKind: 'basic' },
+      },
+    ])
+  })
+
   it('keeps heal float on actor with skill name', () => {
     const pushes = buildCombatFloatingPushes(
       {

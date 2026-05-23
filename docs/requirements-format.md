@@ -771,9 +771,10 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC1 | A unit (hero or monster) receives normal attack damage          | Damage is applied       | A floating "-X" animation appears on the unit's panel, where X is the damage dealt; animation floats up and fades out                    |
 | AC2 | A unit receives skill damage (e.g. Heroic Strike, Sunder Armor) | Skill damage is applied | A floating animation shows the skill name and "-X" (damage value) on the target's panel                                                  |
 | AC3 | A hero receives skill-based healing (e.g. Bloodthirst)          | Healing is applied      | A floating animation shows the skill name and "+X" (heal value) on the healer's panel                                                    |
-| AC4 | A floating number animation is displayed                        | Animation plays         | Damage numbers use red color; heal numbers use green color; skill names use skill color and italic style                                 |
+| AC4 | A floating number animation is displayed                        | Animation plays         | Damage numbers use red color; heal numbers use green color; skill names use skill color and italic style; miss/dodge labels use warning color and are visually distinct from damage/heal/skill-cast |
 | AC5 | A new combat encounter starts                                   | Battle begins           | Any floating numbers from the previous encounter are cleared                                                                             |
 | AC6 | Ally has Power Word: Shield and receives damage                 | Damage is applied       | Floating animation shows shield absorption (e.g., "Shield -12") and/or overflow to HP (e.g., "-5" in red if shield broke and 5 overflow) |
+| AC7 | A unit is attacked but the hit check fails (miss/dodge)         | Action resolves         | Target panel shows floating **miss** label (e.g. "未命中") with attacking skill name when applicable; no damage float; styling distinct from damage and skill-cast floats |
 
 
 ---
