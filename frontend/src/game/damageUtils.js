@@ -9,6 +9,8 @@ export const SPELL_UNARMED_MIN = 1
 export const SPELL_UNARMED_MAX = 4
 export const PHYS_MULTIPLIER_K = 0.2
 export const SPELL_MULTIPLIER_K = 0.2
+/** Spell-caster hero basic attack: rawDamage = round(effectiveSpellPower * this). Design 03-combat.md. */
+export const SPELL_BASIC_ATTACK_COEFF = 0.5
 
 function randomInRange(min, max, rng) {
   return min + Math.floor(rng() * (max - min + 1))

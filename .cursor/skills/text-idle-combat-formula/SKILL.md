@@ -49,6 +49,14 @@ rawDamage = round(baseRoll * spellMultiplier) + spellPowerBonus
 finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 ```
 
+**Spell-caster basic attack** (`k_PhysAtk == null`: Mage, Priest, Warlock):
+
+```
+rawDamage = round(getEffectiveSpellPower(actor, rng) * SPELL_BASIC_ATTACK_COEFF)
+```
+
+`SPELL_BASIC_ATTACK_COEFF = 0.5` in `damageUtils.js`; then crit / spellDmgPct / resistance as usual.
+
 **Monster**: same `random(1,4)` scaling pattern as physical for `physAtk`/`spellPower` in `damageUtils.js`.
 
 - **baseAttr**: `Int * k + Spirit * 0.8` where **k = 0.8** for Priest and Mage, **k = 1.2** for other spell classes (Warlock, Paladin hybrid spell path, Druid, Shaman, etc.)

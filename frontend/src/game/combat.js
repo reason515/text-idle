@@ -8,7 +8,13 @@ import {
   getSpellBaseAttr,
   CLASS_COEFFICIENTS,
 } from '../data/heroes.js'
-import { getEffectivePhysAtk, getEffectiveSpellPower, PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from './damageUtils.js'
+import {
+  getEffectivePhysAtk,
+  getEffectiveSpellPower,
+  PHYS_MULTIPLIER_K,
+  SPELL_BASIC_ATTACK_COEFF,
+  SPELL_MULTIPLIER_K,
+} from './damageUtils.js'
 import {
   getAnyWarriorSkillById,
   getSkillWithEnhancements,
@@ -829,7 +835,11 @@ function actorDamage(actor, rng, round) {
     const spellOnlyClass = coef != null && coef.k_PhysAtk == null
     if (spellOnlyClass) {
       const effSpell = getEffectiveSpellPower(actor, rng)
-      return { action: 'basic', damageType: 'magic', rawDamage: effSpell }
+      return {
+        action: 'basic',
+        damageType: 'magic',
+        rawDamage: Math.round(effSpell * SPELL_BASIC_ATTACK_COEFF),
+      }
     }
     const effPhys = getEffectivePhysAtk(actor, rng)
     return { action: 'basic', damageType: 'physical', rawDamage: effPhys }

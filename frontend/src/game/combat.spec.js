@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getSquadMaxLevel, getSquadAverageLevel, createFixedTrioSquad } from '../data/heroes.js'
-import { getEffectivePhysAtk } from './damageUtils.js'
+import { getEffectivePhysAtk, getEffectiveSpellPower, SPELL_BASIC_ATTACK_COEFF } from './damageUtils.js'
 import {
   MAPS,
   MAP_MONSTER_POOLS,
@@ -984,6 +984,47 @@ describe('combat progression and systems', () => {
     expect(magicAttackEntry).toBeUndefined()
     const basicEntries = result.log.filter((e) => e.actorName === 'Hero One' && e.action === 'basic')
     expect(basicEntries.length).toBeGreaterThan(0)
+  })
+
+  it('Mage basic attack raw damage is SPELL_BASIC_ATTACK_COEFF x effective spell power', () => {
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      intellect: 20,
+      spirit: 20,
+      strength: 2,
+      agility: 2,
+      currentMP: 0,
+      equipment: { MainHand: { spellPowerMin: 10, spellPowerMax: 10, armor: 0, resistance: 0 } },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Young Wolf',
+          damageType: 'physical',
+          base: { hp: 100, physAtk: 2, spellPower: 0, agility: 4, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    const result = runAutoCombat({ heroes: [mage], monsters, rng, maxRounds: 1 })
+    const basicEntry = result.log.find(
+      (e) => e.actorName === 'Hero One' && e.action === 'basic' && e.damageType === 'magic'
+    )
+    expect(basicEntry).toBeDefined()
+    const effSpell = getEffectiveSpellPower(
+      {
+        side: 'hero',
+        spellMultiplier: 1 + (20 * 0.8 + 20 * 0.8) * 0.2,
+        spellPowerBonus: 0,
+        spellPowerWeaponMin: 10,
+        spellPowerWeaponMax: 10,
+      },
+      () => 0
+    )
+    expect(basicEntry.rawDamage).toBe(Math.round(effSpell * SPELL_BASIC_ATTACK_COEFF))
   })
 
   it('Mage basic attack deals magic damage from spell power (no Magic Attack pseudo-skill)', () => {
