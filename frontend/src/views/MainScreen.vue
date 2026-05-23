@@ -648,13 +648,13 @@
       <div class="command-actions-card">
         <span class="command-label">功能</span>
         <div class="command-action-buttons">
-          <button class="backpack-btn topbar-btn" @click="showBackpackModal = true">
+          <button type="button" class="backpack-btn command-action-btn topbar-btn" @click="showBackpackModal = true">
             背包 {{ inventoryCount }}/100
           </button>
-          <button class="shop-btn topbar-btn" @click="showShopModal = true">
+          <button type="button" class="shop-btn command-action-btn topbar-btn" @click="showShopModal = true">
             商店
           </button>
-          <button type="button" class="topbar-btn" data-testid="audio-settings-open" @click="openAudioSettingsModal">
+          <button type="button" class="command-action-btn topbar-btn" data-testid="audio-settings-open" @click="openAudioSettingsModal">
             音效
           </button>
           <button class="topbar-btn command-placeholder" disabled>战术</button>
@@ -4605,7 +4605,7 @@ onUnmounted(() => {
 .topbar-btn:disabled {
   background: var(--bg-dark);
   color: var(--text-muted);
-  border-color: var(--border-dark);
+  border: 1px solid var(--border-dark);
   cursor: not-allowed;
 }
 
@@ -5924,14 +5924,12 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-.backpack-btn,
-.shop-btn {
+.command-action-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
   color: var(--text);
 }
-.backpack-btn:hover,
-.shop-btn:hover {
+.command-action-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--bg-hover);
