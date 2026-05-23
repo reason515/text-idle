@@ -248,7 +248,7 @@
             <p class="panel-subtitle">逐回合记录战斗、奖励与恢复过程</p>
           </div>
           <div class="log-actions">
-            <span class="panel-chip panel-chip-muted">{{ isPaused ? '已暂停' : '自动播放' }}</span>
+            <span class="panel-chip panel-chip-muted">{{ isPaused ? '已暂停' : '自动战斗' }}</span>
             <button
               class="btn btn-sm pause-btn"
               :class="{ paused: isPaused }"
