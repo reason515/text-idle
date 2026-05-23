@@ -458,7 +458,7 @@ Then [expected result/verifiable behavior].
 - **Weapon mechanic lines (magic)**: For hero magic skills, the log may show an extra line from `weaponMechanicLines` spelling out pre-coeff effective spell strength as weapon-scaled segment + flat segment (matches `getEffectiveSpellPowerBreakdown`). Narrative of the same split (main-hand dice × multiplier vs rings/armor/off-hand flat) is in **Example 14** and [05-skills.md](design/05-skills.md) 2.2.3.2.
 - **Block (physical)**: When a hero blocks an incoming physical hit, `weaponMechanicLines` adds block-success text; optional post-block effective damage when `blockDrPct` reduces the hit; optional block-counter line naming the attacker. `damageFormulaEquation` uses `physicalDamageBeforeBlock` for the `=` side when the entry is flagged blocked (see [06-equipment.md](design/06-equipment.md) combat log notes).
 - **Monster detail panel**: Similar alignment; **物攻** shows **effective min–max per hit** (same 1–4 unarmed scaling as combat, e.g. `6-24` when the underlying PhysAtk stat is 15); includes Armor/Resistance with tooltip "Absorbs X damage per hit".
-- **Acting highlight**: During combat, the hero or monster card that is currently acting is visually emphasized with a scale-up effect (1.08x) and **green** glow border. The target that is hit shows a **red** border and damage-flash effect (red background fade); no effect if the attack misses.
+- **Acting highlight**: During combat, the acting card uses a **green/accent** glow and a **forward lunge** toward the arena center (heroes toward the right, monsters toward the left). The hit target uses a **red** glow, **knockback** away from center, brief vertical squash, and red background flash; no `targetHit` if the attack misses.
 
 **Acceptance Criteria**
 

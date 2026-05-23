@@ -2290,6 +2290,7 @@ import {
   conditionValueDisplay,
   priestExecuteFinisherPreviewNote,
 } from '../game/aiTactics.js'
+import { buildCombatFloatingPushes } from '../game/combatFloatingFeedback.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'
@@ -2717,20 +2718,6 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', m
       unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: arr }
     }
   }, 1900)
-}
-
-function combatMoveDisplay(entry) {
-  if (!entry || !entry.actorId) return null
-  if (entry.skillName) return { name: entry.skillName, kind: 'skill' }
-  if (entry.skillId) {
-    return {
-      name: getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name ?? entry.skillId,
-      kind: 'skill',
-    }
-  }
-  if (entry.action === 'basic' || entry.action === 'attack') return { name: '普通攻击', kind: 'basic' }
-  if (entry.type === 'actionSkipped') return null
-  return null
 }
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
@@ -4095,28 +4082,15 @@ function applyOneCombatEntry(entry) {
     return
   }
 
-  const move = combatMoveDisplay(entry)
-  if (move) {
-    pushFloatingNumber(entry.actorId, move.name, { type: 'skill-cast', moveKind: move.kind })
-  }
-
   const targetHpAfter = entry.type === 'dot' ? entry.targetHPAfter : entry.targetHPAfter
 
-  if (entry.type === 'dot') {
-    const dotHpLoss = netDamageToHp(entry)
-    if (dotHpLoss > 0) {
-      pushFloatingNumber(entry.targetId, '-' + dotHpLoss, { skillName: (DEBUFF_DISPLAY[entry.debuffType] ?? {}).name ?? null, type: 'damage' })
-    }
-  } else if (entry.targetId && entry.finalDamage > 0) {
-    const hpLoss = netDamageToHp(entry)
-    if (hpLoss > 0) {
-      const skillName = entry.skillName ?? (entry.action === 'skill' ? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name ?? getMonsterSkillDisplay(entry.skillId)?.name : '技能') : null)
-      pushFloatingNumber(entry.targetId, '-' + hpLoss, { skillName: skillName ?? null, type: 'damage' })
-    }
-  }
-  if (entry.heal > 0 && entry.actorId) {
-    const skillName = entry.skillName ?? (entry.skillId ? getHeroSkillDisplay(entry.skillId)?.name : null)
-    pushFloatingNumber(entry.actorId, '+' + entry.heal, { skillName: skillName ?? null, type: 'heal' })
+  const floatPushes = buildCombatFloatingPushes(entry, {
+    resolveSkillName: (skillId) =>
+      getHeroSkillDisplay(skillId)?.name ?? getMonsterSkillDisplay(skillId)?.name,
+    debuffDisplayName: (debuffType) => (DEBUFF_DISPLAY[debuffType] ?? {}).name,
+  })
+  for (const fp of floatPushes) {
+    pushFloatingNumber(fp.unitId, fp.text, fp.opts)
   }
 
   const mi = currentMonsters.value.findIndex((m) => unitIdMatches(m.id, entry.targetId))
@@ -5549,39 +5523,95 @@ onUnmounted(() => {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-@keyframes damage-flash {
+/* Acting: forward strike toward arena center (heroes right, monsters left). */
+@keyframes hero-acting-strike {
   0% {
-    background-color: rgba(255, 68, 68, 0.45);
     transform: translateX(0) scale(1);
+    filter: brightness(1);
   }
   18% {
-    background-color: rgba(255, 68, 68, 0.28);
-    transform: translateX(-0.18rem) scale(1.025);
+    transform: translateX(-0.12rem) scale(1.02);
+    filter: brightness(1.05);
   }
-  34% {
-    background-color: rgba(255, 68, 68, 0.38);
-    transform: translateX(0.18rem) scale(1.02);
+  38% {
+    transform: translateX(0.62rem) scale(1.07);
+    filter: brightness(1.14);
   }
-  55% {
-    background-color: rgba(255, 68, 68, 0.18);
-    transform: translateX(-0.08rem) scale(1.01);
+  62% {
+    transform: translateX(0.28rem) scale(1.03);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes monster-acting-strike {
+  0% {
+    transform: translateX(0) scale(1);
+    filter: brightness(1);
+  }
+  18% {
+    transform: translateX(0.12rem) scale(1.02);
+    filter: brightness(1.05);
+  }
+  38% {
+    transform: translateX(-0.62rem) scale(1.07);
+    filter: brightness(1.14);
+  }
+  62% {
+    transform: translateX(-0.28rem) scale(1.03);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    filter: brightness(1);
+  }
+}
+/* Target hit: knockback away from center + squash + red flash (no forward lunge). */
+@keyframes hero-target-recoil {
+  0% {
+    background-color: var(--bg-elevated);
+    transform: translateX(0) scaleY(1) scaleX(1);
+  }
+  14% {
+    background-color: rgba(255, 68, 68, 0.5);
+    transform: translateX(-0.42rem) scaleY(0.94) scaleX(1.03);
+  }
+  32% {
+    background-color: rgba(255, 68, 68, 0.32);
+    transform: translateX(0.14rem) scaleY(0.98) scaleX(1.01);
+  }
+  52% {
+    background-color: rgba(255, 68, 68, 0.2);
+    transform: translateX(-0.1rem) scaleY(0.99) scaleX(1);
   }
   100% {
     background-color: var(--bg-elevated);
-    transform: translateX(0) scale(1);
+    transform: translateX(0) scaleY(1) scaleX(1);
   }
 }
-@keyframes hero-attack-lunge {
-  0% { transform: translateX(0) scale(1); }
-  22% { transform: translateX(0.45rem) scale(1.025); }
-  45% { transform: translateX(0.2rem) scale(1.015); }
-  100% { transform: translateX(0) scale(1); }
-}
-@keyframes monster-attack-lunge {
-  0% { transform: translateX(0) scale(1); }
-  22% { transform: translateX(-0.45rem) scale(1.025); }
-  45% { transform: translateX(-0.2rem) scale(1.015); }
-  100% { transform: translateX(0) scale(1); }
+@keyframes monster-target-recoil {
+  0% {
+    background-color: var(--bg-elevated);
+    transform: translateX(0) scaleY(1) scaleX(1);
+  }
+  14% {
+    background-color: rgba(255, 68, 68, 0.5);
+    transform: translateX(0.42rem) scaleY(0.94) scaleX(1.03);
+  }
+  32% {
+    background-color: rgba(255, 68, 68, 0.32);
+    transform: translateX(-0.14rem) scaleY(0.98) scaleX(1.01);
+  }
+  52% {
+    background-color: rgba(255, 68, 68, 0.2);
+    transform: translateX(0.1rem) scaleY(0.99) scaleX(1);
+  }
+  100% {
+    background-color: var(--bg-elevated);
+    transform: translateX(0) scaleY(1) scaleX(1);
+  }
 }
 
 .btn-logout {
@@ -6411,12 +6441,16 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 .hero-card.acting {
-  animation: hero-attack-lunge 0.9s ease-out;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--focus-glow), inset 0 0 0 1px var(--accent);
+  z-index: 3;
+  transition: none;
+  animation: hero-acting-strike 0.9s cubic-bezier(0.22, 0.85, 0.32, 1) forwards;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 22px var(--focus-glow), inset 0 0 0 1px var(--accent);
 }
 .hero-card.targetHit {
-  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 18px rgba(255, 68, 68, 0.65), inset 0 0 0 1px var(--color-defeat);
-  animation: damage-flash 0.9s ease-out;
+  z-index: 2;
+  transition: none;
+  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 20px rgba(255, 68, 68, 0.7), inset 0 0 0 1px var(--color-defeat);
+  animation: hero-target-recoil 0.9s cubic-bezier(0.36, 0, 0.2, 1) forwards;
 }
 .hero-card.defeated {
   opacity: 0.65;
@@ -6913,12 +6947,16 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 .monster-card.acting {
-  animation: monster-attack-lunge 0.9s ease-out;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--focus-glow), inset 0 0 0 1px var(--accent);
+  z-index: 3;
+  transition: none;
+  animation: monster-acting-strike 0.9s cubic-bezier(0.22, 0.85, 0.32, 1) forwards;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 22px var(--focus-glow), inset 0 0 0 1px var(--accent);
 }
 .monster-card.targetHit {
-  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 18px rgba(255, 68, 68, 0.65), inset 0 0 0 1px var(--color-defeat);
-  animation: damage-flash 0.9s ease-out;
+  z-index: 2;
+  transition: none;
+  box-shadow: 0 0 0 2px var(--color-defeat), 0 0 20px rgba(255, 68, 68, 0.7), inset 0 0 0 1px var(--color-defeat);
+  animation: monster-target-recoil 0.9s cubic-bezier(0.36, 0, 0.2, 1) forwards;
 }
 .monster-card.defeated {
   opacity: 0.65;
