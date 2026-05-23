@@ -14,6 +14,7 @@
 import { isE2eFastMode } from '../game/combatPacing.js'
 import { netDamageToHp } from '../game/battleLogFormat.js'
 import { resolveUnitDefeatedSide } from '../game/combatLogDefeat.js'
+import { getMapEntrySfxCategory } from './mapSfxMap.js'
 import { getSkillSfxCategory, isSkillOnlyCastLine } from './skillSfxMap.js'
 import { getAudioMasterVolume, getAudioMuted } from './audioPreferences.js'
 
@@ -47,6 +48,11 @@ const SAMPLE_MANIFEST = {
   skillTaunt: ['/audio/sfx/fs_skill_taunt.mp3'],
   skillSunder: ['/audio/sfx/fs_skill_sunder.wav'],
   skillShield: ['/audio/sfx/fs_skill_shield.wav'],
+  mapEntryElwynn: ['/audio/sfx/impactBell_heavy_000.ogg'],
+  mapEntryWestfall: ['/audio/sfx/impactPlank_medium_002.ogg'],
+  mapEntryDuskwood: ['/audio/sfx/lowThreeTone.ogg'],
+  mapEntryRedridge: ['/audio/sfx/impactMetal_heavy_000.ogg'],
+  mapEntryStranglethorn: ['/audio/sfx/jingles-hit_07.ogg'],
 }
 
 /** Max playback length (sec) per category; trims long Freesound HQ previews. */
@@ -70,6 +76,11 @@ const SAMPLE_MAX_DURATION_SEC = {
   skillTaunt: 0.42,
   skillSunder: 0.55,
   skillShield: 0.8,
+  mapEntryElwynn: 1.4,
+  mapEntryWestfall: 1.2,
+  mapEntryDuskwood: 1.6,
+  mapEntryRedridge: 1.3,
+  mapEntryStranglethorn: 1.5,
 }
 
 /** url -> AudioBuffer | null (failed) | undefined (not attempted). */
@@ -77,6 +88,7 @@ const sampleBufferCache = new Map()
 /** url -> Promise resolving when load attempt completes. */
 const sampleLoadingPromises = new Map()
 let preloadKicked = false
+let gestureUnlockBound = false
 
 /**
  * Clears cached AudioContext (for unit tests only; module singleton otherwise).
@@ -88,6 +100,7 @@ export function resetSharedAudioContextForTests() {
   sampleBufferCache.clear()
   sampleLoadingPromises.clear()
   preloadKicked = false
+  gestureUnlockBound = false
 }
 
 /**
@@ -151,16 +164,49 @@ function canPlayPreviewSfx() {
 }
 
 /**
+ * Resume AudioContext and preload samples. Call synchronously inside a user gesture handler.
+ * @returns {boolean} true when context is running
+ */
+export function unlockAudioContext() {
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return false
+  preloadSamples(ctx)
+  resumeContextIfNeeded(ctx)
+  return ctx.state === 'running'
+}
+
+/**
  * Call after a user gesture so the context can enter running state (browser autoplay policy).
  * Also kicks off sample preload (idempotent) so subsequent SFX can use real audio.
  */
 export async function resumeAudioContext() {
+  unlockAudioContext()
   const ctx = getOrCreateAudioContext()
   if (!ctx) return
-  preloadSamples(ctx)
   if (ctx.state === 'suspended' || ctx.state === 'interrupted') {
     await ctx.resume().catch(() => {})
   }
+}
+
+/**
+ * Best-effort unlock on load (works when the browser already allows autoplay for this origin).
+ */
+export function tryUnlockAudioOnLoad() {
+  unlockAudioContext()
+}
+
+/**
+ * One-time capture listeners: first pointer or key press unlocks audio for the session.
+ * Combat SFX scheduled while suspended will play once the context resumes.
+ */
+export function bindAudioUnlockOnFirstGesture() {
+  if (gestureUnlockBound || typeof document === 'undefined') return
+  gestureUnlockBound = true
+  const unlock = () => {
+    unlockAudioContext()
+  }
+  document.addEventListener('pointerdown', unlock, { capture: true, once: true })
+  document.addEventListener('keydown', unlock, { capture: true, once: true })
 }
 
 /**
@@ -791,6 +837,192 @@ function scheduleDefeat(ctx) {
   osc.stop(t + 0.48)
 }
 
+function scheduleMapEntryElwynnSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const notes = [523.25, 659.25, 783.99]
+  notes.forEach((hz, i) => {
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    const start = t + i * 0.09
+    osc.frequency.setValueAtTime(hz, start)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(FLOOR, start)
+    g.gain.linearRampToValueAtTime(0.14 * master, start + 0.02)
+    g.gain.exponentialRampToValueAtTime(FLOOR, start + 0.28)
+    osc.connect(g)
+    g.connect(ctx.destination)
+    osc.start(start)
+    osc.stop(start + 0.3)
+  })
+}
+
+function scheduleMapEntryWestfallSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.setValueAtTime(900, t)
+  hp.Q.setValueAtTime(0.6, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.1 * master, t + 0.04)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.42)
+  noiseSrc.connect(hp)
+  hp.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.45)
+  const thud = ctx.createOscillator()
+  thud.type = 'triangle'
+  thud.frequency.setValueAtTime(105, t + 0.12)
+  thud.frequency.exponentialRampToValueAtTime(62, t + 0.28)
+  const tg = ctx.createGain()
+  tg.gain.setValueAtTime(FLOOR, t + 0.12)
+  tg.gain.linearRampToValueAtTime(0.16 * master, t + 0.14)
+  tg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.34)
+  thud.connect(tg)
+  tg.connect(ctx.destination)
+  thud.start(t + 0.12)
+  thud.stop(t + 0.36)
+}
+
+function scheduleMapEntryDuskwoodSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const fall = ctx.createOscillator()
+  fall.type = 'triangle'
+  fall.frequency.setValueAtTime(330, t)
+  fall.frequency.exponentialRampToValueAtTime(185, t + 0.55)
+  const fg = ctx.createGain()
+  fg.gain.setValueAtTime(FLOOR, t)
+  fg.gain.linearRampToValueAtTime(0.18 * master, t + 0.05)
+  fg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.62)
+  fall.connect(fg)
+  fg.connect(ctx.destination)
+  fall.start(t)
+  fall.stop(t + 0.65)
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(280, t)
+  lp.Q.setValueAtTime(0.5, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t + 0.08)
+  ng.gain.linearRampToValueAtTime(0.12 * master, t + 0.12)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.48)
+  noiseSrc.connect(lp)
+  lp.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t + 0.08)
+  noiseSrc.stop(t + 0.5)
+}
+
+function scheduleMapEntryRedridgeSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const wind = ctx.createOscillator()
+  wind.type = 'sawtooth'
+  wind.frequency.setValueAtTime(180, t)
+  wind.frequency.exponentialRampToValueAtTime(420, t + 0.2)
+  const wg = ctx.createGain()
+  wg.gain.setValueAtTime(FLOOR, t)
+  wg.gain.linearRampToValueAtTime(0.08 * master, t + 0.02)
+  wg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.24)
+  wind.connect(wg)
+  wg.connect(ctx.destination)
+  wind.start(t)
+  wind.stop(t + 0.26)
+  const clang = ctx.createOscillator()
+  clang.type = 'square'
+  clang.frequency.setValueAtTime(520, t + 0.14)
+  clang.frequency.exponentialRampToValueAtTime(220, t + 0.22)
+  const cg = ctx.createGain()
+  cg.gain.setValueAtTime(FLOOR, t + 0.14)
+  cg.gain.linearRampToValueAtTime(0.14 * master, t + 0.145)
+  cg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.3)
+  clang.connect(cg)
+  cg.connect(ctx.destination)
+  clang.start(t + 0.14)
+  clang.stop(t + 0.32)
+}
+
+function scheduleMapEntryStranglethornSynth(ctx, gainScale = 1) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const beats = [0, 0.16, 0.34]
+  const freqs = [112, 98, 112]
+  beats.forEach((offset, i) => {
+    const start = t + offset
+    const drum = ctx.createOscillator()
+    drum.type = 'sine'
+    drum.frequency.setValueAtTime(freqs[i], start)
+    drum.frequency.exponentialRampToValueAtTime(55, start + 0.08)
+    const dg = ctx.createGain()
+    dg.gain.setValueAtTime(FLOOR, start)
+    dg.gain.linearRampToValueAtTime(0.2 * master, start + 0.008)
+    dg.gain.exponentialRampToValueAtTime(FLOOR, start + 0.12)
+    drum.connect(dg)
+    dg.connect(ctx.destination)
+    drum.start(start)
+    drum.stop(start + 0.14)
+    const noiseBuf = getImpactNoiseBuffer(ctx)
+    const noiseSrc = ctx.createBufferSource()
+    noiseSrc.buffer = noiseBuf
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.setValueAtTime(620, start)
+    bp.Q.setValueAtTime(1.0, start)
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(FLOOR, start)
+    ng.gain.linearRampToValueAtTime(0.1 * master, start + 0.004)
+    ng.gain.exponentialRampToValueAtTime(FLOOR, start + 0.07)
+    noiseSrc.connect(bp)
+    bp.connect(ng)
+    ng.connect(ctx.destination)
+    noiseSrc.start(start)
+    noiseSrc.stop(start + 0.08)
+  })
+}
+
+/**
+ * @param {AudioContext} ctx
+ * @param {string} category
+ * @param {number} [gainScale]
+ */
+function scheduleMapEntrySynth(ctx, category, gainScale = 1) {
+  switch (category) {
+    case 'mapEntryElwynn':
+      scheduleMapEntryElwynnSynth(ctx, gainScale)
+      break
+    case 'mapEntryWestfall':
+      scheduleMapEntryWestfallSynth(ctx, gainScale)
+      break
+    case 'mapEntryDuskwood':
+      scheduleMapEntryDuskwoodSynth(ctx, gainScale)
+      break
+    case 'mapEntryRedridge':
+      scheduleMapEntryRedridgeSynth(ctx, gainScale)
+      break
+    case 'mapEntryStranglethorn':
+      scheduleMapEntryStranglethornSynth(ctx, gainScale)
+      break
+    default:
+      scheduleMapEntryElwynnSynth(ctx, gainScale)
+      break
+  }
+}
+
 function scheduleSkillFireSynth(ctx, gainScale = 1) {
   const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
   if (master <= 0) return
@@ -1106,6 +1338,20 @@ export function playCombatEncounterSound(opts = {}) {
   const category = isBoss ? 'encounterBoss' : 'encounter'
   const gain = isBoss ? 0.88 : 0.78
   if (!tryPlaySample(ctx, category, gain)) scheduleEncounter(ctx, { isBoss })
+  resumeContextIfNeeded(ctx)
+}
+
+/**
+ * Map entry log line (arrive at a new map before encounter).
+ * @param {{ mapId?: string | null }} [opts]
+ */
+export function playMapEntrySound(opts = {}) {
+  if (!canPlayCombatSfx()) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  const category = getMapEntrySfxCategory(opts.mapId)
+  if (!tryPlaySample(ctx, category, 0.82)) scheduleMapEntrySynth(ctx, category, 1)
   resumeContextIfNeeded(ctx)
 }
 

@@ -25,6 +25,22 @@
 | 阵亡（我方英雄）… | `heroDeath` | `fs_death.wav` | 低频下潜 + 闷响噪声 |
 | 阵亡（敌方怪物）… | `monsterDeath` | `fs_dot_phys.wav` | 短促 thud + 带通瞬态 |
 | 胜利 / 战败 … | `victory` / `defeat` | `fs_victory.wav` / `fs_defeat.wav` | … |
+| 抵达地图（`mapEntry` 日志）… | `mapEntryElwynn` 等（按 `mapId`） | Kenney CC0 `.ogg`（见下表） | 各图独立合成回退（森林和弦 / 荒野风声 / 暮色下潜 / 山风金属 / 丛林鼓点） |
+
+### 地图进入音效（按 `mapId` 映射）
+
+映射表：`frontend/src/audio/mapSfxMap.js`；播放入口：`playMapEntrySound({ mapId })`（`MainScreen.vue` 在 `mapEntry` 日志揭示时调用，早于遭遇音）。
+
+| 地图 ID | 分类（Manifest 键） | 样本 | 合成回退（音色要点） |
+|---|---|---|---|
+| `elwynn-forest` | `mapEntryElwynn` | `impactBell_heavy_000.ogg` | 柔和上行 C-E-G 和弦 |
+| `westfall` | `mapEntryWestfall` | `impactPlank_medium_002.ogg` | 风声 + 木质闷响 |
+| `duskwood` | `mapEntryDuskwood` | `lowThreeTone.ogg` | 下行小调 + 低频 rumble |
+| `redridge-mountains` | `mapEntryRedridge` | `impactMetal_heavy_000.ogg` | 山风 sweep + 金属 clang |
+| `stranglethorn-vale` | `mapEntryStranglethorn` | `jingles-hit_07.ogg` | 短促丛林鼓点三连 |
+
+- 未知 `mapId` 回退到 `mapEntryElwynn`。
+- 与 `COMBAT_PACING_MS.mapDescriptionRead`（1800ms）同节拍；遭遇音在描述停顿之后播放。
 
 ### 技能特色音效（按 `skillId` 映射）
 
@@ -60,12 +76,13 @@
 - **合成回退**：分层 **Web Audio** — 短白噪声 + 带通（冲击瞬态）+ 低频正弦下潜（闷响体量）；暴击额外叠加短促中频泛音；魔法叠 shimmer；阵亡 / 胜利 / 失败 / 闪避 / DoT 各自一份单层方案。**样本未就绪或加载失败时使用**。
 - **抑制输出**：`isE2eFastMode()`（与 [combatPacing.js](../../frontend/src/game/combatPacing.js) 相同条件）或用户静音时，战斗向 API（含 `playCombatDamageLineSound`、阵亡与结算音等）立即返回。设置面板中的 **试听** 使用 `playCombatHitPreview`：**忽略静音**，仍在 **E2E 快速模式**或 **标签页后台** 下关闭（与可见性策略一致，避免切页后误触发扬声器）。
 - **浏览器策略**：新建 `AudioContext` 常见初始状态为 `suspended`。应在**用户点击的同一次调用**内先 **connect + `start()` 调度** 振荡器，再调用 `resume()`（不要依赖 `resume().then` 里才去 `start()`，否则部分环境下永远不发声）。试听不要用 `async/await` 插入在点击与 `resume` 之间。
+- **自动解锁**：`App.vue` 挂载时调用 `bindAudioUnlockOnFirstGesture()`（首次 `pointerdown` / `keydown` 捕获阶段解锁）与 `tryUnlockAudioOnLoad()`（对已允许自动播放的来源尽力 `resume`）。`unlockAudioContext()` 在用户手势内同步调用；战斗循环中已调度的节点在 `resume` 成功后会补播。首次访问且浏览器禁止自动播放时，仍需任意一次点击才能出声（不限于「试听」按钮）。
 - **HTML5 后备**：`playCombatHitPreview` 在无法创建 `AudioContext` 或 Web Audio 调度抛错时，会尝试用 **data:audio/wav** 短哔声（仍用主音量；E2E 快速模式不执行试听）。
 - **测试**：`resetSharedAudioContextForTests()` 清空缓存的 `AudioContext`、试听 WAV、样本缓存与 `preloadKicked` 标记（仅单元测试）；`__setSampleBufferForTests(url, buffer)` 用于在测试中直接注入已解码的 buffer 验证样本路径。
 
 ## 四、与战斗日志的绑定
 
-- 在 `MainScreen.vue` 的战斗循环中：遭遇日志（`type: 'encounter'`）揭示时调用 `playCombatEncounterSound({ isBoss })`；`animateCombatLog` 中致死行后**再占用一步**揭示 `unitDefeated` 并播放阵亡音；伤害/DoT 等与对应日志条目同一步触发 `playCombatLogLineSound(entry)`。`addLogEntries` 在遇到 `summary` 且 `outcome` 为 `victory` / `defeat` 时播对应结算音。
+- 在 `MainScreen.vue` 的战斗循环中：地图进入日志（`type: 'mapEntry'`）揭示时调用 `playMapEntrySound({ mapId })`；遭遇日志（`type: 'encounter'`）揭示时调用 `playCombatEncounterSound({ isBoss })`；`animateCombatLog` 中致死行后**再占用一步**揭示 `unitDefeated` 并播放阵亡音；伤害/DoT 等与对应日志条目同一步触发 `playCombatLogLineSound(entry)`。`addLogEntries` 在遇到 `summary` 且 `outcome` 为 `victory` / `defeat` 时播对应结算音。
 - 与飘字扣血条件一致处使用 `netDamageToHp`；**不**在独立于日志的时间轴上播放。
 
 ## 五、UI
@@ -86,8 +103,9 @@
 | 总线（样本 + 合成） | `frontend/src/audio/audioBus.js` |
 | 阵亡判定与 side | `frontend/src/game/combatLogDefeat.js` |
 | 技能 → 音效类别 | `frontend/src/audio/skillSfxMap.js` |
+| 地图 → 进入音效类别 | `frontend/src/audio/mapSfxMap.js` |
 | 样本（CC0, Freesound WAV） | `frontend/public/audio/sfx/fs_*.wav`, `scripts/download-freesound-sfx.ps1` |
 | 许可与映射 | `docs/audio-attributions.md` |
 | 主界面 | `frontend/src/views/MainScreen.vue` |
-| 单元测试 | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/skillSfxMap.spec.js` |
+| 单元测试 | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/skillSfxMap.spec.js`, `frontend/src/audio/mapSfxMap.spec.js` |
 | E2E | `e2e/browser/audio-settings.spec.js` |

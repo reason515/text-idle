@@ -33,6 +33,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { bindAudioUnlockOnFirstGesture, tryUnlockAudioOnLoad } from './audio/audioBus.js'
 
 const MIN_WIDTH = 1920
 const MIN_HEIGHT = 1080
@@ -87,6 +88,8 @@ function updateViewport() {
 }
 
 onMounted(() => {
+  bindAudioUnlockOnFirstGesture()
+  tryUnlockAudioOnLoad()
   window.addEventListener('resize', updateViewport)
 })
 

@@ -2339,6 +2339,8 @@ import {
   playCombatHitPreview,
   playCombatUnitDeathSound,
   playCombatVictorySound,
+  playMapEntrySound,
+  unlockAudioContext,
 } from '../audio/audioBus.js'
 import {
   getAudioMasterVolume,
@@ -3946,6 +3948,7 @@ function logout() {
 }
 
 function openAudioSettingsModal() {
+  unlockAudioContext()
   audioSettingsMuted.value = getAudioMuted()
   audioSettingsMasterPct.value = Math.round(getAudioMasterVolume() * 100)
   showAudioSettingsModal.value = true
@@ -3969,10 +3972,12 @@ function onAudioMasterVolumeInput(e) {
 }
 
 function previewAudioHitNormal() {
+  unlockAudioContext()
   playCombatHitPreview({ isCrit: false })
 }
 
 function previewAudioHitCrit() {
+  unlockAudioContext()
   playCombatHitPreview({ isCrit: true })
 }
 
@@ -4315,6 +4320,7 @@ async function runCombatLoop() {
           mapName: map.name,
           description: map.description,
         })
+        playMapEntrySound({ mapId: currentMapId })
         await scrollLog()
         await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.mapDescriptionRead))
       }

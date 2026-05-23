@@ -58,6 +58,20 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 
 Note: `fs_skill_taunt.mp3` is the public CDN HQ preview (CC0); other skill files are OAuth originals.
 
+## Map entry SFX (`mapEntry` log line)
+
+Mapping: `frontend/src/audio/mapSfxMap.js`. Playback: `playMapEntrySound({ mapId })` when the map entry log line is revealed (before encounter SFX).
+
+| Manifest key | Local file | Map | Theme |
+|--------------|------------|-----|-------|
+| `mapEntryElwynn` | `impactBell_heavy_000.ogg` | Elwynn Forest | Peaceful forest chime |
+| `mapEntryWestfall` | `impactPlank_medium_002.ogg` | Westfall | Wheat fields / wooden farm |
+| `mapEntryDuskwood` | `lowThreeTone.ogg` | Duskwood | Ominous dusk tone |
+| `mapEntryRedridge` | `impactMetal_heavy_000.ogg` | Redridge Mountains | Wind and metal cliffs |
+| `mapEntryStranglethorn` | `jingles-hit_07.ogg` | Stranglethorn Vale | Jungle drum jingle |
+
+Kenney CC0 impact/jingle assets in `frontend/public/audio/sfx/*.ogg` (see Kenney.nl Impact Sounds / Digital Audio packs).
+
 ## Fallback
 
 If samples fail to load/decode, `frontend/src/audio/audioBus.js` falls back to Web Audio synthesis.

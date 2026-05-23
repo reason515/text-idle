@@ -10,6 +10,7 @@ import {
 } from './audioPreferences.js'
 import {
   __setSampleBufferForTests,
+  bindAudioUnlockOnFirstGesture,
   getOrCreateAudioContext,
   playCombatDamageLineSound,
   playCombatLogLineSound,
@@ -19,10 +20,13 @@ import {
   playCombatHitSound,
   playCombatUnitDeathSound,
   playCombatVictorySound,
+  playMapEntrySound,
   preloadSamples,
   resetSharedAudioContextForTests,
   resumeAudioContext,
   shouldSuppressAudioOutput,
+  tryUnlockAudioOnLoad,
+  unlockAudioContext,
 } from './audioBus.js'
 
 function createMemoryLocalStorage() {
@@ -249,6 +253,26 @@ describe('audioBus', () => {
     expect(ctx.createOscillator).toHaveBeenCalled()
   })
 
+  it('plays map entry synthesis per map when no samples loaded', () => {
+    playMapEntrySound({ mapId: 'elwynn-forest' })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+    ctx.createOscillator.mockClear()
+    playMapEntrySound({ mapId: 'duskwood' })
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses map entry sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/impactBell_heavy_000.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playMapEntrySound({ mapId: 'elwynn-forest' })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
   it('uses encounter sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
@@ -381,6 +405,32 @@ describe('audioBus', () => {
     const ctx = getOrCreateAudioContext()
     ctx.state = 'suspended'
     await resumeAudioContext()
+    expect(ctx.resume).toHaveBeenCalled()
+  })
+
+  it('unlockAudioContext preloads samples and resumes when suspended', () => {
+    const ctx = getOrCreateAudioContext()
+    ctx.state = 'suspended'
+    unlockAudioContext()
+    expect(ctx.resume).toHaveBeenCalled()
+  })
+
+  it('bindAudioUnlockOnFirstGesture registers one-time listeners', () => {
+    const addSpy = vi.fn()
+    vi.stubGlobal('document', {
+      addEventListener: addSpy,
+    })
+    bindAudioUnlockOnFirstGesture()
+    bindAudioUnlockOnFirstGesture()
+    expect(addSpy).toHaveBeenCalledTimes(2)
+    expect(addSpy.mock.calls[0][0]).toBe('pointerdown')
+    expect(addSpy.mock.calls[1][0]).toBe('keydown')
+  })
+
+  it('tryUnlockAudioOnLoad attempts to resume context', () => {
+    const ctx = getOrCreateAudioContext()
+    ctx.state = 'suspended'
+    tryUnlockAudioOnLoad()
     expect(ctx.resume).toHaveBeenCalled()
   })
 })
