@@ -1398,7 +1398,7 @@ describe('combat progression and systems', () => {
           id: 'm1',
           name: 'Mob A',
           damageType: 'magic',
-          base: { hp: 50, physAtk: 0, spellPower: 5, agility: 3, armor: 0, resistance: 2 },
+          base: { hp: 500, physAtk: 0, spellPower: 5, agility: 3, armor: 0, resistance: 2 },
         },
         { tier: 'normal', level: 1 }
       ),
@@ -1453,6 +1453,57 @@ describe('combat progression and systems', () => {
     expect(wUp.hpGained).toBe(3)
     expect(wUp.hpAfter).toBe(wUp.hpBefore + 3)
     expect(wUp.actorName).toBeDefined()
+  })
+
+  it('skips end-of-round MP and HP regen when all monsters are dead that round', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      strength: 200,
+      agility: 99,
+      level: 10,
+      equipment: { Chest: { hpRegen: 5, armor: 0, resistance: 0, manaRegen: 2 } },
+    })
+    const mage = sampleHero({
+      id: 'm1',
+      class: 'Mage',
+      spirit: 10,
+      agility: 50,
+      skill: 'fireball',
+      equipment: { Chest: { manaRegen: 2, armor: 0, resistance: 0 } },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob A',
+          damageType: 'physical',
+          base: { hp: 5, physAtk: 0, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({
+      heroes: [warrior, mage],
+      monsters,
+      rng: () => 0.5,
+      maxRounds: 15,
+    })
+    expect(result.outcome).toBe('victory')
+    const lastRound = result.rounds
+    const regenOnLastRound = result.log.filter(
+      (e) =>
+        (e.type === 'manaRegenBatch' || e.type === 'hpRegenBatch') && e.round === lastRound
+    )
+    expect(regenOnLastRound).toHaveLength(0)
+    const killEntry = result.log.find((e) => e.targetHPAfter != null && e.targetHPAfter <= 0)
+    expect(killEntry).toBeDefined()
+    expect(killEntry.round).toBe(lastRound)
+    const regenBeforeKill = result.log.filter(
+      (e) =>
+        (e.type === 'manaRegenBatch' || e.type === 'hpRegenBatch') && e.round < lastRound
+    )
+    expect(regenBeforeKill.length).toBeGreaterThan(0)
   })
 
   it('heroAllPrioritySkillsUnaffordable is true when Mage cannot pay any priority skill', () => {

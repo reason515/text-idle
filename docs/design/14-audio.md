@@ -29,6 +29,8 @@
 | 胜利 / 战败 … | `victory` / `defeat` | `fs_victory.wav` / `fs_defeat.wav` | … |
 | 英雄升级（`levelUp` 日志）… | `levelUp` | `fs_level_up.ogg` | 上行 C-E-G 和弦 + shimmer |
 | 装备掉落（胜利 summary 含装备）… | `lootDrop` | `fs_loot_drop.ogg` | 短 bell + 带通瞬态 |
+| 回合结束生命恢复（`hpRegenBatch`）… | `hpRegen` | `fs_skill_heal.wav`（复用） | 治疗 synth 回退，增益约 0.58 |
+| 回合结束法力恢复（`manaRegenBatch`）… | `mpRegen` | `fs_skill_shield.wav`（复用） | 护盾 bell synth 回退，增益约 0.52 |
 | 抵达地图（`mapEntry` 日志）… | `mapEntryElwynn` 等（按 `mapId`） | Kenney CC0 `.ogg`（见下表） | 各图独立合成回退（森林和弦 / 荒野风声 / 暮色下潜 / 山风金属 / 丛林鼓点） |
 
 ### 地图进入音效（按 `mapId` 映射）
@@ -86,7 +88,7 @@
 
 ## 四、与战斗日志的绑定
 
-- 在 `MainScreen.vue` 的战斗循环中：地图进入日志（`type: 'mapEntry'`）揭示时调用 `playMapEntrySound({ mapId })`；遭遇日志（`type: 'encounter'`）揭示时调用 `playCombatEncounterSound({ isBoss })`；`animateCombatLog` 中致死行后**再占用一步**揭示 `unitDefeated` 并播放阵亡音；伤害/DoT 等与对应日志条目同一步触发 `playCombatLogLineSound(entry)`。`addLogEntries` 在遇到 `summary` 且 `outcome` 为 `victory` / `defeat` 时播对应结算音；胜利且 `rewards.equipment` 非空时追加 `playLootDropSound()`；`levelUp` 日志行揭示时调用 `playLevelUpSound()`。
+- 在 `MainScreen.vue` 的战斗循环中：地图进入日志（`type: 'mapEntry'`）揭示时调用 `playMapEntrySound({ mapId })`；遭遇日志（`type: 'encounter'`）揭示时调用 `playCombatEncounterSound({ isBoss })`；`animateCombatLog` 中致死行后**再占用一步**揭示 `unitDefeated` 并播放阵亡音；伤害/DoT 等与对应日志条目同一步触发 `playCombatLogLineSound(entry)`；`hpRegenBatch` / `manaRegenBatch` 由 `revealRegenBatchStep` 揭示（飘字 + 血条/资源条脉冲 + `playCombatRegenBatchSound`）。`addLogEntries` 在遇到 `summary` 且 `outcome` 为 `victory` / `defeat` 时播对应结算音；胜利且 `rewards.equipment` 非空时追加 `playLootDropSound()`；`levelUp` 日志行揭示时调用 `playLevelUpSound()`。
 - 与飘字扣血条件一致处使用 `netDamageToHp`；**不**在独立于日志的时间轴上播放。
 
 ## 五、UI

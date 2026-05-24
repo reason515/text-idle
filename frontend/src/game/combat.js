@@ -2683,60 +2683,64 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
     }
 
-    // Mage/Priest/Druid mana recovery per round: Spirit * MANA_REGEN_SPIRIT_SCALE + equipment recovery bonus (no flat base)
-    const manaRegenUpdates = []
-    for (const hero of heroUnits) {
-      if (hero.currentHP <= 0) continue
-      if (hero.class !== 'Mage' && hero.class !== 'Priest' && hero.class !== 'Druid') continue
-      const manaBefore = Math.min(hero.maxMP, Math.max(0, hero.currentMP || 0))
-      if (manaBefore >= hero.maxMP) continue
-      const regenRaw =
-        (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus ?? 0)
-      const regenFloored = Math.floor(regenRaw)
-      if (regenFloored <= 0) continue
-      const manaGained = Math.min(hero.maxMP - manaBefore, regenFloored)
-      hero.currentMP = manaBefore + manaGained
-      manaRegenUpdates.push({
-        actorId: hero.id,
-        actorName: hero.name,
-        actorClass: hero.class,
-        manaBefore,
-        manaGained,
-        regenRaw,
-        regenFloored,
-        manaRegenSpiritScale: MANA_REGEN_SPIRIT_SCALE,
-        manaAfter: hero.currentMP,
-        maxMP: hero.maxMP,
-        spirit: hero.spirit || 0,
-        equipmentRecoveryBonus: hero.equipmentRecoveryBonus || 0,
-      })
-    }
-    if (manaRegenUpdates.length > 0) {
-      log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
-    }
+    // Mage/Priest/Druid mana + equipment HP regen only while combat continues (skip when all monsters dead)
+    const monstersAliveForRegen = alive(monsterUnits).length > 0
+    if (monstersAliveForRegen) {
+      // Mage/Priest/Druid mana recovery per round: Spirit * MANA_REGEN_SPIRIT_SCALE + equipment recovery bonus (no flat base)
+      const manaRegenUpdates = []
+      for (const hero of heroUnits) {
+        if (hero.currentHP <= 0) continue
+        if (hero.class !== 'Mage' && hero.class !== 'Priest' && hero.class !== 'Druid') continue
+        const manaBefore = Math.min(hero.maxMP, Math.max(0, hero.currentMP || 0))
+        if (manaBefore >= hero.maxMP) continue
+        const regenRaw =
+          (hero.spirit || 0) * MANA_REGEN_SPIRIT_SCALE + (hero.equipmentRecoveryBonus ?? 0)
+        const regenFloored = Math.floor(regenRaw)
+        if (regenFloored <= 0) continue
+        const manaGained = Math.min(hero.maxMP - manaBefore, regenFloored)
+        hero.currentMP = manaBefore + manaGained
+        manaRegenUpdates.push({
+          actorId: hero.id,
+          actorName: hero.name,
+          actorClass: hero.class,
+          manaBefore,
+          manaGained,
+          regenRaw,
+          regenFloored,
+          manaRegenSpiritScale: MANA_REGEN_SPIRIT_SCALE,
+          manaAfter: hero.currentMP,
+          maxMP: hero.maxMP,
+          spirit: hero.spirit || 0,
+          equipmentRecoveryBonus: hero.equipmentRecoveryBonus || 0,
+        })
+      }
+      if (manaRegenUpdates.length > 0) {
+        log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
+      }
 
-    const hpRegenUpdates = []
-    for (const hero of heroUnits) {
-      if (hero.currentHP <= 0) continue
-      const regen = Math.floor(hero.hpRegen || 0)
-      if (regen <= 0) continue
-      const hpBefore = Math.min(hero.maxHP, Math.max(0, hero.currentHP || 0))
-      if (hpBefore >= hero.maxHP) continue
-      const hpGained = Math.min(hero.maxHP - hpBefore, regen)
-      hero.currentHP = hpBefore + hpGained
-      hpRegenUpdates.push({
-        actorId: hero.id,
-        actorName: hero.name,
-        actorClass: hero.class,
-        hpBefore,
-        hpGained,
-        regenFloored: regen,
-        hpAfter: hero.currentHP,
-        maxHP: hero.maxHP,
-      })
-    }
-    if (hpRegenUpdates.length > 0) {
-      log.push({ round, type: 'hpRegenBatch', updates: hpRegenUpdates })
+      const hpRegenUpdates = []
+      for (const hero of heroUnits) {
+        if (hero.currentHP <= 0) continue
+        const regen = Math.floor(hero.hpRegen || 0)
+        if (regen <= 0) continue
+        const hpBefore = Math.min(hero.maxHP, Math.max(0, hero.currentHP || 0))
+        if (hpBefore >= hero.maxHP) continue
+        const hpGained = Math.min(hero.maxHP - hpBefore, regen)
+        hero.currentHP = hpBefore + hpGained
+        hpRegenUpdates.push({
+          actorId: hero.id,
+          actorName: hero.name,
+          actorClass: hero.class,
+          hpBefore,
+          hpGained,
+          regenFloored: regen,
+          hpAfter: hero.currentHP,
+          maxHP: hero.maxHP,
+        })
+      }
+      if (hpRegenUpdates.length > 0) {
+        log.push({ round, type: 'hpRegenBatch', updates: hpRegenUpdates })
+      }
     }
 
     // Tick shield duration (Power Word: Shield)

@@ -61,6 +61,15 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 | `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam, maul, rake | https://freesound.org/s/812592/ |
 | `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor, bear-form, defensive-stance | https://freesound.org/s/570853/ |
 
+## End-of-round regen SFX (`hpRegenBatch` / `manaRegenBatch` log lines)
+
+Playback: `playCombatRegenBatchSound(entry)` when the regen batch log line is revealed (same step as bar float animation).
+
+| Manifest key | Local file (reuses) | When |
+|--------------|---------------------|------|
+| `hpRegen` | `fs_skill_heal.wav` | Equipment HP regen at round end (`hpRegenBatch`) |
+| `mpRegen` | `fs_skill_shield.wav` | Spirit + equipment MP regen (`manaRegenBatch`) |
+
 Note: `fs_skill_taunt.mp3`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, and `fs_monster_death.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 
 ## Progression and loot SFX

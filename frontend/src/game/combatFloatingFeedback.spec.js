@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCombatFloatingPushes, combatMoveDisplay } from './combatFloatingFeedback.js'
+import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes, combatMoveDisplay } from './combatFloatingFeedback.js'
 
 const resolve = (id) => ({ 'heroic-strike': 'Heroic Strike', taunt: 'Taunt' }[id])
 const debuffName = (t) => ({ burn: 'Burn' }[t])
@@ -145,6 +145,39 @@ describe('buildCombatFloatingPushes', () => {
         unitId: 'hero-1',
         text: '+25',
         opts: { skillName: 'Bloodthirst', type: 'heal' },
+      },
+    ])
+  })
+})
+
+describe('buildRegenBatchFloatingPushes', () => {
+  it('builds HP regen floats for hpRegenBatch', () => {
+    const pushes = buildRegenBatchFloatingPushes({
+      type: 'hpRegenBatch',
+      updates: [
+        { actorId: 'h1', hpGained: 3 },
+        { actorId: 'h2', hpGained: 0 },
+      ],
+    })
+    expect(pushes).toEqual([
+      {
+        unitId: 'h1',
+        text: '+3',
+        opts: { skillName: '\u751f\u547d\u56de\u590d', type: 'heal' },
+      },
+    ])
+  })
+
+  it('builds MP regen floats for manaRegenBatch', () => {
+    const pushes = buildRegenBatchFloatingPushes({
+      type: 'manaRegenBatch',
+      updates: [{ actorId: 'm1', manaGained: 5 }],
+    })
+    expect(pushes).toEqual([
+      {
+        unitId: 'm1',
+        text: '+5',
+        opts: { skillName: '\u6cd5\u529b\u56de\u590d', type: 'mp-regen' },
       },
     ])
   })

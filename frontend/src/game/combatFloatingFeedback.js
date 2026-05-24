@@ -114,3 +114,33 @@ export function buildCombatFloatingPushes(entry, helpers) {
 
   return pushes
 }
+
+/**
+ * Panel float pushes for end-of-round regen batch log entries.
+ * @param {Object} entry manaRegenBatch or hpRegenBatch log entry
+ * @returns {Array<{ unitId: string, text: string, opts: { skillName?: string|null, type: string } }>}
+ */
+export function buildRegenBatchFloatingPushes(entry) {
+  const pushes = []
+  if (!entry || !Array.isArray(entry.updates)) return pushes
+  if (entry.type === 'hpRegenBatch') {
+    for (const u of entry.updates) {
+      if (!u.actorId || (u.hpGained ?? 0) <= 0) continue
+      pushes.push({
+        unitId: u.actorId,
+        text: '+' + u.hpGained,
+        opts: { skillName: '\u751f\u547d\u56de\u590d', type: 'heal' },
+      })
+    }
+  } else if (entry.type === 'manaRegenBatch') {
+    for (const u of entry.updates) {
+      if (!u.actorId || (u.manaGained ?? 0) <= 0) continue
+      pushes.push({
+        unitId: u.actorId,
+        text: '+' + u.manaGained,
+        opts: { skillName: '\u6cd5\u529b\u56de\u590d', type: 'mp-regen' },
+      })
+    }
+  }
+  return pushes
+}

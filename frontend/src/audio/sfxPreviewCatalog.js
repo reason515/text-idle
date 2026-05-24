@@ -131,6 +131,16 @@ export const SFX_PREVIEW_GROUPS = [
         label: '\u62a4\u76fe / \u9632\u5fa1',
         usage: 'power-word-shield\u3001frost-armor\u3001bear-form \u7b49\u62a4\u76fe\u6216\u59ff\u6001\u884c',
       },
+      {
+        category: 'hpRegen',
+        label: '\u56de\u5408\u7ed3\u675f\u751f\u547d\u6062\u590d',
+        usage: 'hpRegenBatch \u65e5\u5fd7\uff08\u88c5\u5907\u751f\u547d\u56de\u590d\uff09',
+      },
+      {
+        category: 'mpRegen',
+        label: '\u56de\u5408\u7ed3\u675f\u6cd5\u529b\u6062\u590d',
+        usage: 'manaRegenBatch \u65e5\u5fd7\uff08\u7cbe\u795e + \u88c5\u5907\u6cd5\u529b\u6062\u590d\uff09',
+      },
     ],
   },
   {

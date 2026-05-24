@@ -63,14 +63,14 @@
             </div>
             <div class="bar-row">
               <span class="bar-label">HP</span>
-              <div class="bar-track">
+              <div class="bar-track" :class="{ 'bar-regen-hp-pulse': getRegenBarPulseKind(hero.id) === 'hp' }">
                 <div class="bar-fill hp-fill" :style="{ width: hpPct(hero) + '%', background: hpBarColor(hpPct(hero)) }"></div>
               </div>
               <span class="bar-num" :style="{ color: hpBarColor(hpPct(hero)) }">{{ hero.currentHP }}/{{ hero.maxHP }}</span>
             </div>
             <div class="bar-row">
               <span class="bar-label">{{ resourceLabel(hero.class) }}</span>
-              <div class="bar-track">
+              <div class="bar-track" :class="{ 'bar-regen-mp-pulse': getRegenBarPulseKind(hero.id) === 'mp' }">
                 <div class="bar-fill" :class="resourceFillClass(hero.class)" :style="{ width: mpPct(hero) + '%' }"></div>
               </div>
               <span class="bar-num" :class="{ 'resource-rage': hero.class === 'Warrior' }">{{ hero.currentMP }}/{{ hero.maxMP }}</span>
@@ -2428,7 +2428,7 @@ import {
   conditionValueDisplay,
   priestExecuteFinisherPreviewNote,
 } from '../game/aiTactics.js'
-import { buildCombatFloatingPushes } from '../game/combatFloatingFeedback.js'
+import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes } from '../game/combatFloatingFeedback.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { getGold, addGold } from '../game/gold.js'
@@ -2474,6 +2474,7 @@ import {
   playCombatDamageLineSound,
   playCombatDefeatSound,
   playCombatEncounterSound,
+  playCombatRegenBatchSound,
   playCombatUnitDeathSound,
   playCombatVictorySound,
   playLevelUpSound,
@@ -2801,7 +2802,12 @@ const currentActorId = ref(null)
 const currentTargetId = ref(null)
 const monsterTargets = ref({})
 const unitFloatingNumbers = ref({})
+/** @type {import('vue').Ref<Record<string, 'hp' | 'mp'>>} */
+const regenPulseByUnitId = ref({})
 let floatNumId = 0
+
+const REGEN_HERO_STAGGER_MS = 200
+const REGEN_BAR_SETTLE_MS = 280
 const toastMessages = ref([])
 let toastId = 0
 const pendingSkillChoices = ref([])
@@ -2845,6 +2851,20 @@ function showToast(payload) {
 
 function getFloatingNumbers(unitId) {
   return unitFloatingNumbers.value[unitId] ?? []
+}
+
+function getRegenBarPulseKind(unitId) {
+  return regenPulseByUnitId.value[unitId] ?? null
+}
+
+function triggerRegenBarPulse(unitId, kind) {
+  if (!unitId || isCombatUiDeferred()) return
+  regenPulseByUnitId.value = { ...regenPulseByUnitId.value, [unitId]: kind }
+  setTimeout(() => {
+    const next = { ...regenPulseByUnitId.value }
+    delete next[unitId]
+    regenPulseByUnitId.value = next
+  }, 650)
 }
 
 function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', moveKind = null } = {}) {
@@ -4234,6 +4254,95 @@ async function revealUnitDefeatedStep(defeatEntry, stepDelayMs) {
   await scrollLog()
 }
 
+function applyRegenBatchInstant(entry) {
+  if (
+    (entry.type !== 'manaRegenBatch' && entry.type !== 'hpRegenBatch') ||
+    !Array.isArray(entry.updates)
+  ) {
+    return false
+  }
+  playCombatRegenBatchSound(entry)
+  let batchHeroes = [...displayHeroes.value]
+  for (const u of entry.updates) {
+    const bi = batchHeroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
+    if (bi < 0) continue
+    if (entry.type === 'manaRegenBatch') {
+      batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
+    } else {
+      batchHeroes[bi] = { ...batchHeroes[bi], currentHP: u.hpAfter }
+    }
+  }
+  displayHeroes.value = batchHeroes
+  syncSelectedUnitsFromCombat()
+  return true
+}
+
+async function revealRegenBatchStep(entry) {
+  if (
+    (entry.type !== 'manaRegenBatch' && entry.type !== 'hpRegenBatch') ||
+    !Array.isArray(entry.updates) ||
+    entry.updates.length === 0
+  ) {
+    return
+  }
+  const isMana = entry.type === 'manaRegenBatch'
+  addLogEntry(entry)
+  playCombatRegenBatchSound(entry)
+
+  let batchHeroes = [...displayHeroes.value]
+  for (const u of entry.updates) {
+    const bi = batchHeroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
+    if (bi < 0) continue
+    if (isMana) {
+      batchHeroes[bi] = {
+        ...batchHeroes[bi],
+        currentMP: u.manaBefore ?? batchHeroes[bi].currentMP,
+      }
+    } else {
+      batchHeroes[bi] = {
+        ...batchHeroes[bi],
+        currentHP: u.hpBefore ?? batchHeroes[bi].currentHP,
+      }
+    }
+  }
+  displayHeroes.value = batchHeroes
+  await nextTick()
+
+  const floatPushes = buildRegenBatchFloatingPushes(entry)
+  let floatIdx = 0
+  for (let i = 0; i < entry.updates.length; i++) {
+    const u = entry.updates[i]
+    const gained = isMana ? u.manaGained : u.hpGained
+    if (!u.actorId || (gained ?? 0) <= 0) continue
+    if (floatIdx > 0) {
+      await sleepMsRespectingPause(REGEN_HERO_STAGGER_MS)
+      if (!isRunning.value) return
+    }
+    floatIdx += 1
+    currentActorId.value = u.actorId
+    const fp = floatPushes.find((p) => unitIdMatches(p.unitId, u.actorId))
+    if (fp) {
+      pushFloatingNumber(fp.unitId, fp.text, fp.opts)
+    }
+    triggerRegenBarPulse(u.actorId, isMana ? 'mp' : 'hp')
+    let heroes = [...displayHeroes.value]
+    const bi = heroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
+    if (bi >= 0) {
+      if (isMana) {
+        heroes[bi] = { ...heroes[bi], currentMP: u.manaAfter }
+      } else {
+        heroes[bi] = { ...heroes[bi], currentHP: u.hpAfter }
+      }
+      displayHeroes.value = heroes
+      syncSelectedUnitsFromCombat()
+    }
+    await sleepMsRespectingPause(REGEN_BAR_SETTLE_MS)
+    if (!isRunning.value) return
+  }
+  currentActorId.value = null
+  await scrollLog()
+}
+
 function applyOneCombatEntry(entry) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
@@ -4267,22 +4376,7 @@ function applyOneCombatEntry(entry) {
   }
   addLogEntry(entry)
 
-  if (
-    (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') &&
-    Array.isArray(entry.updates)
-  ) {
-    let batchHeroes = [...displayHeroes.value]
-    for (const u of entry.updates) {
-      const bi = batchHeroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
-      if (bi < 0) continue
-      if (entry.type === 'manaRegenBatch') {
-        batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
-      } else {
-        batchHeroes[bi] = { ...batchHeroes[bi], currentHP: u.hpAfter }
-      }
-    }
-    displayHeroes.value = batchHeroes
-    syncSelectedUnitsFromCombat()
+  if (applyRegenBatchInstant(entry)) {
     return
   }
 
@@ -4416,8 +4510,12 @@ async function animateCombatLog(result) {
     if (!isRunning.value) return
     await sleepMsRespectingPause(applyCombatPacingDelayMs(combatLogStepDelayMs))
     if (!isRunning.value) return
-    applyOneCombatEntry(entry)
-    await scrollLog()
+    if (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') {
+      await revealRegenBatchStep(entry)
+    } else {
+      applyOneCombatEntry(entry)
+      await scrollLog()
+    }
 
     if (shouldEmitUnitDefeated(entry)) {
       await revealUnitDefeatedStep(buildUnitDefeatedEntry(entry), combatLogStepDelayMs)
@@ -4545,6 +4643,7 @@ async function runCombatLoop() {
     displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
     encounterInProgress.value = true
     unitFloatingNumbers.value = {}
+    regenPulseByUnitId.value = {}
     monsterTargets.value = {}
     lastOutcome.value = ''
     lastRewards.value = { exp: 0, gold: 0, equipment: [] }
@@ -6814,6 +6913,30 @@ onUnmounted(() => {
   height: 100%;
   transition: width 0.3s;
 }
+.bar-track.bar-regen-hp-pulse {
+  animation: bar-regen-hp-glow 0.55s ease-out;
+}
+.bar-track.bar-regen-mp-pulse {
+  animation: bar-regen-mp-glow 0.55s ease-out;
+}
+@keyframes bar-regen-hp-glow {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  45% {
+    box-shadow: 0 0 8px var(--color-hp);
+  }
+}
+@keyframes bar-regen-mp-glow {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  45% {
+    box-shadow: 0 0 8px var(--color-gold);
+  }
+}
 .hp-fill { background: var(--color-hp); }
 .mp-fill { background: var(--color-mp); }
 .xp-fill { background: var(--color-exp); }
@@ -6872,6 +6995,20 @@ onUnmounted(() => {
 /* Sync-only log row: updates MP bar without visible text */
 .log-mana-regen-sync {
   display: none;
+}
+.log-mana-regen-batch,
+.log-hp-regen-batch {
+  animation: log-regen-reveal 0.45s ease-out;
+}
+@keyframes log-regen-reveal {
+  from {
+    opacity: 0.35;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .log-map-entry {
@@ -8352,6 +8489,13 @@ label.audio-setting-label {
 }
 .float-heal .float-value {
   color: var(--color-heal);
+}
+.float-mp-regen .float-value {
+  color: var(--color-gold);
+}
+.float-mp-regen .float-skill-name {
+  color: var(--color-gold);
+  font-size: var(--font-xs);
 }
 .float-skill-cast {
   top: 20%;

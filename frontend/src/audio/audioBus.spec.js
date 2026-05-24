@@ -18,6 +18,7 @@ import {
   playCombatEncounterSound,
   playCombatHitPreview,
   playCombatHitSound,
+  playCombatRegenBatchSound,
   playCombatUnitDeathSound,
   playCombatVictorySound,
   playLevelUpSound,
@@ -528,6 +529,41 @@ describe('audioBus', () => {
       targetId: 'h1',
     })
     expect(ctx.createBufferSource).toHaveBeenCalled()
+  })
+
+  it('playCombatRegenBatchSound hpRegen uses heal sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.3, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_skill_heal.wav', fakeBuffer)
+    ctx.createBufferSource.mockClear()
+    playCombatRegenBatchSound({
+      type: 'hpRegenBatch',
+      updates: [{ actorId: 'h1', hpGained: 2 }],
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+  })
+
+  it('playCombatRegenBatchSound mpRegen uses synth when sample missing', () => {
+    const ctx = getOrCreateAudioContext()
+    __setSampleBufferForTests('/audio/sfx/fs_skill_shield.wav', null)
+    ctx.createOscillator.mockClear()
+    playCombatRegenBatchSound({
+      type: 'manaRegenBatch',
+      updates: [{ actorId: 'm1', manaGained: 4 }],
+    })
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('playCombatRegenBatchSound skips zero-gain batches', () => {
+    const ctx = getOrCreateAudioContext()
+    ctx.createBufferSource.mockClear()
+    ctx.createOscillator.mockClear()
+    playCombatRegenBatchSound({
+      type: 'hpRegenBatch',
+      updates: [{ actorId: 'h1', hpGained: 0 }],
+    })
+    expect(ctx.createBufferSource).not.toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
   it('falls back to synthesis when sample buffer is null', () => {

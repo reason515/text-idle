@@ -55,6 +55,8 @@ const SAMPLE_MANIFEST = {
   mapEntryStranglethorn: ['/audio/sfx/jingles-hit_07.ogg'],
   levelUp: ['/audio/sfx/fs_level_up.ogg'],
   lootDrop: ['/audio/sfx/fs_loot_drop.ogg'],
+  hpRegen: ['/audio/sfx/fs_skill_heal.wav'],
+  mpRegen: ['/audio/sfx/fs_skill_shield.wav'],
 }
 
 /** Max playback length (sec) per category; trims long Freesound HQ previews. */
@@ -85,6 +87,8 @@ const SAMPLE_MAX_DURATION_SEC = {
   mapEntryStranglethorn: 1.5,
   levelUp: 1.7,
   lootDrop: 1.2,
+  hpRegen: 0.65,
+  mpRegen: 0.55,
 }
 
 /** url -> AudioBuffer | null (failed) | undefined (not attempted). */
@@ -1521,6 +1525,29 @@ export function playCombatDamageLineSound(entry) {
 }
 
 /**
+ * End-of-round HP/MP regen batch (manaRegenBatch / hpRegenBatch log lines).
+ * @param {object | null | undefined} entry
+ */
+export function playCombatRegenBatchSound(entry) {
+  if (!canPlayCombatSfx()) return
+  if (entry == null || (entry.type !== 'manaRegenBatch' && entry.type !== 'hpRegenBatch')) return
+  const updates = Array.isArray(entry.updates) ? entry.updates : []
+  const isHp = entry.type === 'hpRegenBatch'
+  const hasGain = updates.some((u) => (isHp ? u.hpGained : u.manaGained) > 0)
+  if (!hasGain) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  const category = isHp ? 'hpRegen' : 'mpRegen'
+  const gain = isHp ? 0.58 : 0.52
+  if (!tryPlaySample(ctx, category, gain)) {
+    if (isHp) scheduleSkillHealSynth(ctx, 0.55)
+    else scheduleSkillShieldSynth(ctx, 0.5)
+  }
+  resumeContextIfNeeded(ctx)
+}
+
+/**
  * Unit defeated SFX (hero vs monster).
  * @param {object | null | undefined} defeatEntry unitDefeated log entry
  */
@@ -1686,6 +1713,12 @@ function playCategoryForPreview(ctx, category) {
       return
     case 'lootDrop':
       if (!tryPlaySample(ctx, 'lootDrop', 0.85)) scheduleLootDrop(ctx)
+      return
+    case 'hpRegen':
+      if (!tryPlaySample(ctx, 'hpRegen', 0.58)) scheduleSkillHealSynth(ctx, 0.55)
+      return
+    case 'mpRegen':
+      if (!tryPlaySample(ctx, 'mpRegen', 0.52)) scheduleSkillShieldSynth(ctx, 0.5)
       return
     default:
       break
