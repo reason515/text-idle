@@ -18,14 +18,14 @@
 | 日志 / 条件 | 分类（Manifest 键） | 样本（CC0, Kenney） | 合成回退（音色要点） |
 |---|---|---|---|
 | 物理伤害 … | `physHit` / `physCrit` | `fs_phys_hit.wav` / `fs_phys_crit.ogg` | 普通：带通噪声 + 低频 thud；暴击：更重 thud + 中频 ring + 样本叠短促 accent |
-| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.wav` / `fs_magic_crit.ogg` | 普通：亮瞬态 + 压力体 + shimmer；暴击：更高频 shimmer + ring + accent |
+| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.ogg` / `fs_magic_crit.ogg` | 普通：亮瞬态 + 压力体 + shimmer；暴击：更高频 shimmer + ring + accent |
 | 混合 … | 叠 `phys*` + `magic*` | 同上 | … |
 | 闪避 … | `dodge` | `fs_dodge.wav` | … |
-| 遭遇怪物 … | `encounter` | `fs_dodge.wav`（whoosh） | 上升 sweep + 带通噪声 |
-| BOSS 遭遇 … | `encounterBoss` | `fs_phys_crit.ogg` | 更低频 sweep + 低频冲击 |
-| DoT … | `dotPhys` / `dotMagic` | `fs_dot_phys.wav` / `fs_dot_magic.wav` | … |
-| 阵亡（我方英雄）… | `heroDeath` | `fs_death.wav` | 低频下潜 + 闷响噪声 |
-| 阵亡（敌方怪物）… | `monsterDeath` | `fs_dot_phys.wav` | 短促 thud + 带通瞬态 |
+| 遭遇怪物 … | `encounter` | `fs_encounter_boss.ogg` | cinematic impact（约 4s；增益 0.98） |
+| BOSS 遭遇 … | `encounterBoss` | `fs_encounter.ogg` | Spawning（约 1s）+ 增益 1.28 与 accent 层 |
+| DoT … | `dotPhys` / `dotMagic` | `fs_dot_phys.ogg` / `fs_dot_magic.ogg` | 物理：短促 squish/splat；魔法：qubodup 负面法术脉冲（比直伤更轻） |
+| 阵亡（我方英雄）… | `heroDeath` | `fs_hero_death.ogg` | 角色倒下/死亡 cry（约 1.3s；synth 回退：低频下潜 + 闷响噪声） |
+| 阵亡（敌方怪物）… | `monsterDeath` | `fs_monster_death.ogg` | 哥布林式敌方击杀确认（约 1.5s；synth 回退：短促 thud + 带通瞬态） |
 | 胜利 / 战败 … | `victory` / `defeat` | `fs_victory.wav` / `fs_defeat.wav` | … |
 | 英雄升级（`levelUp` 日志）… | `levelUp` | `fs_level_up.ogg` | 上行 C-E-G 和弦 + shimmer |
 | 装备掉落（胜利 summary 含装备）… | `lootDrop` | `fs_loot_drop.ogg` | 短 bell + 带通瞬态 |

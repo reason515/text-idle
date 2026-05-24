@@ -67,7 +67,7 @@ export const SFX_PREVIEW_GROUPS = [
       {
         category: 'encounterBoss',
         label: 'BOSS \u906d\u9047',
-        usage: 'BOSS \u6218\u6597\u5f00\u59cb\u524d\u7684\u906d\u9047\u97f3\uff08\u4e0e\u7269\u7406\u66b4\u51fb\u540c\u6837\u672c\uff09',
+        usage: 'BOSS \u6218\u6597\u5f00\u59cb\u524d\u7684\u906d\u9047\u97f3\uff08\u4e0e\u666e\u901a\u906d\u9047\u3001\u7269\u7406\u66b4\u51fb\u5747\u4e0d\u540c\uff09',
       },
       {
         category: 'heroDeath',
@@ -77,7 +77,7 @@ export const SFX_PREVIEW_GROUPS = [
       {
         category: 'monsterDeath',
         label: '\u602a\u7269\u9635\u4ea1',
-        usage: '\u654c\u65b9\u602a\u7269\u9635\u4ea1\uff08\u4e0e DoT \u7269\u7406\u540c\u6837\u672c\uff09',
+        usage: '\u654c\u65b9\u602a\u7269\u9635\u4ea1\uff08unitDefeated \u65e5\u5fd7\uff09',
       },
     ],
   },

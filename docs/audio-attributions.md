@@ -16,12 +16,15 @@ See `.env.example` for required variables. Playback may trim long files per cate
 |------------|-----------------|--------|------|
 | `fs_phys_hit.wav` | 547042 Hit Impact Sword 3 | CogFireStudios | https://freesound.org/s/547042/ |
 | `fs_phys_crit.ogg` | 591155 Sword Contact (with swipe) | ultraaxvii | https://freesound.org/s/591155/ |
-| `fs_magic_hit.wav` | 455206 Magic Spell 01.wav | LilMati | https://freesound.org/s/455206/ |
-| `fs_magic_crit.ogg` | 430769 Magical Hit | SailorErick | https://freesound.org/s/430769/ |
+| `fs_magic_hit.ogg` | 442774 Magic Spell | qubodup | https://freesound.org/s/442774/ |
+| `fs_magic_crit.ogg` | 817466 Cliche Magic Spell Sound | qubodup | https://freesound.org/s/817466/ |
 | `fs_dodge.wav` | 9509 whoosh.wav | petenice | https://freesound.org/s/9509/ |
-| `fs_dot_phys.wav` | 336495 LowHit_01.wav | Faulkin | https://freesound.org/s/336495/ |
-| `fs_dot_magic.wav` | 781094 videogame sci-fi / fantasy damage efect | CVLTIV8R | https://freesound.org/s/781094/ |
-| `fs_death.wav` | 616504 weapon drop.wav | Empiremonkey | https://freesound.org/s/616504/ |
+| `fs_encounter.ogg` | 683184 Spawning | NearTheAtmoshphere | https://freesound.org/s/683184/ |
+| `fs_encounter_boss.ogg` | 752582 Sound Design Elements Impact SFX PS 014 | AudioPapkin | https://freesound.org/s/752582/ |
+| `fs_dot_phys.ogg` | 495117 Wet Splat 2 | nebulasnails | https://freesound.org/s/495117/ |
+| `fs_dot_magic.ogg` | 827664 Negative Spell Effect | qubodup | https://freesound.org/s/827664/ |
+| `fs_hero_death.ogg` | 808092 Character death 2 | randbsoundbites | https://freesound.org/s/808092/ |
+| `fs_monster_death.ogg` | 249813 Goblin Death.wav | spookymodem | https://freesound.org/s/249813/ |
 | `fs_victory.wav` | 844831 Victory Jingle | JoanStar | https://freesound.org/s/844831/ |
 | `fs_defeat.wav` | 253174 Retro You Lose SFX | see Freesound page | https://freesound.org/s/253174/ |
 | `fs_level_up.ogg` | 442943 Level Up | qubodup | https://freesound.org/s/442943/ |
@@ -33,8 +36,8 @@ Routing: `frontend/src/game/combatLogDefeat.js` (`resolveUnitDefeatedSide`); pla
 
 | Manifest key | Local file | When |
 |--------------|------------|------|
-| `heroDeath` | `fs_death.wav` | Ally hero (`targetClass` set) |
-| `monsterDeath` | `fs_dot_phys.wav` | Enemy monster (`targetTier` set) |
+| `heroDeath` | `fs_hero_death.ogg` | Ally hero (`targetClass` set) |
+| `monsterDeath` | `fs_monster_death.ogg` | Enemy monster (`targetTier` set) |
 
 ## Encounter SFX (`encounter` log line)
 
@@ -42,8 +45,8 @@ Playback: `playCombatEncounterSound({ isBoss })` when the encounter log line is 
 
 | Manifest key | Local file | When |
 |--------------|------------|------|
-| `encounter` | `fs_dodge.wav` | Normal monster pull |
-| `encounterBoss` | `fs_phys_crit.ogg` | Boss encounter (`isBoss`) |
+| `encounter` | `fs_encounter_boss.ogg` | Normal monster pull |
+| `encounterBoss` | `fs_encounter.ogg` | Boss encounter (`isBoss`) |
 
 ## Skill-specific SFX (by `skillId`)
 
@@ -58,7 +61,7 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 | `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam, maul, rake | https://freesound.org/s/812592/ |
 | `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor, bear-form, defensive-stance | https://freesound.org/s/570853/ |
 
-Note: `fs_skill_taunt.mp3`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, and `fs_magic_crit.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
+Note: `fs_skill_taunt.mp3`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, and `fs_monster_death.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 
 ## Progression and loot SFX
 

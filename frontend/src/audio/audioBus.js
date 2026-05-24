@@ -31,15 +31,15 @@ const impactNoiseBuffersByRate = new Map()
 const SAMPLE_MANIFEST = {
   physHit: ['/audio/sfx/fs_phys_hit.wav'],
   physCrit: ['/audio/sfx/fs_phys_crit.ogg'],
-  magicHit: ['/audio/sfx/fs_magic_hit.wav'],
+  magicHit: ['/audio/sfx/fs_magic_hit.ogg'],
   magicCrit: ['/audio/sfx/fs_magic_crit.ogg'],
-  dotPhys: ['/audio/sfx/fs_dot_phys.wav'],
-  dotMagic: ['/audio/sfx/fs_dot_magic.wav'],
+  dotPhys: ['/audio/sfx/fs_dot_phys.ogg'],
+  dotMagic: ['/audio/sfx/fs_dot_magic.ogg'],
   dodge: ['/audio/sfx/fs_dodge.wav'],
-  encounter: ['/audio/sfx/fs_dodge.wav'],
-  encounterBoss: ['/audio/sfx/fs_phys_crit.ogg'],
-  heroDeath: ['/audio/sfx/fs_death.wav'],
-  monsterDeath: ['/audio/sfx/fs_dot_phys.wav'],
+  encounter: ['/audio/sfx/fs_encounter_boss.ogg'],
+  encounterBoss: ['/audio/sfx/fs_encounter.ogg'],
+  heroDeath: ['/audio/sfx/fs_hero_death.ogg'],
+  monsterDeath: ['/audio/sfx/fs_monster_death.ogg'],
   victory: ['/audio/sfx/fs_victory.wav'],
   defeat: ['/audio/sfx/fs_defeat.wav'],
   skillFire: ['/audio/sfx/fs_skill_fire.wav'],
@@ -66,10 +66,10 @@ const SAMPLE_MAX_DURATION_SEC = {
   dotPhys: 0.45,
   dotMagic: 0.55,
   dodge: 0.35,
-  encounter: 0.5,
-  encounterBoss: 0.85,
-  heroDeath: 0.9,
-  monsterDeath: 0.45,
+  encounter: 4.1,
+  encounterBoss: 1.05,
+  heroDeath: 1.35,
+  monsterDeath: 1.5,
   victory: 2.2,
   defeat: 1.8,
   skillFire: 0.85,
@@ -401,6 +401,9 @@ const FLOOR = 0.0001
 /** Sample gain for normal hits vs crits (crit should read clearly louder). */
 const HIT_SAMPLE_GAIN = 0.9
 const CRIT_SAMPLE_GAIN = 1.18
+/** Boss encounter: louder + longer sample than normal pull. */
+const ENCOUNTER_GAIN = 0.98
+const ENCOUNTER_BOSS_GAIN = 1.28
 
 /**
  * All manifest category keys (for catalog sync tests).
@@ -410,11 +413,6 @@ export function listSfxManifestCategories() {
   return Object.keys(SAMPLE_MANIFEST)
 }
 
-/**
- * Short synth punch layered on crit samples for extra weight.
- * @param {AudioContext} ctx
- * @param {'physical' | 'magic' | 'mixed'} accentType
- */
 function scheduleCritSampleAccent(ctx, accentType = 'physical') {
   const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.34
   if (master <= 0) return
@@ -464,6 +462,50 @@ function scheduleCritSampleAccent(ctx, accentType = 'physical') {
   ringGain.connect(ctx.destination)
   ring.start(t)
   ring.stop(t + 0.13)
+}
+
+/** Low rumble + rise layered on boss encounter samples for extra weight. */
+function scheduleBossEncounterAccent(ctx) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.52
+  if (master <= 0) return
+  const t = ctx.currentTime
+
+  const hit = ctx.createOscillator()
+  hit.type = 'square'
+  hit.frequency.setValueAtTime(68, t)
+  hit.frequency.exponentialRampToValueAtTime(42, t + 0.35)
+  const hg = ctx.createGain()
+  hg.gain.setValueAtTime(FLOOR, t)
+  hg.gain.linearRampToValueAtTime(0.55 * master, t + 0.02)
+  hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.42)
+  hit.connect(hg)
+  hg.connect(ctx.destination)
+  hit.start(t)
+  hit.stop(t + 0.44)
+
+  const sweep = ctx.createOscillator()
+  sweep.type = 'sawtooth'
+  sweep.frequency.setValueAtTime(88, t)
+  sweep.frequency.exponentialRampToValueAtTime(220, t + 0.28)
+  const sg = ctx.createGain()
+  sg.gain.setValueAtTime(FLOOR, t)
+  sg.gain.linearRampToValueAtTime(0.22 * master, t + 0.04)
+  sg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.32)
+  sweep.connect(sg)
+  sg.connect(ctx.destination)
+  sweep.start(t)
+  sweep.stop(t + 0.34)
+}
+
+/**
+ * @param {AudioContext} ctx
+ * @returns {boolean}
+ */
+function tryPlayBossEncounterSample(ctx) {
+  const played = tryPlaySample(ctx, 'encounterBoss', ENCOUNTER_BOSS_GAIN)
+  if (played) scheduleBossEncounterAccent(ctx)
+  else scheduleEncounter(ctx, { isBoss: true })
+  return played
 }
 
 /**
@@ -692,12 +734,12 @@ function scheduleEncounter(ctx, opts = {}) {
   sweep.frequency.exponentialRampToValueAtTime(endHz, t + (isBoss ? 0.22 : 0.16))
   const sg = ctx.createGain()
   sg.gain.setValueAtTime(FLOOR, t)
-  sg.gain.linearRampToValueAtTime((isBoss ? 0.14 : 0.11) * master, t + 0.015)
-  sg.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.28 : 0.2))
+  sg.gain.linearRampToValueAtTime((isBoss ? 0.2 : 0.11) * master, t + 0.015)
+  sg.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.38 : 0.2))
   sweep.connect(sg)
   sg.connect(ctx.destination)
   sweep.start(t)
-  sweep.stop(t + (isBoss ? 0.3 : 0.22))
+  sweep.stop(t + (isBoss ? 0.42 : 0.22))
 
   const noiseBuf = getImpactNoiseBuffer(ctx)
   const noiseSrc = ctx.createBufferSource()
@@ -708,13 +750,13 @@ function scheduleEncounter(ctx, opts = {}) {
   bp.Q.setValueAtTime(1.1, t)
   const ng = ctx.createGain()
   ng.gain.setValueAtTime(FLOOR, t)
-  ng.gain.linearRampToValueAtTime((isBoss ? 0.16 : 0.12) * master, t + 0.01)
-  ng.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.24 : 0.14))
+  ng.gain.linearRampToValueAtTime((isBoss ? 0.24 : 0.12) * master, t + 0.01)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + (isBoss ? 0.32 : 0.14))
   noiseSrc.connect(bp)
   bp.connect(ng)
   ng.connect(ctx.destination)
   noiseSrc.start(t)
-  noiseSrc.stop(t + (isBoss ? 0.26 : 0.16))
+  noiseSrc.stop(t + (isBoss ? 0.34 : 0.16))
 
   if (isBoss) {
     const hit = ctx.createOscillator()
@@ -1507,9 +1549,11 @@ export function playCombatEncounterSound(opts = {}) {
   if (!ctx) return
   preloadSamples(ctx)
   const isBoss = !!opts.isBoss
-  const category = isBoss ? 'encounterBoss' : 'encounter'
-  const gain = isBoss ? 0.94 : 0.78
-  if (!tryPlaySample(ctx, category, gain)) scheduleEncounter(ctx, { isBoss })
+  if (isBoss) {
+    tryPlayBossEncounterSample(ctx)
+  } else if (!tryPlaySample(ctx, 'encounter', ENCOUNTER_GAIN)) {
+    scheduleEncounter(ctx, { isBoss: false })
+  }
   resumeContextIfNeeded(ctx)
 }
 
@@ -1620,10 +1664,10 @@ function playCategoryForPreview(ctx, category) {
       if (!tryPlaySample(ctx, 'dodge', 0.78)) scheduleDodge(ctx)
       return
     case 'encounter':
-      if (!tryPlaySample(ctx, 'encounter', 0.78)) scheduleEncounter(ctx, { isBoss: false })
+      if (!tryPlaySample(ctx, 'encounter', ENCOUNTER_GAIN)) scheduleEncounter(ctx, { isBoss: false })
       return
     case 'encounterBoss':
-      if (!tryPlaySample(ctx, 'encounterBoss', 0.94)) scheduleEncounter(ctx, { isBoss: true })
+      tryPlayBossEncounterSample(ctx)
       return
     case 'heroDeath':
       if (!tryPlaySample(ctx, 'heroDeath', 0.95)) scheduleHeroDeath(ctx)

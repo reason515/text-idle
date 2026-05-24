@@ -238,6 +238,83 @@ describe('audioBus', () => {
     expect(ctx.createOscillator.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
+  it('playCombatDamageLineSound dot physical schedules synthesis', () => {
+    playCombatDamageLineSound({
+      type: 'dot',
+      targetId: 'm',
+      damage: 3,
+      debuffDamageType: 'physical',
+    })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('playCombatDamageLineSound dot magic schedules synthesis', () => {
+    playCombatDamageLineSound({
+      type: 'dot',
+      targetId: 'm',
+      damage: 2,
+      debuffDamageType: 'magic',
+    })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('playCombatDamageLineSound skips dot when shield absorbs all damage', () => {
+    playCombatDamageLineSound({
+      type: 'dot',
+      targetId: 'm',
+      damage: 5,
+      shieldAbsorbed: 5,
+      debuffDamageType: 'physical',
+    })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).not.toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('uses dot phys sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_dot_phys.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatDamageLineSound({
+      type: 'dot',
+      targetId: 'm',
+      damage: 3,
+      debuffDamageType: 'physical',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('uses dot magic sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_dot_magic.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatDamageLineSound({
+      type: 'dot',
+      targetId: 'm',
+      damage: 2,
+      debuffDamageType: 'magic',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('playSfxPreview dot categories use sample or synth', () => {
+    playSfxPreview('dotPhys')
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    ctx.createBufferSource.mockClear()
+    playSfxPreview('dotMagic')
+    expect(ctx.createBufferSource.mock.calls.length + ctx.createOscillator.mock.calls.length).toBeGreaterThan(0)
+  })
+
   it('plays victory and defeat synthesis when no samples loaded', () => {
     playCombatVictorySound()
     const ctx = getOrCreateAudioContext()
@@ -310,12 +387,23 @@ describe('audioBus', () => {
   it('uses encounter sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/fs_dodge.wav', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_encounter_boss.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatEncounterSound({ isBoss: false })
     expect(ctx.createBufferSource).toHaveBeenCalled()
     expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('uses boss encounter sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_encounter.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatEncounterSound({ isBoss: true })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('plays hero and monster death synthesis when no samples loaded', () => {
@@ -340,7 +428,7 @@ describe('audioBus', () => {
   it('uses hero death sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/fs_death.wav', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_hero_death.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatUnitDeathSound({
@@ -355,7 +443,7 @@ describe('audioBus', () => {
   it('uses monster death sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/fs_dot_phys.wav', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_monster_death.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatUnitDeathSound({
