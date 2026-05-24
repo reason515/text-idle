@@ -54,10 +54,10 @@
 |---|---|---|---|
 | `skillFire` | `fs_skill_fire.wav` | fireball, pyroblast, scorch | 该技能日志行（含伤害） |
 | `skillFrost` | `fs_skill_frost.wav` | frostbolt, frost-nova, ice-lance | 同上 |
-| `skillHeal` | `fs_skill_heal.wav` | flash-heal, greater-heal | 治疗行（`heal > 0`） |
+| `skillHeal` | `fs_skill_heal.wav` | flash-heal, greater-heal, rejuvenation, regrowth | 治疗行（`heal > 0`）、回春 HoT 施放（`hotApplied`）、HoT tick（`type: hot`） |
 | `skillTaunt` | `fs_skill_taunt.mp3` | taunt, battle-shout | 嘲讽/战吼等无 HP 伤害行 |
-| `skillSunder` | `fs_skill_sunder.wav` | sunder-armor, shield-slam | 破甲/盾击伤害行 |
-| `skillShield` | `fs_skill_shield.wav` | power-word-shield, frost-armor | 护盾/吸收行 |
+| `skillSunder` | `fs_skill_sunder.wav` | sunder-armor, shield-slam, maul, rake | 破甲/盾击/重殴/扫击伤害行 |
+| `skillShield` | `fs_skill_shield.wav` | power-word-shield, frost-armor, bear-form, defensive-stance | 护盾/吸收行、熊形态/防御姿态施放 |
 
 - 有 `skillId` 且映射到上述类别时，**优先**播技能音；未映射技能仍走通用物理/魔法/闪避/DoT 音。
 - `isSkillOnlyCastLine(entry)` 判定纯施法/支援行（治疗、护盾、嘲讽等），避免与通用命中音叠播。

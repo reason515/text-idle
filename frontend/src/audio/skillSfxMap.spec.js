@@ -8,6 +8,10 @@ describe('skillSfxMap', () => {
     expect(getSkillSfxCategory({ skillId: 'flash-heal' })).toBe('skillHeal')
     expect(getSkillSfxCategory({ skillId: 'taunt' })).toBe('skillTaunt')
     expect(getSkillSfxCategory({ skillId: 'sunder-armor' })).toBe('skillSunder')
+    expect(getSkillSfxCategory({ skillId: 'rejuvenation' })).toBe('skillHeal')
+    expect(getSkillSfxCategory({ skillId: 'maul' })).toBe('skillSunder')
+    expect(getSkillSfxCategory({ skillId: 'bear-form' })).toBe('skillShield')
+    expect(getSkillSfxCategory({ sourceSkillId: 'regrowth' })).toBe('skillHeal')
   })
 
   it('returns null for unknown or missing skillId', () => {
@@ -21,6 +25,13 @@ describe('skillSfxMap', () => {
     expect(
       isSkillOnlyCastLine({ skillId: 'power-word-shield', absorbAmount: 30, targetId: 'h1' })
     ).toBe(true)
+    expect(
+      isSkillOnlyCastLine({ skillId: 'rejuvenation', hotApplied: true, targetId: 'h1' })
+    ).toBe(true)
+    expect(
+      isSkillOnlyCastLine({ skillId: 'bear-form', bearFormApplied: true, targetId: 'h1' })
+    ).toBe(true)
+    expect(isSkillOnlyCastLine({ type: 'hot', heal: 5, sourceSkillId: 'rejuvenation' })).toBe(false)
   })
 
   it('does not treat damage skill lines as cast-only', () => {

@@ -217,6 +217,13 @@ describe('skillChoice', () => {
       expect(ok).toBe(true)
       expect(hero.skills).toContain('greater-heal')
     })
+
+    it('adds Druid Lv10 new skill', () => {
+      const hero = { class: 'Druid', skills: ['rejuvenation', 'maul'] }
+      const ok = applyLearnNewSkill(hero, 'bear-form', 10)
+      expect(ok).toBe(true)
+      expect(hero.skills).toContain('bear-form')
+    })
   })
 
   describe('applyEnhanceSkill', () => {

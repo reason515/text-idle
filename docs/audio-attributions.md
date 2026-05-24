@@ -53,10 +53,10 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 |------------|-----------------|---------------------|------|
 | `fs_skill_fire.wav` | 431174 Fireball Explosion | fireball, pyroblast, scorch | https://freesound.org/s/431174/ |
 | `fs_skill_frost.wav` | 160420 iceSpell | frostbolt, frost-nova, ice-lance | https://freesound.org/s/160420/ |
-| `fs_skill_heal.wav` | 562292 Heal - Rpg | flash-heal, greater-heal | https://freesound.org/s/562292/ |
+| `fs_skill_heal.wav` | 562292 Heal - Rpg | flash-heal, greater-heal, rejuvenation, regrowth (+ HoT tick via `sourceSkillId`) | https://freesound.org/s/562292/ |
 | `fs_skill_taunt.mp3` | 547203 Voice_AdultMale_PainGrunts_01 (HQ preview) | taunt, battle-shout | https://freesound.org/s/547203/ |
-| `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam | https://freesound.org/s/812592/ |
-| `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor | https://freesound.org/s/570853/ |
+| `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam, maul, rake | https://freesound.org/s/812592/ |
+| `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor, bear-form, defensive-stance | https://freesound.org/s/570853/ |
 
 Note: `fs_skill_taunt.mp3` is the public CDN HQ preview (CC0); `fs_level_up.ogg` and `fs_loot_drop.ogg` are CC0 HQ previews from the same CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 

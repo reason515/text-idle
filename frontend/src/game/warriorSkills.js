@@ -333,7 +333,10 @@ export function tickHeroBuffs(unit) {
 export function applyDefensiveStanceToIncomingDamage(hero, finalDamage) {
   if (finalDamage <= 0) return { finalDamage, stanceMitigated: 0 }
   const buff = (hero.buffs || []).find(
-    (b) => b.type === 'defensive-stance' && (b.remainingRounds ?? 0) > 0 && (b.damageReductionPct ?? 0) > 0
+    (b) =>
+      (b.type === 'defensive-stance' || b.type === 'bear-form') &&
+      (b.remainingRounds ?? 0) > 0 &&
+      (b.damageReductionPct ?? 0) > 0
   )
   if (!buff) return { finalDamage, stanceMitigated: 0 }
   const pct = Math.min(100, buff.damageReductionPct)

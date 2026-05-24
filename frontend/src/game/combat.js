@@ -45,7 +45,16 @@ import {
   applyDamageToShieldedUnit,
   getShieldBuff,
 } from './priestSkills.js'
-import { getHeroSkillIds } from './skillChoice.js'
+import {
+  getAnyDruidSkillById,
+  getDruidSkillWithEnhancements,
+  executeRejuvenation,
+  executeRegrowth,
+  executeMaul,
+  executeRake,
+  executeBearForm,
+  DRUID_HOT_BUFF_TYPES,
+} from './druidSkills.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
 import { applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
@@ -76,11 +85,13 @@ import {
   getMonsterTargetStable,
   decrementTauntActions,
   getThreatMultiplier,
+  getEffectiveThreatMultiplierForHero,
   isAllyOT,
   getTank,
   getDesignatedTank,
   hasNonZeroThreatOnMonster,
 } from './threat.js'
+import { getHeroSkillIds } from './skillChoice.js'
 import { heroDisplayName } from './heroDisplayName.js'
 import { MANA_REGEN_SPIRIT_SCALE } from './manaRegenConstants.js'
 
@@ -739,7 +750,7 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
   return orderUnitsByAgility(all, rng)
 }
 
-const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal']
+const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal', 'rejuvenation', 'regrowth']
 
 /**
  * True when every skill in tactics skillPriority costs more MP/rage than the actor currently has
@@ -764,6 +775,10 @@ export function heroAllPrioritySkillsUnaffordable(actor, priority) {
       if (skill && cost <= mp) return false
     } else if (cls === 'Priest') {
       const skill = getPriestSkillWithEnhancements(actor, skillId) ?? getAnyPriestSkillById(skillId)
+      const cost = skill?.manaCost ?? 999
+      if (skill && cost <= mp) return false
+    } else if (cls === 'Druid') {
+      const skill = getDruidSkillWithEnhancements(actor, skillId) ?? getAnyDruidSkillById(skillId)
       const cost = skill?.manaCost ?? 999
       if (skill && cost <= mp) return false
     } else if (cls === 'Warrior') {
@@ -1267,7 +1282,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (dsDmg.finalDamage > 0) {
         target.currentHP = dsDmg.nextHP
         doubleStrikeDamage = dsDmg.finalDamage
-        addThreatFromDamage(threat, target.id, actor.id, dsDmg.finalDamage, 1)
+        addThreatFromDamage(threat, target.id, actor.id, dsDmg.finalDamage, 1, actor)
         if ((target.currentHP ?? 0) <= 0) {
           const lk = actor.lifeOnKill || 0
           if (lk > 0) {
@@ -1288,7 +1303,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     const primaryFinalDamage =
       actor.side === 'hero' && hasWeaponDamageSegments && !shieldOnMain ? damage.finalDamage : undefined
      if (actor.side === 'hero' && target.side === 'monster' && damage.finalDamage > 0) {
-      addThreatFromDamage(threat, target.id, actor.id, damage.finalDamage, 1)
+      addThreatFromDamage(threat, target.id, actor.id, damage.finalDamage, 1, actor)
     }
     const targetReason = actor.side === 'monster'
       ? (tauntState[actor.id]?.actionsRemaining > 0 ? 'taunted' : 'highest-threat')
@@ -1411,7 +1426,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     if (mh) logEntry.heroMitigationKind = mh
     if (targetReason) logEntry.targetReason = targetReason
     if (actor.side === 'hero' && target.side === 'monster' && reportedFinalDamage > 0) {
-      const threatMult = 1
+      const threatMult = getEffectiveThreatMultiplierForHero(actor, 1.0)
       logEntry.threatAmount = Math.round(reportedFinalDamage * threatMult)
       logEntry.threatTargetName = target.name
     }
@@ -1529,6 +1544,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       /** Mage/Priest: set when skillPriority was non-empty but no spell fired (MP/CD/conditions). Used with resource check to relax basic-attack gates. */
       let magePriorityNoCastThisTurn = false
       let priestPriorityNoCastThisTurn = false
+      let druidPriorityNoCastThisTurn = false
       /** True after hero resolves basic-attack from tactics skillPriority (skip implicit fallback swing). */
       let heroConsumedExplicitPriorityBasicAttack = false
       const skillPriority = getSkillPriority(actor)
@@ -2269,6 +2285,244 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         priestPriorityNoCastThisTurn = true
       }
 
+      // Druid skill path: HoT heals, physical tank skills, bear form
+      const druidSkillPriority = getSkillPriority(actor)
+      if (actor.side === 'hero' && actor.class === 'Druid' && druidSkillPriority.length > 0) {
+        let usedSkill = false
+        for (const skillId of druidSkillPriority) {
+          if (skillId === 'basic-attack') {
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx)
+            if (!ba.ok) {
+              emitMonsterIntentChangesIfNeeded()
+              continue
+            }
+            emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds: ba.tauntExpiredMonsterIds })
+            usedSkill = true
+            heroConsumedExplicitPriorityBasicAttack = true
+            break
+          }
+          const skill = getDruidSkillWithEnhancements(actor, skillId) ?? getAnyDruidSkillById(skillId)
+          const manaCost = skill?.manaCost ?? 999
+          if (!skill || manaCost > (actor.currentMP || 0)) continue
+          const cooldown = skill.cooldown ?? 0
+          const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
+          if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
+
+          const druidCond = conditions.find((c) => c.skillId === skillId)
+          if (
+            druidCond &&
+            skillId !== 'bear-form' &&
+            !tacticsConditionWhenRequiresPickedTarget(druidCond) &&
+            !checkCondition(druidCond, actor, null, heroUnits, monsterUnits, ctx)
+          ) {
+            continue
+          }
+
+          if (skillId === 'bear-form') {
+            if (druidCond && !checkCondition(druidCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+            const sr = executeBearForm(actor, skill)
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: actor.id,
+              targetName: actor.name,
+              targetClass: actor.class || null,
+              targetTier: null,
+              bearFormApplied: true,
+              bearFormPct: sr.damageReductionPct,
+              bearFormRounds: sr.stanceDuration,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            })
+            usedSkill = true
+            break
+          }
+
+          let druidTarget = pickTarget(actor, heroUnits, monsterUnits, {
+            skillId,
+            conditions,
+            rng,
+            round,
+            threat,
+            tauntState,
+            designatedTank: designatedTankUnit,
+          })
+          if (!druidTarget) continue
+          if (
+            druidCond &&
+            tacticsConditionWhenRequiresPickedTarget(druidCond) &&
+            !checkCondition(druidCond, actor, druidTarget, heroUnits, monsterUnits, ctx)
+          ) {
+            continue
+          }
+
+          if (skillId === 'rejuvenation') {
+            const sr = executeRejuvenation(actor, druidTarget, skill, { rng })
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: druidTarget.id,
+              targetName: druidTarget.name,
+              targetClass: druidTarget.class || null,
+              targetTier: null,
+              hotApplied: sr.hotApplied,
+              hotRefreshed: sr.hotRefreshed,
+              hotHealPerRound: sr.hotHealPerRound,
+              hotDuration: sr.hotDuration,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            })
+            usedSkill = true
+            break
+          }
+
+          if (skillId === 'regrowth') {
+            const sr = executeRegrowth(actor, druidTarget, skill, { rng })
+            const preStableIntentIds = snapshotStableIntentIdsForMonsters(alive(monsterUnits))
+            const healThreatCount = addThreatFromHeal(
+              threat,
+              alive(monsterUnits),
+              alive(heroUnits),
+              tauntState,
+              druidTarget.id,
+              actor.id,
+              sr.heal,
+              monsterLastTarget,
+              actor
+            )
+            const healThreatMult = getEffectiveThreatMultiplierForHero(actor, 1.0)
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: druidTarget.id,
+              targetName: druidTarget.name,
+              targetClass: druidTarget.class || null,
+              targetTier: null,
+              heal: sr.heal,
+              hotApplied: sr.hotApplied,
+              hotRefreshed: sr.hotRefreshed,
+              hotHealPerRound: sr.hotHealPerRound,
+              hotDuration: sr.hotDuration,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              threatHealAmount: healThreatCount > 0 ? Math.round(sr.heal * 0.5 * healThreatMult) : null,
+              threatBeneficiaryName: healThreatCount > 0 ? druidTarget.name : undefined,
+              threatBeneficiaryClass: healThreatCount > 0 ? druidTarget.class || null : undefined,
+            })
+            emitMonsterIntentChangesIfNeeded({ preStableIntentIds })
+            usedSkill = true
+            break
+          }
+
+          if (skillId === 'maul' || skillId === 'rake') {
+            const skillRoll = rng()
+            const hitResult = rollHitCheck(actor, druidTarget, () => skillRoll)
+            const isCrit = hitResult.isHit ? skillRoll < (actor.physCrit || 0) : false
+            const sr =
+              skillId === 'maul'
+                ? executeMaul(actor, druidTarget, skill, { rng, isCrit, isHit: hitResult.isHit })
+                : executeRake(actor, druidTarget, skill, { rng, isCrit, isHit: hitResult.isHit })
+            const baseThreatMult =
+              skillId === 'maul' ? (skill.threatMultiplier ?? getThreatMultiplier(skillId)) : 1.0
+            if (sr.finalDamage > 0) {
+              addThreatFromDamage(threat, druidTarget.id, actor.id, sr.finalDamage, baseThreatMult, actor)
+            }
+            const entry = {
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: druidTarget.id,
+              targetName: druidTarget.name,
+              targetClass: druidTarget.class || null,
+              targetTier: druidTarget.tier || null,
+              damageType: 'physical',
+              rawDamage: sr.rawDamage,
+              isCrit: sr.isCrit,
+              isMiss: !sr.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
+              finalDamage: sr.finalDamage,
+              absorbed: sr.effectiveArmor != null ? Math.max(0, (sr.rawDamage ?? 0) - sr.finalDamage) : undefined,
+              targetDefense: sr.effectiveArmor,
+              targetHPBefore: sr.targetHPBefore ?? druidTarget.currentHP,
+              targetHPAfter: druidTarget.currentHP,
+              targetMaxHP: druidTarget.maxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            }
+            if (sr.weaponAddedMagicDamage > 0) {
+              entry.weaponAddedMagicDamage = sr.weaponAddedMagicDamage
+              entry.primaryFinalDamage = sr.primaryPhysDamage
+            }
+            if (sr.weaponLifeStealHeal > 0) entry.weaponLifeStealHeal = sr.weaponLifeStealHeal
+            if (sr.weaponLifeOnHitHeal > 0) entry.weaponLifeOnHitHeal = sr.weaponLifeOnHitHeal
+            if (skillId === 'rake') {
+              entry.debuffApplied = sr.debuffApplied
+              entry.debuffRefreshed = sr.debuffRefreshed
+              entry.debuffType = sr.debuffType
+              entry.debuffDuration = sr.debuffDuration
+              entry.debuffDamagePerRound = sr.debuffDamagePerRound
+              entry.debuffDamageType = sr.debuffDamageType
+            }
+            if (sr.finalDamage > 0) {
+              entry.threatAmount = Math.round(sr.finalDamage * getEffectiveThreatMultiplierForHero(actor, baseThreatMult))
+              entry.threatTargetName = druidTarget.name
+            }
+            log.push(entry)
+            usedSkill = true
+            break
+          }
+        }
+        if (usedSkill) {
+          continue
+        }
+        druidPriorityNoCastThisTurn = true
+      }
+
       if (actor.side === 'hero' && heroConsumedExplicitPriorityBasicAttack) {
         emitMonsterIntentChangesIfNeeded()
         continue
@@ -2283,11 +2537,12 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
       const relaxBasicAttackTacticGates =
         actor.side === 'hero' &&
-        (actor.class === 'Mage' || actor.class === 'Priest') &&
+        (actor.class === 'Mage' || actor.class === 'Priest' || actor.class === 'Druid') &&
         !basicAttackInPriority &&
         (heroAllPrioritySkillsUnaffordable(actor, priorityForResource) ||
           (actor.class === 'Mage' && magePriorityNoCastThisTurn) ||
-          (actor.class === 'Priest' && priestPriorityNoCastThisTurn))
+          (actor.class === 'Priest' && priestPriorityNoCastThisTurn) ||
+          (actor.class === 'Druid' && druidPriorityNoCastThisTurn))
       const conditionsForBasicAttack =
         relaxBasicAttackTacticGates && actor.side === 'hero'
           ? (conditions || []).filter((c) => c.skillId !== 'basic-attack')
@@ -2374,11 +2629,65 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       }
     }
 
-    // Mage/Priest mana recovery per round: Spirit * MANA_REGEN_SPIRIT_SCALE + equipment recovery bonus (no flat base)
+    // Process HoT on heroes at end of round (Druid rejuvenation / regrowth)
+    for (const unit of heroUnits) {
+      if (unit.currentHP <= 0) continue
+      const hotBuffs = (unit.buffs || []).filter(
+        (b) =>
+          DRUID_HOT_BUFF_TYPES.includes(b.type) &&
+          (b.remainingRounds ?? 0) > 0 &&
+          (b.healPerRound ?? 0) > 0
+      )
+      for (const h of hotBuffs) {
+        const hpBefore = unit.currentHP
+        unit.currentHP = Math.min(unit.maxHP, hpBefore + h.healPerRound)
+        const actualHeal = unit.currentHP - hpBefore
+        if (actualHeal <= 0) continue
+        const caster = heroUnits.find((x) => x.id === h.casterId)
+        log.push({
+          round,
+          type: 'hot',
+          targetId: unit.id,
+          targetName: unit.name,
+          targetClass: unit.class || null,
+          targetTier: null,
+          hotType: h.type,
+          sourceSkillId: h.sourceSkillId,
+          heal: actualHeal,
+          hotHealPerRound: h.healPerRound,
+          targetHPBefore: hpBefore,
+          targetHPAfter: unit.currentHP,
+          targetMaxHP: unit.maxHP,
+          casterId: h.casterId,
+          casterName: caster?.name,
+        })
+        if (caster) {
+          const healThreatMult = getEffectiveThreatMultiplierForHero(caster, 1.0)
+          const healThreatCount = addThreatFromHeal(
+            threat,
+            alive(monsterUnits),
+            alive(heroUnits),
+            tauntState,
+            unit.id,
+            caster.id,
+            actualHeal,
+            monsterLastTarget,
+            caster
+          )
+          if (healThreatCount > 0) {
+            log[log.length - 1].threatHealAmount = Math.round(actualHeal * 0.5 * healThreatMult)
+            log[log.length - 1].threatBeneficiaryName = unit.name
+            log[log.length - 1].threatBeneficiaryClass = unit.class || null
+          }
+        }
+      }
+    }
+
+    // Mage/Priest/Druid mana recovery per round: Spirit * MANA_REGEN_SPIRIT_SCALE + equipment recovery bonus (no flat base)
     const manaRegenUpdates = []
     for (const hero of heroUnits) {
       if (hero.currentHP <= 0) continue
-      if (hero.class !== 'Mage' && hero.class !== 'Priest') continue
+      if (hero.class !== 'Mage' && hero.class !== 'Priest' && hero.class !== 'Druid') continue
       const manaBefore = Math.min(hero.maxMP, Math.max(0, hero.currentMP || 0))
       if (manaBefore >= hero.maxMP) continue
       const regenRaw =

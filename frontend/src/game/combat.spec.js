@@ -1204,6 +1204,76 @@ describe('combat progression and systems', () => {
     expect(firstHit.targetHPAfter).toBe(firstHit.targetHPBefore - overflow)
   })
 
+  it('Druid rejuvenation applies HoT and ticks heal in combat log', () => {
+    const druid = sampleHero({
+      id: 'd1',
+      class: 'Druid',
+      intellect: 30,
+      spirit: 20,
+      agility: 10,
+      strength: 10,
+      skills: ['rejuvenation'],
+      tactics: {
+        skillPriority: ['rejuvenation'],
+        conditions: [{ skillId: 'rejuvenation', targetRule: 'self' }],
+      },
+      equipment: {
+        MainHand: { spellPowerMin: 10, spellPowerMax: 10, armor: 0, resistance: 0 },
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Dummy',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng(Array(40).fill(0.1))
+    const result = runAutoCombat({ heroes: [druid], monsters, rng, maxRounds: 6 })
+    const rejEntry = result.log.find((e) => e.skillId === 'rejuvenation')
+    expect(rejEntry).toBeDefined()
+    expect(rejEntry.hotApplied || rejEntry.hotRefreshed).toBeTruthy()
+    const hotEntry = result.log.find((e) => e.type === 'hot')
+    expect(hotEntry).toBeDefined()
+    expect(hotEntry.heal).toBeGreaterThan(0)
+  })
+
+  it('Druid maul deals damage with elevated threat multiplier', () => {
+    const druid = sampleHero({
+      id: 'd1',
+      class: 'Druid',
+      strength: 25,
+      agility: 12,
+      intellect: 10,
+      spirit: 10,
+      skills: ['maul'],
+      tactics: { skillPriority: ['maul'], targetRule: 'first' },
+      equipment: {
+        MainHand: { physAtkMin: 12, physAtkMax: 12, armor: 0, resistance: 0 },
+      },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Target',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng(Array(30).fill(0.05))
+    const result = runAutoCombat({ heroes: [druid], monsters, rng, maxRounds: 4 })
+    const maulEntry = result.log.find((e) => e.skillId === 'maul' && e.finalDamage > 0)
+    expect(maulEntry).toBeDefined()
+    expect(maulEntry.threatAmount).toBeGreaterThan(maulEntry.finalDamage)
+  })
+
   it('Priest Power Word: Shield with target self applies shield to priest', () => {
     const priest = sampleHero({
       id: 'priest-1',

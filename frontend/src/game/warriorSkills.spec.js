@@ -512,6 +512,12 @@ describe('Defensive Stance enhancement', () => {
     expect(r.finalDamage).toBe(88)
     expect(r.stanceMitigated).toBe(12)
   })
+
+  it('applyDefensiveStanceToIncomingDamage applies bear-form buff', () => {
+    const hero = { side: 'hero', buffs: [{ type: 'bear-form', remainingRounds: 3, damageReductionPct: 12 }] }
+    const r = applyDefensiveStanceToIncomingDamage(hero, 100)
+    expect(r.finalDamage).toBe(88)
+  })
 })
 
 // ---------------------------------------------------------------------------

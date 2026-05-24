@@ -73,6 +73,7 @@ import { CLASS_COLORS } from '../data/heroes.js'
 import { getAnyWarriorSkillById, getEnhancementPreviewEffectDesc } from '../game/warriorSkills.js'
 import { getAnyMageSkillById, getMageEnhancementPreviewEffectDesc } from '../game/mageSkills.js'
 import { getAnyPriestSkillById, getPriestEnhancementPreviewEffectDesc } from '../game/priestSkills.js'
+import { getAnyDruidSkillById, getDruidEnhancementPreviewEffectDesc } from '../game/druidSkills.js'
 import { getSkillChoiceOptions } from '../game/skillChoice.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 
@@ -126,6 +127,9 @@ function getSkillDisplay(skillId) {
   if (heroClass === 'Priest') {
     return getAnyPriestSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', manaCost: null }
   }
+  if (heroClass === 'Druid') {
+    return getAnyDruidSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', manaCost: null }
+  }
   return getAnyWarriorSkillById(id) ?? { name: id || 'Unknown', spec: '', effectDesc: '', rageCost: null }
 }
 
@@ -143,6 +147,9 @@ function getEnhanceEffectDesc(skillId) {
       if (preview) return preview
     } else if (props.hero.class === 'Priest') {
       const preview = getPriestEnhancementPreviewEffectDesc(props.hero, id)
+      if (preview) return preview
+    } else if (props.hero.class === 'Druid') {
+      const preview = getDruidEnhancementPreviewEffectDesc(props.hero, id)
       if (preview) return preview
     } else {
       const preview = getEnhancementPreviewEffectDesc(props.hero, id)

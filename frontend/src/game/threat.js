@@ -14,7 +14,10 @@ const SKILL_THREAT_MULTIPLIERS = {
   'revenge': 1.5,
   'shield-slam': 1.3,
   'taunt': 1.5,
+  'maul': 1.5,
 }
+
+const BEAR_FORM_THREAT_BONUS = 0.25
 
 /**
  * Create empty threat tables: threat[monsterId][heroId] = value.
@@ -62,6 +65,27 @@ export function getThreatMultiplier(skillId) {
 }
 
 /**
+ * Bear Form adds +0.25 to threat multiplier for all threat-producing actions.
+ * @param {Object|null|undefined} hero
+ * @returns {number}
+ */
+export function getBearFormThreatBonus(hero) {
+  if (!hero?.buffs) return 0
+  const buff = hero.buffs.find((b) => b.type === 'bear-form' && (b.remainingRounds ?? 0) > 0)
+  return buff ? BEAR_FORM_THREAT_BONUS : 0
+}
+
+/**
+ * effectiveThreatMultiplier = (baseMultiplier ?? 1.0) + bearFormBonus
+ * @param {Object|null|undefined} hero
+ * @param {number} [baseMultiplier]
+ * @returns {number}
+ */
+export function getEffectiveThreatMultiplierForHero(hero, baseMultiplier = 1.0) {
+  return baseMultiplier + getBearFormThreatBonus(hero)
+}
+
+/**
  * Threat from a skill hit: damage * multiplier, with optional Sunder Armor debuff value in the base.
  * Sunder Armor: base = finalDamage + armorReduction from sunder debuff on target after hit (stacks count), then * 1.5.
  * @param {string} skillId
@@ -102,10 +126,11 @@ export function addThreatFromSkillDamage(threat, monsterId, heroId, skillId, fin
  * @param {number} finalDamage
  * @param {number} multiplier - Skill threat multiplier (default 1.0)
  */
-export function addThreatFromDamage(threat, monsterId, heroId, finalDamage, multiplier = 1.0) {
+export function addThreatFromDamage(threat, monsterId, heroId, finalDamage, multiplier = 1.0, hero = null) {
+  const mult = hero ? getEffectiveThreatMultiplierForHero(hero, multiplier) : multiplier
   if (!threat[monsterId]) threat[monsterId] = {}
   const current = threat[monsterId][heroId] ?? 0
-  threat[monsterId][heroId] = current + Math.round(finalDamage * multiplier)
+  threat[monsterId][heroId] = current + Math.round(finalDamage * mult)
 }
 
 /**
@@ -129,9 +154,11 @@ export function addThreatFromHeal(
   beneficiaryHeroId,
   healerId,
   healAmount,
-  monsterLastTargetById = null
+  monsterLastTargetById = null,
+  healer = null
 ) {
-  const amount = Math.round(healAmount * HEAL_THREAT_MULTIPLIER)
+  const threatMult = getEffectiveThreatMultiplierForHero(healer, 1.0)
+  const amount = Math.round(healAmount * HEAL_THREAT_MULTIPLIER * threatMult)
   if (amount <= 0) return 0
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   let count = 0
@@ -169,9 +196,11 @@ export function addThreatFromShield(
   beneficiaryHeroId,
   casterId,
   absorbAmount,
-  monsterLastTargetById = null
+  monsterLastTargetById = null,
+  caster = null
 ) {
-  const amount = Math.round(absorbAmount * SHIELD_THREAT_MULTIPLIER)
+  const threatMult = getEffectiveThreatMultiplierForHero(caster, 1.0)
+  const amount = Math.round(absorbAmount * SHIELD_THREAT_MULTIPLIER * threatMult)
   if (amount <= 0) return 0
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   let count = 0

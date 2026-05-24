@@ -416,6 +416,20 @@ describe('audioBus', () => {
     expect(ctx.createBufferSource).toHaveBeenCalled()
   })
 
+  it('playCombatLogLineSound hot tick uses skill heal category', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.3, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_skill_heal.wav', fakeBuffer)
+    ctx.createBufferSource.mockClear()
+    playCombatLogLineSound({
+      type: 'hot',
+      heal: 8,
+      sourceSkillId: 'rejuvenation',
+      targetId: 'h1',
+    })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+  })
+
   it('falls back to synthesis when sample buffer is null', () => {
     const ctx = getOrCreateAudioContext()
     for (const u of ['/audio/sfx/fs_phys_hit.wav']) {

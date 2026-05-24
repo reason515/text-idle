@@ -482,9 +482,11 @@ describe('equipment', () => {
       expect(SPELL_WEAPON_AFFIX_POOL.length).toBe(30)
     })
 
-    it('getWeaponAffixMode: phys weapon vs spell weapon', () => {
+    it('getWeaponAffixMode: phys weapon vs spell weapon vs hybrid weapon', () => {
       expect(getWeaponAffixMode('MainHand', { physAtk: [1, 5], spellPower: 0 })).toBe('physical')
       expect(getWeaponAffixMode('MainHandWand', { physAtk: 0, spellPower: [2, 6] })).toBe('spell')
+      expect(getWeaponAffixMode('MainHandHybrid', { physAtk: [1, 4], spellPower: [1, 4] })).toBe('hybrid')
+      expect(getWeaponAffixMode('MainHandHybridStr', { physAtk: [1, 4], spellPower: [1, 4] })).toBe('hybrid')
     })
 
     it('sumWeaponAffixStatsFromItem aggregates range stats', () => {
@@ -516,6 +518,68 @@ describe('equipment', () => {
       const item = createStarterWhiteItem({ id: 'test-wand', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' })
       expect(item?.spellPowerMin).toBeDefined()
       expect(item?.spellPowerMax).toBeDefined()
+    })
+
+    it('returns hybrid weapon with phys and spell power ranges', () => {
+      const item = createStarterWhiteItem({
+        id: 'test-hybrid',
+        baseKey: 'MainHandHybrid',
+        slot: 'MainHand',
+        baseName: '\u81ea\u7136\u9489\u9524',
+      })
+      expect(item?.physAtkMin).toBeDefined()
+      expect(item?.physAtkMax).toBeDefined()
+      expect(item?.spellPowerMin).toBeDefined()
+      expect(item?.spellPowerMax).toBeDefined()
+    })
+
+    it('generateShopItem MainHand-Hybrid returns nature hybrid weapon with dual damage ranges', () => {
+      const item = generateShopItem('MainHand-Hybrid', 10, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.slot).toBe('MainHand')
+      expect(item.physAtkMin).toBeGreaterThan(0)
+      expect(item.spellPowerMin).toBeGreaterThan(0)
+      expect(['\u81ea\u7136\u9489\u9524', '\u91ce\u6027\u9524', '\u6708\u5203\u9524']).toContain(item.baseName)
+    })
+
+    it('generateShopItem MainHand-Hybrid-Str returns holy hybrid weapon with dual damage ranges', () => {
+      const item = generateShopItem('MainHand-Hybrid-Str', 10, () => 0.5)
+      expect(item).toBeDefined()
+      expect(item.slot).toBe('MainHand')
+      expect(item.physAtkMin).toBeGreaterThan(0)
+      expect(item.spellPowerMin).toBeGreaterThan(0)
+      expect(item.strReq).toBeDefined()
+      expect(['\u5723\u5149\u9489\u9524', '\u5ba1\u5224\u9524', '\u94f6\u7ffc\u6218\u9524']).toContain(item.baseName)
+    })
+
+    it('createStarterWhiteItem MainHandHybridStr has phys and spell ranges with str/int reqs on mid tier', () => {
+      const item = createStarterWhiteItem({
+        id: 'test-holy-hybrid',
+        baseKey: 'MainHandHybridStr',
+        slot: 'MainHand',
+        baseName: '\u5723\u5149\u9489\u9524',
+      })
+      expect(item?.physAtkMin).toBeDefined()
+      expect(item?.spellPowerMin).toBeDefined()
+      expect(item?.strReq).toBe(0)
+      expect(item?.intReq).toBe(0)
+    })
+
+    it('getEquipmentBonuses returns both weapon ranges from hybrid MainHand', () => {
+      const b = getEquipmentBonuses({
+        MainHand: {
+          physAtkMin: 2,
+          physAtkMax: 4,
+          spellPowerMin: 2,
+          spellPowerMax: 5,
+          armor: 0,
+          resistance: 0,
+        },
+      })
+      expect(b.physAtkMin).toBe(2)
+      expect(b.physAtkMax).toBe(4)
+      expect(b.spellPowerMin).toBe(2)
+      expect(b.spellPowerMax).toBe(5)
     })
   })
 })

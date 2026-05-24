@@ -15,6 +15,9 @@
 | 双手 | TwoHand | 双手武器 | 装备于主手槽位，占用主手与副手；副手显示「—」不可装备，UI 不单独显示 TwoHand 槽位 |
 
 - **主手 + 副手**：主手装备单手武器时，副手可装备盾牌（物理/坦克向）或法术宝珠 Orb（法术向，被动持握，仅提供属性加成，不造成武器伤害）。
+- **单手双修武器**分两条底材线，主手武器**同时**提供物理攻击与法术强度武器骰（`physAtk` + `spellPower` 范围）；可与副手盾牌或宝珠组合。同档纯物理或纯法术武器的单段骰子约为专精武器的 **65%–75%**，总输出不超越专精构筑。词缀池同时开放物理武器与法术武器专有词缀（见 7.3）。
+  - **自然双修**（`MainHandHybrid` / Nature Maul）：需要**敏捷 + 智力**；面向德鲁伊、萨满。
+  - **圣光双修**（`MainHandHybridStr` / Holy Maul）：需要**力量 + 智力**；面向圣骑士。
 - **单手杖**（魔杖/权杖）属于**主手武器**，可造成法术伤害，与盾牌/宝珠组合使用；不可与法术宝珠混淆。
 - **双手武器**：装备双手武器时，主手与副手均被占用，无法再装备盾牌或法系副手。
 - **武器伤害范围**：物理/法术武器的 PhysAtk+/SpellPower+ 为**范围**（如 3–5、9–14），**每次攻击时**在范围内随机，而非掉落时 roll 一次；详见[04-classes-attributes.md](./04-classes-attributes.md)2.2.3.1。
@@ -233,6 +236,32 @@
 | F5 | Yew Wand | Petrified Wand | Tomb Wand |
 | F6 | Grim Wand | Lich Wand | Demon Wand |
 
+#### 单手自然双修武器 (1H Hybrid / Nature Maul · Agi + Int)
+
+> 主手武器，**同时** roll 物理攻击与法术强度武器骰。需要**敏捷 + 智力**（自 F3 起双属性要求）。面向德鲁伊、萨满；数值约为同档纯物理剑/纯法术杖各 **~70%**。实现：`MainHandHybrid`。
+
+| 底材族 | 普通 (Lv 1–20) | 拓展 (Lv 21–40) | 精英 (Lv 41–60) |
+|--------|----------------|-----------------|-----------------|
+| F1 | Nature Maul | Rune Nature Maul | Primal Maul |
+| F2 | Wild Hammer | Wild Spike Maul | Wild God Hammer |
+| F3 | Moonblade Maul | Lunar War Maul | Moon Goddess Maul |
+| F4 | Oak War Hammer | Elder Tree Maul | Eternal Oak Maul |
+| F5 | Life Spell Hammer | Life Fury Maul | Life Colossus Maul |
+| F6 | World Tree Maul | World Tree Branch Maul | Nordrassil Maul |
+
+#### 单手圣光双修武器 (1H Hybrid / Holy Maul · Str + Int)
+
+> 与上表**数值区间相同**，属性要求改为**力量 + 智力**（自 F3 起双属性）。面向圣骑士。实现：`MainHandHybridStr`。
+
+| 底材族 | 普通 (Lv 1–20) | 拓展 (Lv 21–40) | 精英 (Lv 41–60) |
+|--------|----------------|-----------------|-----------------|
+| F1 | Holy Light Maul | Rune Holy Maul | Primal Holy Maul |
+| F2 | Judgment Hammer | Holy Spike Maul | Divine Hammer |
+| F3 | Silver Wing Hammer | Judgment War Hammer | Seraph Hammer |
+| F4 | Faith War Hammer | Holy Tree Maul | Eternal Holy Maul |
+| F5 | Seal Spell Hammer | Holy Fury Maul | Holy Colossus Maul |
+| F6 | Radiance War Hammer | Radiance Branch Maul | Legendary Holy Maul |
+
 #### 双手剑 (2H Sword)
 
 | 底材族 | 普通 (Lv 1–20) | 拓展 (Lv 21–40) | 精英 (Lv 41–60) |
@@ -295,7 +324,7 @@
 | 项链 Amulet | Pendant |
 | 戒指 Ring | Ring |
 
-- **总计**：防具 5 个部位 + 盾牌 + 法术宝珠 + 武器 10 种 = **17 类有层级槽位**，每类 18 个底材，共 **306 个底材名称**。
+- **总计**：防具 5 个部位 + 盾牌 + 法术宝珠 + 武器 **12** 种 = **19 类有层级槽位**，每类 18 个底材，共 **342 个底材名称**。
 - **法术宝珠 vs 单手杖**：宝珠（Orb）为副手被动法器，无武器伤害；单手杖（Scepter/Wand）为主手武器，可造成法术伤害。两者名称体系完全独立，不重叠。
 - **等级说明**：同族底材中，普通级等级要求约 Lv 1/4/8/12/16/20（F1→F6）；拓展级约 Lv 21/24/28/32/36/40；精英级约 Lv 41/44/48/52/56/60。
 
@@ -307,7 +336,7 @@
 - **防具**：护甲与抗性各≥1，**护甲+抗性总值**随层级与底材族递增；分配比例**随机**，无固定侧重
 - **盾牌**三层级均提供护甲+格挡率，全程需力量，强度随层级递增
 - **2H 武器**伤害约为同族同层级 1H 的 1.5 倍，属性要求更高
-- **匕首与弓**需敏捷，法系武器需智力，其余物理武器需力量
+- **匕首与弓**需敏捷，法系武器需智力，**自然双修主手**（`MainHandHybrid`）自 F3 起需敏捷+智力，**圣光双修主手**（`MainHandHybridStr`）自 F3 起需力量+智力，其余物理武器需力量
 - 同层级内 F1→F6 等级要求与加成按约 4 级递增
 - **相邻族（如 F1 与 F2）**：普通级相邻底材的数值区间需拉开，避免 Lv1 与 Lv4 白装在体感上几乎无差别（实现数据见 `frontend/src/data/itemBases.js`）。
 
@@ -787,6 +816,87 @@
 
 ---
 
+#### 单手自然双修武器 (1H Hybrid / Nature Maul · Agi + Int)
+
+> 需要**敏捷 + 智力**（F1–F2 无属性要求，F3 起双属性）；**同时**提供 PhysAtk 与 SpellPower 武器骰，各约为同档纯物理剑 / 纯法术杖的 **~70%**。实现数据见 `frontend/src/data/itemBases.js` → `MainHandHybrid`。
+
+**普通级 (Lv 1–20)**
+
+| 底材名称 | 等级要求 | Agi | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Nature Maul | 1 | 0 | 0 | 1–4 | 1–4 |
+| Wild Hammer | 4 | 0 | 0 | 1–5 | 2–6 |
+| Moonblade Maul | 8 | 8 | 8 | 1–4 | 2–6 |
+| Oak War Hammer | 12 | 14 | 14 | 2–6 | 4–8 |
+| Life Spell Hammer | 16 | 20 | 20 | 2–6 | 4–9 |
+| World Tree Maul | 20 | 26 | 26 | 2–6 | 6–11 |
+
+**拓展级 (Lv 21–40)**
+
+| 底材名称 | 等级要求 | Agi | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Rune Nature Maul | 21 | 0 | 0 | 4–13 | 5–15 |
+| Wild Spike Maul | 24 | 10 | 10 | 5–15 | 7–18 |
+| Lunar War Maul | 28 | 22 | 22 | 5–15 | 9–22 |
+| Elder Tree Maul | 32 | 36 | 36 | 7–18 | 12–26 |
+| Life Fury Maul | 36 | 52 | 52 | 9–22 | 15–32 |
+| World Tree Branch Maul | 40 | 70 | 70 | 11–28 | 20–39 |
+
+**精英级 (Lv 41–60)**
+
+| 底材名称 | 等级要求 | Agi | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Primal Maul | 41 | 14 | 14 | 12–32 | 16–38 |
+| Wild God Hammer | 44 | 30 | 30 | 16–38 | 22–47 |
+| Moon Goddess Maul | 48 | 50 | 50 | 16–38 | 29–57 |
+| Eternal Oak Maul | 52 | 72 | 72 | 22–47 | 37–71 |
+| Life Colossus Maul | 56 | 98 | 98 | 29–57 | 48–88 |
+| Nordrassil Maul | 60 | 126 | 126 | 37–71 | 61–109 |
+
+- **掉落 / 商店**：主手槽位掉落时，物理单手、法术单手、双修单手各占约 **1/3**；双修再 **50/50** 分为自然（Agi+Int）与圣光（Str+Int）。商店槽位 `MainHand-Hybrid`（自然双修）、`MainHand-Hybrid-Str`（圣光双修）。
+- **词缀**：物理武器专有 + 法术武器专有词缀池均可 roll（见 7.3）。
+
+---
+
+#### 单手圣光双修武器 (1H Hybrid / Holy Maul · Str + Int)
+
+> 与上表**数值区间相同**，属性要求为**力量 + 智力**（F1–F2 无属性要求，F3 起双属性）。面向圣骑士。实现：`MainHandHybridStr`。
+
+**普通级 (Lv 1–20)**
+
+| 底材名称 | 等级要求 | Str | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Holy Light Maul | 1 | 0 | 0 | 1–4 | 1–4 |
+| Judgment Hammer | 4 | 0 | 0 | 1–5 | 2–6 |
+| Silver Wing Hammer | 8 | 8 | 8 | 1–4 | 2–6 |
+| Faith War Hammer | 12 | 14 | 14 | 2–6 | 4–8 |
+| Seal Spell Hammer | 16 | 20 | 20 | 2–6 | 4–9 |
+| Radiance War Hammer | 20 | 26 | 26 | 2–6 | 6–11 |
+
+**拓展级 (Lv 21–40)**
+
+| 底材名称 | 等级要求 | Str | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Rune Holy Maul | 21 | 0 | 0 | 4–13 | 5–15 |
+| Holy Spike Maul | 24 | 10 | 10 | 5–15 | 7–18 |
+| Judgment War Hammer | 28 | 22 | 22 | 5–15 | 9–22 |
+| Holy Tree Maul | 32 | 36 | 36 | 7–18 | 12–26 |
+| Holy Fury Maul | 36 | 52 | 52 | 9–22 | 15–32 |
+| Radiance Branch Maul | 40 | 70 | 70 | 11–28 | 20–39 |
+
+**精英级 (Lv 41–60)**
+
+| 底材名称 | 等级要求 | Str | Int | Phys 下限–上限 | Spell 下限–上限 |
+|----------|----------|-----|-----|----------------|-----------------|
+| Primal Holy Maul | 41 | 14 | 14 | 12–32 | 16–38 |
+| Divine Hammer | 44 | 30 | 30 | 16–38 | 22–47 |
+| Seraph Hammer | 48 | 50 | 50 | 16–38 | 29–57 |
+| Eternal Holy Maul | 52 | 72 | 72 | 22–47 | 37–71 |
+| Holy Colossus Maul | 56 | 98 | 98 | 29–57 | 48–88 |
+| Legendary Holy Maul | 60 | 126 | 126 | 37–71 | 61–109 |
+
+---
+
 #### 双手剑 (2H Sword)
 
 > 需要**力量**；PhysAtk 约为同族同层级单手剑的 1.5 倍。
@@ -1190,7 +1300,7 @@
 
 > **实现状态（与代码对齐）**：**通用词缀**见 **7.2.1**（`AFFIX_POOL`，48 条）。**部位专用**见 `frontend/src/game/slotAffixPools.js`，由 `getMergedAffixPool(itemTier, baseKey, baseDef, resolvedSlot)` 按槽与 `baseKey` 合并：`ARMOR_AFFIX_POOL`、`SHIELD_AFFIX_POOL`、`ORB_AFFIX_POOL`、`RING_AFFIX_POOL`、`AMULET_AFFIX_POOL`；武器专有仍为 `weaponAffixPools.js`（物理/法术各 30 条，含命中）。战斗：`weaponAffixDamage.js`、`combat.js`（物理减伤%、格挡、反伤、击杀回血/怒、连击、怒气获取率等）。
 
-本节以下按**装备部位**划分的专用词缀中：**物理武器**行仅适用于以 `physAtk` 为主的底材（主手单手物理、双手剑/斧/弓等）；**法术武器**行仅适用于以 `spellPower` 为主的底材（主手魔杖/权杖、双手法杖）；**法术宝珠**为副手被动法器（见 2.1、4.3），与盾牌、法术武器词缀池均不同。上述均与职业无强制绑定，仅与**底材类型**一致即可 roll。
+本节以下按**装备部位**划分的专用词缀中：**物理武器**行仅适用于以 `physAtk` 为主的底材（主手单手物理、双手剑/斧/弓等）；**法术武器**行仅适用于以 `spellPower` 为主的底材（主手魔杖/权杖、双手法杖）；**双修主手**（`MainHandHybrid`、`MainHandHybridStr`，同时含 `physAtk` 与 `spellPower` 武器骰）**同时**可 roll 物理武器与法术武器专有词缀；**法术宝珠**为副手被动法器（见 2.1、4.3），与盾牌、法术武器词缀池均不同。上述均与职业无强制绑定，仅与**底材类型**一致即可 roll。
 
 #### 物理攻击武器专有词缀（主手 / 双手物理）
 

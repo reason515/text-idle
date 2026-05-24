@@ -1343,6 +1343,13 @@ export function playCombatLogLineSound(entry) {
     return
   }
 
+  if (entry.type === 'hot' && (entry.heal ?? 0) > 0) {
+    const hotCat = getSkillSfxCategory(entry) ?? 'skillHeal'
+    playSkillCategory(ctx, hotCat, 0.62)
+    resumeContextIfNeeded(ctx)
+    return
+  }
+
   if (entry.targetId && entry.finalDamage > 0) {
     const hpLoss = netDamageToHp(entry)
     if (hpLoss > 0) {

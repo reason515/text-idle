@@ -234,13 +234,14 @@ function filterAffixesByTier(pool, itemTier) {
 /**
  * @param {string} baseKey - MainHand, MainHand2H, etc.
  * @param {Object} baseDef - base row from item tables
- * @returns {'physical'|'spell'|null}
+ * @returns {'physical'|'spell'|'hybrid'|null}
  */
 export function getWeaponAffixMode(baseKey, baseDef) {
-  const weaponKeys = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff']
+  const weaponKeys = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHandHybrid', 'MainHandHybridStr', 'MainHand2HStaff']
   if (!weaponKeys.includes(baseKey) || !baseDef) return null
   const hasPhys = Array.isArray(baseDef.physAtk) || (baseDef.physAtk || 0) > 0
   const hasSpell = Array.isArray(baseDef.spellPower) || (baseDef.spellPower || 0) > 0
+  if (hasPhys && hasSpell) return 'hybrid'
   if (hasPhys && !hasSpell) return 'physical'
   if (hasSpell && !hasPhys) return 'spell'
   return null
@@ -267,6 +268,10 @@ function getMergedAffixPool(itemTier, baseKey, baseDef, resolvedSlot) {
   const mode = getWeaponAffixMode(baseKey, baseDef)
   if (mode === 'physical') pool = pool.concat(filterAffixesByTier(PHYS_WEAPON_AFFIX_POOL, itemTier))
   if (mode === 'spell') pool = pool.concat(filterAffixesByTier(SPELL_WEAPON_AFFIX_POOL, itemTier))
+  if (mode === 'hybrid') {
+    pool = pool.concat(filterAffixesByTier(PHYS_WEAPON_AFFIX_POOL, itemTier))
+    pool = pool.concat(filterAffixesByTier(SPELL_WEAPON_AFFIX_POOL, itemTier))
+  }
   return pool.filter((a) => affixAllowedOnSlot(a, resolvedSlot, baseKey))
 }
 
@@ -306,6 +311,8 @@ function resolveBaseKeyForItem(item) {
     'MainHand2H',
     'MainHand2HBow',
     'MainHandWand',
+    'MainHandHybrid',
+    'MainHandHybridStr',
     'MainHand2HStaff',
   ]
   for (const k of candidates) {
@@ -336,7 +343,13 @@ function resolveSlotForDrop(slot, rng) {
     if (r < 2 / 3) return 'MainHand2HStaff'
     return 'MainHand2HBow'
   }
-  return slot === 'MainHand' ? 'MainHand' : slot
+  if (slot === 'MainHand') {
+    const r = rng()
+    if (r < 1 / 3) return 'MainHand'
+    if (r < 2 / 3) return 'MainHandWand'
+    return rng() < 0.5 ? 'MainHandHybrid' : 'MainHandHybridStr'
+  }
+  return slot
 }
 
 /** Generate a single equipment item. slotOverride: when provided (shop), use this slot. baseKeyOverride: when provided, use this base table. */
@@ -445,7 +458,7 @@ function generateOneItem(monsterLevel, monsterTier, rng, slotOverride = null, ba
     item.blockPct = Array.isArray(bp) ? randomInRange(bp[0], bp[1], rng) : Number(bp) || 0
   }
 
-  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
+  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHandHybrid', 'MainHandHybridStr', 'MainHand2HStaff'].includes(baseKey)
   const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? rollWeaponDamageRange(baseDef.physAtk, rng) : null
   if (physAtkRange) {
     item.physAtkMin = physAtkRange.min
@@ -630,7 +643,7 @@ export function createStarterWhiteItem({ id, baseKey, slot, baseName = null }) {
   }
   finalizeItemDefenseStats(item)
 
-  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHand2HStaff'].includes(baseKey)
+  const isWeaponBase = ['MainHand', 'MainHand2H', 'MainHand2HBow', 'MainHandWand', 'MainHandHybrid', 'MainHandHybridStr', 'MainHand2HStaff'].includes(baseKey)
   const physAtkRange = isWeaponBase && Array.isArray(baseDef.physAtk) ? weaponMidRollFromBase(baseDef.physAtk) : null
   if (physAtkRange) {
     item.physAtkMin = physAtkRange.min
@@ -715,6 +728,8 @@ export const SHOP_SLOTS = [
   { id: 'MainHand-2H-Bow', label: '双手武器（弓）', slot: 'TwoHand', baseKey: 'MainHand2HBow' },
   { id: 'MainHand-2H-Magic', label: '双手武器（法杖）', slot: 'TwoHand', baseKey: 'MainHand2HStaff' },
   { id: 'MainHand-Magic', label: '单手武器（法杖）', slot: 'MainHand', baseKey: 'MainHandWand' },
+  { id: 'MainHand-Hybrid', label: '单手武器（自然双修）', slot: 'MainHand', baseKey: 'MainHandHybrid' },
+  { id: 'MainHand-Hybrid-Str', label: '单手武器（圣光双修）', slot: 'MainHand', baseKey: 'MainHandHybridStr' },
   { id: 'OffHand-Shield', label: '盾牌', slot: 'OffHand', baseKey: 'Shield' },
   { id: 'OffHand-Orb', label: '副手球', slot: 'OffHand', baseKey: 'OffHand' },
   { id: 'Helm', label: '头盔', slot: 'Helm', baseKey: 'Helm' },

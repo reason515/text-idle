@@ -332,6 +332,58 @@ const BASE_ITEMS = {
       { name: '恶魔法杖', levelReq: 60, str: 0, agi: 0, int: 126, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [87, 155] },
     ],
   },
+  MainHandHybrid: {
+    normal: [
+      { name: '\u81ea\u7136\u9489\u9524', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 4], spellPower: [1, 4] },
+      { name: '\u91ce\u6027\u9524', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 5], spellPower: [2, 6] },
+      { name: '\u6708\u5203\u9524', levelReq: 8, str: 0, agi: 8, int: 8, spi: 0, armor: 0, resistance: 0, physAtk: [1, 4], spellPower: [2, 6] },
+      { name: '\u6a61\u6728\u6218\u9524', levelReq: 12, str: 0, agi: 14, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [4, 8] },
+      { name: '\u751f\u547d\u6cd5\u9524', levelReq: 16, str: 0, agi: 20, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [4, 9] },
+      { name: '\u4e16\u754c\u6811\u9524', levelReq: 20, str: 0, agi: 26, int: 26, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [6, 11] },
+    ],
+    exceptional: [
+      { name: '\u81ea\u7136\u7b26\u6587\u9524', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [4, 13], spellPower: [5, 15] },
+      { name: '\u91ce\u6027\u5c16\u9524', levelReq: 24, str: 0, agi: 10, int: 10, spi: 0, armor: 0, resistance: 0, physAtk: [5, 15], spellPower: [7, 18] },
+      { name: '\u6708\u76f8\u6218\u9524', levelReq: 28, str: 0, agi: 22, int: 22, spi: 0, armor: 0, resistance: 0, physAtk: [5, 15], spellPower: [9, 22] },
+      { name: '\u53e4\u6811\u9524', levelReq: 32, str: 0, agi: 36, int: 36, spi: 0, armor: 0, resistance: 0, physAtk: [7, 18], spellPower: [12, 26] },
+      { name: '\u751f\u547d\u6012\u9524', levelReq: 36, str: 0, agi: 52, int: 52, spi: 0, armor: 0, resistance: 0, physAtk: [9, 22], spellPower: [15, 32] },
+      { name: '\u4e16\u754c\u6811\u679d\u9524', levelReq: 40, str: 0, agi: 70, int: 70, spi: 0, armor: 0, resistance: 0, physAtk: [11, 28], spellPower: [20, 39] },
+    ],
+    elite: [
+      { name: '\u539f\u59cb\u4e4b\u9524', levelReq: 41, str: 0, agi: 14, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: [12, 32], spellPower: [16, 38] },
+      { name: '\u8352\u91ce\u795e\u9524', levelReq: 44, str: 0, agi: 30, int: 30, spi: 0, armor: 0, resistance: 0, physAtk: [16, 38], spellPower: [22, 47] },
+      { name: '\u6708\u795e\u9489\u9524', levelReq: 48, str: 0, agi: 50, int: 50, spi: 0, armor: 0, resistance: 0, physAtk: [16, 38], spellPower: [29, 57] },
+      { name: '\u6c38\u6052\u6a61\u9524', levelReq: 52, str: 0, agi: 72, int: 72, spi: 0, armor: 0, resistance: 0, physAtk: [22, 47], spellPower: [37, 71] },
+      { name: '\u751f\u547d\u5de8\u9524', levelReq: 56, str: 0, agi: 98, int: 98, spi: 0, armor: 0, resistance: 0, physAtk: [29, 57], spellPower: [48, 88] },
+      { name: '\u8bfa\u8fbe\u5e0c\u5c14\u9524', levelReq: 60, str: 0, agi: 126, int: 126, spi: 0, armor: 0, resistance: 0, physAtk: [37, 71], spellPower: [61, 109] },
+    ],
+  },
+  MainHandHybridStr: {
+    normal: [
+      { name: '\u5723\u5149\u9489\u9524', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 4], spellPower: [1, 4] },
+      { name: '\u5ba1\u5224\u9524', levelReq: 4, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [1, 5], spellPower: [2, 6] },
+      { name: '\u94f6\u7ffc\u6218\u9524', levelReq: 8, str: 8, agi: 0, int: 8, spi: 0, armor: 0, resistance: 0, physAtk: [1, 4], spellPower: [2, 6] },
+      { name: '\u4fe1\u4ef0\u6218\u9524', levelReq: 12, str: 14, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [4, 8] },
+      { name: '\u5723\u5370\u6cd5\u9524', levelReq: 16, str: 20, agi: 0, int: 20, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [4, 9] },
+      { name: '\u5149\u660e\u6218\u9524', levelReq: 20, str: 26, agi: 0, int: 26, spi: 0, armor: 0, resistance: 0, physAtk: [2, 6], spellPower: [6, 11] },
+    ],
+    exceptional: [
+      { name: '\u7b26\u6587\u5723\u9524', levelReq: 21, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: [4, 13], spellPower: [5, 15] },
+      { name: '\u795e\u5723\u5c16\u9524', levelReq: 24, str: 10, agi: 0, int: 10, spi: 0, armor: 0, resistance: 0, physAtk: [5, 15], spellPower: [7, 18] },
+      { name: '\u5ba1\u5224\u6218\u9524', levelReq: 28, str: 22, agi: 0, int: 22, spi: 0, armor: 0, resistance: 0, physAtk: [5, 15], spellPower: [9, 22] },
+      { name: '\u5723\u6811\u9524', levelReq: 32, str: 36, agi: 0, int: 36, spi: 0, armor: 0, resistance: 0, physAtk: [7, 18], spellPower: [12, 26] },
+      { name: '\u6124\u6012\u5723\u9524', levelReq: 36, str: 52, agi: 0, int: 52, spi: 0, armor: 0, resistance: 0, physAtk: [9, 22], spellPower: [15, 32] },
+      { name: '\u5149\u660e\u679d\u9524', levelReq: 40, str: 70, agi: 0, int: 70, spi: 0, armor: 0, resistance: 0, physAtk: [11, 28], spellPower: [20, 39] },
+    ],
+    elite: [
+      { name: '\u539f\u59cb\u5723\u9524', levelReq: 41, str: 14, agi: 0, int: 14, spi: 0, armor: 0, resistance: 0, physAtk: [12, 32], spellPower: [16, 38] },
+      { name: '\u795e\u7f5a\u9524', levelReq: 44, str: 30, agi: 0, int: 30, spi: 0, armor: 0, resistance: 0, physAtk: [16, 38], spellPower: [22, 47] },
+      { name: '\u708e\u5929\u4f7f\u9524', levelReq: 48, str: 50, agi: 0, int: 50, spi: 0, armor: 0, resistance: 0, physAtk: [16, 38], spellPower: [29, 57] },
+      { name: '\u6c38\u6052\u5723\u9524', levelReq: 52, str: 72, agi: 0, int: 72, spi: 0, armor: 0, resistance: 0, physAtk: [22, 47], spellPower: [37, 71] },
+      { name: '\u5723\u5149\u5de8\u9524', levelReq: 56, str: 98, agi: 0, int: 98, spi: 0, armor: 0, resistance: 0, physAtk: [29, 57], spellPower: [48, 88] },
+      { name: '\u4f20\u8bf4\u5723\u9524', levelReq: 60, str: 126, agi: 0, int: 126, spi: 0, armor: 0, resistance: 0, physAtk: [37, 71], spellPower: [61, 109] },
+    ],
+  },
   MainHand2HStaff: {
     normal: [
       { name: '短杖', levelReq: 1, str: 0, agi: 0, int: 0, spi: 0, armor: 0, resistance: 0, physAtk: 0, spellPower: [4, 9] },
@@ -378,6 +430,8 @@ export const SLOT_TO_BASE_KEY = {
   MainHand2H: 'MainHand2H',
   MainHand2HBow: 'MainHand2HBow',
   MainHandWand: 'MainHandWand',
+  MainHandHybrid: 'MainHandHybrid',
+  MainHandHybridStr: 'MainHandHybridStr',
   MainHand2HStaff: 'MainHand2HStaff',
 }
 

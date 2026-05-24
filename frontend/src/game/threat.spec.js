@@ -14,6 +14,7 @@ import {
   getDesignatedTank,
   isAllyOT,
   getThreatMultiplier,
+  getEffectiveThreatMultiplierForHero,
   computeSkillDamageThreat,
   addThreatFromSkillDamage,
   hasNonZeroThreatOnMonster,
@@ -254,6 +255,20 @@ describe('threat', () => {
     })
     it('returns 1.0 for unknown skill', () => {
       expect(getThreatMultiplier('heroic-strike')).toBe(1.0)
+    })
+    it('returns 1.5 for maul', () => {
+      expect(getThreatMultiplier('maul')).toBe(1.5)
+    })
+  })
+
+  describe('getEffectiveThreatMultiplierForHero', () => {
+    it('adds 0.25 when bear form buff is active', () => {
+      const hero = { buffs: [{ type: 'bear-form', remainingRounds: 2, damageReductionPct: 12 }] }
+      expect(getEffectiveThreatMultiplierForHero(hero, 1.5)).toBe(1.75)
+      expect(getEffectiveThreatMultiplierForHero(hero, 1.0)).toBe(1.25)
+    })
+    it('returns base when no bear form', () => {
+      expect(getEffectiveThreatMultiplierForHero({}, 1.5)).toBe(1.5)
     })
   })
 

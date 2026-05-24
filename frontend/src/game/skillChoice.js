@@ -16,6 +16,13 @@ import {
   getPriestNewSkillsAtLevel,
   getPriestLevelSkillById,
 } from './priestLevelSkills.js'
+import {
+  getAnyDruidSkillById,
+} from './druidSkills.js'
+import {
+  getDruidNewSkillsAtLevel,
+  getDruidLevelSkillById,
+} from './druidLevelSkills.js'
 import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
 
 export { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from './skillEnhancementLimits.js'
@@ -77,13 +84,15 @@ export function getSkillChoiceOptions(hero, level) {
   const canEnhance = isEnhanceMilestone(level) && enhanceableSkillIds.length > 0
 
   let newSkills = []
-  if (isLearnMilestone(level) && (hero.class === 'Warrior' || hero.class === 'Mage' || hero.class === 'Priest')) {
+  if (isLearnMilestone(level) && (hero.class === 'Warrior' || hero.class === 'Mage' || hero.class === 'Priest' || hero.class === 'Druid')) {
     const levelSkills =
       hero.class === 'Warrior'
         ? getNewSkillsAtLevel(hero.class, level)
         : hero.class === 'Mage'
           ? getMageNewSkillsAtLevel(hero.class, level)
-          : getPriestNewSkillsAtLevel(hero.class, level)
+          : hero.class === 'Priest'
+            ? getPriestNewSkillsAtLevel(hero.class, level)
+            : getDruidNewSkillsAtLevel(hero.class, level)
     const unlearned = levelSkills.filter((s) => !existingSet.has(s.id))
     newSkills = unlearned.map((s) => ({
       id: s.id,
@@ -194,7 +203,7 @@ export function ensureSkillMilestonesResolvedMigrated(hero) {
  */
 export function hasSkillChoiceAtLevel(hero, level) {
   if (!isSkillMilestoneLevel(level)) return false
-  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest') return false
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest' && hero.class !== 'Druid') return false
   if (isSkillMilestoneResolved(hero, level)) return false
   const opts = getSkillChoiceOptions(hero, level)
   return opts.canEnhance || opts.newSkills.length > 0
@@ -207,7 +216,7 @@ export function hasSkillChoiceAtLevel(hero, level) {
  * @returns {number|null}
  */
 export function getFirstUnresolvedSkillChoiceLevel(hero) {
-  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest') return null
+  if (hero.class !== 'Warrior' && hero.class !== 'Mage' && hero.class !== 'Priest' && hero.class !== 'Druid') return null
   const heroLevel = hero.level ?? 1
   for (const level of SKILL_MILESTONE_LEVELS) {
     if (level > heroLevel) break
@@ -231,7 +240,9 @@ export function applyLearnNewSkill(hero, skillId, level) {
         ? getMageNewSkillsAtLevel(hero.class, level)
         : hero.class === 'Priest'
           ? getPriestNewSkillsAtLevel(hero.class, level)
-        : []
+          : hero.class === 'Druid'
+            ? getDruidNewSkillsAtLevel(hero.class, level)
+            : []
   const def = levelSkills.find((s) => s.id === skillId)
   if (!def) return false
 
@@ -267,7 +278,9 @@ export function applyEnhanceSkill(hero, skillId) {
         ? (getMageSkillById(skillId) ?? getMageLevelSkillById(skillId))
         : hero.class === 'Priest'
           ? (getAnyPriestSkillById(skillId) ?? getPriestLevelSkillById(skillId))
-        : null
+          : hero.class === 'Druid'
+            ? (getAnyDruidSkillById(skillId) ?? getDruidLevelSkillById(skillId))
+            : null
   if (!def) return false
 
   const current = hero.skillEnhancements?.[skillId]?.enhanceCount ?? 0

@@ -61,12 +61,14 @@
 | | 2H Weapon (Bow) | MainHand2HBow | 双手弓（Short Bow、Composite Bow 等） |
 | | 2H Weapon (Magic) | MainHand2HStaff | 双手杖（Short Staff、Sacred Staff 等） |
 | | 1H Weapon (Magic) | MainHandWand | 权杖 / 魔杖（Scepter、Wand 等） |
+| | 1H Weapon (Hybrid · Agi+Int) | MainHandHybrid | 自然钉锤等（德鲁伊、萨满） |
+| | 1H Weapon (Hybrid · Str+Int) | MainHandHybridStr | 圣光钉锤等（圣骑士） |
 | **副手** | Shield | Shield | 盾牌（物理防护） |
 | | Orb | OffHand | 法术宝珠（法系副手） |
 | **防具** | Helm, Body Armor, Gloves, Boots, Belt | 对应底材 | 头盔、盔甲、手套、鞋子、腰带 |
 | **饰品** | Amulet, Ring | 对应底材 | 项链、戒指 |
 
-- **底材扩展**：`itemBases.js` 中需包含 MainHand2H（双手剑）、MainHand2HBow（双手弓）、MainHand2HStaff（双手杖）、MainHandWand（权杖/魔杖）底材表，与 MainHand（单手物理）并列。
+- **底材扩展**：`itemBases.js` 中需包含 MainHand2H（双手剑）、MainHand2HBow（双手弓）、MainHand2HStaff（双手杖）、MainHandWand（权杖/魔杖）、**MainHandHybrid**（自然双修 · Agi+Int）、**MainHandHybridStr**（圣光双修 · Str+Int）底材表，与 MainHand（单手物理）并列。
 
 ## 七、商店 UI 入口
 

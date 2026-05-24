@@ -22,6 +22,14 @@ export const SKILL_SFX_BY_SKILL_ID = {
   'flash-heal': 'skillHeal',
   'greater-heal': 'skillHeal',
   'last-stand': 'skillHeal',
+  rejuvenation: 'skillHeal',
+  regrowth: 'skillHeal',
+
+  'bear-form': 'skillShield',
+  'defensive-stance': 'skillShield',
+
+  maul: 'skillSunder',
+  rake: 'skillSunder',
 
   taunt: 'skillTaunt',
   'challenging-shout': 'skillTaunt',
@@ -60,6 +68,8 @@ const CAST_ONLY_SKILL_IDS = new Set([
   'fade-mind',
   'arcane-power',
   'arcane-intellect',
+  'bear-form',
+  'rejuvenation',
 ])
 
 /**
@@ -67,8 +77,10 @@ const CAST_ONLY_SKILL_IDS = new Set([
  * @returns {string | null} SAMPLE_MANIFEST category key
  */
 export function getSkillSfxCategory(entry) {
-  if (entry == null || !entry.skillId) return null
-  return SKILL_SFX_BY_SKILL_ID[entry.skillId] ?? null
+  if (entry == null) return null
+  const skillId = entry.skillId ?? entry.sourceSkillId
+  if (!skillId) return null
+  return SKILL_SFX_BY_SKILL_ID[skillId] ?? null
 }
 
 /**
@@ -79,10 +91,12 @@ export function getSkillSfxCategory(entry) {
 export function isSkillOnlyCastLine(entry) {
   if (entry == null || !entry.skillId) return false
   if (entry.isMiss === true) return false
-  if (entry.type === 'dot') return false
+  if (entry.type === 'dot' || entry.type === 'hot') return false
   if ((entry.heal ?? 0) > 0) return true
   if ((entry.absorbAmount ?? 0) > 0) return true
   if (entry.tauntApplied === true) return true
+  if (entry.hotApplied === true || entry.hotRefreshed === true) return true
+  if (entry.bearFormApplied === true || entry.defensiveStanceApplied === true) return true
   if (entry.finalDamage > 0) return false
   if (entry.action === 'skill' && CAST_ONLY_SKILL_IDS.has(entry.skillId)) return true
   return false
