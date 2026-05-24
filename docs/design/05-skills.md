@@ -229,7 +229,7 @@ finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetResistance)
 
 | 循环阶段 | 技能系统贡献 |
 |----------|--------------|
-| **组建 (Assemble)** | 固定三人组拥有 2 个固定初始技能；扩展英雄招募时选择初始技能（3 选 1）；等级里程碑上选择加强或新技能（见四） |
+| **组建 (Assemble)** | 固定三人组拥有 2 个固定初始技能；扩展英雄招募时选择初始技能（法师 2 选 1，战士等 3 选 1）；等级里程碑上选择加强或新技能（见四） |
 | **布局 (Strategize)** | 玩家配置技能策略（见 [10-tactics.md](./10-tactics.md)） |
 | **放置 (Engage)** | 技能在战斗中自动执行，影响伤害、治疗、仇恨等 |
 | **分析 (Analyze)** | 战斗日志与数据统计展示技能使用频率、伤害占比等（详见 [13-player-statistics.md](./13-player-statistics.md)） |

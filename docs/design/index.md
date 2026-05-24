@@ -9,7 +9,7 @@
 | 模块 | 文件 | 说明 |
 |------|------|------|
 | **概述** | [01-overview.md](./01-overview.md) | 游戏名称、高阶理念、设计哲学、核心循环、系统拆解 |
-| **关卡与怪物** | [02-levels-monsters.md](./02-levels-monsters.md) | 地图系统、怪物系统、探索度与解锁 |
+| **关卡与怪物** | [02-levels-monsters.md](./02-levels-monsters.md) | 地图系统、怪物系统、探索度与解锁；**固定三人开局与扩展招募** |
 | **战斗系统** | [03-combat.md](./03-combat.md) | 回合制、出手顺序、胜负判定、战后恢复 |
 | **职业与属性** | [04-classes-attributes.md](./04-classes-attributes.md) | 职业设计、核心属性、伤害公式、经验升级 |
 | **技能系统** | [05-skills.md](./05-skills.md) | 技能来源、成长、战士与法师技能池 |

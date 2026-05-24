@@ -9,6 +9,7 @@ import {
   getRecruitLimit,
   getExpansionHeroLevel,
   getExpansionHeroAttributePoints,
+  shouldPromptExpansionRecruitAfterBoss,
   monsterPowerFactorFromLevel,
   addExplorationProgress,
   deductExplorationProgress,
@@ -409,6 +410,64 @@ describe('combat progression and systems', () => {
     expect(getExpansionHeroAttributePoints(10)).toBe(27)
     expect(getExpansionHeroAttributePoints(15)).toBe(42)
     expect(getExpansionHeroAttributePoints(20)).toBe(57)
+  })
+
+  it('shouldPromptExpansionRecruitAfterBoss: map1/2 boss with open seat prompts', () => {
+    const progressAfterMap1 = unlockNextMapAfterBoss(createInitialProgress())
+    expect(
+      shouldPromptExpansionRecruitAfterBoss({
+        prevUnlockedMapCount: 1,
+        progress: progressAfterMap1,
+        squadLength: 3,
+        explorationSettlement: { mode: 'boss_unlock' },
+      })
+    ).toBe(true)
+    const progressAfterMap2 = unlockNextMapAfterBoss({
+      ...createInitialProgress(),
+      unlockedMapCount: 2,
+      currentMapId: MAPS[1].id,
+    })
+    expect(
+      shouldPromptExpansionRecruitAfterBoss({
+        prevUnlockedMapCount: 2,
+        progress: progressAfterMap2,
+        squadLength: 4,
+        explorationSettlement: { mode: 'boss_unlock' },
+      })
+    ).toBe(true)
+  })
+
+  it('shouldPromptExpansionRecruitAfterBoss: map3+ boss or full squad does not prompt', () => {
+    const progressAfterMap3 = unlockNextMapAfterBoss({
+      ...createInitialProgress(),
+      unlockedMapCount: 3,
+      currentMapId: MAPS[2].id,
+    })
+    expect(
+      shouldPromptExpansionRecruitAfterBoss({
+        prevUnlockedMapCount: 3,
+        progress: progressAfterMap3,
+        squadLength: 4,
+        explorationSettlement: { mode: 'boss_unlock' },
+      })
+    ).toBe(false)
+    const progressAfterMap1 = unlockNextMapAfterBoss(createInitialProgress())
+    expect(
+      shouldPromptExpansionRecruitAfterBoss({
+        prevUnlockedMapCount: 1,
+        progress: progressAfterMap1,
+        squadLength: 5,
+        explorationSettlement: { mode: 'boss_unlock' },
+      })
+    ).toBe(false)
+    expect(
+      shouldPromptExpansionRecruitAfterBoss({
+        prevUnlockedMapCount: 1,
+        progress: progressAfterMap1,
+        squadLength: 3,
+        explorationSettlement: { mode: 'gain', delta: 1 },
+      })
+    ).toBe(false)
   })
 
   it('Example7: encounter size prefers squad size', () => {

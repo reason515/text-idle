@@ -6,6 +6,7 @@ const {
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
   uniqueTestEmail,
+  simulateRecruitPromptModal,
 } = require('./testHelpers')
 
 async function registerAndCompleteIntro(page, email) {
@@ -406,5 +407,42 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('.hero-card')).toHaveCount(5, { timeout: 10000 })
     await expect(page.locator('.squad-col').getByRole('button', { name: '+ \u62db\u52df' })).toHaveCount(0)
+  })
+
+  test('Example27 AC1b: recruit modal Later dismisses and + Recruit stays available', async ({ page }) => {
+    test.setTimeout(60000)
+    const email = uniqueTestEmail('recruit-modal-later')
+    await registerAndCompleteIntro(page, email)
+    await updateStoredState(page, () => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true, safePath: '/main' })
+    await simulateRecruitPromptModal(page, 5)
+    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).toBeVisible({ timeout: 5000 })
+    await page.locator('[data-testid="recruit-prompt-later-btn"]').click()
+    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).not.toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('Example27: recruit modal Recruit now navigates to character-select', async ({ page }) => {
+    test.setTimeout(60000)
+    const email = uniqueTestEmail('recruit-modal-now')
+    await registerAndCompleteIntro(page, email)
+    await updateStoredState(page, () => {
+      localStorage.setItem('combatProgress', JSON.stringify({
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
+        currentProgress: 0,
+        bossAvailable: false,
+      }))
+    }, undefined, { pauseFirst: true, safePath: '/main' })
+    await simulateRecruitPromptModal(page, 5)
+    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).toBeVisible({ timeout: 5000 })
+    await page.locator('[data-testid="recruit-prompt-recruit-now-btn"]').click()
+    await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
   })
 })

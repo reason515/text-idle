@@ -803,6 +803,42 @@
 
     <Teleport to="body">
       <div
+        v-if="showRecruitPromptModal"
+        class="modal-overlay"
+        data-testid="recruit-prompt-modal-overlay"
+        @click.self="dismissRecruitPromptLater"
+      >
+        <div class="modal-box recruit-prompt-modal" data-testid="recruit-prompt-modal" @click.stop>
+          <div class="modal-title">扩充小队</div>
+          <div class="detail-skill-choice-banner recruit-prompt-banner">
+            <p>
+              你已解锁新的英雄席位。扩展英雄将以 <strong>Lv.{{ recruitPromptLevel }}</strong>
+              加入，可在招募流程中分配属性与初始技能。
+            </p>
+            <p class="recruit-prompt-hint">也可稍后再说，左栏「+ 招募」随时可用。</p>
+          </div>
+          <div class="recruit-prompt-actions">
+            <button
+              class="btn"
+              data-testid="recruit-prompt-recruit-now-btn"
+              @click="acceptRecruitPrompt"
+            >
+              立即招募
+            </button>
+            <button
+              class="btn btn-secondary"
+              data-testid="recruit-prompt-later-btn"
+              @click="dismissRecruitPromptLater"
+            >
+              稍后再说
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
         v-if="showAudioSettingsModal"
         class="modal-overlay"
         data-testid="audio-settings-modal-overlay"
@@ -2212,6 +2248,8 @@ import {
   getRecruitLimit,
   settleVictoryExploration,
   settleDefeatExploration,
+  shouldPromptExpansionRecruitAfterBoss,
+  getExpansionHeroLevel,
   buildEncounterMonsters,
   runAutoCombat,
   startRestPhase,
@@ -2726,6 +2764,10 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', m
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
+const showRecruitPromptModal = ref(false)
+const recruitPromptLevel = ref(5)
+/** @type {(() => void) | null} */
+let recruitPromptResolve = null
 const squadMaxLevel = computed(() => getSquadMaxLevel(squad.value) || 1)
 const inventoryCount = computed(() => {
   inventoryVersion.value
@@ -3948,6 +3990,30 @@ function handleShopBuy(slotId) {
 function goRecruit() {
   router.push('/character-select')
 }
+
+function dismissRecruitPromptLater() {
+  showRecruitPromptModal.value = false
+  if (recruitPromptResolve) {
+    recruitPromptResolve()
+    recruitPromptResolve = null
+  }
+}
+
+function acceptRecruitPrompt() {
+  showRecruitPromptModal.value = false
+  if (recruitPromptResolve) {
+    recruitPromptResolve()
+    recruitPromptResolve = null
+  }
+  goRecruit()
+}
+
+/** @returns {Promise<void>} */
+function waitForRecruitPromptChoice() {
+  return new Promise((resolve) => {
+    recruitPromptResolve = resolve
+  })
+}
 function logout() {
   localStorage.removeItem('token')
   router.push('/login')
@@ -4380,6 +4446,7 @@ async function runCombatLoop() {
         if (!added) inventoryFullWarn = true
       }
       if ((result.rewards.equipment || []).length > 0) inventoryVersion.value++
+      const prevUnlockedMapCount = progress.value.unlockedMapCount
       const victoryExploration = settleVictoryExploration(progress.value, monsters)
       progress.value = victoryExploration.progress
       saveProgress()
@@ -4393,6 +4460,21 @@ async function runCombatLoop() {
         exploration: victoryExploration.exploration,
       })
       await scrollLog()
+
+      if (
+        isRunning.value &&
+        shouldPromptExpansionRecruitAfterBoss({
+          prevUnlockedMapCount,
+          progress: progress.value,
+          squadLength: squad.value.length,
+          explorationSettlement: victoryExploration.exploration,
+        })
+      ) {
+        recruitPromptLevel.value = getExpansionHeroLevel(progress.value)
+        showRecruitPromptModal.value = true
+        await waitForRecruitPromptChoice()
+      }
+      if (!isRunning.value) break
 
       const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
       saveSquad(squad.value)
@@ -4477,6 +4559,14 @@ onMounted(() => {
   loadProgress()
   loadPlayerStats()
   gold.value = getGold()
+  if (isE2eFastMode()) {
+    const simLevel = sessionStorage.getItem('e2eSimulateRecruitPromptLevel')
+    if (simLevel) {
+      sessionStorage.removeItem('e2eSimulateRecruitPromptLevel')
+      recruitPromptLevel.value = Number(simLevel) || 5
+      showRecruitPromptModal.value = true
+    }
+  }
   isRunning.value = true
   runCombatLoop()
 })
@@ -8234,5 +8324,36 @@ label.audio-setting-label {
     opacity: 1;
     transform: translateY(0);
   }
+}
+.recruit-prompt-modal {
+  max-width: 26rem;
+}
+.recruit-prompt-banner p {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-base);
+  line-height: 1.5;
+  color: var(--text-value);
+}
+.recruit-prompt-banner p:last-child {
+  margin-bottom: 0;
+}
+.recruit-prompt-hint {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+.recruit-prompt-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+}
+.recruit-prompt-actions .btn-secondary {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.recruit-prompt-actions .btn-secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 </style>

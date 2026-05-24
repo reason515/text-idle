@@ -320,6 +320,28 @@ export function getRecruitLimit(progress) {
 }
 
 /**
+ * Whether to show expansion recruit modal after a zone boss victory.
+ * Design 02-levels-monsters 1.2.2: prompt only after map 1 or 2 boss when a seat is open;
+ * skippable via modal; map 3-5 boss never prompts (no "squad full" message).
+ * @param {object} params
+ * @param {number} params.prevUnlockedMapCount - unlockedMapCount before boss defeat
+ * @param {object} params.progress - progress after settleVictoryExploration
+ * @param {number} params.squadLength
+ * @param {{ mode?: string }} params.explorationSettlement
+ * @returns {boolean}
+ */
+export function shouldPromptExpansionRecruitAfterBoss({
+  prevUnlockedMapCount,
+  progress,
+  squadLength,
+  explorationSettlement,
+}) {
+  if (explorationSettlement?.mode !== 'boss_unlock') return false
+  if (prevUnlockedMapCount > 2) return false
+  return squadLength < getRecruitLimit(progress)
+}
+
+/**
  * Expansion hero level when recruiting after defeating map N boss.
  * Design doc 02-levels-monsters.md 1.2.1: Map 1 boss -> Lv5, Map 2 -> Lv10, etc.
  * @param {Object} progress - combatProgress

@@ -2,66 +2,77 @@
 
 When modifying design documents (especially core flows like squad, recruitment, skills, or UI), run through this checklist to avoid overlooking dependent areas.
 
+## Current baseline (fixed initial trio)
+
+The product **ships with a fixed Warrior / Mage / Priest trio** at game start. Keep docs, Examples, and tests aligned with this baseline unless you are intentionally changing it again.
+
+| Topic | Current behavior | Primary references |
+|-------|------------------|-------------------|
+| **Initial squad** | 3 heroes via `createFixedTrioSquad()`; 2 fixed skills each | [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0, [05-skills.md](design/05-skills.md) 3.1, Example 3a/3b/4a |
+| **Game start routing** | Intro → team name → hero preview → main; **no** `/character-select` for first squad | Example 3, 3a; `IntroPage.vue`, `main.js` |
+| **Expansion recruitment** | `/character-select` only after map 1 or 2 boss; max 5 heroes | Example 4, 27; `getRecruitLimit`, `CharacterSelectionPage.vue` |
+| **Recruit limit** | `getRecruitLimit(progress)` = `clamp(2 + unlockedMapCount, 3, 5)` | Example 5; `combat.js` |
+
 ## 1. Flow and UI Continuity
 
 | Check | Affected areas | Notes |
 |-------|----------------|-------|
-| **Entry/exit screens** | Intro, team name, first-time routing | Does the change add/remove screens? Update Example 3, 3a, 3b |
-| **Main screen first load** | Squad panel, layout, initial state | Does squad size or content change? Update Example 3b, 4, 4a |
-| **Routing** | Vue Router, redirect logic | Does `/character-select` still exist? Should intro → main directly? |
-| **Recruitment flow** | When/where recruitment appears | Does recruit trigger change? Update Example 4, 27 |
+| **Entry/exit screens** | Intro, team name, hero preview, first-time routing | Does the change add/remove screens? Update Example 3, 3a, 3b |
+| **Main screen first load** | Squad panel, layout, initial state | Initial load shows **3** hero cards; Update Example 3b, 4, 4a |
+| **Routing** | Vue Router, redirect logic | `/character-select` = **expansion only**; empty squad with team name → `createFixedTrioSquad` → main |
+| **Recruitment flow** | When/where recruitment appears | Triggers after map 1/2 boss only; Update Example 4, 27 |
 
 **Examples to review**: 3, 3a, 3b, 4, 4a, 5, 27
 
 ## 2. Requirements and Acceptance Criteria
 
 | Check | Location | Notes |
-|-------|----------|------|
+|-------|----------|-------|
 | **User stories** | requirements-format.md | Do Examples still match the new flow? |
-| **AC for old flow** | Any Example referencing removed steps | Remove or rewrite ACs that assume old behavior |
+| **AC for old flow** | Any Example referencing removed steps | Remove or rewrite ACs that assume 1-hero start or intro → character-select |
 | **New AC needed** | requirements-format.md | Add ACs for new screens, flows, or states |
 
 ## 3. Design Doc Cross-References
 
 | Check | Docs | Notes |
 |-------|------|-------|
-| **Overview** | 01-overview.md | Core loop, assemble phase description |
+| **Overview** | 01-overview.md | Core loop, assemble phase, hero seat counts (3 → 5, not 1 → 5) |
 | **Levels/Monsters** | 02-levels-monsters.md | Squad size, expansion triggers |
-| **Skills** | 05-skills.md | Initial skills, fixed vs expansion |
-| **UI/UX** | 09-social-ui.md | Layout, hero cards, recruitment button |
+| **Skills** | 05-skills.md | Fixed 2 skills vs expansion initial pick |
+| **UI/UX** | 09-social-ui.md | Layout, hero cards (×3–5), recruitment button |
 | **Index** | docs/design/index.md | Quick nav, module summaries |
 
 ## 4. Tests
 
 | Check | Location | Notes |
-|-------|----------|------|
-| **E2E flow** | e2e/browser/*.spec.js | Tests that expect `/character-select`, `squad.length === 1`, etc. |
-| **E2E helpers** | e2e/browser/testHelpers.js | `registerAndGoToCharacterSelect`, `recruitWarrior` |
-| **Unit tests** | frontend/src/**/*.spec.js | `getRecruitLimit`, `createInitialProgress`, squad init |
+|-------|----------|-------|
+| **E2E flow** | e2e/browser/*.spec.js | Intro lands on main with 3 heroes; `/character-select` only for expansion |
+| **E2E helpers** | e2e/browser/testHelpers.js | Prefer `registerAndGoToMain`; `registerAndGoToCharacterSelect` deprecated |
+| **Unit tests** | frontend/src/**/*.spec.js | `getRecruitLimit`, `createFixedTrioSquad`, `createInitialProgress` |
 
-**Common E2E patterns to update** (fixed-trio example):
-- `await expect(page).toHaveURL(/\/character-select/)` → intro now goes to main; character-select only for expansion
-- `squad.length` assumptions (1 vs 3) → initial squad has 3 heroes
-- Recruitment flow: skip character-select for initial trio; use it only after map 1/2 boss
+**Common E2E expectations (fixed trio)**:
+- First-time flow: intro → main with **3** heroes (Warrior, Mage, Priest)
+- `await expect(page).toHaveURL(/\/character-select/)` only after clicking recruit post-boss
+- `squad.length === 3` at adventure start
 
 ## 5. Implementation Touchpoints
 
 | Check | Location | Notes |
-|-------|----------|------|
-| **Squad init** | createInitialProgress, initial squad creation | 1 hero vs 3 fixed heroes |
-| **Recruit limit** | getRecruitLimit(progress) | Formula: unlockedMapCount vs new (3 base, +1 per map 1–2) |
-| **Routing** | router, IntroPage, CharacterSelectPage | Intro → where? CharacterSelectPage still used for expansion? |
-| **Progress schema** | combatProgress, unlockedMapCount | Affects recruit limit calculation |
+|-------|----------|-------|
+| **Squad init** | `createFixedTrioSquad`, `IntroPage`, `main.js` | Fixed trio + starter white MainHand/Armor |
+| **Recruit limit** | `getRecruitLimit(progress)` | 3 base, +1 after map 1 boss, +1 after map 2 boss, max 5 |
+| **Routing** | `main.js`, `IntroPage`, `CharacterSelectionPage` | Character select guards empty squad → main |
+| **Progress schema** | `combatProgress`, `unlockedMapCount` | Boss victory → `unlockNextMapAfterBoss` |
 
 ## 6. Other Potential Gaps
 
 | Area | Risk | Mitigation |
 |------|------|------------|
-| **Tutorial/onboarding** | Text mentions "choose your hero" | Update copy if tutorial exists |
-| **API/backend** | Adventure start creates 1 hero | May need to create 3 heroes, or seed fixed trio |
-| **Database/seed** | New user squad init | Schema or seed for fixed trio |
-| **LocalStorage** | Squad structure, progress flags | `introCompleted` vs `squad` initial state |
-| **Design doc 09-social-ui** | Layout says "英雄卡×1-5" | May need note on initial 3 |
+| **Tutorial/onboarding** | Copy still says "choose your hero" at start | Match Example 3a (hero preview, no pick) |
+| **Overview § 关卡与内容** | Stale "初始 1 人" hero seats | Align with 02-levels-monsters 1.2 |
+| **Example 27 attribute points** | Old 20/45 vs code `3×(level-1)` | Use 12 / 27 for Lv5 / Lv10 |
+| **LocalStorage** | Squad structure, progress flags | `introCompleted`, `squad` from fixed trio |
+| **Design doc 09-social-ui** | Layout says "英雄卡×1-5" | Use ×3–5; document recruit button rules |
 
 ## 7. Combat formulas, equipment aggregation, battle log
 
@@ -91,7 +102,7 @@ When modifying design documents (especially core flows like squad, recruitment, 
 ## 9. Audio (client-only presentation)
 
 | Check | Affected areas | Notes |
-|-------|----------------|------|
+|-------|----------------|-------|
 | **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js`, `frontend/src/game/combatLogDefeat.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible**; bind SFX to combat log (encounter, damage, unitDefeated step, summary); **heroDeath** vs **monsterDeath** |
 | **Samples & licensing** | `frontend/public/audio/sfx/`, [docs/audio-attributions.md](../audio-attributions.md), `scripts/download-freesound-sfx.ps1` | Freesound CC0 original WAV via OAuth download script; `fs_skill_taunt.mp3` from public HQ preview (not OAuth) |
 | **Preferences** | `audioPreferences.js`, MainScreen modal | `textIdleAudioMuted`, `textIdleAudioMasterVolume`; default master 0.85 |
@@ -108,4 +119,4 @@ Before committing design changes:
 
 ---
 
-*This checklist was added after the fixed-trio design change to prevent UI/flow oversight. Update the checklist itself when new touchpoints are discovered.*
+*This checklist tracks the fixed-trio baseline and related touchpoints. Update it when new flows or entry points are added.*

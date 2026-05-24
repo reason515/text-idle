@@ -96,6 +96,15 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
   }
 }
 
+/** E2E-only: show recruit prompt modal on main (see MainScreen onMounted hook). */
+async function simulateRecruitPromptModal(page, level = 5) {
+  await page.evaluate((lv) => {
+    sessionStorage.setItem('e2eSimulateRecruitPromptLevel', String(lv))
+  }, level)
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 })
+  await pauseCombat(page)
+}
+
 module.exports = {
   uniqueTestEmail,
   setupNewRun,
@@ -106,4 +115,5 @@ module.exports = {
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
   updateStoredState,
+  simulateRecruitPromptModal,
 }
