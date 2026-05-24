@@ -17,12 +17,12 @@
 
 | 日志 / 条件 | 分类（Manifest 键） | 样本（CC0, Kenney） | 合成回退（音色要点） |
 |---|---|---|---|
-| 物理伤害 … | `physHit` / `physCrit` | `fs_phys_hit.wav` / `fs_phys_crit.wav` | … |
-| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.wav` / `fs_magic_crit.wav` | … |
+| 物理伤害 … | `physHit` / `physCrit` | `fs_phys_hit.wav` / `fs_phys_crit.ogg` | 普通：带通噪声 + 低频 thud；暴击：更重 thud + 中频 ring + 样本叠短促 accent |
+| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.wav` / `fs_magic_crit.ogg` | 普通：亮瞬态 + 压力体 + shimmer；暴击：更高频 shimmer + ring + accent |
 | 混合 … | 叠 `phys*` + `magic*` | 同上 | … |
 | 闪避 … | `dodge` | `fs_dodge.wav` | … |
 | 遭遇怪物 … | `encounter` | `fs_dodge.wav`（whoosh） | 上升 sweep + 带通噪声 |
-| BOSS 遭遇 … | `encounterBoss` | `fs_phys_crit.wav` | 更低频 sweep + 低频冲击 |
+| BOSS 遭遇 … | `encounterBoss` | `fs_phys_crit.ogg` | 更低频 sweep + 低频冲击 |
 | DoT … | `dotPhys` / `dotMagic` | `fs_dot_phys.wav` / `fs_dot_magic.wav` | … |
 | 阵亡（我方英雄）… | `heroDeath` | `fs_death.wav` | 低频下潜 + 闷响噪声 |
 | 阵亡（敌方怪物）… | `monsterDeath` | `fs_dot_phys.wav` | 短促 thud + 带通瞬态 |
@@ -78,10 +78,10 @@
 - 模块：`frontend/src/audio/audioBus.js`
 - **样本优先**：`SAMPLE_MANIFEST` 映射到 `/audio/sfx/fs_*.wav`（Freesound **CC0 原文件**）。`preloadSamples(ctx)` 异步 fetch + decode；播放时按分类截断最大时长。
 - **合成回退**：分层 **Web Audio** — 短白噪声 + 带通（冲击瞬态）+ 低频正弦下潜（闷响体量）；暴击额外叠加短促中频泛音；魔法叠 shimmer；阵亡 / 胜利 / 失败 / 闪避 / DoT 各自一份单层方案。**样本未就绪或加载失败时使用**。
-- **抑制输出**：`isE2eFastMode()`（与 [combatPacing.js](../../frontend/src/game/combatPacing.js) 相同条件）或用户静音时，战斗向 API（含 `playCombatDamageLineSound`、阵亡与结算音等）立即返回。设置面板中的 **试听** 使用 `playCombatHitPreview`：**忽略静音**，仍在 **E2E 快速模式**或 **标签页后台** 下关闭（与可见性策略一致，避免切页后误触发扬声器）。
+- **抑制输出**：`isE2eFastMode()`（与 [combatPacing.js](../../frontend/src/game/combatPacing.js) 相同条件）或用户静音时，战斗向 API（含 `playCombatDamageLineSound`、阵亡与结算音等）立即返回。设置面板 **试听** 使用 `playSfxPreview(category)`（`playCombatHitPreview` 为物理命中/暴击别名）：**忽略静音**，仍在 **E2E 快速模式**或 **标签页后台** 下关闭（与可见性策略一致，避免切页后误触发扬声器）。
 - **浏览器策略**：新建 `AudioContext` 常见初始状态为 `suspended`。应在**用户点击的同一次调用**内先 **connect + `start()` 调度** 振荡器，再调用 `resume()`（不要依赖 `resume().then` 里才去 `start()`，否则部分环境下永远不发声）。试听不要用 `async/await` 插入在点击与 `resume` 之间。
 - **自动解锁**：`App.vue` 挂载时调用 `bindAudioUnlockOnFirstGesture()`（首次 `pointerdown` / `keydown` 捕获阶段解锁）与 `tryUnlockAudioOnLoad()`（对已允许自动播放的来源尽力 `resume`）。`unlockAudioContext()` 在用户手势内同步调用；战斗循环中已调度的节点在 `resume` 成功后会补播。首次访问且浏览器禁止自动播放时，仍需任意一次点击才能出声（不限于「试听」按钮）。
-- **HTML5 后备**：`playCombatHitPreview` 在无法创建 `AudioContext` 或 Web Audio 调度抛错时，会尝试用 **data:audio/wav** 短哔声（仍用主音量；E2E 快速模式不执行试听）。
+- **HTML5 后备**：`playSfxPreview` 在无法创建 `AudioContext` 或 Web Audio 调度抛错时，会尝试用 **data:audio/wav** 短哔声（仍用主音量；E2E 快速模式不执行试听）。
 - **测试**：`resetSharedAudioContextForTests()` 清空缓存的 `AudioContext`、试听 WAV、样本缓存与 `preloadKicked` 标记（仅单元测试）；`__setSampleBufferForTests(url, buffer)` 用于在测试中直接注入已解码的 buffer 验证样本路径。
 
 ## 四、与战斗日志的绑定
@@ -92,7 +92,9 @@
 ## 五、UI
 
 - 入口：主界面底部「功能」区 **音效** 按钮（`data-testid="audio-settings-open"`）。
-- 面板：静音、主音量滑条、「试听打击」「试听暴击」；说明块使用嵌套 banner 样式（与 `detail-skill-choice-banner` 一致）。
+- 面板：静音、主音量滑条、**音效目录**（分组列出全部 manifest 类别：名称、用途说明、逐条「试听」按钮）；目录区使用 `game-scroll`；说明块使用嵌套 banner 样式（与 `detail-skill-choice-banner` 一致）。
+- 目录数据：`frontend/src/audio/sfxPreviewCatalog.js`（`SFX_PREVIEW_GROUPS`）；试听 API：`playSfxPreview(category)`（忽略静音，与战斗样本/合成回退一致）。`playCombatHitPreview` 为物理命中/暴击的兼容别名。
+- 每条试听按钮：`data-testid="audio-preview-{category}"`（如 `audio-preview-physCrit`）。
 
 ## 六、素材与许可
 
@@ -105,11 +107,12 @@
 |------|------|
 | 偏好 | `frontend/src/audio/audioPreferences.js` |
 | 总线（样本 + 合成） | `frontend/src/audio/audioBus.js` |
+| 设置面板音效目录 | `frontend/src/audio/sfxPreviewCatalog.js` |
 | 阵亡判定与 side | `frontend/src/game/combatLogDefeat.js` |
 | 技能 → 音效类别 | `frontend/src/audio/skillSfxMap.js` |
 | 地图 → 进入音效类别 | `frontend/src/audio/mapSfxMap.js` |
 | 样本（CC0, Freesound WAV） | `frontend/public/audio/sfx/fs_*.wav`, `scripts/download-freesound-sfx.ps1` |
 | 许可与映射 | `docs/audio-attributions.md` |
 | 主界面 | `frontend/src/views/MainScreen.vue` |
-| 单元测试 | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/skillSfxMap.spec.js`, `frontend/src/audio/mapSfxMap.spec.js` |
+| 单元测试 | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/sfxPreviewCatalog.spec.js`, `frontend/src/audio/skillSfxMap.spec.js`, `frontend/src/audio/mapSfxMap.spec.js` |
 | E2E | `e2e/browser/audio-settings.spec.js` |

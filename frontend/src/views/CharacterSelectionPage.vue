@@ -745,23 +745,6 @@ function resetRecruitState() {
   z-index: 350;
   pointer-events: none;
 }
-.formula-tooltip-recruit .tooltip-text {
-  display: block;
-  padding: 0.4rem 0.6rem;
-  font-family: 'Ark Pixel', 'Press Start 2P', monospace;
-  font-size: var(--font-sm);
-  line-height: 1.6;
-  white-space: pre-line;
-  color: var(--text);
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-.formula-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
-.formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
-.formula-tip :deep(.tip-op) { color: var(--color-formula-op); }
-.formula-tip :deep(.tip-equip-label) { color: var(--color-formula-equip); font-weight: 600; }
 
 .secondary-label {
   color: var(--text-label);

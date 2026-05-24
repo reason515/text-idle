@@ -76,6 +76,12 @@
   --scrollbar-thumb: #1a3a1a;
   --scrollbar-thumb-hover: #2a5a2a;
   --scrollbar-thumb-alt: #0d6633;
+  --tooltip-bg: var(--bg-darker);
+  --tooltip-border: var(--border);
+  --tooltip-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
+  --tooltip-radius: 4px;
+  --tooltip-z: 10;
+  --tooltip-z-float: 1000;
   --color-formula-value: #88ccaa;
   --color-log-connector: #88bb99;
   --color-log-detail: #99ccaa;
@@ -318,4 +324,169 @@ body {
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-sm {
+  width: auto;
+  margin-top: 0;
+  font-size: var(--font-sm);
+  padding: 0.22rem 0.55rem;
+  min-height: 0;
+  line-height: 1.35;
+}
+
+/* Scrollable panels: never rely on native OS scrollbars in game UI */
+.game-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.game-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-scroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.game-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.game-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.game-scroll-alt {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-alt) var(--scrollbar-track);
+}
+
+.game-scroll-alt::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-scroll-alt::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.game-scroll-alt::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-alt);
+  border-radius: 3px;
+}
+
+.game-scroll-alt::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Hover tooltips (canonical — do not re-style per view) */
+.tooltip-wrap {
+  position: relative;
+}
+
+.tooltip-wrap.has-tip {
+  cursor: help;
+  border-bottom: 1px dotted var(--text-muted);
+  display: inline-block;
+  width: fit-content;
+}
+
+.tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--tooltip-radius);
+  padding: 0.35rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  color: var(--text);
+  white-space: nowrap;
+  z-index: var(--tooltip-z);
+  box-shadow: var(--tooltip-shadow);
+  line-height: 1.45;
+}
+
+.tooltip-wrap:hover .tooltip-text {
+  display: block;
+}
+
+.tooltip-text.tooltip-below {
+  bottom: auto;
+  top: calc(100% + 4px);
+}
+
+.tooltip-text.tooltip-wide {
+  white-space: normal;
+  max-width: min(22rem, 92vw);
+  text-align: left;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.tooltip-float {
+  position: fixed;
+  z-index: var(--tooltip-z-float);
+  pointer-events: none;
+}
+
+.tooltip-float .tooltip-text {
+  display: block;
+  position: static;
+  max-width: min(22rem, calc(100vw - 1rem));
+  white-space: normal;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.formula-tooltip-floating {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+}
+
+.formula-tooltip-floating .tooltip-text {
+  display: block;
+  position: static;
+  transform: none;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.tooltip-text .tip-equip-label,
+.formula-tip .tip-equip-label {
+  color: var(--color-formula-equip);
+  font-weight: 600;
+}
+
+.formula-tip .tip-attr-var,
+.primary-attr-tip .tip-attr-var {
+  color: var(--color-formula-var);
+  font-weight: 600;
+}
+
+.formula-tip .tip-num,
+.primary-attr-tip .tip-num {
+  color: var(--text-value);
+  font-weight: 600;
+}
+
+.formula-tip .tip-op,
+.primary-attr-tip .tip-op {
+  color: var(--color-formula-op);
+}
+
+.primary-attr-tip .tip-purpose {
+  color: var(--text-label);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.primary-attr-tip .tip-muted {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
 }

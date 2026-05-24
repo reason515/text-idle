@@ -222,8 +222,14 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 
 ### 5.1 按钮
 
-- 主按钮：`var(--font-lg)`，`var(--border)` 边框，hover 时 `var(--accent)`
-- 小按钮：`var(--font-sm)` 或 `var(--font-base)`
+- 主按钮：`var(--font-lg)`，`var(--border)` 边框，hover 时 `var(--accent)`；全局 `.btn` 默认 **`width: 100%`**（表单场景）。
+- 小按钮 / 行内操作：使用 **`btn btn-sm`**（`style.css` 已设 `width: auto`、`margin-top: 0`）。模态框底部操作放在 footer 行（右对齐），勿在窄面板内误用全宽主按钮。
+- 参考：`shop-buy-btn`、`player-stats-compact-btn`、`audio-settings-footer`。
+
+### 5.1.1 可滚动区域
+
+- 凡 `overflow-y: auto` 的游戏 UI 区域须加 **`game-scroll`** 或 **`game-scroll-alt`**（`frontend/src/style.css`），禁止依赖系统默认滚动条。
+- Token：`--scrollbar-track`、`--scrollbar-thumb`、`--scrollbar-thumb-hover`、`--scrollbar-thumb-alt`（见 `style.css` `:root`）。
 
 ### 5.2 表单
 
@@ -236,18 +242,31 @@ font-family: 'Ark Pixel', 'Press Start 2P', monospace;
 
 ### 5.3 Tooltip 与面板内说明
 
-**悬停提示**
+**悬停提示 — 结构**
 
-- 统一使用 `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`（必要时加 `tooltip-below`，避免被**上方或侧向**区域的 `overflow` 裁切；**固定在屏幕底部的栏位**朝外展开易被根布局 `overflow: hidden` 裁成一条线时，应保持默认**朝触发元素上方**展示，或通过专用样式放在上方）。
-- **禁止**使用 `title=` 作为游戏内说明（样式与可访问性不一致于本项目 Tooltip）。
+- 触发器：`class="tooltip-wrap has-tip"` + 子元素 `<span class="tooltip-text">`。
+- 长文案：`tooltip-wide`；被上方 overflow 裁切时：`tooltip-below`。
+- **禁止** `title=` 作为游戏内说明。
 
-**模态框 / 面板内的固定说明文案**（如商店购买品质概率、技能选择提示等）
+**悬停提示 — 样式（全局 `frontend/src/style.css`）**
 
-- 不要只在面板底色上放一段 `text-muted`，须做成**内层卡片**，与角色详情 `detail-skill-choice-banner`、商店 `shop-quality-banner` 等一致：
-  - 背景 `var(--bg-darker)`，边框 `1px solid var(--border-dark)`，`border-radius: 6px`，内边距约 `0.65rem 0.75rem`。
-- 列表项等**过长单行文案**：可见区域使用省略号，完整内容放在 `tooltip-text` 中，规则同上。
+| Token | 值 / 用途 |
+|-------|-----------|
+| `--tooltip-bg` | 弹层背景（`--bg-darker`） |
+| `--tooltip-border` | 边框（`--border` 绿） |
+| `--tooltip-shadow` | 绿色发光阴影 |
+| `--tooltip-radius` | 圆角 4px |
+| `--tooltip-z` / `--tooltip-z-float` | 层叠（内联 / Teleport 固定） |
 
-**与 Cursor 规则的关系**：`.cursor/rules/frontend-tips-tooltips.mdc`（`alwaysApply: true`）重复强调以上要求，避免仅依赖 `globs` 匹配而漏读。
+标准类：`.tooltip-wrap`、`.tooltip-text`、`.tooltip-below`、`.tooltip-wide`、`.tooltip-float`、`.formula-tooltip-floating`。
+
+公式/属性 HTML 内 span：`tip-attr-var`、`tip-num`、`tip-op`、`tip-equip-label` 等 — 颜色在 `style.css` 统一定义。
+
+**禁止**在各 Vue 视图里重写 `.tooltip-text` 的背景/边框/阴影（易导致灰底、黑影等与主风格不符）；仅允许上下文布局 override（如 `primary-attr-tip` 宽度、金币栏上方定位）。
+
+**固定说明块**（模态内短段落）：须用内层卡片（`--bg-darker` + `--border-dark`），见 `detail-skill-choice-banner`；不要单独一段 muted 文字贴在面板根上。
+
+**与 Cursor 规则**：`.cursor/rules/frontend-tips-tooltips.mdc`（`alwaysApply: true`）。
 
 ### 5.4 模态框 / 面板
 

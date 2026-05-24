@@ -20,6 +20,9 @@ alwaysApply: false
 ## UI and styling
 
 - All UI must follow `ui-design.mdc` (same glob) and [docs/design/11-ui-tokens.md](docs/design/11-ui-tokens.md).
+- **Scrollable panels**: add `game-scroll` or `game-scroll-alt` (`style.css`); never native OS scrollbars.
+- **Buttons in lists/modals**: use `btn btn-sm` or existing compact patterns; `.btn` alone is full-width.
+- **Tooltips**: `tooltip-wrap has-tip` + `tooltip-text`; styles only from global `style.css` / `--tooltip-*` (see `frontend-tips-tooltips.mdc`).
 - **Tooltips and in-panel hints** (hover copy, modal helper blocks, no `title=`, equipment quality colors): `frontend-tips-tooltips.mdc` is **alwaysApply** and loads in every chat—follow it together with `ui-design.mdc`.
 
 ## Doc sync

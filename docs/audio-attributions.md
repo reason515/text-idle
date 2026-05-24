@@ -15,9 +15,9 @@ See `.env.example` for required variables. Playback may trim long files per cate
 | Local file | Freesound sound | Author | Page |
 |------------|-----------------|--------|------|
 | `fs_phys_hit.wav` | 547042 Hit Impact Sword 3 | CogFireStudios | https://freesound.org/s/547042/ |
-| `fs_phys_crit.wav` | 815762 Metal hits (high) | xkeril | https://freesound.org/s/815762/ |
+| `fs_phys_crit.ogg` | 591155 Sword Contact (with swipe) | ultraaxvii | https://freesound.org/s/591155/ |
 | `fs_magic_hit.wav` | 455206 Magic Spell 01.wav | LilMati | https://freesound.org/s/455206/ |
-| `fs_magic_crit.wav` | 442774 Magic Spell | qubodup | https://freesound.org/s/442774/ |
+| `fs_magic_crit.ogg` | 430769 Magical Hit | SailorErick | https://freesound.org/s/430769/ |
 | `fs_dodge.wav` | 9509 whoosh.wav | petenice | https://freesound.org/s/9509/ |
 | `fs_dot_phys.wav` | 336495 LowHit_01.wav | Faulkin | https://freesound.org/s/336495/ |
 | `fs_dot_magic.wav` | 781094 videogame sci-fi / fantasy damage efect | CVLTIV8R | https://freesound.org/s/781094/ |
@@ -43,7 +43,7 @@ Playback: `playCombatEncounterSound({ isBoss })` when the encounter log line is 
 | Manifest key | Local file | When |
 |--------------|------------|------|
 | `encounter` | `fs_dodge.wav` | Normal monster pull |
-| `encounterBoss` | `fs_phys_crit.wav` | Boss encounter (`isBoss`) |
+| `encounterBoss` | `fs_phys_crit.ogg` | Boss encounter (`isBoss`) |
 
 ## Skill-specific SFX (by `skillId`)
 
@@ -58,7 +58,7 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 | `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam, maul, rake | https://freesound.org/s/812592/ |
 | `fs_skill_shield.wav` | 570853 magicShield_block | power-word-shield, frost-armor, bear-form, defensive-stance | https://freesound.org/s/570853/ |
 
-Note: `fs_skill_taunt.mp3` is the public CDN HQ preview (CC0); `fs_level_up.ogg` and `fs_loot_drop.ogg` are CC0 HQ previews from the same CDN when OAuth download is unavailable. Other skill files are OAuth originals.
+Note: `fs_skill_taunt.mp3`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, and `fs_magic_crit.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 
 ## Progression and loot SFX
 

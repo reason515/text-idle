@@ -7,24 +7,60 @@ alwaysApply: true
 
 Applies whenever you add or change **hints, explainers, odds copy, or hover tips** under `frontend/`, including **modals** (shop, map, detail) and **lists** with long labels.
 
-## Hover tips (MANDATORY)
+## Hover tips — markup (MANDATORY)
 
-- Use `class="tooltip-wrap has-tip"` on the trigger and a child `<span class="tooltip-text">` for the body.
-- Do **not** use the HTML `title` attribute for gameplay or explanatory copy (browser chrome is inconsistent and does not match game styling).
-- If a scrollable or clipped ancestor hides the popup, add `tooltip-below` (or the same pattern used elsewhere in `MainScreen.vue` for that context). Do **not** use `tooltip-below` for triggers pinned to the **bottom** of the main screen when the root layout uses `overflow: hidden`; pop downward and get clipped (show above the trigger instead).
+- Trigger: `class="tooltip-wrap has-tip"` (omit `has-tip` only when the whole block is the hover target, e.g. gold display).
+- Body: child `<span class="tooltip-text">...</span>`.
+- Do **not** use HTML `title=` for gameplay or explanatory copy.
+- Long copy: add **`tooltip-wide`** on `tooltip-text` (`white-space: normal`, max-width).
+- Clipped by scroll/overflow above: add **`tooltip-below`** on `tooltip-text`.
+- Do **not** use `tooltip-below` for triggers pinned to the **bottom** of the main screen when root layout uses `overflow: hidden` — pop above instead (see gold display pattern in `MainScreen.vue`).
+
+## Hover tips — visual style (MANDATORY)
+
+**Canonical CSS lives in `frontend/src/style.css`. Do not re-declare background, border, shadow, or font on `.tooltip-text` in scoped view CSS.**
+
+| Property | Token / class |
+|----------|----------------|
+| Background | `var(--tooltip-bg)` (`--bg-darker`) |
+| Border | `1px solid var(--tooltip-border)` (`--border`) |
+| Radius | `var(--tooltip-radius)` (4px) |
+| Shadow | `var(--tooltip-shadow)` (green glow) |
+| Text | `var(--text)`, `var(--font-sm)` |
+| Trigger hint | `has-tip` → dotted underline `var(--text-muted)` |
+
+**Modifiers (global):**
+
+| Class | Use |
+|-------|-----|
+| `tooltip-below` | Open downward |
+| `tooltip-wide` | Multi-line, max-width wrap |
+| `tooltip-float` | Fixed-position shell (Teleport); child `.tooltip-text` is `display: block` |
+| `formula-tooltip-floating` | Formula follow-cursor; reuse global `.tooltip-text` |
+
+**Formula / attribute HTML inside tooltips:** use spans with classes `tip-attr-var`, `tip-num`, `tip-op`, `tip-equip-label`, `tip-purpose`, `tip-muted` — colors are global in `style.css`.
+
+**Special shells** (may add layout only, not replace base colors):
+
+- `inventory-slot-tooltip` — fixed item inspect
+- `player-stats-chart-tooltip` — chart hover (must still use `--tooltip-*` tokens)
+
+**Prohibited:** white/gray system tooltip look, `background: var(--bg-dark)` on hover popups, black `box-shadow: 0 2px 8px rgba(0,0,0,...)`, per-view duplicate `.tooltip-text { ... }` blocks.
 
 ## Persistent in-panel helper blocks (MANDATORY)
 
-Short paragraphs inside modals/panels (e.g. shop quality odds, skill-choice reminders) are **not** plain `text-muted` on the panel root alone. They MUST read as a **nested card** so hierarchy matches the rest of the UI:
+Short paragraphs inside modals/panels (e.g. shop quality odds, skill-choice reminders) are **not** plain `text-muted` on the panel root alone. They MUST read as a **nested card**:
 
 - Background: `var(--bg-darker)`
 - Border: `1px solid var(--border-dark)`
 - Border radius: `6px`
 - Padding: about `0.65rem 0.75rem`
-- Reuse or mirror the structure used for `detail-skill-choice-banner` / `shop-quality-banner` in `MainScreen.vue`.
+- Reuse `detail-skill-choice-banner` / `shop-quality-banner` structure.
 
-See also: [ui-design.mdc](./ui-design.mdc) (full tokens), [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md) (Tooltip section and equipment quality colors).
+Optional `tooltip-wrap has-tip` on a phrase inside the banner is fine; tooltip body still uses global `.tooltip-text` + `tooltip-below` / `tooltip-wide` when needed.
+
+See also: [ui-design.mdc](./ui-design.mdc), [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md) section 5.3.
 
 ## Equipment quality wording (MANDATORY)
 
-When labeling **normal / magic / rare / unique** item quality in UI copy, color the words with `getQualityColor(...)` and `QUALITY_*` from `equipment.js` so colors match backpack and tooltips. Values are documented in `11-ui-tokens.md` (equipment quality).
+When labeling **normal / magic / rare / unique** in UI copy, color with `getQualityColor(...)` and `QUALITY_*` from `equipment.js`. Values in `11-ui-tokens.md` section 1.2.1.

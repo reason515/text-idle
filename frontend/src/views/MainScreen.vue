@@ -872,10 +872,10 @@
         <div class="modal-box audio-settings-modal" data-testid="audio-settings-modal" @click.stop>
           <div class="modal-title">音效</div>
           <div class="detail-skill-choice-banner audio-settings-banner">
-            <p>音量与静音将保存在本机浏览器。战斗音效与日志逐条揭示同步；自动化测试（E2E 快速模式）下不播放。</p>
+            <p>音量与静音将保存在本机浏览器。下方列出全部战斗与 UI 音效，可逐条试听并对不满意的条目提出调整。</p>
             <p class="audio-settings-banner-tip tooltip-wrap has-tip">
               <strong>试听</strong>用于解锁浏览器音频并在本机验收：即使勾选静音也会发声（战斗中仍遵守静音）。若仍无声，请确认系统音量与输出设备。
-              <span class="tooltip-text">与战斗日志节奏相同：回合制规则不变，音效仅增强表现层。</span>
+              <span class="tooltip-text tooltip-below tooltip-wide">与战斗日志节奏相同：回合制规则不变，音效仅增强表现层。</span>
             </p>
           </div>
           <label class="audio-setting-row audio-muted-row">
@@ -902,17 +902,40 @@
             />
             <span class="audio-master-pct">{{ audioSettingsMasterPct }}%</span>
           </div>
-          <div class="audio-preview-actions">
-            <button type="button" class="btn btn-sm" data-testid="audio-preview-hit" @click="previewAudioHitNormal">
-              试听打击
-            </button>
-            <button type="button" class="btn btn-sm" data-testid="audio-preview-crit" @click="previewAudioHitCrit">
-              试听暴击
+          <div class="audio-sfx-catalog game-scroll" data-testid="audio-sfx-catalog">
+            <div
+              v-for="group in sfxPreviewGroups"
+              :key="group.id"
+              class="audio-sfx-group"
+            >
+              <div class="audio-sfx-group-title">{{ group.title }}</div>
+              <div class="audio-sfx-list">
+                <div
+                  v-for="entry in group.entries"
+                  :key="entry.category"
+                  class="audio-sfx-row"
+                >
+                  <div class="audio-sfx-row-text">
+                    <div class="audio-sfx-label">{{ entry.label }}</div>
+                    <div class="audio-sfx-usage">{{ entry.usage }}</div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-sm audio-sfx-preview-btn"
+                    :data-testid="'audio-preview-' + entry.category"
+                    @click="previewSfxCategory(entry.category)"
+                  >
+                    试听
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="audio-settings-footer">
+            <button type="button" class="btn btn-sm" data-testid="audio-settings-close" @click="showAudioSettingsModal = false">
+              关闭
             </button>
           </div>
-          <button type="button" class="btn" data-testid="audio-settings-close" @click="showAudioSettingsModal = false">
-            关闭
-          </button>
         </div>
       </div>
     </Teleport>
@@ -956,7 +979,7 @@
             </button>
           </div>
 
-          <div class="player-stats-modal-body">
+          <div class="player-stats-modal-body game-scroll-alt">
           <template v-if="playerStatsModalTab === 'summary'">
             <div class="detail-skill-choice-banner player-stats-banner">
               <p>
@@ -2264,7 +2287,7 @@
     <Teleport to="body">
       <div
         v-if="battlePanelFloatTip"
-        class="battle-panel-float-tooltip"
+        class="battle-panel-float-tooltip tooltip-float"
         :style="{
           top: battlePanelFloatTip.top + 'px',
           left: battlePanelFloatTip.left + 'px',
@@ -2451,14 +2474,15 @@ import {
   playCombatDamageLineSound,
   playCombatDefeatSound,
   playCombatEncounterSound,
-  playCombatHitPreview,
   playCombatUnitDeathSound,
   playCombatVictorySound,
   playLevelUpSound,
   playLootDropSound,
   playMapEntrySound,
+  playSfxPreview,
   unlockAudioContext,
 } from '../audio/audioBus.js'
+import { SFX_PREVIEW_GROUPS } from '../audio/sfxPreviewCatalog.js'
 import {
   getAudioMasterVolume,
   getAudioMuted,
@@ -2737,6 +2761,7 @@ const statsTimelineHoverTipTop = ref(0)
 const compPieHover = ref(null)
 const showMapModal = ref(false)
 const showAudioSettingsModal = ref(false)
+const sfxPreviewGroups = SFX_PREVIEW_GROUPS
 const audioSettingsMuted = ref(false)
 const audioSettingsMasterPct = ref(85)
 const showBackpackModal = ref(false)
@@ -4142,14 +4167,9 @@ function onAudioMasterVolumeInput(e) {
   setAudioMasterVolume(pct / 100)
 }
 
-function previewAudioHitNormal() {
+function previewSfxCategory(category) {
   unlockAudioContext()
-  playCombatHitPreview({ isCrit: false })
-}
-
-function previewAudioHitCrit() {
-  unlockAudioContext()
-  playCombatHitPreview({ isCrit: true })
+  playSfxPreview(category)
 }
 
 function sleepMs(ms, useRealTimer = false) {
@@ -5060,8 +5080,6 @@ onUnmounted(() => {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb-alt) var(--scrollbar-track);
 }
 .player-stats-modal-footer {
   flex-shrink: 0;
@@ -5245,10 +5263,10 @@ onUnmounted(() => {
   transform: translate(-50%, calc(-100% - 10px));
   min-width: 8.5rem;
   padding: 0.45rem 0.55rem;
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
-  border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--tooltip-radius);
+  box-shadow: var(--tooltip-shadow);
   font-size: var(--font-xs);
   color: var(--text-label);
   line-height: 1.45;
@@ -5513,14 +5531,15 @@ onUnmounted(() => {
 }
 .inventory-slot-tooltip {
   position: fixed;
-  z-index: 1000;
-  background: var(--bg-darker);
-  border: 1px solid var(--border);
+  z-index: var(--tooltip-z-float);
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--tooltip-radius);
   padding: 0.4rem 0.55rem;
   font-size: var(--font-sm);
   max-width: 14rem;
   text-align: left;
-  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
+  box-shadow: var(--tooltip-shadow);
   pointer-events: none;
 }
 .inventory-slot-tooltip .tip-line {
@@ -6258,8 +6277,6 @@ onUnmounted(() => {
   text-align: left;
   right: auto;
   left: 0;
-  bottom: auto;
-  top: calc(100% + 4px);
 }
 .shop-sections {
   display: grid;
@@ -7942,43 +7959,7 @@ input.tactics-condition-value[type="number"] {
 .val-hp { color: var(--color-hp); }
 .detail-hp-val { /* color from inline hpBarColor by injury level */ }
 
-/* Tooltip */
-.tooltip-wrap {
-  position: relative;
-}
-.tooltip-wrap.has-tip {
-  cursor: help;
-  border-bottom: 1px dotted var(--text-muted);
-  display: inline-block;
-  width: fit-content;
-}
-.tooltip-text :deep(.tip-equip-label),
-.formula-tip :deep(.tip-equip-label) { color: var(--color-formula-equip); font-weight: 600; }
-.tooltip-text {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 4px);
-  right: 0;
-  background: var(--bg-darker);
-  border: 1px solid var(--border);
-  padding: 0.35rem 0.5rem;
-  font-size: var(--font-sm);
-  color: var(--text);
-  white-space: nowrap;
-  z-index: 10;
-  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
-}
-.tooltip-wrap:hover .tooltip-text {
-  display: block;
-}
-.formula-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
-.formula-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
-.formula-tip :deep(.tip-op) { color: var(--color-formula-op); }
-.primary-attr-tip :deep(.tip-purpose) { color: var(--text-label); font-weight: 600; display: block; margin-bottom: 0.2rem; }
-.primary-attr-tip :deep(.tip-muted) { color: var(--text-muted); font-size: var(--font-xs); }
-.primary-attr-tip :deep(.tip-attr-var) { color: var(--color-formula-var); font-weight: 600; }
-.primary-attr-tip :deep(.tip-num) { color: var(--text-value); font-weight: 600; }
-.primary-attr-tip :deep(.tip-op) { color: var(--color-formula-op); }
+/* Tooltip: base styles in style.css; context overrides below */
 .detail-section-primary .detail-label.tooltip-wrap.has-tip { max-width: 100%; }
 .primary-attr-tip.tooltip-text {
   white-space: normal;
@@ -7991,19 +7972,6 @@ input.tactics-condition-value[type="number"] {
   bottom: auto;
   top: calc(100% + 4px);
 }
-.formula-tooltip-floating {
-  position: fixed;
-  z-index: 350;
-  pointer-events: none;
-}
-.formula-tooltip-floating .tooltip-text {
-  display: block;
-  position: static;
-  transform: none;
-  white-space: pre-line;
-  line-height: 1.6;
-}
-
 .detail-section-basic .detail-value { color: var(--text-value); }
 .detail-section-primary .detail-value { color: var(--color-formula-value); }
 .detail-section-secondary .detail-value { color: var(--text-value); }
@@ -8021,11 +7989,6 @@ input.tactics-condition-value[type="number"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* Show tooltip below to avoid clipping by detail-tab-content overflow-y:auto */
-.equipment-slot-val .tooltip-text.tooltip-below {
-  bottom: auto;
-  top: calc(100% + 4px);
 }
 /* Overrides .tooltip-text nowrap; above trigger (see .gold-display .tooltip-text.gold-tooltip) */
 .stats-efficiency .tooltip-text.stats-eff-tooltip {
@@ -8144,20 +8107,6 @@ input.tactics-condition-value[type="number"] {
   border: 1px solid var(--border-dark);
 }
 /* Teleport + fixed: tank line + buff/debuff badges (escapes battle-arena overflow) */
-.battle-panel-float-tooltip {
-  position: fixed;
-  z-index: 1000;
-  pointer-events: none;
-}
-.battle-panel-float-tooltip .tooltip-text {
-  display: block;
-  position: static;
-  max-width: min(22rem, calc(100vw - 1rem));
-  white-space: normal;
-  line-height: 1.45;
-  text-align: left;
-  box-shadow: 0 0 8px rgba(0, 204, 102, 0.2);
-}
 .hero-tank-check input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
@@ -8194,10 +8143,87 @@ input.tactics-condition-value[type="number"] {
   user-select: none;
 }
 .audio-settings-modal {
-  max-width: 22rem;
+  max-width: min(88vw, 32rem);
+  max-height: min(88vh, 42rem);
+  display: flex;
+  flex-direction: column;
 }
 .audio-settings-banner {
   margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.audio-sfx-catalog {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0.5rem 0 0.75rem;
+  padding-right: 0.15rem;
+}
+.audio-settings-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.55rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border-dark);
+}
+.audio-settings-footer .btn {
+  width: auto;
+  margin-top: 0;
+}
+.audio-sfx-group {
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-darker);
+}
+.audio-sfx-group:last-child {
+  margin-bottom: 0;
+}
+.audio-sfx-group-title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.04em;
+}
+.audio-sfx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.audio-sfx-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-dark);
+}
+.audio-sfx-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.audio-sfx-row-text {
+  min-width: 0;
+}
+.audio-sfx-label {
+  font-size: var(--font-sm);
+  color: var(--text-value);
+  line-height: 1.35;
+}
+.audio-sfx-usage {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 0.15rem;
+}
+.audio-sfx-preview-btn {
+  flex-shrink: 0;
+  align-self: center;
+  width: auto;
+  margin-top: 0;
 }
 .audio-settings-banner-tip {
   margin-top: 0.5rem;

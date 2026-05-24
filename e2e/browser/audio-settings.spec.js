@@ -21,6 +21,10 @@ test.describe('Audio settings (Example 36)', () => {
     const muted = await page.evaluate(() => localStorage.getItem('textIdleAudioMuted'))
     expect(muted).toBe('1')
 
+    await expect(page.getByTestId('audio-sfx-catalog')).toBeVisible()
+    await expect(page.getByTestId('audio-preview-physHit')).toBeVisible()
+    await expect(page.getByTestId('audio-preview-victory')).toBeVisible()
+
     await page.getByTestId('audio-settings-close').click()
     await expect(page.getByTestId('audio-settings-modal')).not.toBeVisible()
   })

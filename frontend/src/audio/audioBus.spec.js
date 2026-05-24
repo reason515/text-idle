@@ -23,6 +23,7 @@ import {
   playLevelUpSound,
   playLootDropSound,
   playMapEntrySound,
+  playSfxPreview,
   preloadSamples,
   resetSharedAudioContextForTests,
   resumeAudioContext,
@@ -386,6 +387,17 @@ describe('audioBus', () => {
     expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
+  it('uses crit sample plus accent when phys crit buffer is cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_phys_crit.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatHitSound({ isCrit: true })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
   it('playCombatLogLineSound uses skill fire sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
@@ -439,6 +451,32 @@ describe('audioBus', () => {
     ctx.createBufferSource.mockClear()
     playCombatHitSound({ isCrit: false })
     expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('playSfxPreview plays victory category when sample cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 1.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_victory.wav', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playSfxPreview('victory')
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('playSfxPreview still plays when muted', () => {
+    setAudioMuted(true)
+    playSfxPreview('dodge')
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+  })
+
+  it('playSfxPreview is silent in E2E fast mode', () => {
+    localStorage.setItem('e2eFastCombat', '1')
+    playSfxPreview('physHit')
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).not.toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
 
   it('playCombatHitPreview is silent in E2E fast mode', () => {

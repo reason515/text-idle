@@ -30,14 +30,14 @@ const impactNoiseBuffersByRate = new Map()
 /** Manifest: event category -> sample URLs (random pick among loaded variants). */
 const SAMPLE_MANIFEST = {
   physHit: ['/audio/sfx/fs_phys_hit.wav'],
-  physCrit: ['/audio/sfx/fs_phys_crit.wav'],
+  physCrit: ['/audio/sfx/fs_phys_crit.ogg'],
   magicHit: ['/audio/sfx/fs_magic_hit.wav'],
-  magicCrit: ['/audio/sfx/fs_magic_crit.wav'],
+  magicCrit: ['/audio/sfx/fs_magic_crit.ogg'],
   dotPhys: ['/audio/sfx/fs_dot_phys.wav'],
   dotMagic: ['/audio/sfx/fs_dot_magic.wav'],
   dodge: ['/audio/sfx/fs_dodge.wav'],
   encounter: ['/audio/sfx/fs_dodge.wav'],
-  encounterBoss: ['/audio/sfx/fs_phys_crit.wav'],
+  encounterBoss: ['/audio/sfx/fs_phys_crit.ogg'],
   heroDeath: ['/audio/sfx/fs_death.wav'],
   monsterDeath: ['/audio/sfx/fs_dot_phys.wav'],
   victory: ['/audio/sfx/fs_victory.wav'],
@@ -60,9 +60,9 @@ const SAMPLE_MANIFEST = {
 /** Max playback length (sec) per category; trims long Freesound HQ previews. */
 const SAMPLE_MAX_DURATION_SEC = {
   physHit: 0.75,
-  physCrit: 0.9,
+  physCrit: 1.35,
   magicHit: 1.0,
-  magicCrit: 1.0,
+  magicCrit: 1.25,
   dotPhys: 0.45,
   dotMagic: 0.55,
   dodge: 0.35,
@@ -398,6 +398,74 @@ function playHtml5PreviewBeep() {
 
 const FLOOR = 0.0001
 
+/** Sample gain for normal hits vs crits (crit should read clearly louder). */
+const HIT_SAMPLE_GAIN = 0.9
+const CRIT_SAMPLE_GAIN = 1.18
+
+/**
+ * All manifest category keys (for catalog sync tests).
+ * @returns {string[]}
+ */
+export function listSfxManifestCategories() {
+  return Object.keys(SAMPLE_MANIFEST)
+}
+
+/**
+ * Short synth punch layered on crit samples for extra weight.
+ * @param {AudioContext} ctx
+ * @param {'physical' | 'magic' | 'mixed'} accentType
+ */
+function scheduleCritSampleAccent(ctx, accentType = 'physical') {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.34
+  if (master <= 0) return
+
+  const t = ctx.currentTime
+  const isMagic = accentType === 'magic'
+
+  const thud = ctx.createOscillator()
+  thud.type = 'sine'
+  thud.frequency.setValueAtTime(isMagic ? 148 : 98, t)
+  thud.frequency.exponentialRampToValueAtTime(40, t + 0.11)
+  const thudGain = ctx.createGain()
+  thudGain.gain.setValueAtTime(FLOOR, t)
+  thudGain.gain.linearRampToValueAtTime(0.46 * master, t + 0.014)
+  thudGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.17)
+  thud.connect(thudGain)
+  thudGain.connect(ctx.destination)
+  thud.start(t)
+  thud.stop(t + 0.19)
+
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const band = ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.setValueAtTime(isMagic ? 4400 : 2900, t)
+  band.Q.setValueAtTime(2.2, t)
+  const noiseGain = ctx.createGain()
+  noiseGain.gain.setValueAtTime(FLOOR, t)
+  noiseGain.gain.linearRampToValueAtTime(0.4 * master, t + 0.002)
+  noiseGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.048)
+  noiseSrc.connect(band)
+  band.connect(noiseGain)
+  noiseGain.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.065)
+
+  const ring = ctx.createOscillator()
+  ring.type = 'triangle'
+  ring.frequency.setValueAtTime(isMagic ? 620 : 420, t)
+  ring.frequency.exponentialRampToValueAtTime(isMagic ? 340 : 240, t + 0.07)
+  const ringGain = ctx.createGain()
+  ringGain.gain.setValueAtTime(FLOOR, t)
+  ringGain.gain.linearRampToValueAtTime(0.18 * master, t + 0.004)
+  ringGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.12)
+  ring.connect(ringGain)
+  ringGain.connect(ctx.destination)
+  ring.start(t)
+  ring.stop(t + 0.13)
+}
+
 /**
  * Physical / melee-heavy hit: noise transient + low thud; crit adds ring.
  * @param {AudioContext} ctx
@@ -420,8 +488,8 @@ function schedulePhysHitLayers(ctx, opts = {}, masterScale = 1) {
   band.frequency.setValueAtTime(isCrit ? 2200 : 1550, t)
   band.Q.setValueAtTime(isCrit ? 2.1 : 1.35, t)
   const noiseGain = ctx.createGain()
-  const nPeak = (isCrit ? 0.44 : 0.34) * master
-  const nEnd = t + (isCrit ? 0.052 : 0.04)
+  const nPeak = (isCrit ? 0.54 : 0.34) * master
+  const nEnd = t + (isCrit ? 0.058 : 0.04)
   noiseGain.gain.setValueAtTime(FLOOR, t)
   noiseGain.gain.linearRampToValueAtTime(nPeak, t + 0.002)
   noiseGain.gain.exponentialRampToValueAtTime(FLOOR, nEnd)
@@ -433,15 +501,15 @@ function schedulePhysHitLayers(ctx, opts = {}, masterScale = 1) {
 
   const thud = ctx.createOscillator()
   thud.type = 'sine'
-  const f0 = isCrit ? 112 : 88
-  const f1 = isCrit ? 52 : 44
+  const f0 = isCrit ? 128 : 88
+  const f1 = isCrit ? 48 : 44
   thud.frequency.setValueAtTime(f0, t)
   thud.frequency.exponentialRampToValueAtTime(f1, t + 0.12)
   const thudGain = ctx.createGain()
-  const tPeak = (isCrit ? 0.36 : 0.26) * master
+  const tPeak = (isCrit ? 0.5 : 0.26) * master
   thudGain.gain.setValueAtTime(FLOOR, t)
-  thudGain.gain.linearRampToValueAtTime(tPeak, t + 0.022)
-  thudGain.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.22 : 0.18))
+  thudGain.gain.linearRampToValueAtTime(tPeak, t + 0.018)
+  thudGain.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.24 : 0.18))
   thud.connect(thudGain)
   thudGain.connect(ctx.destination)
   thud.start(t)
@@ -450,17 +518,17 @@ function schedulePhysHitLayers(ctx, opts = {}, masterScale = 1) {
   if (isCrit) {
     const ring = ctx.createOscillator()
     ring.type = 'triangle'
-    ring.frequency.setValueAtTime(380, t)
-    ring.frequency.exponentialRampToValueAtTime(220, t + 0.06)
+    ring.frequency.setValueAtTime(440, t)
+    ring.frequency.exponentialRampToValueAtTime(240, t + 0.07)
     const ringGain = ctx.createGain()
-    const rPeak = 0.14 * master
+    const rPeak = 0.24 * master
     ringGain.gain.setValueAtTime(FLOOR, t)
-    ringGain.gain.linearRampToValueAtTime(rPeak, t + 0.005)
-    ringGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.11)
+    ringGain.gain.linearRampToValueAtTime(rPeak, t + 0.004)
+    ringGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.13)
     ring.connect(ringGain)
     ringGain.connect(ctx.destination)
     ring.start(t)
-    ring.stop(t + 0.12)
+    ring.stop(t + 0.14)
   }
 }
 
@@ -525,7 +593,7 @@ function scheduleMagicHitLayers(ctx, opts = {}) {
   band.frequency.setValueAtTime(isCrit ? 4800 : 3600, t)
   band.Q.setValueAtTime(isCrit ? 2.6 : 2.0, t)
   const noiseGain = ctx.createGain()
-  const nPeak = (isCrit ? 0.38 : 0.3) * master
+  const nPeak = (isCrit ? 0.48 : 0.3) * master
   noiseGain.gain.setValueAtTime(FLOOR, t)
   noiseGain.gain.linearRampToValueAtTime(nPeak, t + 0.0015)
   noiseGain.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.048 : 0.036))
@@ -541,7 +609,7 @@ function scheduleMagicHitLayers(ctx, opts = {}) {
   body.frequency.exponentialRampToValueAtTime(72, t + 0.14)
   const bodyG = ctx.createGain()
   bodyG.gain.setValueAtTime(FLOOR, t)
-  bodyG.gain.linearRampToValueAtTime((isCrit ? 0.3 : 0.22) * master, t + 0.018)
+  bodyG.gain.linearRampToValueAtTime((isCrit ? 0.4 : 0.22) * master, t + 0.018)
   bodyG.gain.exponentialRampToValueAtTime(FLOOR, t + 0.2)
   body.connect(bodyG)
   bodyG.connect(ctx.destination)
@@ -557,7 +625,7 @@ function scheduleMagicHitLayers(ctx, opts = {}) {
     ring.frequency.exponentialRampToValueAtTime(300, t + 0.07)
     const rg = ctx.createGain()
     rg.gain.setValueAtTime(FLOOR, t)
-    rg.gain.linearRampToValueAtTime(0.12 * master, t + 0.004)
+    rg.gain.linearRampToValueAtTime(0.2 * master, t + 0.004)
     rg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.12)
     ring.connect(rg)
     rg.connect(ctx.destination)
@@ -1296,6 +1364,20 @@ function tryPlaySample(ctx, category, gainScale = 1) {
 }
 
 /**
+ * Play crit sample with a short synth accent for extra punch.
+ * @param {AudioContext} ctx
+ * @param {keyof typeof SAMPLE_MANIFEST} category
+ * @param {number} [gainScale]
+ * @param {'physical' | 'magic' | 'mixed'} [accentType]
+ * @returns {boolean}
+ */
+function tryPlayCritSample(ctx, category, gainScale = CRIT_SAMPLE_GAIN, accentType = 'physical') {
+  const played = tryPlaySample(ctx, category, gainScale)
+  if (played) scheduleCritSampleAccent(ctx, accentType)
+  return played
+}
+
+/**
  * @param {AudioContext} ctx
  * @param {string} category
  * @param {number} [gainScale]
@@ -1355,21 +1437,36 @@ export function playCombatLogLineSound(entry) {
     if (hpLoss > 0) {
       const isCrit = !!entry.isCrit
       if (skillCat) {
-        playSkillCategory(ctx, skillCat, isCrit ? 1.0 : 0.92)
+        playSkillCategory(ctx, skillCat, isCrit ? CRIT_SAMPLE_GAIN : 0.92)
+        if (isCrit) scheduleCritSampleAccent(ctx, entry.damageType === 'magic' ? 'magic' : 'physical')
         resumeContextIfNeeded(ctx)
         return
       }
       const dt = entry.damageType || 'physical'
       if (dt === 'magic') {
         const cat = isCrit ? 'magicCrit' : 'magicHit'
-        if (!tryPlaySample(ctx, cat, isCrit ? 1.0 : 0.9)) scheduleMagicHitLayers(ctx, { isCrit })
+        if (isCrit) {
+          if (!tryPlayCritSample(ctx, cat, CRIT_SAMPLE_GAIN, 'magic')) scheduleMagicHitLayers(ctx, { isCrit })
+        } else if (!tryPlaySample(ctx, cat, HIT_SAMPLE_GAIN)) {
+          scheduleMagicHitLayers(ctx, { isCrit })
+        }
       } else if (dt === 'mixed') {
-        const physOk = tryPlaySample(ctx, isCrit ? 'physCrit' : 'physHit', 0.7)
-        const magicOk = tryPlaySample(ctx, isCrit ? 'magicCrit' : 'magicHit', 0.5)
-        if (!physOk && !magicOk) scheduleMixedHitLayers(ctx, { isCrit })
+        if (isCrit) {
+          const physOk = tryPlayCritSample(ctx, 'physCrit', 0.88, 'mixed')
+          const magicOk = tryPlaySample(ctx, 'magicCrit', 0.66)
+          if (!physOk && !magicOk) scheduleMixedHitLayers(ctx, { isCrit })
+        } else {
+          const physOk = tryPlaySample(ctx, 'physHit', 0.7)
+          const magicOk = tryPlaySample(ctx, 'magicHit', 0.5)
+          if (!physOk && !magicOk) scheduleMixedHitLayers(ctx, { isCrit })
+        }
       } else {
         const cat = isCrit ? 'physCrit' : 'physHit'
-        if (!tryPlaySample(ctx, cat, isCrit ? 1.0 : 0.9)) schedulePhysHitLayers(ctx, { isCrit }, 1)
+        if (isCrit) {
+          if (!tryPlayCritSample(ctx, cat, CRIT_SAMPLE_GAIN, 'physical')) schedulePhysHitLayers(ctx, { isCrit }, 1)
+        } else if (!tryPlaySample(ctx, cat, HIT_SAMPLE_GAIN)) {
+          schedulePhysHitLayers(ctx, { isCrit }, 1)
+        }
       }
       resumeContextIfNeeded(ctx)
     }
@@ -1411,7 +1508,7 @@ export function playCombatEncounterSound(opts = {}) {
   preloadSamples(ctx)
   const isBoss = !!opts.isBoss
   const category = isBoss ? 'encounterBoss' : 'encounter'
-  const gain = isBoss ? 0.88 : 0.78
+  const gain = isBoss ? 0.94 : 0.78
   if (!tryPlaySample(ctx, category, gain)) scheduleEncounter(ctx, { isBoss })
   resumeContextIfNeeded(ctx)
 }
@@ -1483,15 +1580,86 @@ export function playCombatHitSound(opts = {}) {
   preloadSamples(ctx)
   const isCrit = !!opts.isCrit
   const cat = isCrit ? 'physCrit' : 'physHit'
-  if (!tryPlaySample(ctx, cat, isCrit ? 1.0 : 0.9)) schedulePhysHitLayers(ctx, opts, 1)
+  if (isCrit) {
+    if (!tryPlayCritSample(ctx, cat, CRIT_SAMPLE_GAIN, 'physical')) schedulePhysHitLayers(ctx, opts, 1)
+  } else if (!tryPlaySample(ctx, cat, HIT_SAMPLE_GAIN)) {
+    schedulePhysHitLayers(ctx, opts, 1)
+  }
   resumeContextIfNeeded(ctx)
 }
 
 /**
- * Settings preview: phys hit; ignores mute; blocked in E2E and background tab.
- * @param {{ isCrit?: boolean }} opts
+ * Play one manifest category for settings preview (ignores mute).
+ * @param {keyof typeof SAMPLE_MANIFEST} category
  */
-export function playCombatHitPreview(opts = {}) {
+function playCategoryForPreview(ctx, category) {
+  switch (category) {
+    case 'physHit':
+      if (!tryPlaySample(ctx, 'physHit', HIT_SAMPLE_GAIN)) schedulePhysHitLayers(ctx, { isCrit: false }, 1)
+      return
+    case 'physCrit':
+      if (!tryPlayCritSample(ctx, 'physCrit', CRIT_SAMPLE_GAIN, 'physical')) {
+        schedulePhysHitLayers(ctx, { isCrit: true }, 1)
+      }
+      return
+    case 'magicHit':
+      if (!tryPlaySample(ctx, 'magicHit', HIT_SAMPLE_GAIN)) scheduleMagicHitLayers(ctx, { isCrit: false })
+      return
+    case 'magicCrit':
+      if (!tryPlayCritSample(ctx, 'magicCrit', CRIT_SAMPLE_GAIN, 'magic')) {
+        scheduleMagicHitLayers(ctx, { isCrit: true })
+      }
+      return
+    case 'dotPhys':
+      if (!tryPlaySample(ctx, 'dotPhys', 0.55)) scheduleDotTick(ctx, 'physical')
+      return
+    case 'dotMagic':
+      if (!tryPlaySample(ctx, 'dotMagic', 0.55)) scheduleDotTick(ctx, 'magic')
+      return
+    case 'dodge':
+      if (!tryPlaySample(ctx, 'dodge', 0.78)) scheduleDodge(ctx)
+      return
+    case 'encounter':
+      if (!tryPlaySample(ctx, 'encounter', 0.78)) scheduleEncounter(ctx, { isBoss: false })
+      return
+    case 'encounterBoss':
+      if (!tryPlaySample(ctx, 'encounterBoss', 0.94)) scheduleEncounter(ctx, { isBoss: true })
+      return
+    case 'heroDeath':
+      if (!tryPlaySample(ctx, 'heroDeath', 0.95)) scheduleHeroDeath(ctx)
+      return
+    case 'monsterDeath':
+      if (!tryPlaySample(ctx, 'monsterDeath', 0.82)) scheduleMonsterDeath(ctx)
+      return
+    case 'victory':
+      if (!tryPlaySample(ctx, 'victory', 1.0)) scheduleVictory(ctx)
+      return
+    case 'defeat':
+      if (!tryPlaySample(ctx, 'defeat', 1.0)) scheduleDefeat(ctx)
+      return
+    case 'levelUp':
+      if (!tryPlaySample(ctx, 'levelUp', 0.92)) scheduleLevelUp(ctx)
+      return
+    case 'lootDrop':
+      if (!tryPlaySample(ctx, 'lootDrop', 0.85)) scheduleLootDrop(ctx)
+      return
+    default:
+      break
+  }
+  if (category.startsWith('skill')) {
+    playSkillCategory(ctx, category, 0.92)
+    return
+  }
+  if (category.startsWith('mapEntry')) {
+    if (!tryPlaySample(ctx, category, 0.82)) scheduleMapEntrySynth(ctx, category, 1)
+  }
+}
+
+/**
+ * Preview any manifest category from settings; ignores mute.
+ * @param {keyof typeof SAMPLE_MANIFEST} category
+ */
+export function playSfxPreview(category) {
   if (!canPlayPreviewSfx()) return
   const ctx = getOrCreateAudioContext()
   if (!ctx) {
@@ -1500,13 +1668,17 @@ export function playCombatHitPreview(opts = {}) {
   }
   preloadSamples(ctx)
   try {
-    const isCrit = !!opts.isCrit
-    const cat = isCrit ? 'physCrit' : 'physHit'
-    if (!tryPlaySample(ctx, cat, isCrit ? 1.0 : 0.9)) {
-      schedulePhysHitLayers(ctx, opts, 1)
-    }
+    playCategoryForPreview(ctx, category)
     resumeContextIfNeeded(ctx)
   } catch (_) {
     playHtml5PreviewBeep()
   }
+}
+
+/**
+ * Settings preview: phys hit; ignores mute; blocked in E2E and background tab.
+ * @param {{ isCrit?: boolean }} opts
+ */
+export function playCombatHitPreview(opts = {}) {
+  playSfxPreview(!!opts.isCrit ? 'physCrit' : 'physHit')
 }

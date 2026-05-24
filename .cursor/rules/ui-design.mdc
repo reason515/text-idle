@@ -36,12 +36,13 @@ All UI code must follow [docs/design/11-ui-tokens.md](../../docs/design/11-ui-to
 
 ## Tooltip and in-panel hints (MANDATORY)
 
-- **Hover**: `class="tooltip-wrap has-tip"` + `<span class="tooltip-text">`. Do **not** use `title=` for gameplay or explanatory copy.
-- **Persistent helper blocks** inside modals/panels (shop text, banners): nested card treatment — `var(--bg-darker)`, `1px solid var(--border-dark)`, `border-radius: 6px`, padding like `detail-skill-choice-banner`. Avoid a lone muted paragraph with no inner card.
-- **Long labels** in dense lists: ellipsis on the visible line + full string in `tooltip-text` (same hover pattern), not `title`.
-- **Equipment quality labels** (普通 / 魔法 / 稀有 / 独特): use `getQualityColor` + `QUALITY_*` from `equipment.js`; see `docs/design/11-ui-tokens.md`.
+- **Markup**: `tooltip-wrap has-tip` + `tooltip-text`; modifiers `tooltip-below`, `tooltip-wide`; fixed/Teleport: `tooltip-float`. Full spec: **`frontend-tips-tooltips.mdc`** (`alwaysApply: true`).
+- **Visual style**: global **`frontend/src/style.css`** only — `--tooltip-bg`, `--tooltip-border`, `--tooltip-shadow`, `--tooltip-radius`. Do **not** re-skin `.tooltip-text` in scoped Vue CSS.
+- **Persistent helper blocks** inside modals/panels: nested card (`--bg-darker`, `--border-dark`, 6px radius); see `detail-skill-choice-banner`.
+- **Long labels**: ellipsis + `tooltip-text`; no `title=`.
+- **Equipment quality labels**: `getQualityColor` + `QUALITY_*` from `equipment.js`.
 
-These rules are duplicated for visibility in [frontend-tips-tooltips.mdc](./frontend-tips-tooltips.mdc) (`alwaysApply: true`).
+See [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md) section 5.3.
 
 ## Form Inputs (MANDATORY)
 
@@ -50,6 +51,20 @@ These rules are duplicated for visibility in [frontend-tips-tooltips.mdc](./fron
 - Focus: `border-color: var(--accent)`, `box-shadow: 0 0 6px var(--focus-glow)`.
 - Match adjacent selects/buttons in font-size and padding.
 - **Checkbox/radio**: Use `appearance: none` and custom styles (bg, border, accent when checked). Do NOT use native checkbox/radio appearance.
+
+## Scrollable panels (MANDATORY)
+
+- Any `overflow-y: auto` / `overflow-x: auto` region in game UI MUST use **`game-scroll`** (default) or **`game-scroll-alt`** (greener thumb, e.g. stats/inventory) from `frontend/src/style.css`.
+- Do **not** ship native OS scrollbars (bright gray track, rounded system thumb).
+- Tokens: `--scrollbar-track`, `--scrollbar-thumb`, `--scrollbar-thumb-hover`, `--scrollbar-thumb-alt` (defined in `style.css`; document in `11-ui-tokens.md`).
+- When adding a new scroll area, grep for existing `game-scroll` usage and match the variant used in similar panels.
+
+## Buttons in modals and dense lists (MANDATORY)
+
+- Global `.btn` defaults to **`width: 100%`** (form-style). Row / footer / list actions MUST override:
+  - Use **`btn btn-sm`** for compact actions (global `style.css` sets `width: auto`, `margin-top: 0`).
+  - Modal footers: wrap in a footer row (`display: flex; justify-content: flex-end`) like `audio-settings-footer` / `player-stats-modal-footer`; do not leave a full-width block button in a narrow modal unless intentional.
+- Reuse existing patterns: `shop-buy-btn`, `player-stats-compact-btn`, `command-action-btn` for context-specific sizing; never raw unstyled `<button>` for gameplay UI.
 
 ## Semantic Color Consistency (MANDATORY)
 
@@ -79,3 +94,7 @@ Before adding a new place that shows skill names, hero names, or basic attack: s
 - Same background for nested blocks (causes flat, monotonous look).
 - Different colors for the same semantic content in different panels (e.g. skill name in log vs tactics).
 - **Native checkbox/radio appearance** (white box, system checkmark). Use `appearance: none` + game tokens.
+- **Native scrollbars** on in-game scroll regions (use `game-scroll` / `game-scroll-alt`).
+- **Full-width `.btn`** inside list rows or modal footers without explicit layout reason.
+- **Per-view `.tooltip-text` skin overrides** (background/border/shadow/font); use `style.css` + `--tooltip-*` tokens.
+- **HTML `title=`** for gameplay hints (use `tooltip-wrap` / `tooltip-text`).

@@ -50,9 +50,9 @@ New-Item -ItemType Directory -Force -Path $dst | Out-Null
 
 $files = [ordered]@{
     fs_phys_hit   = 547042
-    fs_phys_crit  = 815762
+    fs_phys_crit  = 591155
     fs_magic_hit  = 455206
-    fs_magic_crit = 442774
+    fs_magic_crit = 430769
     fs_dodge      = 9509
     fs_dot_phys   = 336495
     fs_dot_magic  = 781094
