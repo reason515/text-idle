@@ -28,6 +28,10 @@ export const COMBAT_PACING_MS = {
   defeatBeforeRest: 2000,
   /** After a battle ends before the next loop iteration. */
   postBattleGap: 500,
+  /** After victory summary before the first level-up log line (read time + SFX gap). */
+  afterVictoryBeforeLevelUp: 1400,
+  /** Between consecutive level-up log reveals when multiple heroes level. */
+  betweenLevelUpReveals: 700,
 }
 
 const LS_KEY = 'textIdleCombatLogStepDelayMs'

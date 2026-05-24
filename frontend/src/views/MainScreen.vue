@@ -39,7 +39,7 @@
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
             class="hero-card card-with-float"
-            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0 }"
+            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0, 'hero-card-levelup-pulse': getLevelUpPulse(hero.id) }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
@@ -273,7 +273,11 @@
             <div v-else-if="entry.type === 'levelUp'" class="log-levelup">
               <span class="log-levelup-icon">&#9733;</span>
               <span :style="{ color: classColor(entry.heroClass) }">{{ entry.heroName }}</span>
-              <span class="log-levelup-text">达到 {{ entry.newLevel }} 级！</span>
+              <span class="log-levelup-text">
+                <span class="log-levelup-lvl">{{ entry.oldLevel }} 级</span>
+                <span class="log-levelup-arrow">&#8594;</span>
+                <span class="log-levelup-lvl log-levelup-lvl-new">{{ entry.newLevel }} 级！</span>
+              </span>
               <span class="log-levelup-bonus">+{{ entry.pointsGained }} 属性点</span>
             </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
@@ -2804,6 +2808,7 @@ const monsterTargets = ref({})
 const unitFloatingNumbers = ref({})
 /** @type {import('vue').Ref<Record<string, 'hp' | 'mp'>>} */
 const regenPulseByUnitId = ref({})
+const levelUpPulseByHeroId = ref({})
 let floatNumId = 0
 
 const REGEN_HERO_STAGGER_MS = 200
@@ -2865,6 +2870,36 @@ function triggerRegenBarPulse(unitId, kind) {
     delete next[unitId]
     regenPulseByUnitId.value = next
   }, 650)
+}
+
+function getLevelUpPulse(heroId) {
+  return !!levelUpPulseByHeroId.value[heroId]
+}
+
+function triggerLevelUpPulse(heroId) {
+  if (!heroId || isCombatUiDeferred()) return
+  levelUpPulseByHeroId.value = { ...levelUpPulseByHeroId.value, [heroId]: true }
+  setTimeout(() => {
+    const next = { ...levelUpPulseByHeroId.value }
+    delete next[heroId]
+    levelUpPulseByHeroId.value = next
+  }, 900)
+}
+
+function syncOneHeroDisplayAfterLevelUp(heroId) {
+  const squadHero = squad.value.find((h) => unitIdMatches(h.id, heroId))
+  if (!squadHero) return
+  const computed = computeHeroDisplay(squadHero)
+  displayHeroes.value = displayHeroes.value.map((dh) => {
+    if (!unitIdMatches(dh.id, heroId)) return dh
+    return {
+      ...computed,
+      debuffs: dh.debuffs ?? [],
+      currentHP: dh.currentHP,
+      currentMP: dh.currentMP,
+    }
+  })
+  syncSelectedUnitsFromCombat()
 }
 
 function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', moveKind = null } = {}) {
@@ -4254,6 +4289,20 @@ async function revealUnitDefeatedStep(defeatEntry, stepDelayMs) {
   await scrollLog()
 }
 
+async function revealLevelUpStep(entry, { isFirst = false } = {}) {
+  const delayMs = isFirst
+    ? COMBAT_PACING_MS.afterVictoryBeforeLevelUp
+    : COMBAT_PACING_MS.betweenLevelUpReveals
+  await sleepMsRespectingPause(applyCombatPacingDelayMs(delayMs))
+  if (!isRunning.value) return
+  addLogEntry(entry)
+  if (entry.heroId) {
+    syncOneHeroDisplayAfterLevelUp(entry.heroId)
+    triggerLevelUpPulse(entry.heroId)
+  }
+  await scrollLog()
+}
+
 function applyRegenBatchInstant(entry) {
   if (
     (entry.type !== 'manaRegenBatch' && entry.type !== 'hpRegenBatch') ||
@@ -4706,17 +4755,19 @@ async function runCombatLoop() {
       const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
       saveSquad(squad.value)
       gold.value = addGold(result.rewards.gold)
-      syncDisplayHeroesFromSquad()
 
+      const levelUpEntries = []
       for (let i = 0; i < squad.value.length; i += 1) {
         const r = results[i]
         if (r?.leveledUp && r.levelsGained > 0) {
           const hero = squad.value[i]
           const oldLevel = (hero.level ?? 1) - r.levelsGained
-          addLogEntry({
+          levelUpEntries.push({
             type: 'levelUp',
+            heroId: hero.id,
             heroName: heroDisplayName(hero.name),
             heroClass: hero.class,
+            oldLevel,
             newLevel: hero.level,
             pointsGained: r.levelsGained * POINTS_PER_LEVEL,
           })
@@ -4727,7 +4778,16 @@ async function runCombatLoop() {
           }
         }
       }
-      if (results.some((r) => r?.leveledUp)) await scrollLog()
+
+      if (levelUpEntries.length > 0) {
+        let isFirstLevelUp = true
+        for (const entry of levelUpEntries) {
+          await revealLevelUpStep(entry, { isFirst: isFirstLevelUp })
+          isFirstLevelUp = false
+          if (!isRunning.value) break
+        }
+      }
+      syncDisplayHeroesFromSquad()
       playerStats.value = applyBattleToPlayerStats(playerStats.value, {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: result.rewards.gold,
@@ -7123,10 +7183,29 @@ onUnmounted(() => {
   color: var(--color-exp);
 }
 .log-levelup-text { color: var(--text); }
+.log-levelup-lvl { color: var(--text-muted); font-weight: normal; }
+.log-levelup-lvl-new { color: var(--color-exp); font-weight: bold; }
+.log-levelup-arrow {
+  color: var(--color-exp);
+  margin: 0 0.15rem;
+  font-weight: bold;
+}
 .log-levelup-bonus {
   color: var(--color-exp);
-  font-size: var(--font-s);
+  font-size: var(--font-sm);
   font-weight: normal;
+}
+.hero-card.hero-card-levelup-pulse {
+  animation: hero-levelup-glow 0.85s ease-out;
+}
+@keyframes hero-levelup-glow {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  45% {
+    box-shadow: 0 0 14px var(--color-exp);
+  }
 }
 .defeat-text { color: var(--color-defeat); }
 
