@@ -136,6 +136,16 @@ describe('experience and leveling', () => {
       expect(hero.xp).toBe(0)
       expect(hero.level).toBe(1)
     })
+
+    it('Example27: expansion hero at join level still gains 3 unassignedPoints per later level-up', () => {
+      const hero = { level: 5, xp: 0, unassignedPoints: 0 }
+      const need = calculateXPRequired(5)
+      const { leveledUp, levelsGained } = applyXP(hero, need)
+      expect(leveledUp).toBe(true)
+      expect(levelsGained).toBe(1)
+      expect(hero.level).toBe(6)
+      expect(hero.unassignedPoints).toBe(3)
+    })
   })
 
   describe('assignAttributePoint', () => {

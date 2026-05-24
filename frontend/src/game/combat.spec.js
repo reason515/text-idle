@@ -9,6 +9,8 @@ import {
   getRecruitLimit,
   getExpansionHeroLevel,
   getExpansionHeroAttributePoints,
+  getSquadMinLevel,
+  isDruidOnlyExpansionSlot,
   shouldPromptExpansionRecruitAfterBoss,
   monsterPowerFactorFromLevel,
   addExplorationProgress,
@@ -396,12 +398,15 @@ describe('combat progression and systems', () => {
     expect(next.bossAvailable).toBe(false)
   })
 
-  it('Example27: getExpansionHeroLevel returns 5 for map 2, 10 for map 3, etc.', () => {
+  it('Example27: getExpansionHeroLevel returns 5 for first expansion, squad min for Druid slot', () => {
     expect(getExpansionHeroLevel({ unlockedMapCount: 1 })).toBe(1)
     expect(getExpansionHeroLevel({ unlockedMapCount: 2 })).toBe(5)
     expect(getExpansionHeroLevel({ unlockedMapCount: 3 })).toBe(10)
-    expect(getExpansionHeroLevel({ unlockedMapCount: 4 })).toBe(15)
-    expect(getExpansionHeroLevel({ unlockedMapCount: 5 })).toBe(20)
+    const squad = [{ level: 7 }, { level: 9 }, { level: 8 }, { level: 12 }]
+    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 3 }, 4)).toBe(true)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 3 }, squad)).toBe(7)
+    expect(getSquadMinLevel(squad)).toBe(7)
+    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 2 }, 3)).toBe(false)
   })
 
   it('Example27: getExpansionHeroAttributePoints returns 12 for Lv5, 27 for Lv10 (3 per level)', () => {
@@ -1344,6 +1349,40 @@ describe('combat progression and systems', () => {
     expect(mUp.regenRaw).toBe(4)
     expect(mUp.manaGained).toBeGreaterThan(0)
     expect(mUp.actorName).toBeDefined()
+  })
+
+  it('logs hpRegenBatch at end of round when hero has equipment hp regen', () => {
+    const warrior = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      agility: 99,
+      equipment: { Chest: { hpRegen: 3, armor: 0, resistance: 0 } },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Mob A',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 0, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const result = runAutoCombat({
+      heroes: [{ ...warrior, currentHP: 25, maxMP: 50, currentMP: 0 }],
+      monsters,
+      rng: () => 0.5,
+      maxRounds: 1,
+    })
+    const hpBatch = result.log.find((e) => e.type === 'hpRegenBatch')
+    expect(hpBatch).toBeDefined()
+    const wUp = hpBatch.updates.find((u) => u.actorId === 'w1')
+    expect(wUp).toBeDefined()
+    expect(wUp.regenFloored).toBe(3)
+    expect(wUp.hpGained).toBe(3)
+    expect(wUp.hpAfter).toBe(wUp.hpBefore + 3)
+    expect(wUp.actorName).toBeDefined()
   })
 
   it('heroAllPrioritySkillsUnaffordable is true when Mage cannot pay any priority skill', () => {

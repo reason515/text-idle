@@ -12,7 +12,7 @@
 | **关卡与怪物** | [02-levels-monsters.md](./02-levels-monsters.md) | 地图系统、怪物系统、探索度与解锁；**固定三人开局与扩展招募** |
 | **战斗系统** | [03-combat.md](./03-combat.md) | 回合制、出手顺序、胜负判定、战后恢复 |
 | **职业与属性** | [04-classes-attributes.md](./04-classes-attributes.md) | 职业设计、核心属性、伤害公式、经验升级 |
-| **技能系统** | [05-skills.md](./05-skills.md) | 技能来源、成长、战士与法师技能池 |
+| **技能系统** | [05-skills.md](./05-skills.md) | 技能来源、成长、战法牧与德鲁伊技能池 |
 | **策略配置** | [10-tactics.md](./10-tactics.md) | 技能优先级、目标选择、触发条件、AI 自然语言解析与合并、布局 (Strategize) |
 | **装备系统** | [06-equipment.md](./06-equipment.md) | 装备部位、品质词缀、底材表、掉落率；**已实现词缀全表见 7.2.1**，专用词缀见 7.3（多为设计稿） |
 | **背包系统** | [07-inventory.md](./07-inventory.md) | 背包规格、出售、UI 入口 |

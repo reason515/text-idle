@@ -342,17 +342,39 @@ export function shouldPromptExpansionRecruitAfterBoss({
 }
 
 /**
- * Expansion hero level when recruiting after defeating map N boss.
- * Design doc 02-levels-monsters.md 1.2.1: Map 1 boss -> Lv5, Map 2 -> Lv10, etc.
+ * Second expansion slot (5th hero): Druid only. Design 02-levels-monsters 1.2.1.
  * @param {Object} progress - combatProgress
- * @returns {number} Level 5, 10, 15, or 20; 1 if not expansion (unlockedMapCount 1)
+ * @param {number} squadLength - current squad size before recruit
+ * @returns {boolean}
  */
+export function isDruidOnlyExpansionSlot(progress, squadLength) {
+  const n = progress?.unlockedMapCount ?? 1
+  return n >= 3 && squadLength === 4
+}
+
 /**
- * Expansion hero level. Design 02-levels-monsters 1.2.1: map 1 boss -> Lv5, map 2 -> Lv10. Only 2 expansion recruits (4th, 5th).
- * @param {Object} progress - combatProgress
- * @returns {number} 5, 10, 15, or 20; 1 if not expansion (unlockedMapCount 1)
+ * Minimum hero level in squad (for Druid expansion join level).
+ * @param {Object[]} squad
+ * @returns {number}
  */
-export function getExpansionHeroLevel(progress) {
+export function getSquadMinLevel(squad) {
+  if (!Array.isArray(squad) || squad.length === 0) return 1
+  return Math.min(...squad.map((h) => Math.max(1, h.level ?? 1)))
+}
+
+/**
+ * Expansion hero level. Design 02-levels-monsters 1.2.1:
+ * - Map 1 boss (4th hero): Lv5
+ * - Map 2 boss (5th hero, Druid): min level in current squad
+ * @param {Object} progress - combatProgress
+ * @param {Object[]} [squad] - current squad (required for Druid slot level)
+ * @returns {number} Join level; 1 if not expansion (unlockedMapCount 1)
+ */
+export function getExpansionHeroLevel(progress, squad) {
+  const squadLength = Array.isArray(squad) ? squad.length : 0
+  if (isDruidOnlyExpansionSlot(progress, squadLength)) {
+    return getSquadMinLevel(squad)
+  }
   const n = progress?.unlockedMapCount ?? 1
   if (n <= 1) return 1
   return Math.min(20, 5 * (n - 1))
@@ -2399,6 +2421,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         actorClass: hero.class,
         hpBefore,
         hpGained,
+        regenFloored: regen,
         hpAfter: hero.currentHP,
         maxHP: hero.maxHP,
       })

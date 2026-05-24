@@ -130,6 +130,16 @@ describe('skillChoice', () => {
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)
     })
 
+    it('returns lowest unresolved milestone for high-level expansion hero who skipped onboarding choices', () => {
+      const hero = {
+        class: 'Warrior',
+        level: 7,
+        skills: ['heroic-strike'],
+        skillMilestonesResolved: [],
+      }
+      expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)
+    })
+
     it('returns 3 when Priest at Lv5 still has milestone 3 unresolved', () => {
       const hero = { class: 'Priest', level: 5, skill: 'flash-heal' }
       expect(getFirstUnresolvedSkillChoiceLevel(hero)).toBe(3)

@@ -272,14 +272,34 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(confirmRecruit.getByText('\u7269\u653b').first()).toBeVisible({ timeout: 5000 })
   })
 
-  test('AC5b: expansion Mage confirmation shows SpellPower and MP', async ({ page }) => {
+  test('AC5b: Druid-only 5th seat uses squad min level and fixed skills', async ({ page }) => {
     test.setTimeout(120000)
-    const email = uniqueTestEmail('recruit-e2e')
+    const email = uniqueTestEmail('recruit-druid-e2e')
     await registerAndCompleteIntro(page, email)
     await updateStoredState(page, () => {
+      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+      squad.forEach((h, i) => {
+        h.level = i === 0 ? 7 : 9
+      })
+      squad.push({
+        id: 'uther',
+        name: '\u4e4c\u745f\u5c14',
+        class: 'Paladin',
+        level: 9,
+        xp: 0,
+        unassignedPoints: 0,
+        strength: 10,
+        agility: 5,
+        intellect: 8,
+        stamina: 8,
+        spirit: 6,
+        equipment: {},
+        skills: [],
+      })
+      localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('combatProgress', JSON.stringify({
-        unlockedMapCount: 2,
-        currentMapId: 'westfall',
+        unlockedMapCount: 3,
+        currentMapId: 'duskwood',
         currentProgress: 0,
         bossAvailable: false,
       }))
@@ -289,17 +309,17 @@ test.describe('Character Recruitment (Example 4)', () => {
     await pauseCombat(page)
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.hero-grid button')).toHaveCount(1, { timeout: 10000 })
+    await expect(page.getByText(/\u9650\u5b9a\u4e3a\u5fb7\u9c81\u4f0a/)).toBeVisible({ timeout: 5000 })
     await page.getByRole('button', { name: /^玛法里奥/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     const intBtn = page.locator('.attr-alloc-row').filter({ hasText: '\u667a\u529b' }).first().locator('.attr-btn')
-    for (let i = 0; i < 12; i++) await intBtn.click({ force: true })
-    // Druid has no initial skill; confirm step appears when all points allocated
+    for (let i = 0; i < 18; i++) await intBtn.click({ force: true })
     const confirmRecruitB = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmRecruitB).toBeVisible({ timeout: 15000 })
-    await expect(confirmRecruitB.getByText(/\u526f\u5c5e\u6027/)).toBeVisible({ timeout: 5000 })
-    await expect(confirmRecruitB.getByText('\u6cd5\u5f3a').first()).toBeVisible({ timeout: 5000 })
-    await expect(confirmRecruitB.getByText('\u6cd5\u529b').first()).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruitB.getByText('\u56de\u6625\u672f')).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruitB.getByText('\u91cd\u6bb7')).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruitB.getByText(/7\s*\u7ea7/)).toBeVisible({ timeout: 5000 })
   })
 
   test('Example27 AC2/AC7: expansion hero joins at Lv5 with allocated attrs', async ({ page }) => {

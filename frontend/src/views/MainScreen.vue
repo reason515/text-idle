@@ -433,6 +433,27 @@
                 </div>
               </template>
             </div>
+            <div v-else-if="entry.type === 'hpRegenBatch'" class="log-entry log-hp-regen-batch">
+              <template v-for="(u, uidx) in entry.updates" :key="(u.actorId || '') + '-' + entry.round + '-' + uidx">
+                <div class="log-hp-regen-line">
+                  <span class="log-round">[R{{ entry.round }}]</span>
+                  <span class="log-actor" :style="{ color: u.actorClass ? classColor(u.actorClass) : 'var(--text-value)' }">{{
+                    heroDisplayName(u.actorName)
+                  }}</span>
+                  <span class="log-sep">回合结束恢复生命</span>
+                  <span class="log-hp-regen-amt" style="color: var(--color-hp)">+{{ u.hpGained }}</span>
+                  <span class="log-sep">（当前</span>
+                  <span class="log-hp-regen-curr">{{ u.hpAfter }}/{{ u.maxHP }}</span>
+                  <span class="log-sep">）</span>
+                </div>
+                <div class="log-detail-box log-hp-regen-detail">
+                  <div class="log-calc">
+                    装备每回合生命回复 {{ u.regenFloored ?? u.hpGained }}；本回合实际 +{{ u.hpGained
+                    }}<template v-if="(u.regenFloored ?? u.hpGained) > u.hpGained">（已达生命上限）</template>
+                  </div>
+                </div>
+              </template>
+            </div>
             <div v-else class="log-entry">
               <span class="log-round">[R{{ entry.round }}]</span>
               <span
@@ -811,7 +832,11 @@
         <div class="modal-box recruit-prompt-modal" data-testid="recruit-prompt-modal" @click.stop>
           <div class="modal-title">扩充小队</div>
           <div class="detail-skill-choice-banner recruit-prompt-banner">
-            <p>
+            <p v-if="recruitPromptIsDruidSlot">
+              你已解锁<strong>第五位英雄席位</strong>，本次扩充<strong>限定招募德鲁伊</strong>（玛法里奥·怒风）。
+              加入等级为当前小队<strong>最低等级（Lv.{{ recruitPromptLevel }}）</strong>；固定技能为回春术与重殴。
+            </p>
+            <p v-else>
               你已解锁新的英雄席位。扩展英雄将以 <strong>Lv.{{ recruitPromptLevel }}</strong>
               加入，可在招募流程中分配属性与初始技能。
             </p>
@@ -2250,6 +2275,7 @@ import {
   settleDefeatExploration,
   shouldPromptExpansionRecruitAfterBoss,
   getExpansionHeroLevel,
+  isDruidOnlyExpansionSlot,
   buildEncounterMonsters,
   runAutoCombat,
   startRestPhase,
@@ -2766,6 +2792,7 @@ const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
 const showRecruitPromptModal = ref(false)
 const recruitPromptLevel = ref(5)
+const recruitPromptIsDruidSlot = ref(false)
 /** @type {(() => void) | null} */
 let recruitPromptResolve = null
 const squadMaxLevel = computed(() => getSquadMaxLevel(squad.value) || 1)
@@ -4148,11 +4175,19 @@ function applyOneCombatEntry(entry) {
   }
   addLogEntry(entry)
 
-  if (entry.type === 'manaRegenBatch' && Array.isArray(entry.updates)) {
+  if (
+    (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') &&
+    Array.isArray(entry.updates)
+  ) {
     let batchHeroes = [...displayHeroes.value]
     for (const u of entry.updates) {
       const bi = batchHeroes.findIndex((h) => unitIdMatches(h.id, u.actorId))
-      if (bi >= 0) batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
+      if (bi < 0) continue
+      if (entry.type === 'manaRegenBatch') {
+        batchHeroes[bi] = { ...batchHeroes[bi], currentMP: u.manaAfter }
+      } else {
+        batchHeroes[bi] = { ...batchHeroes[bi], currentHP: u.hpAfter }
+      }
     }
     displayHeroes.value = batchHeroes
     syncSelectedUnitsFromCombat()
@@ -4470,7 +4505,8 @@ async function runCombatLoop() {
           explorationSettlement: victoryExploration.exploration,
         })
       ) {
-        recruitPromptLevel.value = getExpansionHeroLevel(progress.value)
+        recruitPromptLevel.value = getExpansionHeroLevel(progress.value, squad.value)
+        recruitPromptIsDruidSlot.value = isDruidOnlyExpansionSlot(progress.value, squad.value.length)
         showRecruitPromptModal.value = true
         await waitForRecruitPromptChoice()
       }
