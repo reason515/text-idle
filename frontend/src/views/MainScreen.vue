@@ -970,8 +970,59 @@
                 <button type="button" class="btn-scale" :class="{ active: statsScaleN === 100 }" @click="setStatsDisplayScale(100)">每100步</button>
               </p>
             </div>
+            <div class="player-stats-damage-card player-stats-win-rate-card" data-testid="player-stats-win-rate-section">
+              <div class="player-stats-damage-card-title">战斗胜负</div>
+              <p class="player-stats-win-rate-summary">
+                总场次 <strong class="player-stats-win-rate-total">{{ playerStatsWinRateSummary.battleCount }}</strong>；
+                胜利 <strong class="val-victory">{{ playerStatsWinRateSummary.victoryCount }}</strong>；
+                胜率 <strong>{{ playerStatsWinRateSummary.winRatePct }}%</strong>
+              </p>
+              <div
+                v-if="playerStatsWinRateSummary.battleCount <= 0"
+                class="player-stats-damage-mini-empty"
+                data-testid="player-stats-win-rate-empty"
+              >
+                本周期暂无战斗记录。
+              </div>
+              <div v-else class="player-stats-pie-row">
+                <svg
+                  class="player-stats-pie-svg"
+                  :viewBox="playerStatsWinRatePie.viewBox"
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-label="胜率饼图"
+                  data-testid="player-stats-win-rate-pie"
+                >
+                  <template v-if="!playerStatsWinRatePie.model.empty">
+                    <template v-for="(sl, si) in playerStatsWinRatePie.model.slices" :key="'win-' + si">
+                      <circle
+                        v-if="sl.kind === 'full'"
+                        class="player-stats-pie-slice"
+                        :cx="sl.cx"
+                        :cy="sl.cy"
+                        :r="sl.r"
+                        :fill="sl.fill"
+                      />
+                      <path
+                        v-else
+                        class="player-stats-pie-slice"
+                        :d="sl.d"
+                        :fill="sl.fill"
+                      />
+                    </template>
+                  </template>
+                </svg>
+                <ul class="player-stats-pie-legend" aria-label="胜率图例">
+                  <li v-for="leg in playerStatsWinRatePie.legend" :key="'win-leg-' + leg.key">
+                    <span class="player-stats-legend-swatch" :style="{ background: leg.fill }" aria-hidden="true" />
+                    <span class="player-stats-legend-name" :style="{ color: leg.fill }">{{ leg.label }}</span>
+                    <span class="player-stats-legend-val">{{ leg.value }}</span>
+                    <span class="player-stats-legend-pct">{{ leg.pctLabel }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
             <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
-              <p>确定清零统计数据？将重置本周期累计步数、收益、场次趋势列表与伤害累计。</p>
+              <p>确定清零统计数据？将重置本周期累计步数、收益、战斗胜负、场次趋势列表与伤害累计。</p>
               <div class="player-stats-reset-actions player-stats-modal-inline-btns">
                 <button type="button" class="btn btn-danger player-stats-compact-btn" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
                 <button type="button" class="btn player-stats-compact-btn" @click="resetStatsConfirming = false">取消</button>
@@ -2431,6 +2482,7 @@ import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.j
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
+import { buildWinRatePieSegments, summarizeBattleOutcomes } from '../game/playerStatsWinRate.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -3349,10 +3401,30 @@ const playerStatsBattleTimeline = computed(() => {
   return Array.isArray(t) ? t : []
 })
 
+const playerStatsWinRateSummary = computed(() =>
+  summarizeBattleOutcomes(playerStats.value?.battleCount, playerStats.value?.victoryCount),
+)
+
+const playerStatsWinRatePie = computed(() => {
+  const summary = playerStatsWinRateSummary.value
+  const segments = buildWinRatePieSegments(summary.battleCount, summary.victoryCount)
+  const model = buildPieChartModel(WIN_RATE_PIE_GEOM, segments)
+  const legend = segments.map((s) => ({
+    key: s.key,
+    label: s.label,
+    value: s.value,
+    fill: s.fill,
+    pctLabel: model.total > 0 ? `${Math.round((100 * s.value) / model.total)}%` : '0%',
+  }))
+  return { model, legend, viewBox: WIN_RATE_PIE_VIEW_BOX }
+})
+
 const playerStatsTimelineChartModel = computed(() => buildTimelineTrendChartModel(playerStatsBattleTimeline.value))
 
 const SHARE_PIE_GEOM = { cx: 84, cy: 84, r: 76 }
 const SHARE_PIE_VIEW_BOX = '0 0 168 168'
+const WIN_RATE_PIE_GEOM = { cx: 84, cy: 84, r: 76 }
+const WIN_RATE_PIE_VIEW_BOX = '0 0 168 168'
 const COMP_PIE_GEOM = { cx: 72, cy: 72, r: 62 }
 const COMP_PIE_VIEW_BOX = '0 0 144 144'
 
@@ -4542,6 +4614,7 @@ async function runCombatLoop() {
         goldGained: result.rewards.gold,
         xpGained: result.rewards.exp,
         rounds: result.rounds ?? 0,
+        outcome: 'victory',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
       })
       const restStepsVictory = await autoRest(result.heroesAfter)
@@ -4570,6 +4643,7 @@ async function runCombatLoop() {
         goldGained: 0,
         xpGained: 0,
         rounds: result.rounds ?? 0,
+        outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
       })
       const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
@@ -5296,6 +5370,25 @@ onUnmounted(() => {
 }
 .player-stats-banner .val-gold {
   color: var(--color-gold);
+}
+.player-stats-banner .val-victory {
+  color: var(--color-victory);
+}
+.player-stats-win-rate-card {
+  margin-top: 0.55rem;
+}
+.player-stats-win-rate-summary {
+  margin: 0 0 0.55rem;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.player-stats-win-rate-summary strong {
+  color: var(--text-value);
+  font-weight: 600;
+}
+.player-stats-win-rate-summary .val-victory {
+  color: var(--color-victory);
 }
 .player-stats-banner .val-exp {
   color: var(--color-exp);

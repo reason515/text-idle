@@ -22,6 +22,8 @@ describe('playerStatistics', () => {
     expect(s.cumulativeGold).toBe(0)
     expect(s.cumulativeXp).toBe(0)
     expect(s.displayScaleN).toBe(100)
+    expect(s.battleCount).toBe(0)
+    expect(s.victoryCount).toBe(0)
     expect(s.battleTimeline).toEqual([])
     expect(s.damageByHero).toEqual({})
   })
@@ -47,17 +49,34 @@ describe('playerStatistics', () => {
       xpGained: 100,
       rounds: 5,
       endedAtMs: 1700000000000,
+      outcome: 'victory',
     })
     expect(next.combatActionSteps).toBe(12)
     expect(next.cumulativeGold).toBe(30)
     expect(next.cumulativeXp).toBe(100)
+    expect(next.battleCount).toBe(1)
+    expect(next.victoryCount).toBe(1)
     expect(next.battleTimeline).toHaveLength(1)
     expect(next.battleTimeline[0]).toMatchObject({
       rounds: 5,
       goldGained: 30,
       xpGained: 100,
       endedAtMs: 1700000000000,
+      outcome: 'victory',
     })
+  })
+
+  it('applyBattleToPlayerStats counts defeat without victory increment', () => {
+    const next = applyBattleToPlayerStats(createEmptyPlayerStats(), {
+      combatActionSteps: 3,
+      goldGained: 0,
+      xpGained: 0,
+      rounds: 2,
+      outcome: 'defeat',
+    })
+    expect(next.battleCount).toBe(1)
+    expect(next.victoryCount).toBe(0)
+    expect(next.battleTimeline[0].outcome).toBe('defeat')
   })
 
   it('applyBattleToPlayerStats appends timeline entries in order', () => {
@@ -165,8 +184,26 @@ describe('playerStatistics', () => {
       cumulativeGold: 0,
       cumulativeXp: 0,
       displayScaleN: 100,
-      battleTimeline: [{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20 }],
+      battleTimeline: [{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }],
     })
-    expect(s.battleTimeline).toEqual([{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20 }])
+    expect(s.battleTimeline).toEqual([{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }])
+    expect(s.battleCount).toBe(1)
+    expect(s.victoryCount).toBe(1)
+  })
+
+  it('normalizePlayerStats backfills battle counts from timeline when missing', () => {
+    const s = normalizePlayerStats({
+      combatActionSteps: 0,
+      restSteps: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      displayScaleN: 100,
+      battleTimeline: [
+        { endedAtMs: 1, rounds: 1, goldGained: 5, xpGained: 0 },
+        { endedAtMs: 2, rounds: 1, goldGained: 0, xpGained: 0, outcome: 'defeat' },
+      ],
+    })
+    expect(s.battleCount).toBe(2)
+    expect(s.victoryCount).toBe(1)
   })
 })

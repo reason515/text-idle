@@ -18,9 +18,13 @@ test.describe('Player statistics (efficiency + modal)', () => {
 
     const overlay = page.getByTestId('player-stats-modal-overlay')
     await expect(overlay).toBeVisible()
+    await expect(page.getByTestId('player-stats-win-rate-section')).toBeVisible()
 
     await page.getByTestId('player-stats-reset-open').click()
     await page.getByTestId('player-stats-reset-confirm').click()
+
+    await expect(page.getByTestId('player-stats-win-rate-section')).toBeVisible()
+    await expect(page.getByTestId('player-stats-win-rate-empty')).toBeVisible({ timeout: 15000 })
 
     await page.getByTestId('player-stats-tab-timeline').click()
     await expect(page.getByTestId('player-stats-timeline-empty')).toBeVisible({ timeout: 15000 })
