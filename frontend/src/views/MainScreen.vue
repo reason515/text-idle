@@ -287,6 +287,22 @@
                 <div class="log-rewards-box">
                   <span class="val-exp">EXP +{{ entry.rewards.exp }}</span>
                   <span class="val-gold">金币 +{{ entry.rewards.gold }}</span>
+                  <div v-if="entry.xpByHero?.length" class="log-xp-breakdown">
+                    <span
+                      v-for="row in entry.xpByHero"
+                      :key="row.heroId"
+                      class="log-xp-hero-row tooltip-wrap has-tip"
+                    >
+                      <span :style="{ color: classColor(row.heroClass) }">{{ row.heroName }}</span
+                      ><span class="val-exp"> +{{ row.xp }}</span>
+                      <span class="tooltip-text tooltip-wide tooltip-below">
+                        贡献：输出 {{ row.contributions?.damageDealt ?? 0 }}，治疗
+                        {{ row.contributions?.healingDone ?? 0 }}，护盾
+                        {{ row.contributions?.shieldMitigated ?? 0 }}，承伤
+                        {{ row.contributions?.damageTaken ?? 0 }}
+                      </span>
+                    </span>
+                  </div>
                   <template v-if="entry.exploration?.mode === 'gain' && entry.exploration.delta > 0">
                     <span class="val-explore">探索度 +{{ entry.exploration.delta }}</span>
                   </template>
@@ -2359,7 +2375,13 @@ import {
   startRestPhase,
   applyRestStep,
 } from '../game/combat.js'
-import { applyXPToHeroes, calculateXPRequired, assignAttributePoint, POINTS_PER_LEVEL } from '../game/experience.js'
+import {
+  applyXPToHeroes,
+  calculateXPRequired,
+  assignAttributePoint,
+  POINTS_PER_LEVEL,
+  planBattleXpDistribution,
+} from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
 import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { TACTICS_TARGET_RULE_INHERIT, getSkillPriority } from '../game/tactics.js'
@@ -4725,6 +4747,14 @@ async function runCombatLoop() {
       const victoryExploration = settleVictoryExploration(progress.value, monsters)
       progress.value = victoryExploration.progress
       saveProgress()
+      const xpPlan = planBattleXpDistribution(squad.value, result.rewards.exp, result.log)
+      const xpByHero = squad.value.map((h) => ({
+        heroId: h.id,
+        heroName: heroDisplayName(h.name),
+        heroClass: h.class,
+        xp: xpPlan.xpByHeroId[h.id] ?? 0,
+        contributions: xpPlan.contributions[h.id],
+      }))
       addLogEntry({
         type: 'summary',
         outcome: 'victory',
@@ -4733,6 +4763,7 @@ async function runCombatLoop() {
         rewards: result.rewards,
         inventoryFull: inventoryFullWarn,
         exploration: victoryExploration.exploration,
+        xpByHero,
       })
       await scrollLog()
 
@@ -4752,7 +4783,7 @@ async function runCombatLoop() {
       }
       if (!isRunning.value) break
 
-      const { results } = applyXPToHeroes(squad.value, result.rewards.exp)
+      const { results } = applyXPToHeroes(squad.value, result.rewards.exp, { log: result.log })
       saveSquad(squad.value)
       gold.value = addGold(result.rewards.gold)
 
@@ -7142,6 +7173,16 @@ onUnmounted(() => {
 .log-summary .log-rewards-box .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .val-penalty { color: var(--error); font-weight: normal; margin-left: 0; }
 .log-summary .log-rewards-box .log-inv-full { margin-left: 0; }
+.log-xp-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+.log-xp-hero-row {
+  font-size: var(--font-sm);
+}
 .log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
 .log-summary .val-penalty { color: var(--error); font-weight: normal; margin-left: 0.5rem; }

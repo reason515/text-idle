@@ -82,6 +82,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Equipment → stats** | [06-equipment.md](design/06-equipment.md), `getEquipmentBonuses`, `heroCombatStats` | Off-hand orb vs main-hand weapon dice; affix pools; **MainHandHybrid** (Agi+Int) / **MainHandHybridStr** (Str+Int) dual weapon dice |
 | **Battle log strings** | [05-skills.md](design/05-skills.md), [06-equipment.md](design/06-equipment.md) 7.x weapon log notes | `battleLogFormat.js` (`damageFormulaEquation`, `weaponMechanicLines`); player-visible Chinese lines（含物理格挡、格挡反击明细） |
 | **Post-battle summary (exploration)** | [03-combat.md](design/03-combat.md) 胜负透明化、[02-levels-monsters.md](design/02-levels-monsters.md) 探索度口径 | MainScreen 结算小节：本场探索增减、BOSS 后进图重置文案 |
+| **Post-battle XP by contribution** | [04-classes-attributes.md](design/04-classes-attributes.md) 1.6.1 | `xpContributionRollup.js`、`experience.js`；summary 逐人 EXP + 贡献 tooltip；战斗日志盾吸收带 `shieldCasterId` |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) (e.g. 10, 14, 20) | AC / design reference if formulas or log behavior changes |
 | **Unit tests** | `frontend/src/game/*.spec.js` | Lock formula and log helpers |
 | **Tactics schema** | `tactics.js`, `combat.js`, `aiTactics.js`, `docs/design/10-tactics.md` | `skillPriority` 含 `basic-attack`、新的 `when` 类型或牧师 fast-heal 预检 → 同步设计与 Vitest |

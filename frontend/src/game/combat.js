@@ -1153,7 +1153,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       blockCounterDamageToMonster = Math.min(target.blockCounter || 0, actor.currentHP || 0)
       actor.currentHP = Math.max(0, (actor.currentHP || 0) - blockCounterDamageToMonster)
     }
+    let shieldCasterIdForLog = null
     if (target.side === 'hero' && target.shield && damage.finalDamage > 0) {
+      shieldCasterIdForLog = target.shield.casterId ?? null
       const shieldResult = applyDamageToShieldedUnit(target, damage.finalDamage)
       damage.absorbedByShield = shieldResult.absorbed
       damage.overflowDamage = shieldResult.overflow
@@ -1370,6 +1372,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           shieldBroke: damage.shieldBroke,
           shieldAbsorbRemainingAfter: damage.shieldAbsorbRemainingAfter ?? 0,
           shieldRemainingRoundsAfter: damage.shieldRemainingRoundsAfter ?? null,
+          ...(shieldCasterIdForLog != null && shieldCasterIdForLog !== ''
+            ? { shieldCasterId: shieldCasterIdForLog }
+            : {}),
         }),
       ...(action.skillName && { skillName: action.skillName }),
       targetId: target.id,
@@ -2602,6 +2607,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           dotDamage = applyDefensiveStanceToIncomingDamage(unit, dotDamage).finalDamage
         }
         const hpBefore = unit.currentHP
+        const dotShieldCasterId = unit.shield?.casterId ?? null
         const sr = applyDamageToShieldedUnit(unit, dotDamage)
         log.push({
           round,
@@ -2618,6 +2624,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 shieldBroke: sr.shieldBroke,
                 shieldAbsorbRemainingAfter: unit.shield?.absorbRemaining ?? 0,
                 shieldRemainingRoundsAfter: unit.shield?.remainingRounds ?? null,
+                ...(dotShieldCasterId != null && dotShieldCasterId !== ''
+                  ? { shieldCasterId: dotShieldCasterId }
+                  : {}),
               }
             : {}),
           targetHPBefore: hpBefore,

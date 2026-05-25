@@ -92,7 +92,7 @@ describe('priestSkills', () => {
 
   describe('executePowerWordShield', () => {
     it('applies shield and consumes mana', () => {
-      const priest = { currentMP: 50, intellect: 10, spirit: 9 }
+      const priest = { id: 'p1', currentMP: 50, intellect: 10, spirit: 9 }
       const target = { currentHP: 80, maxHP: 100 }
       const skill = getPriestSkillById('power-word-shield')
       const rng = vi.fn(() => 0.5)
@@ -101,6 +101,7 @@ describe('priestSkills', () => {
       expect(target.shield).toBeDefined()
       expect(target.shield.absorbRemaining).toBeGreaterThan(0)
       expect(target.shield.remainingRounds).toBe(3)
+      expect(target.shield.casterId).toBe('p1')
       expect(result.absorbAmount).toBe(target.shield.absorbRemaining)
       expect(result.manaConsumed).toBe(8)
     })

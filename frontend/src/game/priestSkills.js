@@ -213,7 +213,7 @@ export function executePowerWordShield(priest, target, skill, opts = {}) {
   const spellPower = getEffectiveSpellPower(priest, rng)
   const absorbAmount = Math.max(1, Math.round(spellPower * (skill.coefficient ?? 1)))
   const duration = skill.absorbDuration ?? 3
-  target.shield = { absorbRemaining: absorbAmount, remainingRounds: duration }
+  target.shield = { absorbRemaining: absorbAmount, remainingRounds: duration, casterId: priest.id }
   return {
     skillId: skill.id,
     skillName: skill.name,

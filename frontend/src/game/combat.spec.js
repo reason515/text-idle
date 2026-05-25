@@ -1200,6 +1200,7 @@ describe('combat progression and systems', () => {
     expect(monsterHits.length).toBeGreaterThan(0)
     const firstHit = monsterHits[0]
     expect(firstHit.shieldAbsorbed).toBeGreaterThan(0)
+    expect(firstHit.shieldCasterId).toBe('p1')
     const overflow = firstHit.finalDamage - firstHit.shieldAbsorbed
     expect(firstHit.targetHPAfter).toBe(firstHit.targetHPBefore - overflow)
   })

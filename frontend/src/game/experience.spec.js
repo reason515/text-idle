@@ -6,6 +6,8 @@ import {
   POINTS_PER_LEVEL,
   calculateXPRequired,
   distributeXP,
+  distributeXPByContribution,
+  allocateXPByWeights,
   applyXP,
   applyXPToHeroes,
   assignAttributePoint,
@@ -101,13 +103,39 @@ describe('experience and leveling', () => {
     })
   })
 
+  describe('allocateXPByWeights', () => {
+    it('allocates full total with largest remainder', () => {
+      const out = allocateXPByWeights(10, ['a', 'b', 'c'], { a: 1, b: 1, c: 1 })
+      expect(out.a + out.b + out.c).toBe(10)
+    })
+  })
+
+  describe('distributeXPByContribution', () => {
+    it('sums to totalXP and favors higher contribution', () => {
+      const out = distributeXPByContribution(120, ['a', 'b', 'c'], { a: 100, b: 50, c: 10 })
+      expect(out.a + out.b + out.c).toBe(120)
+      expect(out.a).toBeGreaterThan(out.b)
+      expect(out.b).toBeGreaterThanOrEqual(out.c)
+    })
+
+    it('falls back to equal split when all scores are zero', () => {
+      const out = distributeXPByContribution(90, ['a', 'b', 'c'], { a: 0, b: 0, c: 0 })
+      expect(out.a + out.b + out.c).toBe(90)
+      expect(out.a).toBe(30)
+      expect(out.b).toBe(30)
+      expect(out.c).toBe(30)
+    })
+  })
+
   describe('applyXPToHeroes', () => {
     it('distributes XP equally and applies to each hero', () => {
-      const h1 = { level: 1, xp: 0, unassignedPoints: 0 }
-      const h2 = { level: 1, xp: 0, unassignedPoints: 0 }
+      const h1 = { id: 'h1', level: 1, xp: 0, unassignedPoints: 0 }
+      const h2 = { id: 'h2', level: 1, xp: 0, unassignedPoints: 0 }
       const heroes = [h1, h2]
-      const { xpPerHero, results } = applyXPToHeroes(heroes, 100)
+      const { xpPerHero, xpByHeroId, results } = applyXPToHeroes(heroes, 100)
       expect(xpPerHero).toBe(50)
+      expect(xpByHeroId.h1).toBe(50)
+      expect(xpByHeroId.h2).toBe(50)
       expect(h1.level).toBe(2)
       expect(h2.level).toBe(2)
       expect(h1.xp).toBe(0)
@@ -118,16 +146,50 @@ describe('experience and leveling', () => {
       expect(results.every((r) => r.leveledUp)).toBe(true)
     })
 
-    it('victory with 3 heroes: each gets totalXP/3', () => {
+    it('victory with 3 heroes without log: equal floor share', () => {
       const heroes = [
-        { level: 1, xp: 0, unassignedPoints: 0 },
-        { level: 1, xp: 0, unassignedPoints: 0 },
-        { level: 1, xp: 0, unassignedPoints: 0 },
+        { id: 'a', level: 1, xp: 0, unassignedPoints: 0 },
+        { id: 'b', level: 1, xp: 0, unassignedPoints: 0 },
+        { id: 'c', level: 1, xp: 0, unassignedPoints: 0 },
       ]
-      applyXPToHeroes(heroes, 90)
-      expect(heroes[0].xp).toBe(30)
-      expect(heroes[1].xp).toBe(30)
-      expect(heroes[2].xp).toBe(30)
+      const { xpByHeroId } = applyXPToHeroes(heroes, 90)
+      expect(xpByHeroId.a).toBe(30)
+      expect(xpByHeroId.b).toBe(30)
+      expect(xpByHeroId.c).toBe(30)
+    })
+
+    it('distributes by contribution when log provided', () => {
+      const heroes = [
+        { id: 'dps', level: 1, xp: 0, unassignedPoints: 0 },
+        { id: 'heal', level: 1, xp: 0, unassignedPoints: 0 },
+      ]
+      const log = [
+        { actorId: 'dps', actorClass: 'Mage', action: 'skill', targetTier: 'normal', finalDamage: 1000 },
+        { actorId: 'heal', actorClass: 'Priest', heal: 500, targetClass: 'Warrior' },
+      ]
+      const { xpByHeroId } = applyXPToHeroes(heroes, 100, { log })
+      expect(xpByHeroId.dps + xpByHeroId.heal).toBe(100)
+      expect(xpByHeroId.dps).toBeGreaterThan(xpByHeroId.heal)
+    })
+
+    it('attributes shield absorb to priest not tank in XP split', () => {
+      const heroes = [
+        { id: 'w1', level: 1, xp: 0, unassignedPoints: 0 },
+        { id: 'p1', level: 1, xp: 0, unassignedPoints: 0 },
+      ]
+      const log = [
+        {
+          actorTier: 'normal',
+          targetId: 'w1',
+          targetClass: 'Warrior',
+          finalDamage: 100,
+          shieldAbsorbed: 90,
+          shieldCasterId: 'p1',
+        },
+      ]
+      const { contributions } = applyXPToHeroes(heroes, 50, { log })
+      expect(contributions.w1.damageTaken).toBe(10)
+      expect(contributions.p1.shieldMitigated).toBe(90)
     })
 
     it('defeat grants 0 XP - caller passes 0', () => {
