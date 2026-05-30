@@ -60,8 +60,8 @@ test.describe('Shop (Example 24)', () => {
 
     const helmRow = page.locator('.shop-slot-row').filter({ hasText: '\u5934\u76d4' })
     await helmRow.getByRole('button', { name: '\u8d2d\u4e70' }).click()
-    await expect(page.locator('.shop-confirm-row')).toBeVisible()
-    await page.getByRole('button', { name: '\u786e\u8ba4' }).click()
+    await expect(page.locator('.shop-confirm-dialog')).toBeVisible()
+    await page.locator('.shop-confirm-dialog').getByRole('button', { name: '\u786e\u8ba4' }).click()
 
     await expect(page.locator('.shop-modal')).toBeVisible()
     const goldAfter = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0

@@ -713,23 +713,12 @@
 
     <Teleport to="body">
       <div v-if="showShopModal" class="modal-overlay" @click.self="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">
-        <div class="modal-box shop-modal">
+        <div class="modal-box shop-modal game-scroll">
           <div class="shop-modal-header">
             <div class="modal-title">商店</div>
             <div class="shop-gold-row">
               <span class="shop-gold-label">金币：</span>
               <span class="shop-gold-value">{{ gold }}</span>
-            </div>
-          </div>
-          <div v-if="shopConfirmingSlot" class="shop-confirm-row">
-            <span class="shop-confirm-text">
-              <span class="shop-confirm-prefix">花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买</span>
-              <span class="shop-confirm-slot-name">{{ getShopConfirmLabel(shopConfirmingSlot) }}</span>
-              <span class="shop-confirm-suffix">？</span>
-            </span>
-            <div class="shop-confirm-actions">
-              <button type="button" class="btn btn-sm shop-confirm-btn" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
-              <button type="button" class="btn btn-sm shop-confirm-btn" @click="shopConfirmingSlot = null">取消</button>
             </div>
           </div>
           <div v-if="shopMessage" class="shop-message" :class="{ 'shop-message-error': shopMessage === '金币不足' }">
@@ -815,6 +804,23 @@
             </div>
           </div>
           <button class="btn shop-close-btn" @click="showShopModal = false; shopMessage = null; shopConfirmingSlot = null">关闭</button>
+        </div>
+        <div
+          v-if="shopConfirmingSlot"
+          class="modal-overlay shop-confirm-overlay"
+          @click.self="shopConfirmingSlot = null"
+        >
+          <div class="shop-confirm-dialog">
+            <div class="shop-confirm-text">
+              <span class="shop-confirm-prefix">花费 <span class="shop-confirm-price">{{ getShopPriceForSlot(shopConfirmingSlot) }} 金币</span> 购买</span>
+              <span class="shop-confirm-slot-name">{{ getShopConfirmLabel(shopConfirmingSlot) }}</span>
+              <span class="shop-confirm-suffix">？</span>
+            </div>
+            <div class="shop-confirm-actions">
+              <button type="button" class="btn btn-sm shop-confirm-btn" @click="confirmShopBuy(shopConfirmingSlot)">确认</button>
+              <button type="button" class="btn btn-sm shop-confirm-btn" @click="shopConfirmingSlot = null">取消</button>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -6374,9 +6380,9 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 .shop-modal {
-  width: min(92vw, 48rem);
-  min-width: min(92vw, 20rem);
-  max-width: min(92vw, 48rem);
+  width: min(94vw, 56rem);
+  min-width: min(94vw, 20rem);
+  max-width: min(94vw, 56rem);
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -6523,9 +6529,12 @@ onUnmounted(() => {
   grid-column: 1 / -1;
   grid-row: 1;
   color: var(--color-formula-equip);
-  font-size: var(--font-base-sm);
+  font-size: var(--font-sm);
   line-height: 1.4;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .shop-slot-row--unaffordable .shop-slot-label {
   color: var(--text-muted);
@@ -6568,19 +6577,23 @@ onUnmounted(() => {
   background: var(--bg-elevated) !important;
   box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
-.shop-confirm-row {
-  margin-top: 0;
-  margin-bottom: 0.65rem;
-  padding: 0.55rem 0.65rem;
-  background: var(--bg-hover);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
+.shop-confirm-overlay {
+  z-index: 260;
+  background: rgba(0, 0, 0, 0.55);
+}
+.shop-confirm-dialog {
+  width: min(90vw, 26rem);
+  padding: 1rem 1.1rem;
+  background: var(--bg-panel);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
 }
 .shop-confirm-text {
   font-size: var(--font-base);
   color: var(--text);
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 0.2rem;
   min-width: 0;
@@ -6591,10 +6604,6 @@ onUnmounted(() => {
 }
 .shop-confirm-slot-name {
   min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--color-formula-equip);
 }
 .shop-confirm-suffix {

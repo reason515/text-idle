@@ -16,6 +16,8 @@ const SLOT_BASE_PRICE = {
   'MainHand-2H-Bow': 600,
   'MainHand-2H-Magic': 600,
   'MainHand-Magic': 450,
+  'MainHand-Hybrid': 450,
+  'MainHand-Hybrid-Str': 450,
   'OffHand-Shield': 350,
   'OffHand-Orb': 375,
   Helm: 250,

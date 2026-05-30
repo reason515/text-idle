@@ -46,6 +46,19 @@ describe('shop', () => {
       const p = getShopPrice('Helm', 0)
       expect(p).toBeGreaterThan(0)
     })
+
+    it('hybrid 1H weapons priced consistently with other single-hand weapons', () => {
+      const phys = getShopPrice('MainHand-1H-Phys', 5)
+      const magic = getShopPrice('MainHand-Magic', 5)
+      const nature = getShopPrice('MainHand-Hybrid', 5)
+      const holy = getShopPrice('MainHand-Hybrid-Str', 5)
+      const fallback = getShopPrice('unknown-slot', 5)
+      expect(nature).toBe(magic)
+      expect(holy).toBe(magic)
+      expect(nature).toBeGreaterThanOrEqual(phys)
+      expect(nature).toBeGreaterThan(fallback)
+      expect(holy).toBeGreaterThan(fallback)
+    })
   })
 
   describe('buyFromShop', () => {
