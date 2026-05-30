@@ -18,11 +18,11 @@
 | 日志 / 条件 | 分类（Manifest 键） | 样本（CC0, Kenney） | 合成回退（音色要点） |
 |---|---|---|---|
 | 物理伤害 … | `physHit` / `physCrit` | `fs_phys_hit.wav` / `fs_phys_crit.ogg` | 普通：带通噪声 + 低频 thud；暴击：更重 thud + 中频 ring + 样本叠短促 accent |
-| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.ogg` / `fs_magic_crit.ogg` | 普通：亮瞬态 + 压力体 + shimmer；暴击：更高频 shimmer + ring + accent |
+| 魔法 … | `magicHit` / `magicCrit` | `fs_magic_hit.ogg` / `fs_magic_crit.ogg` | 普通：样本增益约 0.72、截断约 0.72s，合成层更短更轻；暴击：魔法弹着弹 + 更高增益 + 强化 accent |
 | 混合 … | 叠 `phys*` + `magic*` | 同上 | … |
 | 闪避 … | `dodge` | `fs_dodge.wav` | … |
-| 遭遇怪物 … | `encounter` | `fs_encounter_boss.ogg` | cinematic impact（约 4s；增益 0.98） |
-| BOSS 遭遇 … | `encounterBoss` | `fs_encounter.ogg` | Spawning（约 1s）+ 增益 1.28 与 accent 层 |
+| 遭遇怪物 … | `encounter` | `fs_encounter.ogg` | Spawning 完整播放（约 1.05s；增益 0.72，轻量拉怪提示） |
+| BOSS 遭遇 … | `encounterBoss` | `fs_encounter_boss.ogg` | cinematic impact（截断约 2.9s）+ 增益 1.65 + 多层 accent（crash、低频 thud、上升 sweep、ring、延迟 follow） |
 | DoT … | `dotPhys` / `dotMagic` | `fs_dot_phys.ogg` / `fs_dot_magic.ogg` | 物理：短促 squish/splat；魔法：qubodup 负面法术脉冲（比直伤更轻） |
 | 阵亡（我方英雄）… | `heroDeath` | `fs_hero_death.ogg` | 角色倒下/死亡 cry（约 1.3s；synth 回退：低频下潜 + 闷响噪声） |
 | 阵亡（敌方怪物）… | `monsterDeath` | `fs_monster_death.ogg` | 哥布林式敌方击杀确认（约 1.5s；synth 回退：短促 thud + 带通瞬态） |
@@ -39,11 +39,11 @@
 
 | 地图 ID | 分类（Manifest 键） | 样本 | 合成回退（音色要点） |
 |---|---|---|---|
-| `elwynn-forest` | `mapEntryElwynn` | `impactBell_heavy_000.ogg` | 柔和上行 C-E-G 和弦 |
-| `westfall` | `mapEntryWestfall` | `impactPlank_medium_002.ogg` | 风声 + 木质闷响 |
-| `duskwood` | `mapEntryDuskwood` | `lowThreeTone.ogg` | 下行小调 + 低频 rumble |
-| `redridge-mountains` | `mapEntryRedridge` | `impactMetal_heavy_000.ogg` | 山风 sweep + 金属 clang |
-| `stranglethorn-vale` | `mapEntryStranglethorn` | `jingles-hit_07.ogg` | 短促丛林鼓点三连 |
+| `elwynn-forest` | `mapEntryElwynn` | `fs_map_elwynn.ogg` | 森林环境音（约 4.5s）；合成：上行 C-E-G 和弦 |
+| `westfall` | `mapEntryWestfall` | `fs_map_westfall.ogg` | 开阔林地环境（约 4.2s）；合成：风声 + 木质闷响 |
+| `duskwood` | `mapEntryDuskwood` | `fs_map_duskwood.ogg` | 不协和暗色 sting（约 4.5s）；合成：下行小调 + rumble |
+| `redridge-mountains` | `mapEntryRedridge` | `fs_map_redridge.ogg` | 电影感冲击（约 3.65s）；合成：山风 sweep + 金属 clang |
+| `stranglethorn-vale` | `mapEntryStranglethorn` | `fs_map_stranglethorn.ogg` | 丛林吉他鼓点（约 4.4s）；合成：短促丛林鼓点三连 |
 
 - 未知 `mapId` 回退到 `mapEntryElwynn`。
 - 与 `COMBAT_PACING_MS.mapDescriptionRead`（1800ms）同节拍；遭遇音在描述停顿之后播放。
@@ -55,7 +55,7 @@
 | 类别（Manifest 键） | 样本 | 典型技能 | 触发条件 |
 |---|---|---|---|
 | `skillFire` | `fs_skill_fire.wav` | fireball, pyroblast, scorch | 该技能日志行（含伤害） |
-| `skillFrost` | `fs_skill_frost.wav` | frostbolt, frost-nova, ice-lance | 同上 |
+| `skillFrost` | `fs_skill_frost.ogg` | frostbolt, frost-nova, ice-lance | 冰球命中（约 0.85s；相对火系增益约 0.68）；合成回退：下行 cold ping + 低频 chill |
 | `skillHeal` | `fs_skill_heal.wav` | flash-heal, greater-heal, rejuvenation, regrowth | 治疗行（`heal > 0`）、回春 HoT 施放（`hotApplied`）、HoT tick（`type: hot`） |
 | `skillTaunt` | `fs_skill_taunt.mp3` | taunt, battle-shout | 嘲讽/战吼等无 HP 伤害行 |
 | `skillSunder` | `fs_skill_sunder.wav` | sunder-armor, shield-slam, maul, rake | 破甲/盾击/重殴/扫击伤害行 |
@@ -94,7 +94,7 @@
 ## 五、UI
 
 - 入口：主界面底部「功能」区 **音效** 按钮（`data-testid="audio-settings-open"`）。
-- 面板：静音、主音量滑条、**音效目录**（分组列出全部 manifest 类别：名称、用途说明、逐条「试听」按钮）；目录区使用 `game-scroll`；说明块使用嵌套 banner 样式（与 `detail-skill-choice-banner` 一致）。
+- 面板：静音、主音量滑条、**音效目录**（分组列出全部 manifest 类别：名称、逐条「试听」按钮）；目录区使用 `game-scroll`；说明块使用嵌套 banner 样式（与 `detail-skill-choice-banner` 一致）。
 - 目录数据：`frontend/src/audio/sfxPreviewCatalog.js`（`SFX_PREVIEW_GROUPS`）；试听 API：`playSfxPreview(category)`（忽略静音，与战斗样本/合成回退一致）。`playCombatHitPreview` 为物理命中/暴击的兼容别名。
 - 每条试听按钮：`data-testid="audio-preview-{category}"`（如 `audio-preview-physCrit`）。
 

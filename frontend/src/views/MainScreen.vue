@@ -937,7 +937,6 @@
                 >
                   <div class="audio-sfx-row-text">
                     <div class="audio-sfx-label">{{ entry.label }}</div>
-                    <div class="audio-sfx-usage">{{ entry.usage }}</div>
                   </div>
                   <button
                     type="button"
@@ -8469,12 +8468,6 @@ input.tactics-condition-value[type="number"] {
   font-size: var(--font-sm);
   color: var(--text-value);
   line-height: 1.35;
-}
-.audio-sfx-usage {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  line-height: 1.4;
-  margin-top: 0.15rem;
 }
 .audio-sfx-preview-btn {
   flex-shrink: 0;

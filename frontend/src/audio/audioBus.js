@@ -36,23 +36,23 @@ const SAMPLE_MANIFEST = {
   dotPhys: ['/audio/sfx/fs_dot_phys.ogg'],
   dotMagic: ['/audio/sfx/fs_dot_magic.ogg'],
   dodge: ['/audio/sfx/fs_dodge.wav'],
-  encounter: ['/audio/sfx/fs_encounter_boss.ogg'],
-  encounterBoss: ['/audio/sfx/fs_encounter.ogg'],
+  encounter: ['/audio/sfx/fs_encounter.ogg'],
+  encounterBoss: ['/audio/sfx/fs_encounter_boss.ogg'],
   heroDeath: ['/audio/sfx/fs_hero_death.ogg'],
   monsterDeath: ['/audio/sfx/fs_monster_death.ogg'],
   victory: ['/audio/sfx/fs_victory.wav'],
   defeat: ['/audio/sfx/fs_defeat.wav'],
   skillFire: ['/audio/sfx/fs_skill_fire.wav'],
-  skillFrost: ['/audio/sfx/fs_skill_frost.wav'],
+  skillFrost: ['/audio/sfx/fs_skill_frost.ogg'],
   skillHeal: ['/audio/sfx/fs_skill_heal.wav'],
   skillTaunt: ['/audio/sfx/fs_skill_taunt.mp3'],
   skillSunder: ['/audio/sfx/fs_skill_sunder.wav'],
   skillShield: ['/audio/sfx/fs_skill_shield.wav'],
-  mapEntryElwynn: ['/audio/sfx/impactBell_heavy_000.ogg'],
-  mapEntryWestfall: ['/audio/sfx/impactPlank_medium_002.ogg'],
-  mapEntryDuskwood: ['/audio/sfx/lowThreeTone.ogg'],
-  mapEntryRedridge: ['/audio/sfx/impactMetal_heavy_000.ogg'],
-  mapEntryStranglethorn: ['/audio/sfx/jingles-hit_07.ogg'],
+  mapEntryElwynn: ['/audio/sfx/fs_map_elwynn.ogg'],
+  mapEntryWestfall: ['/audio/sfx/fs_map_westfall.ogg'],
+  mapEntryDuskwood: ['/audio/sfx/fs_map_duskwood.ogg'],
+  mapEntryRedridge: ['/audio/sfx/fs_map_redridge.ogg'],
+  mapEntryStranglethorn: ['/audio/sfx/fs_map_stranglethorn.ogg'],
   levelUp: ['/audio/sfx/fs_level_up.ogg'],
   lootDrop: ['/audio/sfx/fs_loot_drop.ogg'],
   hpRegen: ['/audio/sfx/fs_skill_heal.wav'],
@@ -63,28 +63,28 @@ const SAMPLE_MANIFEST = {
 const SAMPLE_MAX_DURATION_SEC = {
   physHit: 0.75,
   physCrit: 1.35,
-  magicHit: 1.0,
-  magicCrit: 1.25,
+  magicHit: 0.72,
+  magicCrit: 1.05,
   dotPhys: 0.45,
   dotMagic: 0.55,
   dodge: 0.35,
-  encounter: 4.1,
-  encounterBoss: 1.05,
+  encounter: 1.05,
+  encounterBoss: 2.9,
   heroDeath: 1.35,
   monsterDeath: 1.5,
   victory: 2.2,
   defeat: 1.8,
   skillFire: 0.85,
-  skillFrost: 0.75,
+  skillFrost: 0.85,
   skillHeal: 0.9,
   skillTaunt: 0.42,
   skillSunder: 0.55,
   skillShield: 0.8,
-  mapEntryElwynn: 1.4,
-  mapEntryWestfall: 1.2,
-  mapEntryDuskwood: 1.6,
-  mapEntryRedridge: 1.3,
-  mapEntryStranglethorn: 1.5,
+  mapEntryElwynn: 4.5,
+  mapEntryWestfall: 4.2,
+  mapEntryDuskwood: 4.5,
+  mapEntryRedridge: 3.65,
+  mapEntryStranglethorn: 4.4,
   levelUp: 1.7,
   lootDrop: 1.2,
   hpRegen: 0.65,
@@ -404,10 +404,28 @@ const FLOOR = 0.0001
 
 /** Sample gain for normal hits vs crits (crit should read clearly louder). */
 const HIT_SAMPLE_GAIN = 0.9
+/** Normal magic hit: slightly quieter and shorter than physical hit. */
+const MAGIC_HIT_SAMPLE_GAIN = 0.72
 const CRIT_SAMPLE_GAIN = 1.18
-/** Boss encounter: louder + longer sample than normal pull. */
-const ENCOUNTER_GAIN = 0.98
-const ENCOUNTER_BOSS_GAIN = 1.28
+/** Magic crit: louder sample + accent so it clearly exceeds magicHit. */
+const MAGIC_CRIT_SAMPLE_GAIN = 1.42
+/** Frost skills: Iceball sample reads hotter than fire at equal gain. */
+const SKILL_FROST_GAIN = 0.68
+/** Map entry: longer ambient stingers; keep below combat hits. */
+const MAP_ENTRY_GAIN = 0.76
+const MAP_ENTRY_ELYWYNN_GAIN = 1.05
+
+/**
+ * @param {string} category
+ * @returns {number}
+ */
+function getMapEntryGain(category) {
+  if (category === 'mapEntryElwynn') return MAP_ENTRY_ELYWYNN_GAIN
+  return MAP_ENTRY_GAIN
+}
+/** Normal encounter: softer pull alert; boss must read clearly heavier. */
+const ENCOUNTER_GAIN = 0.72
+const ENCOUNTER_BOSS_GAIN = 1.65
 
 /**
  * All manifest category keys (for catalog sync tests).
@@ -418,19 +436,19 @@ export function listSfxManifestCategories() {
 }
 
 function scheduleCritSampleAccent(ctx, accentType = 'physical') {
-  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.34
+  const isMagic = accentType === 'magic'
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * (isMagic ? 0.5 : 0.34)
   if (master <= 0) return
 
   const t = ctx.currentTime
-  const isMagic = accentType === 'magic'
 
   const thud = ctx.createOscillator()
   thud.type = 'sine'
-  thud.frequency.setValueAtTime(isMagic ? 148 : 98, t)
+  thud.frequency.setValueAtTime(isMagic ? 168 : 98, t)
   thud.frequency.exponentialRampToValueAtTime(40, t + 0.11)
   const thudGain = ctx.createGain()
   thudGain.gain.setValueAtTime(FLOOR, t)
-  thudGain.gain.linearRampToValueAtTime(0.46 * master, t + 0.014)
+  thudGain.gain.linearRampToValueAtTime((isMagic ? 0.62 : 0.46) * master, t + 0.014)
   thudGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.17)
   thud.connect(thudGain)
   thudGain.connect(ctx.destination)
@@ -442,11 +460,11 @@ function scheduleCritSampleAccent(ctx, accentType = 'physical') {
   noiseSrc.buffer = noiseBuf
   const band = ctx.createBiquadFilter()
   band.type = 'bandpass'
-  band.frequency.setValueAtTime(isMagic ? 4400 : 2900, t)
-  band.Q.setValueAtTime(2.2, t)
+  band.frequency.setValueAtTime(isMagic ? 5000 : 2900, t)
+  band.Q.setValueAtTime(isMagic ? 2.5 : 2.2, t)
   const noiseGain = ctx.createGain()
   noiseGain.gain.setValueAtTime(FLOOR, t)
-  noiseGain.gain.linearRampToValueAtTime(0.4 * master, t + 0.002)
+  noiseGain.gain.linearRampToValueAtTime((isMagic ? 0.54 : 0.4) * master, t + 0.002)
   noiseGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.048)
   noiseSrc.connect(band)
   band.connect(noiseGain)
@@ -456,49 +474,94 @@ function scheduleCritSampleAccent(ctx, accentType = 'physical') {
 
   const ring = ctx.createOscillator()
   ring.type = 'triangle'
-  ring.frequency.setValueAtTime(isMagic ? 620 : 420, t)
-  ring.frequency.exponentialRampToValueAtTime(isMagic ? 340 : 240, t + 0.07)
+  ring.frequency.setValueAtTime(isMagic ? 680 : 420, t)
+  ring.frequency.exponentialRampToValueAtTime(isMagic ? 360 : 240, t + 0.07)
   const ringGain = ctx.createGain()
   ringGain.gain.setValueAtTime(FLOOR, t)
-  ringGain.gain.linearRampToValueAtTime(0.18 * master, t + 0.004)
+  ringGain.gain.linearRampToValueAtTime((isMagic ? 0.3 : 0.18) * master, t + 0.004)
   ringGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.12)
   ring.connect(ringGain)
   ringGain.connect(ctx.destination)
   ring.start(t)
   ring.stop(t + 0.13)
+
+  if (isMagic) scheduleMagicShimmerLayer(ctx, t, master * 1.15, true)
 }
 
 /** Low rumble + rise layered on boss encounter samples for extra weight. */
 function scheduleBossEncounterAccent(ctx) {
-  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.52
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * 0.78
   if (master <= 0) return
   const t = ctx.currentTime
 
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const crash = ctx.createBufferSource()
+  crash.buffer = noiseBuf
+  const crashBand = ctx.createBiquadFilter()
+  crashBand.type = 'bandpass'
+  crashBand.frequency.setValueAtTime(520, t)
+  crashBand.Q.setValueAtTime(0.85, t)
+  const crashGain = ctx.createGain()
+  crashGain.gain.setValueAtTime(FLOOR, t)
+  crashGain.gain.linearRampToValueAtTime(0.52 * master, t + 0.004)
+  crashGain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.12)
+  crash.connect(crashBand)
+  crashBand.connect(crashGain)
+  crashGain.connect(ctx.destination)
+  crash.start(t)
+  crash.stop(t + 0.14)
+
   const hit = ctx.createOscillator()
   hit.type = 'square'
-  hit.frequency.setValueAtTime(68, t)
-  hit.frequency.exponentialRampToValueAtTime(42, t + 0.35)
+  hit.frequency.setValueAtTime(74, t)
+  hit.frequency.exponentialRampToValueAtTime(36, t + 0.45)
   const hg = ctx.createGain()
   hg.gain.setValueAtTime(FLOOR, t)
-  hg.gain.linearRampToValueAtTime(0.55 * master, t + 0.02)
-  hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.42)
+  hg.gain.linearRampToValueAtTime(0.72 * master, t + 0.018)
+  hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.48)
   hit.connect(hg)
   hg.connect(ctx.destination)
   hit.start(t)
-  hit.stop(t + 0.44)
+  hit.stop(t + 0.5)
 
   const sweep = ctx.createOscillator()
   sweep.type = 'sawtooth'
-  sweep.frequency.setValueAtTime(88, t)
-  sweep.frequency.exponentialRampToValueAtTime(220, t + 0.28)
+  sweep.frequency.setValueAtTime(78, t)
+  sweep.frequency.exponentialRampToValueAtTime(260, t + 0.34)
   const sg = ctx.createGain()
   sg.gain.setValueAtTime(FLOOR, t)
-  sg.gain.linearRampToValueAtTime(0.22 * master, t + 0.04)
-  sg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.32)
+  sg.gain.linearRampToValueAtTime(0.34 * master, t + 0.05)
+  sg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.38)
   sweep.connect(sg)
   sg.connect(ctx.destination)
   sweep.start(t)
-  sweep.stop(t + 0.34)
+  sweep.stop(t + 0.4)
+
+  const ring = ctx.createOscillator()
+  ring.type = 'triangle'
+  ring.frequency.setValueAtTime(300, t + 0.06)
+  ring.frequency.exponentialRampToValueAtTime(140, t + 0.22)
+  const rg = ctx.createGain()
+  rg.gain.setValueAtTime(FLOOR, t + 0.06)
+  rg.gain.linearRampToValueAtTime(0.28 * master, t + 0.08)
+  rg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.28)
+  ring.connect(rg)
+  rg.connect(ctx.destination)
+  ring.start(t + 0.06)
+  ring.stop(t + 0.3)
+
+  const follow = ctx.createOscillator()
+  follow.type = 'sine'
+  follow.frequency.setValueAtTime(92, t + 0.18)
+  follow.frequency.exponentialRampToValueAtTime(42, t + 0.42)
+  const fg = ctx.createGain()
+  fg.gain.setValueAtTime(FLOOR, t + 0.18)
+  fg.gain.linearRampToValueAtTime(0.38 * master, t + 0.2)
+  fg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.46)
+  follow.connect(fg)
+  fg.connect(ctx.destination)
+  follow.start(t + 0.18)
+  follow.stop(t + 0.48)
 }
 
 /**
@@ -625,11 +688,12 @@ function scheduleMagicShimmerLayer(ctx, t, master, isCrit) {
  * @param {{ isCrit?: boolean }} opts
  */
 function scheduleMagicHitLayers(ctx, opts = {}) {
-  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  const isCrit = !!opts.isCrit
+  const hitScale = isCrit ? 1 : 0.72
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * hitScale
   if (master <= 0) return
 
   const t = ctx.currentTime
-  const isCrit = !!opts.isCrit
 
   const noiseBuf = getImpactNoiseBuffer(ctx)
   const noiseSrc = ctx.createBufferSource()
@@ -639,30 +703,30 @@ function scheduleMagicHitLayers(ctx, opts = {}) {
   band.frequency.setValueAtTime(isCrit ? 4800 : 3600, t)
   band.Q.setValueAtTime(isCrit ? 2.6 : 2.0, t)
   const noiseGain = ctx.createGain()
-  const nPeak = (isCrit ? 0.48 : 0.3) * master
+  const nPeak = (isCrit ? 0.48 : 0.22) * master
   noiseGain.gain.setValueAtTime(FLOOR, t)
   noiseGain.gain.linearRampToValueAtTime(nPeak, t + 0.0015)
-  noiseGain.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.048 : 0.036))
+  noiseGain.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.048 : 0.028))
   noiseSrc.connect(band)
   band.connect(noiseGain)
   noiseGain.connect(ctx.destination)
   noiseSrc.start(t)
-  noiseSrc.stop(t + 0.065)
+  noiseSrc.stop(t + (isCrit ? 0.065 : 0.048))
 
   const body = ctx.createOscillator()
   body.type = 'sine'
   body.frequency.setValueAtTime(isCrit ? 195 : 165, t)
-  body.frequency.exponentialRampToValueAtTime(72, t + 0.14)
+  body.frequency.exponentialRampToValueAtTime(72, t + (isCrit ? 0.14 : 0.1))
   const bodyG = ctx.createGain()
   bodyG.gain.setValueAtTime(FLOOR, t)
-  bodyG.gain.linearRampToValueAtTime((isCrit ? 0.4 : 0.22) * master, t + 0.018)
-  bodyG.gain.exponentialRampToValueAtTime(FLOOR, t + 0.2)
+  bodyG.gain.linearRampToValueAtTime((isCrit ? 0.4 : 0.16) * master, t + 0.018)
+  bodyG.gain.exponentialRampToValueAtTime(FLOOR, t + (isCrit ? 0.2 : 0.14))
   body.connect(bodyG)
   bodyG.connect(ctx.destination)
   body.start(t)
-  body.stop(t + 0.22)
+  body.stop(t + (isCrit ? 0.22 : 0.15))
 
-  scheduleMagicShimmerLayer(ctx, t, master * 0.85, isCrit)
+  scheduleMagicShimmerLayer(ctx, t, master * (isCrit ? 0.85 : 0.62), isCrit)
 
   if (isCrit) {
     const ring = ctx.createOscillator()
@@ -768,12 +832,25 @@ function scheduleEncounter(ctx, opts = {}) {
     hit.frequency.setValueAtTime(72, t + 0.08)
     const hg = ctx.createGain()
     hg.gain.setValueAtTime(FLOOR, t + 0.08)
-    hg.gain.linearRampToValueAtTime(0.08 * master, t + 0.1)
-    hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.34)
+    hg.gain.linearRampToValueAtTime(0.14 * master, t + 0.1)
+    hg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.38)
     hit.connect(hg)
     hg.connect(ctx.destination)
     hit.start(t + 0.08)
-    hit.stop(t + 0.36)
+    hit.stop(t + 0.4)
+
+    const ring = ctx.createOscillator()
+    ring.type = 'triangle'
+    ring.frequency.setValueAtTime(280, t + 0.04)
+    ring.frequency.exponentialRampToValueAtTime(150, t + 0.18)
+    const rg = ctx.createGain()
+    rg.gain.setValueAtTime(FLOOR, t + 0.04)
+    rg.gain.linearRampToValueAtTime(0.1 * master, t + 0.06)
+    rg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.24)
+    ring.connect(rg)
+    rg.connect(ctx.destination)
+    ring.start(t + 0.04)
+    ring.stop(t + 0.26)
   }
 }
 
@@ -1244,33 +1321,49 @@ function scheduleSkillFrostSynth(ctx, gainScale = 1) {
   const master = Math.max(0, Math.min(1, getAudioMasterVolume())) * gainScale
   if (master <= 0) return
   const t = ctx.currentTime
+
   const ping = ctx.createOscillator()
-  ping.type = 'triangle'
-  ping.frequency.setValueAtTime(920, t)
-  ping.frequency.exponentialRampToValueAtTime(420, t + 0.07)
+  ping.type = 'sine'
+  ping.frequency.setValueAtTime(880, t)
+  ping.frequency.exponentialRampToValueAtTime(520, t + 0.08)
   const pg = ctx.createGain()
   pg.gain.setValueAtTime(FLOOR, t)
-  pg.gain.linearRampToValueAtTime(0.22 * master, t + 0.003)
-  pg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.1)
+  pg.gain.linearRampToValueAtTime(0.18 * master, t + 0.004)
+  pg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.11)
   ping.connect(pg)
   pg.connect(ctx.destination)
   ping.start(t)
-  ping.stop(t + 0.11)
+  ping.stop(t + 0.12)
+
+  const chill = ctx.createOscillator()
+  chill.type = 'triangle'
+  chill.frequency.setValueAtTime(240, t + 0.02)
+  chill.frequency.exponentialRampToValueAtTime(110, t + 0.14)
+  const cg = ctx.createGain()
+  cg.gain.setValueAtTime(FLOOR, t + 0.02)
+  cg.gain.linearRampToValueAtTime(0.12 * master, t + 0.03)
+  cg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.16)
+  chill.connect(cg)
+  cg.connect(ctx.destination)
+  chill.start(t + 0.02)
+  chill.stop(t + 0.17)
+
   const noiseBuf = getImpactNoiseBuffer(ctx)
   const noiseSrc = ctx.createBufferSource()
   noiseSrc.buffer = noiseBuf
   const band = ctx.createBiquadFilter()
-  band.type = 'highpass'
-  band.frequency.setValueAtTime(2400, t)
+  band.type = 'bandpass'
+  band.frequency.setValueAtTime(3200, t)
+  band.Q.setValueAtTime(1.8, t)
   const ng = ctx.createGain()
   ng.gain.setValueAtTime(FLOOR, t)
-  ng.gain.linearRampToValueAtTime(0.12 * master, t + 0.001)
-  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.045)
+  ng.gain.linearRampToValueAtTime(0.1 * master, t + 0.001)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.05)
   noiseSrc.connect(band)
   band.connect(ng)
   ng.connect(ctx.destination)
   noiseSrc.start(t)
-  noiseSrc.stop(t + 0.05)
+  noiseSrc.stop(t + 0.055)
 }
 
 function scheduleSkillHealSynth(ctx, gainScale = 1) {
@@ -1424,14 +1517,25 @@ function tryPlayCritSample(ctx, category, gainScale = CRIT_SAMPLE_GAIN, accentTy
 }
 
 /**
+ * @param {string} category
+ * @param {number} gainScale
+ * @returns {number}
+ */
+function getSkillPlaybackGain(category, gainScale) {
+  if (category === 'skillFrost') return gainScale * SKILL_FROST_GAIN
+  return gainScale
+}
+
+/**
  * @param {AudioContext} ctx
  * @param {string} category
  * @param {number} [gainScale]
  * @returns {boolean}
  */
 function playSkillCategory(ctx, category, gainScale = 1) {
-  if (tryPlaySample(ctx, category, gainScale)) return true
-  scheduleSkillSynth(ctx, category, gainScale)
+  const gain = getSkillPlaybackGain(category, gainScale)
+  if (tryPlaySample(ctx, category, gain)) return true
+  scheduleSkillSynth(ctx, category, gain)
   return true
 }
 
@@ -1492,18 +1596,18 @@ export function playCombatLogLineSound(entry) {
       if (dt === 'magic') {
         const cat = isCrit ? 'magicCrit' : 'magicHit'
         if (isCrit) {
-          if (!tryPlayCritSample(ctx, cat, CRIT_SAMPLE_GAIN, 'magic')) scheduleMagicHitLayers(ctx, { isCrit })
-        } else if (!tryPlaySample(ctx, cat, HIT_SAMPLE_GAIN)) {
+          if (!tryPlayCritSample(ctx, cat, MAGIC_CRIT_SAMPLE_GAIN, 'magic')) scheduleMagicHitLayers(ctx, { isCrit })
+        } else if (!tryPlaySample(ctx, cat, MAGIC_HIT_SAMPLE_GAIN)) {
           scheduleMagicHitLayers(ctx, { isCrit })
         }
       } else if (dt === 'mixed') {
         if (isCrit) {
           const physOk = tryPlayCritSample(ctx, 'physCrit', 0.88, 'mixed')
-          const magicOk = tryPlaySample(ctx, 'magicCrit', 0.66)
+          const magicOk = tryPlaySample(ctx, 'magicCrit', 0.82)
           if (!physOk && !magicOk) scheduleMixedHitLayers(ctx, { isCrit })
         } else {
           const physOk = tryPlaySample(ctx, 'physHit', 0.7)
-          const magicOk = tryPlaySample(ctx, 'magicHit', 0.5)
+          const magicOk = tryPlaySample(ctx, 'magicHit', 0.4)
           if (!physOk && !magicOk) scheduleMixedHitLayers(ctx, { isCrit })
         }
       } else {
@@ -1594,7 +1698,7 @@ export function playMapEntrySound(opts = {}) {
   if (!ctx) return
   preloadSamples(ctx)
   const category = getMapEntrySfxCategory(opts.mapId)
-  if (!tryPlaySample(ctx, category, 0.82)) scheduleMapEntrySynth(ctx, category, 1)
+  if (!tryPlaySample(ctx, category, getMapEntryGain(category))) scheduleMapEntrySynth(ctx, category, 1)
   resumeContextIfNeeded(ctx)
 }
 
@@ -1674,10 +1778,10 @@ function playCategoryForPreview(ctx, category) {
       }
       return
     case 'magicHit':
-      if (!tryPlaySample(ctx, 'magicHit', HIT_SAMPLE_GAIN)) scheduleMagicHitLayers(ctx, { isCrit: false })
+      if (!tryPlaySample(ctx, 'magicHit', MAGIC_HIT_SAMPLE_GAIN)) scheduleMagicHitLayers(ctx, { isCrit: false })
       return
     case 'magicCrit':
-      if (!tryPlayCritSample(ctx, 'magicCrit', CRIT_SAMPLE_GAIN, 'magic')) {
+      if (!tryPlayCritSample(ctx, 'magicCrit', MAGIC_CRIT_SAMPLE_GAIN, 'magic')) {
         scheduleMagicHitLayers(ctx, { isCrit: true })
       }
       return
@@ -1728,7 +1832,7 @@ function playCategoryForPreview(ctx, category) {
     return
   }
   if (category.startsWith('mapEntry')) {
-    if (!tryPlaySample(ctx, category, 0.82)) scheduleMapEntrySynth(ctx, category, 1)
+    if (!tryPlaySample(ctx, category, getMapEntryGain(category))) scheduleMapEntrySynth(ctx, category, 1)
   }
 }
 

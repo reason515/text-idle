@@ -52,7 +52,7 @@ $files = [ordered]@{
     fs_phys_hit   = 547042
     fs_phys_crit  = 591155
     fs_magic_hit  = 442774
-    fs_magic_crit = 817466
+    fs_magic_crit = 570855
     fs_dodge      = 9509
     fs_encounter       = 683184
     fs_encounter_boss  = 752582
@@ -63,12 +63,17 @@ $files = [ordered]@{
     fs_victory    = 844831
     fs_defeat     = 253174
     fs_skill_fire   = 431174
-    fs_skill_frost  = 160420
+    fs_skill_frost  = 683180
     fs_skill_heal   = 562292
     fs_skill_sunder = 812592
     fs_skill_shield = 570853
     fs_level_up     = 442943
     fs_loot_drop    = 735168
+    fs_map_elwynn       = 624092
+    fs_map_westfall     = 348190
+    fs_map_duskwood     = 578362
+    fs_map_redridge     = 578376
+    fs_map_stranglethorn = 161470
 }
 
 foreach ($entry in $files.GetEnumerator()) {

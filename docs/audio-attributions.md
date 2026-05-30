@@ -17,7 +17,7 @@ See `.env.example` for required variables. Playback may trim long files per cate
 | `fs_phys_hit.wav` | 547042 Hit Impact Sword 3 | CogFireStudios | https://freesound.org/s/547042/ |
 | `fs_phys_crit.ogg` | 591155 Sword Contact (with swipe) | ultraaxvii | https://freesound.org/s/591155/ |
 | `fs_magic_hit.ogg` | 442774 Magic Spell | qubodup | https://freesound.org/s/442774/ |
-| `fs_magic_crit.ogg` | 817466 Cliche Magic Spell Sound | qubodup | https://freesound.org/s/817466/ |
+| `fs_magic_crit.ogg` | 570855 magicProjectile_impact | rafaelzimrp | https://freesound.org/s/570855/ |
 | `fs_dodge.wav` | 9509 whoosh.wav | petenice | https://freesound.org/s/9509/ |
 | `fs_encounter.ogg` | 683184 Spawning | NearTheAtmoshphere | https://freesound.org/s/683184/ |
 | `fs_encounter_boss.ogg` | 752582 Sound Design Elements Impact SFX PS 014 | AudioPapkin | https://freesound.org/s/752582/ |
@@ -45,8 +45,8 @@ Playback: `playCombatEncounterSound({ isBoss })` when the encounter log line is 
 
 | Manifest key | Local file | When |
 |--------------|------------|------|
-| `encounter` | `fs_encounter_boss.ogg` | Normal monster pull |
-| `encounterBoss` | `fs_encounter.ogg` | Boss encounter (`isBoss`) |
+| `encounter` | `fs_encounter.ogg` | Normal monster pull |
+| `encounterBoss` | `fs_encounter_boss.ogg` | Boss encounter (`isBoss`) |
 
 ## Skill-specific SFX (by `skillId`)
 
@@ -55,7 +55,7 @@ Mapping: `frontend/src/audio/skillSfxMap.js`. Playback: `playCombatLogLineSound(
 | Local file | Freesound sound | Used for (examples) | Page |
 |------------|-----------------|---------------------|------|
 | `fs_skill_fire.wav` | 431174 Fireball Explosion | fireball, pyroblast, scorch | https://freesound.org/s/431174/ |
-| `fs_skill_frost.wav` | 160420 iceSpell | frostbolt, frost-nova, ice-lance | https://freesound.org/s/160420/ |
+| `fs_skill_frost.ogg` | 683180 Iceball | frostbolt, frost-nova, cone-of-cold, ice-lance, blizzard, deep-freeze | https://freesound.org/s/683180/ |
 | `fs_skill_heal.wav` | 562292 Heal - Rpg | flash-heal, greater-heal, rejuvenation, regrowth (+ HoT tick via `sourceSkillId`) | https://freesound.org/s/562292/ |
 | `fs_skill_taunt.mp3` | 547203 Voice_AdultMale_PainGrunts_01 (HQ preview) | taunt, battle-shout | https://freesound.org/s/547203/ |
 | `fs_skill_sunder.wav` | 812592 Clang | sunder-armor, shield-slam, maul, rake | https://freesound.org/s/812592/ |
@@ -70,7 +70,7 @@ Playback: `playCombatRegenBatchSound(entry)` when the regen batch log line is re
 | `hpRegen` | `fs_skill_heal.wav` | Equipment HP regen at round end (`hpRegenBatch`) |
 | `mpRegen` | `fs_skill_shield.wav` | Spirit + equipment MP regen (`manaRegenBatch`) |
 
-Note: `fs_skill_taunt.mp3`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, and `fs_monster_death.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
+Note: `fs_skill_taunt.mp3`, `fs_skill_frost.ogg`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, `fs_monster_death.ogg`, `fs_map_elwynn.ogg`, `fs_map_westfall.ogg`, `fs_map_duskwood.ogg`, `fs_map_redridge.ogg`, and `fs_map_stranglethorn.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 
 ## Progression and loot SFX
 
@@ -87,13 +87,21 @@ Mapping: `frontend/src/audio/mapSfxMap.js`. Playback: `playMapEntrySound({ mapId
 
 | Manifest key | Local file | Map | Theme |
 |--------------|------------|-----|-------|
-| `mapEntryElwynn` | `impactBell_heavy_000.ogg` | Elwynn Forest | Peaceful forest chime |
-| `mapEntryWestfall` | `impactPlank_medium_002.ogg` | Westfall | Wheat fields / wooden farm |
-| `mapEntryDuskwood` | `lowThreeTone.ogg` | Duskwood | Ominous dusk tone |
-| `mapEntryRedridge` | `impactMetal_heavy_000.ogg` | Redridge Mountains | Wind and metal cliffs |
-| `mapEntryStranglethorn` | `jingles-hit_07.ogg` | Stranglethorn Vale | Jungle drum jingle |
+| `mapEntryElwynn` | `fs_map_elwynn.ogg` | Elwynn Forest | Quiet forest ambient (~4.5s) |
+| `mapEntryWestfall` | `fs_map_westfall.ogg` | Westfall | Open woodland / field ambient (~4.2s) |
+| `mapEntryDuskwood` | `fs_map_duskwood.ogg` | Duskwood | Dissonant dark sting (~4.5s) |
+| `mapEntryRedridge` | `fs_map_redridge.ogg` | Redridge Mountains | Cinematic shock stab (~3.65s) |
+| `mapEntryStranglethorn` | `fs_map_stranglethorn.ogg` | Stranglethorn Vale | Jungle guitar + drums (~4.4s) |
 
-Kenney CC0 impact/jingle assets in `frontend/public/audio/sfx/*.ogg` (see Kenney.nl Impact Sounds / Digital Audio packs).
+Playback: `MAP_ENTRY_GAIN` (~0.76) in `audioBus.js`; Elwynn Forest uses `MAP_ENTRY_ELYWYNN_GAIN` (~1.05).
+
+| Local file | Freesound sound | Author | Page |
+|------------|-----------------|--------|------|
+| `fs_map_elwynn.ogg` | 624092 Quiet short forest sounds | Magnesus | https://freesound.org/s/624092/ |
+| `fs_map_westfall.ogg` | 348190 000_forest2 | konstantinusz | https://freesound.org/s/348190/ |
+| `fs_map_duskwood.ogg` | 578362 Dissonant Sting 1 | nomiqbomi | https://freesound.org/s/578362/ |
+| `fs_map_redridge.ogg` | 578376 Shock Stab 02 | nomiqbomi | https://freesound.org/s/578376/ |
+| `fs_map_stranglethorn.ogg` | 161470 Jungle Guitar Drum 2 | husky70 | https://freesound.org/s/161470/ |
 
 ## Fallback
 

@@ -377,7 +377,7 @@ describe('audioBus', () => {
   it('uses map entry sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/impactBell_heavy_000.ogg', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_map_elwynn.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playMapEntrySound({ mapId: 'elwynn-forest' })
@@ -388,7 +388,7 @@ describe('audioBus', () => {
   it('uses encounter sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/fs_encounter_boss.ogg', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_encounter.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatEncounterSound({ isBoss: false })
@@ -399,7 +399,7 @@ describe('audioBus', () => {
   it('uses boss encounter sample when cached', () => {
     const ctx = getOrCreateAudioContext()
     const fakeBuffer = { duration: 0.2, sampleRate: 48000 }
-    __setSampleBufferForTests('/audio/sfx/fs_encounter.ogg', fakeBuffer)
+    __setSampleBufferForTests('/audio/sfx/fs_encounter_boss.ogg', fakeBuffer)
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatEncounterSound({ isBoss: true })
@@ -483,6 +483,22 @@ describe('audioBus', () => {
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playCombatHitSound({ isCrit: true })
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses crit sample plus accent when magic crit buffer is cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.5, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_magic_crit.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatLogLineSound({
+      targetId: 'm1',
+      finalDamage: 20,
+      damageType: 'magic',
+      isCrit: true,
+    })
     expect(ctx.createBufferSource).toHaveBeenCalled()
     expect(ctx.createOscillator).toHaveBeenCalled()
   })
