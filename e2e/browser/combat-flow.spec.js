@@ -162,10 +162,19 @@ test.describe('Combat Flow (Example 5-9)', () => {
       }
     }
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const physRow = page.locator('.detail-modal .detail-row').filter({ hasText: '\u7269\u653b' }).first()
+    const detailModal = page.locator('.detail-modal')
+    const physRow = detailModal.locator('.detail-row').filter({ hasText: '\u7269\u653b' }).first()
     await expect(physRow).toBeVisible()
     const val = (await physRow.locator('.detail-value').textContent())?.trim() ?? ''
     expect(val).toMatch(/^\d+(-\d+)?$/)
+    await expect(detailModal.locator('.detail-row').filter({ hasText: '\u654f\u6377' })).toBeVisible()
+    await expect(detailModal.locator('.detail-label').filter({ hasText: /^Agility$/i })).toHaveCount(0)
+    const damageTypeVal = (
+      await detailModal.locator('.detail-row').filter({ hasText: '\u4f24\u5bb3\u7c7b\u578b' }).locator('.detail-value').textContent()
+    )?.trim() ?? ''
+    expect(damageTypeVal).toMatch(/^(\u7269\u7406|\u6cd5\u672f|\u6df7\u5408)$/)
+    const tierTag = (await detailModal.locator('.modal-tier-tag').textContent())?.trim() ?? ''
+    expect(tierTag).toMatch(/^(\u666e\u901a|\u7cbe\u82f1|\u9996\u9886)$/)
   })
 
   test('encounter message appears at battle start', async ({ page }) => {

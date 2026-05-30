@@ -2204,7 +2204,7 @@
         <div class="modal-box detail-modal">
           <div class="modal-title">
             {{ selectedMonster.name }}
-            <span class="modal-tier-tag" :class="'tier-' + selectedMonster.tier">{{ selectedMonster.tier }}</span>
+            <span class="modal-tier-tag" :class="'tier-' + selectedMonster.tier">{{ monsterTierLabel(selectedMonster.tier) }}</span>
           </div>
           <div class="detail-section">
             <div class="detail-row">
@@ -2217,7 +2217,7 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">伤害类型</span>
-              <span class="detail-value" :class="'log-' + selectedMonster.damageType">{{ selectedMonster.damageType }}</span>
+              <span class="detail-value" :class="'log-' + selectedMonster.damageType">{{ monsterDamageTypeLabel(selectedMonster.damageType) }}</span>
             </div>
           </div>
           <div class="detail-sep-line">战斗属性</div>
@@ -2231,7 +2231,7 @@
               <span class="detail-value">{{ selectedMonster.spellPower }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Agility</span>
+              <span class="detail-label">敏捷</span>
               <span class="detail-value">{{ selectedMonster.agility }}</span>
             </div>
           </div>
@@ -2410,9 +2410,9 @@ function getMonsterArmorTooltip(unit) {
     .reduce((sum, d) => sum + d.armorReduction, 0)
   if (totalReduction > 0) {
     const base = (unit.armor || 0)
-    return `Base ${base}, reduced by ${totalReduction} = effective ${effective} (min 0)`
+    return `\u57fa\u7840 ${base}\uff0c\u964d\u4f4e ${totalReduction}\uff0c\u6709\u6548 ${effective}\uff08\u6700\u4f4e 0\uff09`
   }
-  return `Absorbs ${effective} physical damage per hit`
+  return `\u6bcf\u6b21\u53d7\u51fb\u5438\u6536 ${effective} \u7269\u7406\u4f24\u5bb3`
 }
 import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
 import {
@@ -2567,6 +2567,18 @@ const MONSTER_TIER_COLORS = {
   normal: 'var(--color-normal)',
   elite: 'var(--color-elite)',
   boss: 'var(--color-boss)',
+}
+
+const MONSTER_TIER_LABELS = {
+  normal: '\u666e\u901a',
+  elite: '\u7cbe\u82f1',
+  boss: '\u9996\u9886',
+}
+
+const MONSTER_DAMAGE_TYPE_LABELS = {
+  physical: '\u7269\u7406',
+  magic: '\u6cd5\u672f',
+  mixed: '\u6df7\u5408',
 }
 
 const TACTICS_CONDITION_TARGETS = [
@@ -2751,6 +2763,12 @@ function getClassInfo(heroClass) {
 }
 function monsterTierColor(tier) {
   return MONSTER_TIER_COLORS[tier] || 'var(--color-normal)'
+}
+function monsterTierLabel(tier) {
+  return MONSTER_TIER_LABELS[tier] ?? tier
+}
+function monsterDamageTypeLabel(damageType) {
+  return MONSTER_DAMAGE_TYPE_LABELS[damageType] ?? damageType
 }
 function resourceLabel(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).label
