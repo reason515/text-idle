@@ -44,9 +44,9 @@ describe('buildPrimaryAttrTooltipHtml', () => {
     expect(html).toContain('战斗内法力恢复/回合')
   })
 
-  it('Mage spirit tooltip shows combat MP regen as Spirit * 0.8 + equipment', () => {
+  it('Mage spirit tooltip shows combat MP regen as Spirit * 0.5 + equipment', () => {
     const html = buildPrimaryAttrTooltipHtml('Mage', 'spirit', 0)
-    expect(html).toMatch(/战斗内法力恢复\/回合[\s\S]*精神[\s\S]*tip-num">0\.8/)
+    expect(html).toMatch(/战斗内法力恢复\/回合[\s\S]*精神[\s\S]*tip-num">0\.5/)
   })
 
   it('Mage intellect tooltip defers MP cap to Spirit', () => {
