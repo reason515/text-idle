@@ -399,15 +399,15 @@ describe('combat progression and systems', () => {
     expect(next.bossAvailable).toBe(false)
   })
 
-  it('Example27: getExpansionHeroLevel returns 5 for first expansion, squad min for Druid slot', () => {
+  it('Example27: getExpansionHeroLevel uses squad min level for 4th and 5th seats', () => {
     expect(getExpansionHeroLevel({ unlockedMapCount: 1 })).toBe(1)
-    expect(getExpansionHeroLevel({ unlockedMapCount: 2 })).toBe(5)
-    expect(getExpansionHeroLevel({ unlockedMapCount: 3 })).toBe(10)
-    const squad = [{ level: 7 }, { level: 9 }, { level: 8 }, { level: 12 }]
-    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 3 }, 4)).toBe(true)
-    expect(getExpansionHeroLevel({ unlockedMapCount: 3 }, squad)).toBe(7)
-    expect(getSquadMinLevel(squad)).toBe(7)
-    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 2 }, 3)).toBe(false)
+    const trio = [{ level: 7 }, { level: 9 }, { level: 8 }]
+    expect(getExpansionHeroLevel({ unlockedMapCount: 2 }, trio)).toBe(7)
+    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 2 }, 3)).toBe(true)
+    const squad4 = [...trio, { level: 12 }]
+    expect(isDruidOnlyExpansionSlot({ unlockedMapCount: 3 }, 4)).toBe(false)
+    expect(getExpansionHeroLevel({ unlockedMapCount: 3 }, squad4)).toBe(7)
+    expect(getSquadMinLevel(squad4)).toBe(7)
   })
 
   it('Example27: getExpansionHeroAttributePoints returns 12 for Lv5, 27 for Lv10 (3 per level)', () => {

@@ -19,7 +19,7 @@ export const DRUID_FIXED_INITIAL_SKILLS = [
     manaCost: 10,
     hotCoeffPerTurn: 0.25,
     hotDuration: 4,
-    effectDesc: '\u53cb\u65b9 HoT\uff1a\u6bcf\u56de\u5408 SpellPower \u00d7 0.25\uff0c\u6301\u7eed 4 \u56de\u5408',
+    effectDesc: '\u53cb\u65b9\u6301\u7eed\u6cbb\u7597\uff1a\u6bcf\u56de\u5408\u6cd5\u672f\u5f3a\u5ea6 \u00d7 0.25\uff0c\u6301\u7eed 4 \u56de\u5408',
   },
   {
     id: 'maul',
@@ -76,7 +76,7 @@ export function getDruidSkillWithEnhancements(druid, skillId) {
   if (skillId === 'rejuvenation') {
     out.hotCoeffPerTurn = 0.25 + enhanceCount * 0.04
     out.manaCost = 10 + enhanceCount
-    out.effectDesc = `\u53cb\u65b9 HoT\uff1a\u6bcf\u56de\u5408 SpellPower \u00d7 ${out.hotCoeffPerTurn}\uff0c\u6301\u7eed ${out.hotDuration ?? 4} \u56de\u5408`
+    out.effectDesc = `\u53cb\u65b9\u6301\u7eed\u6cbb\u7597\uff1a\u6bcf\u56de\u5408\u6cd5\u672f\u5f3a\u5ea6 \u00d7 ${out.hotCoeffPerTurn}\uff0c\u6301\u7eed ${out.hotDuration ?? 4} \u56de\u5408`
   } else if (skillId === 'maul') {
     out.coefficient = 1.0 + enhanceCount * 0.1
     out.manaCost = 12 + enhanceCount
@@ -89,12 +89,12 @@ export function getDruidSkillWithEnhancements(druid, skillId) {
     out.coefficient = 0.9 + enhanceCount * 0.08
     out.hotCoeffPerTurn = 0.15 + enhanceCount * 0.02
     out.manaCost = 14 + enhanceCount
-    out.effectDesc = `\u7acb\u5373\u6cbb\u7597 SpellPower x ${out.coefficient}\uff1bHoT \u6bcf\u56de\u5408 ${out.hotCoeffPerTurn}x\uff0c\u6301\u7eed ${out.hotDuration ?? 2} \u56de\u5408`
+    out.effectDesc = `\u7acb\u5373\u6cbb\u7597 \u6cd5\u672f\u5f3a\u5ea6 \u00d7 ${out.coefficient}\uff1b\u6301\u7eed\u6cbb\u7597 \u6bcf\u56de\u5408 \u00d7 ${out.hotCoeffPerTurn}\uff0c\u6301\u7eed ${out.hotDuration ?? 2} \u56de\u5408`
   } else if (skillId === 'rake') {
     out.coefficient = 0.6 + enhanceCount * 0.08
     out.bleedCoeffPerTurn = 0.12 + enhanceCount * 0.02
     out.manaCost = 11 + enhanceCount
-    out.effectDesc = `${out.coefficient} \u500d\u7269\u7406\u4f24\u5bb3 + \u6d41\u8840 ${out.bleedDuration ?? 4} \u56de\u5408\uff08\u6bcf\u56de\u5408 PhysAtk x ${out.bleedCoeffPerTurn}\uff09`
+    out.effectDesc = `${out.coefficient} \u500d\u7269\u7406\u4f24\u5bb3 + \u6d41\u8840 ${out.bleedDuration ?? 4} \u56de\u5408\uff08\u6bcf\u56de\u5408\u7269\u653b \u00d7 ${out.bleedCoeffPerTurn}\uff09`
   }
   return out
 }
@@ -119,21 +119,21 @@ export function getDruidEnhancementPreviewEffectDesc(hero, skillId) {
     const nextCoeff = 0.25 + next * 0.04
     const currMana = 10 + current
     const nextMana = 10 + next
-    return `HoT ${currCoeff} -> ${nextCoeff} / turn; mana ${currMana} -> ${nextMana}`
+    return `\u6bcf\u56de\u5408\u6cbb\u7597\u7cfb\u6570 ${currCoeff} -> ${nextCoeff}\uff1b\u6cd5\u529b ${currMana} -> ${nextMana}`
   }
   if (skillId === 'maul') {
     const currCoeff = 1.0 + current * 0.1
     const nextCoeff = 1.0 + next * 0.1
     const currMana = 12 + current
     const nextMana = 12 + next
-    return `${currCoeff} -> ${nextCoeff}x phys; mana ${currMana} -> ${nextMana}`
+    return `${currCoeff} -> ${nextCoeff} \u500d\u7269\u7406\u4f24\u5bb3\uff1b\u6cd5\u529b ${currMana} -> ${nextMana}`
   }
   if (skillId === 'bear-form') {
     const currPct = Math.min(BEAR_FORM_DR_MAX, 12 + current * 3)
     const nextPct = Math.min(BEAR_FORM_DR_MAX, 12 + next * 3)
     const currMana = 8 + current
     const nextMana = 8 + next
-    return `DR -${currPct}% -> -${nextPct}%; mana ${currMana} -> ${nextMana}`
+    return `\u51cf\u4f24 ${currPct}% -> ${nextPct}%\uff1b\u6cd5\u529b ${currMana} -> ${nextMana}`
   }
   if (skillId === 'regrowth') {
     const currDirect = 0.9 + current * 0.08
@@ -142,7 +142,7 @@ export function getDruidEnhancementPreviewEffectDesc(hero, skillId) {
     const nextHot = 0.15 + next * 0.02
     const currMana = 14 + current
     const nextMana = 14 + next
-    return `direct ${currDirect} -> ${nextDirect}; HoT ${currHot} -> ${nextHot}/turn; mana ${currMana} -> ${nextMana}`
+    return `\u7acb\u5373\u6cbb\u7597\u7cfb\u6570 ${currDirect} -> ${nextDirect}\uff1b\u6bcf\u56de\u5408\u6301\u7eed\u7cfb\u6570 ${currHot} -> ${nextHot}\uff1b\u6cd5\u529b ${currMana} -> ${nextMana}`
   }
   if (skillId === 'rake') {
     const currCoeff = 0.6 + current * 0.08
@@ -151,7 +151,7 @@ export function getDruidEnhancementPreviewEffectDesc(hero, skillId) {
     const nextBleed = 0.12 + next * 0.02
     const currMana = 11 + current
     const nextMana = 11 + next
-    return `${currCoeff} -> ${nextCoeff}x hit; bleed ${currBleed} -> ${nextBleed} PhysAtk/turn; mana ${currMana} -> ${nextMana}`
+    return `${currCoeff} -> ${nextCoeff} \u500d\u7269\u7406\u4f24\u5bb3\uff1b\u6d41\u8840\u7cfb\u6570 ${currBleed} -> ${nextBleed}\uff1b\u6cd5\u529b ${currMana} -> ${nextMana}`
   }
   return base.effectDesc ?? ''
 }

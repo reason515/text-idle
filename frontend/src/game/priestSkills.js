@@ -15,7 +15,7 @@ export const PRIEST_INITIAL_SKILLS = [
     spec: '神圣',
     manaCost: 8,
     coefficient: 1.0,
-    effectDesc: '治疗友方 SpellPower x 1.0',
+    effectDesc: '\u6cbb\u7597\u53cb\u65b9\uff1a\u6cd5\u672f\u5f3a\u5ea6 \u00d7 1.0',
   },
   {
     id: 'power-word-shield',
@@ -24,7 +24,7 @@ export const PRIEST_INITIAL_SKILLS = [
     manaCost: 8,
     coefficient: 1.0,
     absorbDuration: 3,
-    effectDesc: '护盾吸收 SpellPower x 1.0 伤害，持续 3 回合或直至打破',
+    effectDesc: '\u62a4\u76fe\u5438\u6536 \u6cd5\u672f\u5f3a\u5ea6 \u00d7 1.0 \u4f24\u5bb3\uff0c\u6301\u7eed 3 \u56de\u5408\u6216\u76f4\u81f3\u6253\u7834',
   },
 ]
 
@@ -68,12 +68,12 @@ export function getPriestSkillWithEnhancements(priest, skillId) {
   if (skillId === 'flash-heal') {
     out.coefficient = 1.0 + enhanceCount * 0.1
     out.manaCost = 8 + enhanceCount
-    out.effectDesc = `治疗友方 SpellPower x ${out.coefficient}`
+    out.effectDesc = `\u6cbb\u7597\u53cb\u65b9\uff1a\u6cd5\u672f\u5f3a\u5ea6 \u00d7 ${out.coefficient}`
   } else if (skillId === 'power-word-shield') {
     out.coefficient = 1.0 + enhanceCount * 0.1
     out.absorbDuration = 3 + enhanceCount
     out.manaCost = 8 + enhanceCount
-    out.effectDesc = `护盾吸收 SpellPower x ${out.coefficient} 伤害，持续 ${out.absorbDuration} 回合或直至打破`
+    out.effectDesc = `\u62a4\u76fe\u5438\u6536 \u6cd5\u672f\u5f3a\u5ea6 \u00d7 ${out.coefficient} \u4f24\u5bb3\uff0c\u6301\u7eed ${out.absorbDuration} \u56de\u5408\u6216\u76f4\u81f3\u6253\u7834`
   }
   return out
 }

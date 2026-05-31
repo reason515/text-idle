@@ -876,12 +876,12 @@
           <div class="modal-title">扩充小队</div>
           <div class="detail-skill-choice-banner recruit-prompt-banner">
             <p v-if="recruitPromptIsDruidSlot">
-              你已解锁<strong>第五位英雄席位</strong>，本次扩充<strong>限定招募德鲁伊</strong>（玛法里奥·怒风）。
+              你已解锁<strong>第四位英雄席位</strong>，本次扩充<strong>限定招募德鲁伊</strong>（玛法里奥·怒风）。
               加入等级为当前小队<strong>最低等级（Lv.{{ recruitPromptLevel }}）</strong>；固定技能为回春术与重殴。
             </p>
             <p v-else>
-              你已解锁新的英雄席位。扩展英雄将以 <strong>Lv.{{ recruitPromptLevel }}</strong>
-              加入，可在招募流程中分配属性与初始技能。
+              你已解锁<strong>第五位英雄席位</strong>。加入等级为当前小队<strong>最低等级（Lv.{{ recruitPromptLevel }}）</strong>，
+              可在招募流程中分配属性与初始技能。
             </p>
             <p class="recruit-prompt-hint">也可稍后再说，左栏「+ 招募」随时可用。</p>
           </div>

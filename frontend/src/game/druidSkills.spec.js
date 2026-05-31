@@ -109,9 +109,12 @@ describe('Druid skill enhancements', () => {
     expect(s.manaCost).toBe(16)
   })
 
-  it('getDruidEnhancementPreviewEffectDesc shows next values', () => {
+  it('getDruidEnhancementPreviewEffectDesc shows next values in Chinese', () => {
     const druid = makeDruid({ skillEnhancements: { maul: { enhanceCount: 1 } } })
-    expect(getDruidEnhancementPreviewEffectDesc(druid, 'maul')).toContain('1.1 -> 1.2')
+    const desc = getDruidEnhancementPreviewEffectDesc(druid, 'maul')
+    expect(desc).toContain('1.1 -> 1.2')
+    expect(desc).toContain('\u7269\u7406\u4f24\u5bb3')
+    expect(desc).not.toMatch(/mana|phys|bleed|HoT/i)
   })
 })
 

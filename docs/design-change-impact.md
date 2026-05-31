@@ -10,7 +10,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 |-------|------------------|-------------------|
 | **Initial squad** | 3 heroes via `createFixedTrioSquad()`; 2 fixed skills each | [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0, [05-skills.md](design/05-skills.md) 3.1, Example 3a/3b/4a |
 | **Game start routing** | Intro → team name → hero preview → main; **no** `/character-select` for first squad | Example 3, 3a; `IntroPage.vue`, `main.js` |
-| **Expansion recruitment** | `/character-select` after map 1 or 2 boss; max 5 heroes; **4th** = any hero Lv5; **5th** = **Druid only**, min squad level | Example 4, 27; `getRecruitLimit`, `isDruidOnlyExpansionSlot`, `CharacterSelectionPage.vue` |
+| **Expansion recruitment** | `/character-select` after map 1 or 2 boss; max 5 heroes; **4th** = **Druid only** (no hero grid); **5th** = any hero; join level = `getSquadMinLevel(squad)` | Example 4, 27; `getRecruitLimit`, `isDruidOnlyExpansionSlot`, `getExpansionHeroLevel`, `CharacterSelectionPage.vue` |
 | **Recruit limit** | `getRecruitLimit(progress)` = `clamp(2 + unlockedMapCount, 3, 5)` | Example 5; `combat.js` |
 
 ## 1. Flow and UI Continuity
@@ -70,7 +70,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 |------|------|------------|
 | **Tutorial/onboarding** | Copy still says "choose your hero" at start | Match Example 3a (hero preview, no pick) |
 | **Overview § 关卡与内容** | Stale "初始 1 人" hero seats | Align with 02-levels-monsters 1.2 |
-| **Example 27 attribute points** | Old 20/45 vs code `3×(level-1)` | Use 12 / 27 for Lv5 / Lv10 |
+| **Example 27 attribute points** | Join level = `getSquadMinLevel(squad)` | Use `3×(joinLevel-1)` (e.g. 12 at min Lv5, 18 at min Lv7) |
 | **LocalStorage** | Squad structure, progress flags | `introCompleted`, `squad` from fixed trio |
 | **Design doc 09-social-ui** | Layout says "英雄卡×1-5" | Use ×3–5; document recruit button rules |
 

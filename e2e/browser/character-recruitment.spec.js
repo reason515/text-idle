@@ -81,6 +81,15 @@ async function prepareForRecruit(page, fast = true) {
   await page.waitForTimeout(fast ? 50 : 150)
 }
 
+/** Set all squad heroes to the same level (for expansion join-level E2E). */
+function setSquadLevelsInStorage(level) {
+  const squad = JSON.parse(localStorage.getItem('squad') || '[]')
+  squad.forEach((h) => {
+    h.level = level
+  })
+  localStorage.setItem('squad', JSON.stringify(squad))
+}
+
 /** Allocate N attribute points to Strength in expansion flow. */
 async function allocateAttrPoints(page, n) {
   const strengthBtn = page.locator('.attr-alloc-row').filter({ hasText: '\u529b\u91cf' }).first().locator('.attr-btn')
@@ -213,6 +222,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await updateStoredState(page, () => {
+      setSquadLevelsInStorage(5)
       localStorage.setItem('combatProgress', JSON.stringify({
         unlockedMapCount: 2,
         currentMapId: 'westfall',
@@ -229,18 +239,16 @@ test.describe('Character Recruitment (Example 4)', () => {
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^雷克萨/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
     await allocateAttrPoints(page, 12)
-    // Hunter has no initial skill; confirm step appears when all points allocated
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
+    await expect(confirmStep.getByText('\u56de\u6625\u672f')).toBeVisible({ timeout: 5000 })
     const confirmBtn = page.locator('[data-testid="confirm-recruit-btn"]')
     await confirmBtn.click()
     await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
     await expect(page.locator('.hero-card')).toHaveCount(4, { timeout: 10000 })
-    await expect(page.locator('.squad-col').getByText('\u96f7\u514b\u8428')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.squad-col').getByText('\u739b\u6cd5\u91cc\u5965')).toBeVisible({ timeout: 5000 })
   })
 
   test('AC5a: expansion recruit confirmation shows secondary attributes and formulas', async ({ page }) => {
@@ -248,6 +256,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     const email = uniqueTestEmail('recruit-e2e')
     await registerAndCompleteIntro(page, email)
     await updateStoredState(page, () => {
+      setSquadLevelsInStorage(5)
       localStorage.setItem('combatProgress', JSON.stringify({
         unlockedMapCount: 2,
         currentMapId: 'westfall',
@@ -260,11 +269,8 @@ test.describe('Character Recruitment (Example 4)', () => {
     await pauseCombat(page)
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 10000 })
-    await page.getByRole('button', { name: /^乌瑟尔/ }).click()
-    await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 10000 })
     await allocateAttrPoints(page, 12)
-    // Paladin has no initial skill; confirm step appears when all points allocated
     const confirmRecruit = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmRecruit).toBeVisible({ timeout: 15000 })
     await expect(confirmRecruit.getByText(/\u526f\u5c5e\u6027/)).toBeVisible({ timeout: 5000 })
@@ -272,7 +278,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(confirmRecruit.getByText('\u7269\u653b').first()).toBeVisible({ timeout: 5000 })
   })
 
-  test('AC5b: Druid-only 5th seat uses squad min level and fixed skills', async ({ page }) => {
+  test('AC5b: Druid-only 4th seat skips hero grid and uses squad min level', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('recruit-druid-e2e')
     await registerAndCompleteIntro(page, email)
@@ -281,25 +287,10 @@ test.describe('Character Recruitment (Example 4)', () => {
       squad.forEach((h, i) => {
         h.level = i === 0 ? 7 : 9
       })
-      squad.push({
-        id: 'uther',
-        name: '\u4e4c\u745f\u5c14',
-        class: 'Paladin',
-        level: 9,
-        xp: 0,
-        unassignedPoints: 0,
-        strength: 10,
-        agility: 5,
-        intellect: 8,
-        stamina: 8,
-        spirit: 6,
-        equipment: {},
-        skills: [],
-      })
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('combatProgress', JSON.stringify({
-        unlockedMapCount: 3,
-        currentMapId: 'duskwood',
+        unlockedMapCount: 2,
+        currentMapId: 'westfall',
         currentProgress: 0,
         bossAvailable: false,
       }))
@@ -309,12 +300,10 @@ test.describe('Character Recruitment (Example 4)', () => {
     await pauseCombat(page)
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await expect(page.locator('.hero-grid button')).toHaveCount(1, { timeout: 10000 })
     await expect(page.getByText(/\u9650\u5b9a\u4e3a\u5fb7\u9c81\u4f0a/)).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^玛法里奥/ }).click()
+    await expect(page.locator('.hero-grid')).toHaveCount(0, { timeout: 5000 })
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 5000 })
-    const intBtn = page.locator('.attr-alloc-row').filter({ hasText: '\u667a\u529b' }).first().locator('.attr-btn')
-    for (let i = 0; i < 18; i++) await intBtn.click({ force: true })
+    await allocateAttrPoints(page, 18)
     const confirmRecruitB = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmRecruitB).toBeVisible({ timeout: 15000 })
     await expect(confirmRecruitB.getByText('\u56de\u6625\u672f')).toBeVisible({ timeout: 5000 })
@@ -322,13 +311,14 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(confirmRecruitB.getByText(/7\s*\u7ea7/)).toBeVisible({ timeout: 5000 })
   })
 
-  test('Example27 AC2/AC7: expansion hero joins at Lv5 with allocated attrs', async ({ page }) => {
+  test('Example27 AC2/AC7: expansion hero joins at squad min level with allocated attrs', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('expand-e2e')
     await registerAndCompleteIntro(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await updateStoredState(page, () => {
+      setSquadLevelsInStorage(5)
       localStorage.setItem('combatProgress', JSON.stringify({
         unlockedMapCount: 2,
         currentMapId: 'westfall',
@@ -345,18 +335,15 @@ test.describe('Character Recruitment (Example 4)', () => {
     await clickRecruitBtn(page)
 
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
-    await expect(page.locator('.hero-grid')).toBeVisible({ timeout: 5000 })
-    await page.getByRole('button', { name: /^乌瑟尔/ }).click()
     await expect(page.locator('[data-testid="attr-alloc-step"]')).toBeVisible({ timeout: 15000 })
     await allocateAttrPoints(page, 12)
-    // Paladin has no initial skill; confirm step appears when all points allocated
     const confirmStep = page.locator('[data-testid="confirm-recruit-step"]')
     await expect(confirmStep).toBeVisible({ timeout: 5000 })
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
-    const utherCard = page.locator('.hero-card').filter({ hasText: '乌瑟尔' })
-    await expect(utherCard).toContainText(/Lv\.?\s*5/)
+    const druidCard = page.locator('.hero-card').filter({ hasText: '\u739b\u6cd5\u91cc\u5965' })
+    await expect(druidCard).toContainText(/Lv\.?\s*5/)
   })
 
   test('Example27 AC10: fixed trio Warrior enhance at level 3 shows enhanced skill in detail', async ({ page }) => {

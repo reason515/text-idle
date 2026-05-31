@@ -27,7 +27,7 @@ export const DRUID_LEVEL_SKILLS = {
       coefficient: 0.9,
       hotCoeffPerTurn: 0.15,
       hotDuration: 2,
-      effectDesc: '\u7acb\u5373\u6cbb\u7597 SpellPower x 0.9\uff1bHoT \u6bcf\u56de\u5408 0.15x\uff0c\u6301\u7eed 2 \u56de\u5408',
+      effectDesc: '\u7acb\u5373\u6cbb\u7597 \u6cd5\u672f\u5f3a\u5ea6 \u00d7 0.9\uff1b\u6301\u7eed\u6cbb\u7597 \u6bcf\u56de\u5408 \u00d7 0.15\uff0c\u6301\u7eed 2 \u56de\u5408',
     },
     {
       id: 'rake',
@@ -38,7 +38,7 @@ export const DRUID_LEVEL_SKILLS = {
       coefficient: 0.6,
       bleedCoeffPerTurn: 0.12,
       bleedDuration: 4,
-      effectDesc: '0.6 \u500d\u7269\u7406\u4f24\u5bb3 + \u6d41\u8840 4 \u56de\u5408\uff08\u6bcf\u56de\u5408 PhysAtk x 0.12\uff09',
+      effectDesc: '0.6 \u500d\u7269\u7406\u4f24\u5bb3 + \u6d41\u8840 4 \u56de\u5408\uff08\u6bcf\u56de\u5408\u7269\u653b \u00d7 0.12\uff09',
     },
   ],
 }

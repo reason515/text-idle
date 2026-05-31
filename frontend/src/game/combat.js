@@ -353,14 +353,14 @@ export function shouldPromptExpansionRecruitAfterBoss({
 }
 
 /**
- * Second expansion slot (5th hero): Druid only. Design 02-levels-monsters 1.2.1.
+ * First expansion slot (4th hero after map 1 boss): Druid only. Design 02-levels-monsters 1.2.1.
  * @param {Object} progress - combatProgress
  * @param {number} squadLength - current squad size before recruit
  * @returns {boolean}
  */
 export function isDruidOnlyExpansionSlot(progress, squadLength) {
   const n = progress?.unlockedMapCount ?? 1
-  return n >= 3 && squadLength === 4
+  return n >= 2 && squadLength === 3
 }
 
 /**
@@ -375,26 +375,21 @@ export function getSquadMinLevel(squad) {
 
 /**
  * Expansion hero level. Design 02-levels-monsters 1.2.1:
- * - Map 1 boss (4th hero): Lv5
- * - Map 2 boss (5th hero, Druid): min level in current squad
+ * - Map 1 or 2 boss expansion (4th or 5th hero): min level in current squad
  * @param {Object} progress - combatProgress
- * @param {Object[]} [squad] - current squad (required for Druid slot level)
+ * @param {Object[]} [squad] - current squad (required when recruiting)
  * @returns {number} Join level; 1 if not expansion (unlockedMapCount 1)
  */
 export function getExpansionHeroLevel(progress, squad) {
-  const squadLength = Array.isArray(squad) ? squad.length : 0
-  if (isDruidOnlyExpansionSlot(progress, squadLength)) {
-    return getSquadMinLevel(squad)
-  }
   const n = progress?.unlockedMapCount ?? 1
   if (n <= 1) return 1
-  return Math.min(20, 5 * (n - 1))
+  return getSquadMinLevel(squad)
 }
 
 /**
  * Attribute points to allocate for expansion hero at given level.
- * 3 points per level-up: Lv5 = 12, Lv10 = 27, Lv15 = 42, Lv20 = 57.
- * @param {number} level - Expansion hero level (5, 10, 15, or 20)
+ * 3 points per level-up: Lv5 = 12, Lv7 = 18, Lv10 = 27.
+ * @param {number} level - Expansion hero join level
  * @returns {number}
  */
 export function getExpansionHeroAttributePoints(level) {

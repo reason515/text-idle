@@ -13,15 +13,18 @@
       <p class="subtitle">为 <span :style="{ color: classColor(selectedHero?.class) }">{{ heroDisplayName(selectedHero?.name) }}</span> 强化已有技能或学习新技能。</p>
     </template>
     <template v-else>
-      <h2>选择英雄</h2>
+      <h2>{{ isDruidExpansionSlot ? '招募德鲁伊' : '选择英雄' }}</h2>
       <p v-if="isDruidExpansionSlot" class="subtitle">
-        击败西部荒野守关 BOSS 后，第五位英雄席位<strong>限定为德鲁伊</strong>（玛法里奥·怒风）。加入等级与当前小队<strong>最低等级</strong>一致；技能固定为回春术与重殴。
+        击败艾尔文森林守关 BOSS 后，第四位英雄席位<strong>限定为德鲁伊</strong>（玛法里奥·怒风）。加入等级与当前小队<strong>最低等级（Lv.{{ expansionLevel }}）</strong>一致；技能固定为回春术与重殴。
+      </p>
+      <p v-else-if="isExpansion && squadSize === 4" class="subtitle">
+        击败西部荒野守关 BOSS 后，第五位英雄席位开放。加入等级与当前小队<strong>最低等级（Lv.{{ expansionLevel }}）</strong>一致，可在流程中分配属性与初始技能。
       </p>
       <p v-else class="subtitle">选择一位英雄加入小队，开始冒险。</p>
     </template>
 
-    <!-- Selection step -->
-    <template v-if="!selectedHero">
+    <!-- Selection step (Druid slot auto-starts attribute allocation) -->
+    <template v-if="!selectedHero && !isDruidExpansionSlot">
       <div v-if="availableHeroes.length === 0" class="no-heroes">
         <p>没有更多可招募的英雄。</p>
         <button class="btn" @click="router.push('/main')">返回主界面</button>
@@ -229,7 +232,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { HEROES, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints, isDruidOnlyExpansionSlot } from '../game/combat.js'
@@ -511,6 +514,15 @@ function selectHero(hero) {
   levelChoiceDone.value = false
   expansionStagingHero.value = null
 }
+
+function autoSelectDruidExpansionHero() {
+  if (selectedHero.value || !isDruidExpansionSlot.value) return
+  const heroes = availableHeroes.value
+  if (heroes.length !== 1) return
+  selectHero(heroes[0])
+}
+
+watch([isDruidExpansionSlot, availableHeroes], autoSelectDruidExpansionHero, { immediate: true })
 
 function confirmSkillSelection() {
   if (!pendingSkillId.value) {
