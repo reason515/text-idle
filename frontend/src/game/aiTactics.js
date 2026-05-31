@@ -1381,37 +1381,50 @@ function stripPriestBasicAttackMisplacedEnemyAllHpAbove(conditions, warnings) {
  * @param {string|undefined} userInput
  * @param {string[]} warnings
  */
-function stripFlashHealPlainLowestAfterAllyTriage(conditions, userInput, warnings) {
-  const fh = conditions.find((c) => c.skillId === 'flash-heal')
-  if (!fh || !Array.isArray(fh.targetRules) || fh.targetRules.length < 2) return
-
-  const s0 = fh.targetRules[0]
-  if (typeof s0 !== 'object' || s0 === null || s0.rule !== 'lowest-hp-ally' || !stepIsOnlyAllyHpBelowEmergency(s0)) return
-
-  if (userInput) {
-    const explicitOpenFallback =
-      /否则[^。]{0,40}(治疗|奶|加血|快速治疗)|找不到[^。]{0,20}(仍|还|也|再)|仍[^。]{0,20}(治疗|奶)|兜底[^。]{0,20}(治疗|最低)|全员[^。]{0,30}(仍|仍要).*治疗|都高于[^。]{0,20}(仍|也).*治疗/i.test(
-        userInput,
-      )
-    if (explicitOpenFallback) return
+function stripAllyHealPlainLowestAfterAllyTriage(conditions, userInput, warnings, skillIds) {
+  const skillLabels = {
+    'flash-heal': '快速治疗',
+    'greater-heal': '强效治疗',
+    rejuvenation: '回春术',
+    regrowth: '愈合',
   }
+  for (const skillId of skillIds) {
+    const entry = conditions.find((c) => c.skillId === skillId)
+    if (!entry || !Array.isArray(entry.targetRules) || entry.targetRules.length < 2) continue
 
-  const kept = [s0]
-  let removed = false
-  for (let i = 1; i < fh.targetRules.length; i++) {
-    const step = fh.targetRules[i]
-    if (isPlainLowestHpAllyTargetStep(step)) {
-      removed = true
-      continue
+    const s0 = entry.targetRules[0]
+    if (typeof s0 !== 'object' || s0 === null || s0.rule !== 'lowest-hp-ally' || !stepIsOnlyAllyHpBelowEmergency(s0)) continue
+
+    if (userInput) {
+      const explicitOpenFallback =
+        /否则[^。]{0,40}(治疗|奶|加血|快速治疗|回春|愈合)|找不到[^。]{0,20}(仍|还|也|再)|仍[^。]{0,20}(治疗|奶)|兜底[^。]{0,20}(治疗|最低)|全员[^。]{0,30}(仍|仍要).*治疗|都高于[^。]{0,20}(仍|也).*治疗/i.test(
+          userInput,
+        )
+      if (explicitOpenFallback) continue
     }
-    kept.push(step)
-  }
-  if (!removed) return
 
-  fh.targetRules = kept
-  warnings.push(
-    '已修正：快速治疗在「己方血量低于阈值」急诊步之后不应再接无门控的「血量最低队友」，否则会在全员高于阈值时仍治疗当前血量数字最少者（含自己）。已移除此类兜底步；若你确实需要「否则仍治疗…」，请在描述中写明。',
-  )
+    const kept = [s0]
+    let removed = false
+    for (let i = 1; i < entry.targetRules.length; i++) {
+      const step = entry.targetRules[i]
+      if (isPlainLowestHpAllyTargetStep(step)) {
+        removed = true
+        continue
+      }
+      kept.push(step)
+    }
+    if (!removed) continue
+
+    entry.targetRules = kept
+    const label = skillLabels[skillId] || skillId
+    warnings.push(
+      `已修正：${label}在「己方血量低于阈值」急诊步之后不应再接无门控的「血量最低队友」，否则会在全员高于阈值时仍治疗当前血量数字最少者（含自己）。已移除此类兜底步；若你确实需要「否则仍治疗…」，请在描述中写明。`,
+    )
+  }
+}
+
+function stripFlashHealPlainLowestAfterAllyTriage(conditions, userInput, warnings) {
+  stripAllyHealPlainLowestAfterAllyTriage(conditions, userInput, warnings, ['flash-heal', 'greater-heal'])
 }
 
 /**
@@ -1838,6 +1851,10 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
     }
   }
 
+  if (heroClass === 'Druid') {
+    stripAllyHealPlainLowestAfterAllyTriage(conditions, userInput, warnings, ['rejuvenation', 'regrowth'])
+  }
+
   if (heroClass === 'Priest' && conditions.length > 0) {
     const fh = conditions.find((c) => c.skillId === 'flash-heal')
     const pw = conditions.find((c) => c.skillId === 'power-word-shield')
@@ -1901,7 +1918,12 @@ export function mergeAiTacticsApply(existing, incoming) {
       else out.conditions.push(copy)
     }
   }
-  stripFlashHealPlainLowestAfterAllyTriage(out.conditions || [], undefined, [])
+  stripAllyHealPlainLowestAfterAllyTriage(out.conditions || [], undefined, [], [
+    'flash-heal',
+    'greater-heal',
+    'rejuvenation',
+    'regrowth',
+  ])
   return out
 }
 

@@ -20,6 +20,9 @@ export const DEBUFF_DISPLAY = {
 /** Buff badges (short label max 4 Chinese characters). */
 export const BUFF_DISPLAY = {
   shield: { name: '真言术：盾', short: '护盾' },
+  'rejuvenation-hot': { name: '回春术', short: '回春' },
+  'regrowth-hot': { name: '愈合', short: '愈合' },
+  'bear-form': { name: '熊形态', short: '熊形' },
 }
 
 /** Taunt status on monsters (not a debuff entry). */
@@ -33,6 +36,54 @@ export function getShieldTip(unit) {
   const s = getShieldBuff(unit)
   if (!s) return ''
   return `剩余吸收 ${s.absorbRemaining}，剩余 ${s.remainingRounds ?? 0} 回合`
+}
+
+/**
+ * @param {Object} buff - { type, healPerRound?, damageReductionPct?, remainingRounds? }
+ * @returns {string}
+ */
+export function getHeroBuffTip(buff) {
+  if (!buff) return ''
+  const rounds = buff.remainingRounds ?? 0
+  if (buff.type === 'rejuvenation-hot' || buff.type === 'regrowth-hot') {
+    return `每回合 ${buff.healPerRound ?? 0} 点治疗，剩余 ${rounds} 回合`
+  }
+  if (buff.type === 'bear-form') {
+    return `减伤 ${buff.damageReductionPct ?? 0}%，剩余 ${rounds} 回合`
+  }
+  return `${rounds} 回合`
+}
+
+/**
+ * @param {Object} unit
+ * @returns {Array}
+ */
+export function unitHeroBuffs(unit) {
+  if (!Array.isArray(unit?.buffs)) return []
+  return unit.buffs.filter((b) => (b.remainingRounds ?? 0) > 0)
+}
+
+/**
+ * Apply or refresh a HoT buff on a display unit from a combat log skill entry.
+ * @param {Object} unit
+ * @param {{ skillId?: string, hotApplied?: boolean, hotRefreshed?: boolean, hotHealPerRound?: number, hotDuration?: number, actorId?: string }} entry
+ * @returns {Object}
+ */
+export function applyHotBuffFromCombatEntry(unit, entry) {
+  if (!entry.hotApplied && !entry.hotRefreshed) return unit
+  const buffType = entry.skillId === 'regrowth' ? 'regrowth-hot' : 'rejuvenation-hot'
+  const buffs = [...(unit.buffs || [])]
+  const existing = buffs.find((b) => b.type === buffType)
+  const next = {
+    type: buffType,
+    healPerRound: entry.hotHealPerRound ?? 0,
+    remainingRounds: entry.hotDuration ?? 0,
+    sourceSkillId: entry.skillId,
+    casterId: entry.actorId,
+  }
+  if (existing) Object.assign(existing, next)
+  else buffs.push(next)
+  return { ...unit, buffs }
 }
 
 /**

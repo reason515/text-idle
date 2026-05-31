@@ -64,11 +64,13 @@ import {
   TACTICS_TARGET_RULE_INHERIT,
   getConditions,
   checkCondition,
+  checkAllyEmergencyHealSkillAllowed,
   checkPriestFlashHealSkillAllowed,
   evaluateTargetRuleStepGates,
   evaluateTargetRuleStepPostPickGates,
   filterTargetsByCondition,
   getAllyHpBelowThresholdFromStep,
+  isUnsafePlainLowestAllyFallbackAfterEmergencyTriage,
   pickTargetByRule,
   tacticsConditionWhenRequiresPickedTarget,
   tacticsHpRatioWhenSkipsPreFilter,
@@ -1072,7 +1074,9 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
 
   const globalDefault = actor.tactics?.targetRule || 'first'
 
-  for (const step of chain) {
+  for (let stepIndex = 0; stepIndex < chain.length; stepIndex++) {
+    const step = chain[stepIndex]
+    if (isUnsafePlainLowestAllyFallbackAfterEmergencyTriage(chain, stepIndex, step, skillId)) continue
     const stepRule = typeof step === 'string' ? step : step.rule
     const stepCtx = { threat, tauntState, tankId: designatedTank?.id, round, rng }
     if (typeof step === 'object' && step !== null) {
@@ -2569,7 +2573,11 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
 
           const druidCond = conditions.find((c) => c.skillId === skillId)
-          if (
+          if (skillId === 'rejuvenation' || skillId === 'regrowth') {
+            if (druidCond && !checkAllyEmergencyHealSkillAllowed(druidCond, actor, heroUnits, monsterUnits, ctx)) {
+              continue
+            }
+          } else if (
             druidCond &&
             skillId !== 'bear-form' &&
             !tacticsConditionWhenRequiresPickedTarget(druidCond) &&

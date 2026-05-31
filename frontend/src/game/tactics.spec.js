@@ -7,6 +7,7 @@ import {
   getConditions,
   checkCondition,
   checkPriestFlashHealSkillAllowed,
+  checkAllyEmergencyHealSkillAllowed,
   evaluateTargetRuleStepGates,
   evaluateTargetRuleStepPostPickGates,
   getAllyHpBelowThresholdFromStep,
@@ -598,6 +599,18 @@ describe('tactics', () => {
         targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.6 }, 'tank'],
       }
       expect(checkPriestFlashHealSkillAllowed(cond, priest, [priest, tank], [], {})).toBe(true)
+    })
+  })
+
+  describe('checkAllyEmergencyHealSkillAllowed (rejuvenation)', () => {
+    it('blocks rejuvenation when only triage step exists and no ally is below threshold', () => {
+      const druid = { id: 'd', currentHP: 200, maxHP: 200 }
+      const ally = { id: 'a', currentHP: 500, maxHP: 500 }
+      const cond = {
+        skillId: 'rejuvenation',
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }],
+      }
+      expect(checkAllyEmergencyHealSkillAllowed(cond, druid, [druid, ally], [], {})).toBe(false)
     })
   })
 

@@ -341,6 +341,60 @@ export function getAllyHpBelowThresholdFromStep(step) {
   return null
 }
 
+/** Ally heals/HoT that use emergency ally-hp-below triage on targetRules step 1. */
+export const ALLY_EMERGENCY_HEAL_SKILL_IDS = new Set([
+  'flash-heal',
+  'greater-heal',
+  'rejuvenation',
+  'regrowth',
+])
+
+/**
+ * TargetRules step is only an ally-hp-below emergency gate (no other whenAll clauses).
+ * @param {string|TargetRuleStep} s
+ * @returns {boolean}
+ */
+export function stepIsOnlyAllyHpBelowEmergency(s) {
+  if (typeof s !== 'object' || s === null) return false
+  if (s.when === 'ally-hp-below') return true
+  if (Array.isArray(s.whenAll) && s.whenAll.length === 1 && s.whenAll[0]?.when === 'ally-hp-below') return true
+  return false
+}
+
+/**
+ * Ungated lowest-hp-ally step (string or object with rule only) -- unsafe after ally-hp-below triage.
+ * @param {string|TargetRuleStep} step
+ * @returns {boolean}
+ */
+export function isPlainLowestHpAllyTargetStep(step) {
+  return (
+    step === 'lowest-hp-ally' ||
+    (typeof step === 'object' &&
+      step !== null &&
+      step.rule === 'lowest-hp-ally' &&
+      !step.when &&
+      !(Array.isArray(step.whenAll) && step.whenAll.length > 0))
+  )
+}
+
+/**
+ * Plain lowest-hp-ally fallback after a failed ally-hp-below triage step picks by absolute HP
+ * (e.g. 90% mage) and contradicts "only heal when someone is below X%".
+ * @param {(string|TargetRuleStep)[]} chain
+ * @param {number} stepIndex
+ * @param {string|TargetRuleStep} step
+ * @param {string|undefined} skillId
+ * @returns {boolean}
+ */
+export function isUnsafePlainLowestAllyFallbackAfterEmergencyTriage(chain, stepIndex, step, skillId) {
+  if (!skillId || !ALLY_EMERGENCY_HEAL_SKILL_IDS.has(skillId)) return false
+  if (!isPlainLowestHpAllyTargetStep(step)) return false
+  if (stepIndex <= 0) return false
+  const prev = chain[stepIndex - 1]
+  if (typeof prev !== 'object' || prev === null || prev.rule !== 'lowest-hp-ally') return false
+  return getAllyHpBelowThresholdFromStep(prev) != null
+}
+
 /**
  * `self-no-shield` is defined on the caster for self-target steps. Configurations and AI output
  * sometimes attach it to `lowest-hp-ally` (meaning "shield an unshielded ally"); evaluating it
@@ -430,13 +484,13 @@ export function evaluateTargetRuleStepPostPickGates(step, target, actor, heroes,
  * @param {Object} ctx
  * @returns {boolean}
  */
-export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, monsters, ctx) {
-  if (!priestCond) return true
-  if (tacticsConditionWhenRequiresPickedTarget(priestCond)) return true
-  const chain = priestCond.targetRules
+export function checkAllyEmergencyHealSkillAllowed(healCond, actor, heroes, monsters, ctx) {
+  if (!healCond) return true
+  if (tacticsConditionWhenRequiresPickedTarget(healCond)) return true
+  const chain = healCond.targetRules
   if (!Array.isArray(chain) || chain.length === 0) {
-    if (isTacticsConditionInactive(priestCond)) return true
-    return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
+    if (isTacticsConditionInactive(healCond)) return true
+    return checkCondition(healCond, actor, null, heroes, monsters, ctx)
   }
   const first = chain[0]
   if (typeof first === 'object' && first !== null) {
@@ -448,14 +502,19 @@ export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, mons
       }
       // Emergency failed: skill-level `when` that is empty/inactive must not mean "always cast";
       // otherwise checkCondition(priestCond) returns true and flash-heal spams lowest-hp-ally on full-HP party.
-      if (isTacticsConditionInactive(priestCond)) {
+      if (isTacticsConditionInactive(healCond)) {
         if (chain.length === 1) return false
         return true
       }
     }
   }
-  if (isTacticsConditionInactive(priestCond)) return true
-  return checkCondition(priestCond, actor, null, heroes, monsters, ctx)
+  if (isTacticsConditionInactive(healCond)) return true
+  return checkCondition(healCond, actor, null, heroes, monsters, ctx)
+}
+
+/** @deprecated Use checkAllyEmergencyHealSkillAllowed */
+export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, monsters, ctx) {
+  return checkAllyEmergencyHealSkillAllowed(priestCond, actor, heroes, monsters, ctx)
 }
 
 /**

@@ -162,6 +162,63 @@ describe('pickTarget (Priest ally-hp-below triage)', () => {
   })
 })
 
+describe('pickTarget (rejuvenation ally-hp-below triage)', () => {
+  it('returns null when no ally is below threshold', () => {
+    const conditions = [
+      {
+        skillId: 'rejuvenation',
+        targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }],
+      },
+    ]
+    const druid = {
+      id: 'd1',
+      name: 'Druid',
+      class: 'Druid',
+      side: 'hero',
+      currentHP: 200,
+      maxHP: 200,
+      tactics: { conditions },
+    }
+    const warrior = { id: 'w1', name: 'Warrior', class: 'Warrior', side: 'hero', currentHP: 500, maxHP: 500 }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 180, maxHP: 200 }
+    const t = pickTarget(druid, [druid, warrior, mage], [], {
+      skillId: 'rejuvenation',
+      conditions,
+      rng: () => 0.5,
+    })
+    expect(t).toBeNull()
+  })
+
+  it('skips unsafe plain lowest-hp-ally fallback after failed triage', () => {
+    const conditions = [
+      {
+        skillId: 'rejuvenation',
+        targetRules: [
+          { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 },
+          'lowest-hp-ally',
+        ],
+      },
+    ]
+    const druid = {
+      id: 'd1',
+      name: 'Druid',
+      class: 'Druid',
+      side: 'hero',
+      currentHP: 200,
+      maxHP: 200,
+      tactics: { conditions },
+    }
+    const warrior = { id: 'w1', name: 'Warrior', class: 'Warrior', side: 'hero', currentHP: 500, maxHP: 500 }
+    const mage = { id: 'm1', name: 'Mage', class: 'Mage', side: 'hero', currentHP: 180, maxHP: 200 }
+    const t = pickTarget(druid, [druid, warrior, mage], [], {
+      skillId: 'rejuvenation',
+      conditions,
+      rng: () => 0.5,
+    })
+    expect(t).toBeNull()
+  })
+})
+
 describe('pickTarget (PWS auto-excludes shielded allies)', () => {
   it('picks unshielded ally over shielded ally for power-word-shield', () => {
     const conditions = [
@@ -1292,6 +1349,59 @@ describe('combat progression and systems', () => {
     const hotEntry = result.log.find((e) => e.type === 'hot')
     expect(hotEntry).toBeDefined()
     expect(hotEntry.heal).toBeGreaterThan(0)
+  })
+
+  it('Druid rejuvenation skips full-HP party when only ally-hp-below triage is configured', () => {
+    const druid = sampleHero({
+      id: 'd1',
+      class: 'Druid',
+      intellect: 30,
+      spirit: 20,
+      agility: 10,
+      strength: 10,
+      skills: ['rejuvenation', 'maul'],
+      tactics: {
+        skillPriority: ['rejuvenation', 'maul'],
+        targetRule: 'first',
+        conditions: [
+          {
+            skillId: 'rejuvenation',
+            targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.3 }],
+          },
+          { skillId: 'maul', targetRule: 'lowest-hp' },
+        ],
+      },
+      equipment: {
+        MainHand: { spellPowerMin: 10, spellPowerMax: 10, physAtkMin: 12, physAtkMax: 12, armor: 0, resistance: 0 },
+      },
+    })
+    const ally = sampleHero({
+      id: 'w1',
+      class: 'Warrior',
+      strength: 20,
+      agility: 10,
+      intellect: 5,
+      spirit: 5,
+      currentHP: 500,
+      maxHP: 500,
+      skills: ['basic-attack'],
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'm1',
+          name: 'Dummy',
+          damageType: 'physical',
+          base: { hp: 500, physAtk: 1, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 }
+      ),
+    ]
+    const rng = fixedRng(Array(40).fill(0.1))
+    const result = runAutoCombat({ heroes: [druid, ally], monsters, rng, maxRounds: 6 })
+    const rejEntries = result.log.filter((e) => e.skillId === 'rejuvenation')
+    expect(rejEntries).toHaveLength(0)
+    expect(result.log.some((e) => e.skillId === 'maul')).toBe(true)
   })
 
   it('Druid maul deals damage with elevated threat multiplier', () => {

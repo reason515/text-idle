@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import {
   DEBUFF_DISPLAY,
+  BUFF_DISPLAY,
   getDebuffTip,
+  getHeroBuffTip,
   getShieldTip,
   getTauntTip,
   getTauntDetailText,
   unitDebuffs,
+  unitHeroBuffs,
+  applyHotBuffFromCombatEntry,
 } from './debuffDisplay.js'
 
 describe('debuffDisplay', () => {
@@ -86,6 +90,43 @@ describe('debuffDisplay', () => {
   describe('getTauntDetailText', () => {
     it('includes caster display name', () => {
       expect(getTauntDetailText({ actionsRemaining: 1, casterId: 'x' }, '战士')).toBe('剩余 1 次行动内强制攻击 战士')
+    })
+  })
+
+  describe('unitHeroBuffs', () => {
+    it('returns active buffs with remaining rounds', () => {
+      const unit = {
+        buffs: [
+          { type: 'rejuvenation-hot', healPerRound: 5, remainingRounds: 3 },
+          { type: 'bear-form', damageReductionPct: 12, remainingRounds: 0 },
+        ],
+      }
+      expect(unitHeroBuffs(unit)).toHaveLength(1)
+      expect(unitHeroBuffs(unit)[0].type).toBe('rejuvenation-hot')
+    })
+  })
+
+  describe('getHeroBuffTip', () => {
+    it('describes rejuvenation HoT', () => {
+      expect(getHeroBuffTip({ type: 'rejuvenation-hot', healPerRound: 4, remainingRounds: 2 })).toBe(
+        '每回合 4 点治疗，剩余 2 回合'
+      )
+    })
+  })
+
+  describe('applyHotBuffFromCombatEntry', () => {
+    it('adds rejuvenation-hot buff from combat log entry', () => {
+      const unit = { id: 'h1', buffs: [] }
+      const out = applyHotBuffFromCombatEntry(unit, {
+        skillId: 'rejuvenation',
+        hotApplied: true,
+        hotHealPerRound: 6,
+        hotDuration: 4,
+        actorId: 'd1',
+      })
+      expect(out.buffs).toHaveLength(1)
+      expect(out.buffs[0].type).toBe('rejuvenation-hot')
+      expect(BUFF_DISPLAY['rejuvenation-hot'].short).toBe('回春')
     })
   })
 })

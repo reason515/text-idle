@@ -97,7 +97,7 @@
                 />
                 <span class="tank-check-label">坦克</span>
               </label>
-              <div v-if="getShieldBuff(hero) || unitDebuffs(hero).length > 0" class="status-effects-row">
+              <div v-if="getShieldBuff(hero) || unitHeroBuffs(hero).length > 0 || unitDebuffs(hero).length > 0" class="status-effects-row">
                 <span
                   v-if="getShieldBuff(hero)"
                   class="status-badge status-buff tooltip-wrap has-tip"
@@ -105,6 +105,15 @@
                   @mouseleave="clearBattlePanelFloatTip"
                 >
                   {{ BUFF_DISPLAY.shield.short }}
+                </span>
+                <span
+                  v-for="b in unitHeroBuffs(hero)"
+                  :key="b.type + '-' + (b.remainingRounds ?? 0)"
+                  class="status-badge status-buff tooltip-wrap has-tip"
+                  @mouseenter="(e) => showBattlePanelFloatTip(e, `${(BUFF_DISPLAY[b.type] ?? { name: b.type }).name}: ${getHeroBuffTip(b)}`)"
+                  @mouseleave="clearBattlePanelFloatTip"
+                >
+                  {{ (BUFF_DISPLAY[b.type] ?? { short: b.type }).short }}
                 </span>
                 <span
                   v-for="d in unitDebuffs(hero)"
@@ -1883,13 +1892,21 @@
               </div>
             </div>
           </div>
-          <div v-if="getShieldBuff(selectedHero)" class="detail-sep-line">增益</div>
-          <div v-if="getShieldBuff(selectedHero)" class="detail-section">
-            <div class="detail-row">
+          <div v-if="getShieldBuff(selectedHero) || unitHeroBuffs(selectedHero).length > 0" class="detail-sep-line">增益</div>
+          <div v-if="getShieldBuff(selectedHero) || unitHeroBuffs(selectedHero).length > 0" class="detail-section">
+            <div v-if="getShieldBuff(selectedHero)" class="detail-row">
               <span class="detail-label">{{ BUFF_DISPLAY.shield.name }}</span>
               <span class="detail-value">
                 <span class="tooltip-wrap has-tip">{{ getShieldTip(selectedHero) }}
                   <span class="tooltip-text">{{ BUFF_DISPLAY.shield.name }}：吸收伤害直至打破或回合结束；{{ getShieldTip(selectedHero) }}</span>
+                </span>
+              </span>
+            </div>
+            <div v-for="b in unitHeroBuffs(selectedHero)" :key="b.type" class="detail-row">
+              <span class="detail-label">{{ (BUFF_DISPLAY[b.type] ?? { name: b.type }).name }}</span>
+              <span class="detail-value">
+                <span class="tooltip-wrap has-tip">{{ getHeroBuffTip(b) }}
+                  <span class="tooltip-text">{{ (BUFF_DISPLAY[b.type] ?? { name: b.type }).name }}: {{ getHeroBuffTip(b) }}</span>
                 </span>
               </span>
             </div>
@@ -2407,7 +2424,7 @@ import {
   planBattleXpDistribution,
 } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
-import { tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { tickDebuffs, tickHeroBuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { TACTICS_TARGET_RULE_INHERIT, getSkillPriority } from '../game/tactics.js'
 import {
   ENEMY_TARGET_L1,
@@ -2457,9 +2474,12 @@ import {
   getDebuffTip,
   getShieldBuff,
   getShieldTip,
+  getHeroBuffTip,
   getTauntTip,
   getTauntDetailText,
   unitDebuffs,
+  unitHeroBuffs,
+  applyHotBuffFromCombatEntry,
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
 import {
@@ -3008,6 +3028,7 @@ function syncOneHeroDisplayAfterLevelUp(heroId) {
     return {
       ...computed,
       debuffs: dh.debuffs ?? [],
+      buffs: dh.buffs ?? [],
       currentHP: dh.currentHP,
       currentMP: dh.currentMP,
     }
@@ -4581,10 +4602,22 @@ function applyOneCombatEntry(entry) {
         updated[hi] = { ...updated[hi], shield: { ...updated[hi].shield, absorbRemaining: absorb } }
       }
     }
+    if (entry.hotApplied || entry.hotRefreshed) {
+      updated[hi] = applyHotBuffFromCombatEntry(updated[hi], entry)
+    }
   }
   const actorResourceAfter = entry.actorRageAfter ?? entry.rageAfter ?? entry.manaAfter
   const ai = updated.findIndex((h) => unitIdMatches(h.id, entry.actorId))
   if (ai >= 0 && actorResourceAfter !== undefined) updated[ai] = { ...updated[ai], currentMP: actorResourceAfter }
+  if (entry.bearFormApplied && ai >= 0) {
+    const buffs = [...(updated[ai].buffs || [])].filter((b) => b.type !== 'bear-form')
+    buffs.push({
+      type: 'bear-form',
+      remainingRounds: entry.bearFormRounds ?? 3,
+      damageReductionPct: entry.bearFormPct ?? 12,
+    })
+    updated[ai] = { ...updated[ai], buffs }
+  }
   if (hi >= 0 || (ai >= 0 && actorResourceAfter !== undefined)) displayHeroes.value = updated
 
   if (entry.actorTier != null && entry.actorId) {
@@ -4629,6 +4662,7 @@ async function animateCombatLog(result) {
         }
         for (const h of displayHeroes.value) {
           tickShieldDuration(h)
+          tickHeroBuffs(h)
         }
         displayHeroes.value = [...displayHeroes.value]
         currentMonsters.value = [...currentMonsters.value]
@@ -4667,6 +4701,7 @@ async function animateCombatLog(result) {
       }
       for (const h of displayHeroes.value) {
         tickShieldDuration(h)
+        tickHeroBuffs(h)
       }
       displayHeroes.value = [...displayHeroes.value]
       currentMonsters.value = [...currentMonsters.value]
@@ -4777,7 +4812,7 @@ async function runCombatLoop() {
     })
 
     currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
-    displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [] }))
+    displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [], buffs: [] }))
     encounterInProgress.value = true
     unitFloatingNumbers.value = {}
     regenPulseByUnitId.value = {}
