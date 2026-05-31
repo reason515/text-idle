@@ -4808,6 +4808,7 @@ async function runCombatLoop() {
       squadSize: squad.value.length,
       level: squadLevel,
       squadAverageLevel,
+      explorationProgress: progress.value.currentProgress,
       forceBoss: progress.value.bossAvailable,
     })
 
@@ -4845,7 +4846,9 @@ async function runCombatLoop() {
       }
       if ((result.rewards.equipment || []).length > 0) inventoryVersion.value++
       const prevUnlockedMapCount = progress.value.unlockedMapCount
-      const victoryExploration = settleVictoryExploration(progress.value, monsters)
+      const victoryExploration = settleVictoryExploration(progress.value, monsters, {
+        referenceLevel: squadLevel,
+      })
       progress.value = victoryExploration.progress
       saveProgress()
       const xpPlan = planBattleXpDistribution(squad.value, result.rewards.exp, result.log)

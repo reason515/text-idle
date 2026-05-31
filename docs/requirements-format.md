@@ -285,7 +285,7 @@ Then [expected result/verifiable behavior].
   | 5   | Stranglethorn Vale | King Bangalash |
 
 - **Monster tiers**: Normal (basic attacks only), Elite (uses skills, higher stats), Boss (highest threat, multi-skill). Elite and Boss deal physical and/or magic damage; player armor/resistance mitigate accordingly.
-- **Exploration progress**: Each monster kill contributes progress; Normal contributes less, Elite more; Boss does not contribute (it is the gate objective).
+- **Exploration progress**: Each monster kill contributes progress; Normal contributes less, Elite more; gain scales with `min(1, monsterLevel / squadMaxLevel)` so under-level kills contribute less (may round to 0); Boss does not contribute (it is the gate objective). Map exploration bands (every 25% from 25% onward) increase monster combat stats; monster armor/spell penetration stays **0** until exploration reaches **25%**, then scales by tier and bands.
 
 **Acceptance Criteria**
 

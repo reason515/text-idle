@@ -57,7 +57,7 @@ import {
 } from './druidSkills.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
-import { applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
+import { applyDamageWithWeaponAffixes, computeMagicDefenseAfterWeapon, computePhysicalDefenseAfterWeapon } from './weaponAffixDamage.js'
 import {
   getSkillPriority,
   getTargetRuleChain,
@@ -662,12 +662,81 @@ export function getExpansionHeroAttributePoints(level) {
 /** Points lost on defeat/draw when not victorious (applied before clamp to 0). */
 export const DEFEAT_EXPLORATION_DEDUCTION = 10
 
-export function addExplorationProgress(progress, killTier) {
-  const gainTable = {
-    normal: 1,
-    elite: 2,
+/** Base exploration gain per kill before monster-level scaling (normal / elite). */
+export const EXPLORATION_BASE_GAIN = {
+  normal: 1,
+  elite: 2,
+}
+
+/** +8% monster combat stats per 25% map exploration band (0-24 -> 0 bands). */
+export const EXPLORATION_MONSTER_POWER_BAND_SIZE = 25
+export const EXPLORATION_MONSTER_POWER_PER_BAND = 0.08
+
+/**
+ * Flat armor / spell penetration by monster tier.
+ * Only applied once map exploration reaches the first band (25%+), so 0-24% fights
+ * match pre-balance combat feel for starter white gear.
+ */
+export const MONSTER_ARMOR_PEN_BY_TIER = {
+  normal: 2,
+  elite: 5,
+  boss: 10,
+}
+export const MONSTER_SPELL_PEN_BY_TIER = {
+  normal: 1,
+  elite: 3,
+  boss: 8,
+}
+/** Extra flat pen per exploration band after the first (25%+) band. */
+export const EXPLORATION_PEN_PER_BAND = {
+  phys: 1,
+  spell: 1,
+}
+
+/**
+ * Multiplier for monster HP/atk/defense from current map exploration progress.
+ * @param {number} explorationProgress - 0..99 (boss at 100 uses pre-boss progress)
+ */
+export function explorationMonsterPowerMultiplier(explorationProgress) {
+  const progress = clamp(Math.floor(explorationProgress ?? 0), 0, 99)
+  const bands = Math.floor(progress / EXPLORATION_MONSTER_POWER_BAND_SIZE)
+  return 1 + bands * EXPLORATION_MONSTER_POWER_PER_BAND
+}
+
+/**
+ * Exploration gain for one kill, scaled down when monster level is below squad reference.
+ * gain = round(base * min(1, monsterLevel / referenceLevel)), minimum 0.
+ * @param {'normal'|'elite'} tier
+ * @param {number} monsterLevel
+ * @param {number} referenceLevel - Squad max level at battle start
+ */
+export function computeExplorationKillGain(tier, monsterLevel, referenceLevel) {
+  const base = EXPLORATION_BASE_GAIN[tier] ?? 0
+  if (base <= 0) return 0
+  const ref = Math.max(1, Math.floor(referenceLevel ?? 1))
+  const level = Math.max(1, Math.floor(monsterLevel ?? 1))
+  const ratio = Math.min(1, level / ref)
+  return Math.max(0, Math.round(base * ratio))
+}
+
+export function monsterPenetrationForTier(tier, explorationProgress = 0) {
+  const bands = Math.floor(clamp(Math.floor(explorationProgress ?? 0), 0, 99) / EXPLORATION_MONSTER_POWER_BAND_SIZE)
+  if (bands <= 0) {
+    return { physArmorPen: 0, spellPen: 0 }
   }
-  const gain = gainTable[killTier] ?? 0
+  const extraBands = bands - 1
+  return {
+    physArmorPen: (MONSTER_ARMOR_PEN_BY_TIER[tier] ?? 0) + extraBands * EXPLORATION_PEN_PER_BAND.phys,
+    spellPen: (MONSTER_SPELL_PEN_BY_TIER[tier] ?? 0) + extraBands * EXPLORATION_PEN_PER_BAND.spell,
+  }
+}
+
+export function addExplorationProgress(progress, killTier, opts = {}) {
+  const gain = computeExplorationKillGain(
+    killTier,
+    opts.monsterLevel ?? 1,
+    opts.referenceLevel ?? 1
+  )
   const nextProgress = clamp(progress.currentProgress + gain, 0, 100)
   return {
     ...progress,
@@ -701,7 +770,7 @@ export function unlockNextMapAfterBoss(progress) {
  * Victory settlement for map exploration UI and progress fields.
  * @returns {{ progress: object, exploration: { mode: 'gain', delta: number } | { mode: 'boss_unlock' } }}
  */
-export function settleVictoryExploration(progress, monsters) {
+export function settleVictoryExploration(progress, monsters, opts = {}) {
   const isBossEncounter = monsters.some((m) => m.tier === 'boss')
   if (isBossEncounter) {
     return {
@@ -709,11 +778,17 @@ export function settleVictoryExploration(progress, monsters) {
       exploration: { mode: 'boss_unlock' },
     }
   }
+  const referenceLevel =
+    opts.referenceLevel ??
+    Math.max(1, ...monsters.map((m) => Math.floor(m.level ?? 1)))
   const before = progress.currentProgress
   let p = progress
   for (const m of monsters) {
     if (m.tier === 'normal' || m.tier === 'elite') {
-      p = addExplorationProgress(p, m.tier)
+      p = addExplorationProgress(p, m.tier, {
+        monsterLevel: m.level ?? 1,
+        referenceLevel,
+      })
     }
   }
   return {
@@ -752,10 +827,14 @@ export function generateEncounterSize(squadSize, distribution, rng = Math.random
 export function createMonster(template, options = {}) {
   const tier = options.tier ?? 'normal'
   const level = options.level ?? 1
+  const explorationMult =
+    options.explorationPowerMult ??
+    explorationMonsterPowerMultiplier(options.explorationProgress ?? 0)
   const multiplier = TIER_MULTIPLIER[tier] ?? 1
   const powerInner = options.powerFactorOverride ?? monsterPowerFactorFromLevel(level)
-  const factor = multiplier * powerInner
+  const factor = multiplier * powerInner * explorationMult
   const base = template.base
+  const pen = monsterPenetrationForTier(tier, options.explorationProgress ?? 0)
   return {
     id: `${template.id}-${tier}-${level}-${Math.floor(Math.random() * 100000)}`,
     typeId: template.id,
@@ -771,6 +850,8 @@ export function createMonster(template, options = {}) {
     agility: monsterAgilityFromFactor(base.agility, factor),
     armor: Math.round(base.armor * factor) + Math.floor(level * 0.5),
     resistance: Math.round(base.resistance * factor) + Math.floor(level * 0.5),
+    physArmorPen: pen.physArmorPen,
+    spellPen: pen.spellPen,
     skillChance: tier === 'normal' ? 0 : tier === 'elite' ? 0.35 : 0.45,
     physCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.1,
     spellCrit: tier === 'normal' ? 0.05 : tier === 'elite' ? 0.1 : 0.1,
@@ -794,6 +875,8 @@ export function buildEncounterMonsters({
   forceBoss = false,
   /** When squad average level is below 5, rolled enemy levels are capped to floor(squadAverageLevel). Omit to disable. */
   squadAverageLevel = null,
+  /** Current map exploration 0-100; scales monster stats and penetration before boss fight. */
+  explorationProgress = 0,
 }) {
   const pool = MAP_MONSTER_POOLS[mapId] ?? MAP_MONSTER_POOLS['elwynn-forest']
   const levelRange = pool.levelRange ?? { min: -1, max: 2 }
@@ -805,9 +888,17 @@ export function buildEncounterMonsters({
   const applyEarlyCap = (monsterLevel) =>
     earlyLevelCap == null ? monsterLevel : Math.min(monsterLevel, earlyLevelCap)
 
+  const explorationForScale = forceBoss ? Math.min(99, Math.max(0, explorationProgress)) : explorationProgress
+
   if (forceBoss) {
     const bossLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
-    return [createMonster(pool.boss, { tier: 'boss', level: bossLevel })]
+    return [
+      createMonster(pool.boss, {
+        tier: 'boss',
+        level: bossLevel,
+        explorationProgress: explorationForScale,
+      }),
+    ]
   }
   const count = generateEncounterSize(squadSize, distribution, rng)
   const monsters = []
@@ -816,18 +907,31 @@ export function buildEncounterMonsters({
     const tier = isElite ? 'elite' : 'normal'
     const template = isElite ? pickRandom(pool.elite, rng) : pickRandom(pool.normal, rng)
     const monsterLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
-    monsters.push(createMonster(template, { tier, level: monsterLevel }))
+    monsters.push(
+      createMonster(template, { tier, level: monsterLevel, explorationProgress: explorationForScale })
+    )
   }
   return monsters
 }
 
 /**
  * 1 armor = 1 physical damage absorbed; 1 resistance = 1 magic damage absorbed.
+ * Optional penOpts: armorPen / spellPen (flat, before subtraction). Monsters use this vs heroes.
  * Sunder/Dazed reduce effective armor; Splinter reduces effective resistance.
  */
-export function applyDamage(rawDamage, damageType, target) {
+export function applyDamage(rawDamage, damageType, target, penOpts = {}) {
+  const hasPen =
+    (penOpts.armorPen ?? 0) > 0 ||
+    (penOpts.spellPen ?? 0) > 0 ||
+    (penOpts.ignoreArmorPct ?? 0) > 0 ||
+    (penOpts.ignoreResistPct ?? 0) > 0
   let defense
-  if (damageType === 'magic') {
+  if (hasPen) {
+    defense =
+      damageType === 'magic'
+        ? computeMagicDefenseAfterWeapon(target, penOpts)
+        : computePhysicalDefenseAfterWeapon(target, penOpts)
+  } else if (damageType === 'magic') {
     defense = getEffectiveResistance(target)
   } else {
     defense = getEffectiveArmor(target)
@@ -1354,11 +1458,15 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         ? { armorPen: actor.physArmorPen ?? 0, ignoreArmorPct: actor.physIgnoreArmorPct ?? 0 }
         : actor.side === 'hero' && action.damageType === 'magic'
           ? { spellPen: actor.spellPen ?? 0, ignoreResistPct: actor.spellIgnoreResistPct ?? 0 }
-          : {}
+          : actor.side === 'monster' && action.damageType === 'physical'
+            ? { armorPen: actor.physArmorPen ?? 0 }
+            : actor.side === 'monster' && action.damageType === 'magic'
+              ? { spellPen: actor.spellPen ?? 0 }
+              : {}
     let damage = hitResult.isHit
       ? actor.side === 'hero'
         ? applyDamageWithWeaponAffixes(rawAfterCrit, action.damageType, target, weaponOpts)
-        : applyDamage(rawAfterCrit, action.damageType, target)
+        : applyDamage(rawAfterCrit, action.damageType, target, weaponOpts)
       : {
           damageType: action.damageType,
           absorbed: 0,

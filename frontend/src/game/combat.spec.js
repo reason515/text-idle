@@ -18,6 +18,11 @@ import {
   settleVictoryExploration,
   settleDefeatExploration,
   DEFEAT_EXPLORATION_DEDUCTION,
+  computeExplorationKillGain,
+  explorationMonsterPowerMultiplier,
+  monsterPenetrationForTier,
+  EXPLORATION_BASE_GAIN,
+  MONSTER_ARMOR_PEN_BY_TIER,
   unlockNextMapAfterBoss,
   generateEncounterSize,
   createMonster,
@@ -367,19 +372,40 @@ describe('combat progression and systems', () => {
 
   it('Example5: normal kill gives less progress than elite kill', () => {
     const progress = createInitialProgress()
-    const afterNormal = addExplorationProgress(progress, 'normal')
-    const afterElite = addExplorationProgress(progress, 'elite')
+    const afterNormal = addExplorationProgress(progress, 'normal', { monsterLevel: 4, referenceLevel: 4 })
+    const afterElite = addExplorationProgress(progress, 'elite', { monsterLevel: 4, referenceLevel: 4 })
     expect(afterNormal.currentProgress).toBeLessThan(afterElite.currentProgress)
     expect(afterNormal.currentProgress).toBe(1)
     expect(afterElite.currentProgress).toBe(2)
     expect(afterNormal.bossAvailable).toBe(false)
   })
 
+  it('computeExplorationKillGain scales down when monster level is below squad reference', () => {
+    expect(computeExplorationKillGain('normal', 4, 4)).toBe(EXPLORATION_BASE_GAIN.normal)
+    expect(computeExplorationKillGain('elite', 4, 4)).toBe(EXPLORATION_BASE_GAIN.elite)
+    expect(computeExplorationKillGain('normal', 1, 4)).toBe(0)
+    expect(computeExplorationKillGain('normal', 2, 4)).toBe(1)
+    expect(computeExplorationKillGain('elite', 2, 4)).toBe(1)
+  })
+
+  it('settleVictoryExploration uses monster level for scaled gains', () => {
+    const progress = createInitialProgress()
+    const monsters = [
+      { tier: 'normal', level: 1 },
+      { tier: 'elite', level: 2 },
+    ]
+    const { progress: next, exploration } = settleVictoryExploration(progress, monsters, {
+      referenceLevel: 4,
+    })
+    expect(exploration).toEqual({ mode: 'gain', delta: 1 })
+    expect(next.currentProgress).toBe(1)
+  })
+
   it('Example5: reaching 100 progress spawns map boss', () => {
     const progress = createInitialProgress()
     let next = progress
     for (let i = 0; i < 50; i += 1) {
-      next = addExplorationProgress(next, 'elite')
+      next = addExplorationProgress(next, 'elite', { monsterLevel: 4, referenceLevel: 4 })
     }
     expect(next.currentProgress).toBe(100)
     expect(next.bossAvailable).toBe(true)
@@ -387,8 +413,13 @@ describe('combat progression and systems', () => {
 
   it('settleVictoryExploration applies kill gains with cap at 100', () => {
     const progress = { ...createInitialProgress(), currentProgress: 99 }
-    const monsters = [{ tier: 'normal' }, { tier: 'elite' }]
-    const { progress: next, exploration } = settleVictoryExploration(progress, monsters)
+    const monsters = [
+      { tier: 'normal', level: 4 },
+      { tier: 'elite', level: 4 },
+    ]
+    const { progress: next, exploration } = settleVictoryExploration(progress, monsters, {
+      referenceLevel: 4,
+    })
     expect(exploration).toEqual({ mode: 'gain', delta: 1 })
     expect(next.currentProgress).toBe(100)
     expect(next.bossAvailable).toBe(true)
@@ -842,6 +873,66 @@ describe('combat progression and systems', () => {
     const result = applyDamage(30, 'physical', target)
     expect(result.finalDamage).toBe(1)
     expect(result.absorbed).toBe(29)
+  })
+
+  it('applyDamage: monster armor penetration reduces effective hero armor', () => {
+    const target = { armor: 20, resistance: 0, currentHP: 100 }
+    const withoutPen = applyDamage(40, 'physical', target)
+    const withPen = applyDamage(40, 'physical', target, { armorPen: 10 })
+    expect(withoutPen.finalDamage).toBe(20)
+    expect(withPen.finalDamage).toBe(30)
+    expect(withPen.effectiveDefense).toBe(10)
+  })
+
+  it('explorationMonsterPowerMultiplier adds 8% per 25% progress band', () => {
+    expect(explorationMonsterPowerMultiplier(0)).toBe(1)
+    expect(explorationMonsterPowerMultiplier(24)).toBe(1)
+    expect(explorationMonsterPowerMultiplier(25)).toBeCloseTo(1.08)
+    expect(explorationMonsterPowerMultiplier(50)).toBeCloseTo(1.16)
+    expect(explorationMonsterPowerMultiplier(75)).toBeCloseTo(1.24)
+  })
+
+  it('createMonster: 0-24% exploration has no monster pen (starter phase unchanged)', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const starter = createMonster(template, { tier: 'normal', level: 1, explorationProgress: 0 })
+    const lateStarter = createMonster(template, { tier: 'normal', level: 1, explorationProgress: 24 })
+    expect(starter.physArmorPen).toBe(0)
+    expect(starter.spellPen).toBe(0)
+    expect(lateStarter.physArmorPen).toBe(0)
+  })
+
+  it('createMonster scales stats and pen with exploration progress from 25% band', () => {
+    const template = MAP_MONSTER_POOLS['elwynn-forest'].normal[0]
+    const base = createMonster(template, { tier: 'normal', level: 1, explorationProgress: 0 })
+    const mid = createMonster(template, { tier: 'normal', level: 1, explorationProgress: 25 })
+    const scaled = createMonster(template, { tier: 'normal', level: 1, explorationProgress: 50 })
+    expect(scaled.maxHP).toBeGreaterThan(base.maxHP)
+    expect(mid.physArmorPen).toBe(monsterPenetrationForTier('normal', 25).physArmorPen)
+    expect(mid.physArmorPen).toBe(MONSTER_ARMOR_PEN_BY_TIER.normal)
+    expect(scaled.physArmorPen).toBeGreaterThan(mid.physArmorPen)
+  })
+
+  it('buildEncounterMonsters passes explorationProgress into monster scaling', () => {
+    const rng = () => 0.5
+    const low = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 3,
+      level: 4,
+      squadAverageLevel: 4,
+      explorationProgress: 0,
+      rng,
+    })
+    const high = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 3,
+      level: 4,
+      squadAverageLevel: 4,
+      explorationProgress: 50,
+      rng,
+    })
+    expect(low[0].physArmorPen).toBe(0)
+    expect(high[0].maxHP).toBeGreaterThan(low[0].maxHP)
+    expect(high[0].physArmorPen).toBeGreaterThan(0)
   })
 
   it('Warrior at 0 rage uses taunt when listed after heroic-strike in skill priority', () => {

@@ -117,6 +117,7 @@
 
 - **仇恨机制**：怪物每回合按仇恨值选择目标，详见 [12-threat.md](./12-threat.md)。
 - **伤害与减伤**：物理/魔法伤害、护甲/抗性减伤公式见 [04-classes-attributes.md](./04-classes-attributes.md) 2.2.3。
+- **怪物穿透（对英雄）**：怪物普攻与技能在 flat 减伤前，对英雄护甲/抗性施加**固定穿透**（与装备词缀 `armorPen` / `spellPen` 同序）。**探索度 0–24% 时为 0**（保留裸装开局手感）；自 **25%** 起按层级：普通 **2** 物理 / **1** 法术，精英 **5** / **3**，首领 **10** / **8**；之后每满 **25%** 再 +1 物理、+1 法术（与 [02-levels-monsters.md](./02-levels-monsters.md) 探索度抬升同档）。实现见 `combat.js` 中 `monsterPenetrationForTier`、`applyDamage`。
 - **英雄普攻**：在 `CLASS_COEFFICIENTS` 中 **`k_PhysAtk` 为 `null` 的职业**（法师、牧师、术士等纯法系成长）普攻按**法术伤害**结算，基数为 **有效法术强度 × 0.5**（`SPELL_BASIC_ATTACK_COEFF`，见 `damageUtils.js`），再经法术暴击与目标抗性；其余职业普攻按**物理伤害**结算（有效物攻与目标护甲）。不再存在「法强高于物攻时随机打出魔法普攻」的分支。实现见 `frontend/src/game/combat.js` 中 `actorDamage`。
 - **状态效果**：Buff/Debuff 对出手顺序、恢复等的影响，见「状态效果」设计。
 
