@@ -34,6 +34,7 @@ import {
   applyRestStep,
   canStartNextCombat,
 } from './combat.js'
+import { mergeAiTacticsApply } from './aiTactics.js'
 
 function fixedRng(values) {
   let index = 0
@@ -2389,6 +2390,86 @@ describe('combat progression and systems', () => {
     )
     expect(priestActs.every((e) => e.action !== 'basic')).toBe(true)
     expect(priestActs.some((e) => e.skillId === 'power-word-shield')).toBe(true)
+  })
+
+  it('solo priest with solo-survivor supplement basic-attacks instead of heal/shield', () => {
+    const baseTactics = {
+      skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'basic-attack',
+          targetRules: [{ rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }],
+        },
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'ally-hp-below', value: 0.7 },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'every-ally-hp-gte', value: 0.7 },
+                { when: 'self-no-shield' },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    const tactics = mergeAiTacticsApply(baseTactics, {
+      conditions: [
+        { skillId: 'basic-attack', targetRules: [{ rule: 'lowest-hp', when: 'solo-survivor' }] },
+        { skillId: 'flash-heal', whenAll: [{ when: 'allies-alive-gte', value: 2 }] },
+        { skillId: 'power-word-shield', whenAll: [{ when: 'allies-alive-gte', value: 2 }] },
+      ],
+    })
+    const priest = sampleHero({
+      id: 'p1',
+      name: 'Anduin',
+      class: 'Priest',
+      agility: 99,
+      intellect: 40,
+      spirit: 15,
+      currentMP: 200,
+      currentHP: 100,
+      maxHP: 100,
+      skills: ['flash-heal', 'power-word-shield'],
+      tactics,
+    })
+    const monster = createMonster(
+      {
+        id: 'm1',
+        name: 'Full Mob',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    monster.currentHP = 200
+    monster.maxHP = 200
+    const result = runAutoCombat({
+      heroes: [priest],
+      monsters: [monster],
+      rng: () => 0.5,
+      maxRounds: 1,
+    })
+    const basic = result.log.find((e) => e.actorName === 'Anduin' && e.action === 'basic')
+    const heal = result.log.find((e) => e.actorName === 'Anduin' && e.skillId === 'flash-heal')
+    const shield = result.log.find((e) => e.actorName === 'Anduin' && e.skillId === 'power-word-shield')
+    expect(basic).toBeDefined()
+    expect(heal).toBeUndefined()
+    expect(shield).toBeUndefined()
   })
 
   it('skillPriority may include basic-attack before spells so normal attack runs first when affordable', () => {

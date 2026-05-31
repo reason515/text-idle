@@ -310,6 +310,19 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     })
   }
 
+  /** Exactly one alive hero (last survivor / solo). */
+  if (when === 'solo-survivor') {
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    return aliveHeroes.length === 1
+  }
+
+  /** Alive hero count >= value (default 2 = at least one teammate besides self). */
+  if (when === 'allies-alive-gte') {
+    const minCount = typeof value === 'number' ? value : 2
+    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+    return aliveHeroes.length >= minCount
+  }
+
   return true
 }
 

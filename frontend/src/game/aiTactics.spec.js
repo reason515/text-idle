@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   validateAiTactics,
   mergeAiTacticsApply,
+  userMentionsSoloSurvivor,
   targetRuleStepDisplay,
   targetRuleStepHasGate,
   targetRulesChainDisplay,
@@ -601,6 +602,127 @@ describe('mergeAiTacticsApply', () => {
       conditions: [{ skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] }],
     })
     expect(merged.targetRule).toBeUndefined()
+  })
+
+  it('prepends solo-survivor basic-attack step and patches ally-alive gates without replacing heal chains', () => {
+    const existing = {
+      skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'basic-attack',
+          targetRules: [{ rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 }],
+        },
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'ally-hp-below', value: 0.7 },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'every-ally-hp-gte', value: 0.7 },
+                { when: 'self-no-shield' },
+                { when: 'enemy-all-hp-above', value: 0.05 },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    const incoming = {
+      conditions: [
+        { skillId: 'basic-attack', targetRules: [{ rule: 'lowest-hp', when: 'solo-survivor' }] },
+        { skillId: 'flash-heal', whenAll: [{ when: 'allies-alive-gte', value: 2 }] },
+        { skillId: 'power-word-shield', whenAll: [{ when: 'allies-alive-gte', value: 2 }] },
+      ],
+    }
+    const merged = mergeAiTacticsApply(existing, incoming)
+    const ba = merged.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.targetRules[0]).toEqual({ rule: 'lowest-hp', when: 'solo-survivor' })
+    expect(ba.targetRules[1]).toEqual({ rule: 'lowest-hp', when: 'target-hp-below', value: 0.05 })
+    const fh = merged.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.whenAll[0]).toEqual({ when: 'allies-alive-gte', value: 2 })
+    expect(fh.targetRules[0].whenAll).toEqual([
+      { when: 'ally-hp-below', value: 0.7 },
+      { when: 'enemy-all-hp-above', value: 0.05 },
+    ])
+    const pw = merged.conditions.find((c) => c.skillId === 'power-word-shield')
+    expect(pw.whenAll[0]).toEqual({ when: 'allies-alive-gte', value: 2 })
+    expect(pw.targetRules[0].rule).toBe('lowest-hp-ally')
+  })
+})
+
+describe('validateAiTactics solo survivor supplement', () => {
+  const soloUserInput =
+    '在现有战术上补充一个规则，如果我方只剩自己存活，则对HP最低的敌人使用普通攻击，而不要使用治疗和护盾类的技能'
+
+  it('userMentionsSoloSurvivor detects last-hero-standing phrasing', () => {
+    expect(userMentionsSoloSurvivor(soloUserInput)).toBe(true)
+    expect(
+      userMentionsSoloSurvivor(
+        '当我方自身自己存活时，对HP最低的敌人使用普通攻击，而不要使用盾、治疗等无法造成伤害的技能',
+      ),
+    ).toBe(true)
+    expect(userMentionsSoloSurvivor('优先破甲')).toBe(false)
+  })
+
+  it('fixes wrong AI rewrite (self-if-enemy-targeting) and adds solo gates', () => {
+    const raw = {
+      conditions: [
+        { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+        { skillId: 'flash-heal', targetRules: ['self-if-enemy-targeting'] },
+        { skillId: 'power-word-shield', targetRules: ['self-if-enemy-targeting'] },
+      ],
+      explanation: 'wrong',
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest', soloUserInput)
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.targetRules[0]).toEqual({ rule: 'lowest-hp', when: 'solo-survivor' })
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.whenAll).toContainEqual({ when: 'allies-alive-gte', value: 2 })
+    expect(fh.targetRules).toBeUndefined()
+    const pw = result.tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+    expect(pw.whenAll).toContainEqual({ when: 'allies-alive-gte', value: 2 })
+    expect(pw.targetRules).toBeUndefined()
+    expect(result.warnings.some((w) => w.includes('误写'))).toBe(true)
+    expect(result.warnings.some((w) => w.includes('独自存活'))).toBe(true)
+  })
+
+  it('strips solo-survivor and targetRules rewrites from flash-heal on solo supplement', () => {
+    const raw = {
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          whenAll: [
+            { when: 'allies-alive-gte', value: 2 },
+            { when: 'solo-survivor' },
+          ],
+          targetRules: [
+            { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 },
+            'self-if-enemy-targeting',
+            { rule: 'tank', when: 'tank-hp-below', value: 0.7 },
+          ],
+        },
+        { skillId: 'power-word-shield', whenAll: [{ when: 'allies-alive-gte', value: 2 }] },
+      ],
+      explanation: 'mixed',
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest', soloUserInput)
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.whenAll).toEqual([{ when: 'allies-alive-gte', value: 2 }])
+    expect(fh.whenAll.some((w) => w.when === 'solo-survivor')).toBe(false)
+    expect(fh.targetRules).toBeUndefined()
+    expect(result.warnings.some((w) => w.includes('目标链改写'))).toBe(true)
   })
 })
 

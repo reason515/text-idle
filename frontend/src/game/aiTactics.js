@@ -209,8 +209,27 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "tank-no-shield" : designated tank has no shield (no value). For "坦克身上没有盾".
 - "enemy-all-hp-above" : **every** alive enemy has HP ratio **>** value (strict). Default value \`0.05\` when player says enemies above 5%. Use on priest heal/shield steps/skill gates so spells **skip** while **any** enemy is at or below the execute band (engine tries basic attack next because heals/shields failed).
 - "every-ally-hp-gte" : **every** alive ally has HP ratio **>=** value (inclusive). Use for "全队/我方所有英雄 >= 70%" gates on **power-word-shield** skill-level **whenAll** (pairs with flash-heal **ally-hp-below** triage).
+- "solo-survivor" : exactly **one** alive hero in the party (no value). Use on **basic-attack** targetRules steps: \`{ "rule": "lowest-hp", "when": "solo-survivor" }\` when the player says "只剩自己存活 / 独自存活 / 队友全灭时普攻".
+- "allies-alive-gte" : alive hero count **>=** value (default **2**). Use as skill-level **whenAll** on **flash-heal** / **power-word-shield** so heals/shields **skip** when only the caster remains: \`{ "when": "allies-alive-gte", "value": 2 }\`.
 
-## Priest: shield buff vs debuff (CRITICAL — common model mistake)
+## Priest: solo survivor — attack, skip heals/shields (CRITICAL when **existingTactics** + supplement)
+When the player **adds** a rule like "只剩自己存活时普攻最低血敌人，不要治疗/套盾":
+- Output **only delta**; **NEVER** rewrite existing flash-heal / power-word-shield **targetRules** to \`self-if-enemy-targeting\` (that is **wrong** for solo survivor).
+- **basic-attack**: prepend \`{ "rule": "lowest-hp", "when": "solo-survivor" }\` as the **first** step in \`targetRules\` (keep existing execute/finisher steps after it).
+- **flash-heal** and **power-word-shield**: add skill-level \`whenAll: [{ "when": "allies-alive-gte", "value": 2 }]\` **only** (merge with existing gates; do **not** replace targetRules).
+Example delta:
+\`\`\`json
+{
+  "conditions": [
+    { "skillId": "basic-attack", "targetRules": [{ "rule": "lowest-hp", "when": "solo-survivor" }] },
+    { "skillId": "flash-heal", "whenAll": [{ "when": "allies-alive-gte", "value": 2 }] },
+    { "skillId": "power-word-shield", "whenAll": [{ "when": "allies-alive-gte", "value": 2 }] }
+  ],
+  "explanation": "..."
+}
+\`\`\`
+Do **not** change \`skillPriority\` unless the player explicitly asks.
+
 - **No shield / 没有盾 / 没有真言术盾** on an ally = **self-no-shield** (when target is self) or **tank-no-shield** (when target is tank). The engine checks \`unit.shield\` absorb, not debuffs.
 - **NEVER** map "没有真言术盾" to \`target-has-debuff\` with value \`power-word-shield\` — that is **wrong** (debuffs and shields are different systems).
 
@@ -574,12 +593,14 @@ const VALID_WHEN = new Set([
   'enemy-targeting-self', 'enemy-not-targeting-self', 'tank-hp-below', 'tank-hp-above',
   'self-no-shield', 'tank-no-shield',
   'enemy-all-hp-above', 'every-ally-hp-gte',
+  'solo-survivor', 'allies-alive-gte',
 ])
 
 function isNonsensicalCondition(when, value) {
   if (when === 'resource-below' && (value === undefined || value <= 0)) return true
   if (when === 'resource-above' && value === undefined) return true
   if (when === 'round-gte' && (value === undefined || value <= 0)) return true
+  if (when === 'allies-alive-gte' && (value === undefined || value < 2)) return true
   return false
 }
 
@@ -684,7 +705,183 @@ const CONDITION_KEYWORDS = [
   /第.{0,3}回合|回合.{0,4}(大于|超过|之后|以后)/,
   /\d+%/,
   /存在.*目标.*自己|目标.*是.*自己.*的敌|有.*敌人.*(打|攻击|针对).*我|敌人.*盯.*我/,
+  /只剩|独自|仅自己|队友全灭|只有自己在|我方只剩|仅余自己|自身自己|仅.*自己.*存活/,
 ]
+
+/**
+ * True when user text asks for solo-survivor / last-hero-standing behavior.
+ * @param {string|undefined} userInput
+ * @returns {boolean}
+ */
+export function userMentionsSoloSurvivor(userInput) {
+  if (!userInput || typeof userInput !== 'string') return false
+  const t = userInput.replace(/\s/g, '')
+  return /只剩自己|仅自己存活|独自存活|队友全灭|只剩我|仅余自己|只有自己在|我方只剩|无人存活.*只剩|只剩.*自己|独自.*存活|自身自己存活|仅.*自己.*存活|只有自己(存活)?|无法造成伤害/.test(
+    t,
+  )
+}
+
+function conditionHasAlliesAliveGte(c, minVal = 2) {
+  if (!c) return false
+  if (c.when === 'allies-alive-gte' && (c.value ?? 2) >= minVal) return true
+  if (Array.isArray(c.whenAll)) {
+    return c.whenAll.some((w) => w?.when === 'allies-alive-gte' && (w.value ?? 2) >= minVal)
+  }
+  return false
+}
+
+function basicAttackHasSoloStep(c) {
+  if (!c?.targetRules?.length) return false
+  return c.targetRules.some(
+    (s) => typeof s === 'object' && s !== null && s.when === 'solo-survivor' && s.rule === 'lowest-hp',
+  )
+}
+
+function isWrongSoloRewriteHealShieldEntry(c) {
+  if (!c?.targetRules?.length || conditionHasAlliesAliveGte(c)) return false
+  if (c.targetRules.length !== 1) return false
+  const s = c.targetRules[0]
+  const rule = typeof s === 'string' ? s : s?.rule
+  return rule === 'self-if-enemy-targeting'
+}
+
+/**
+ * Solo supplement only patches ally-alive gate on heals/shields; strip AI rewrites.
+ * @param {Object} entry
+ * @param {string} skillId
+ * @param {string[]} warnings
+ * @returns {Object}
+ */
+function stripHealShieldForSoloSupplementOnly(entry, skillId, warnings) {
+  const out = { ...entry }
+  if (out.when === 'solo-survivor') {
+    delete out.when
+    warnings.push(
+      `已移除「${skillId}」上的「仅剩自己存活」技能条件（该条件仅用于普通攻击；治疗/盾只用「存活己方不少于 2」）`,
+    )
+  }
+  if (Array.isArray(out.whenAll)) {
+    const filtered = out.whenAll.filter((w) => w?.when !== 'solo-survivor')
+    if (filtered.length !== out.whenAll.length) {
+      out.whenAll = filtered.length > 0 ? filtered : undefined
+      if (!out.whenAll) delete out.whenAll
+      warnings.push(
+        `已移除「${skillId}」上的「仅剩自己存活」技能条件（该条件仅用于普通攻击；治疗/盾只用「存活己方不少于 2」）`,
+      )
+    }
+  }
+  if (out.targetRules?.length || out.targetRule) {
+    delete out.targetRules
+    delete out.targetRule
+    warnings.push(
+      `已移除「${skillId}」解析预览中的目标链改写（独自存活补充仅追加存活人数门控，应用时将保留当前战术中的目标链）`,
+    )
+  }
+  return out
+}
+
+function mergeAllyAliveGateOntoExisting(existing) {
+  const gate = { when: 'allies-alive-gte', value: 2 }
+  const out = { ...existing }
+  if (conditionHasAlliesAliveGte(out)) return out
+  if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
+    out.whenAll = [gate, ...out.whenAll]
+  } else if (out.when) {
+    out.whenAll = [gate, { when: out.when, value: out.value }]
+    delete out.when
+    delete out.value
+  } else {
+    out.whenAll = [gate]
+  }
+  return out
+}
+
+function prependSoloStepToBasicAttack(existing, incoming) {
+  const soloStep = { rule: 'lowest-hp', when: 'solo-survivor' }
+  const mergedRules = [...(existing?.targetRules || [])]
+  if (!basicAttackHasSoloStep({ targetRules: mergedRules })) {
+    mergedRules.unshift(soloStep)
+  }
+  if (Array.isArray(incoming?.targetRules)) {
+    for (const r of incoming.targetRules) {
+      if (typeof r === 'object' && r !== null && r.when === 'solo-survivor') continue
+      const key = JSON.stringify(r)
+      if (!mergedRules.some((x) => JSON.stringify(x) === key)) mergedRules.push(r)
+    }
+  }
+  const out = { ...existing, ...incoming, targetRules: mergedRules }
+  delete out.targetRule
+  return out
+}
+
+function isSoloSurvivorAllyGateSupplement(newCond) {
+  if (!newCond?.skillId) return false
+  if (newCond.targetRules?.length || newCond.targetRule) return false
+  const gates = []
+  if (newCond.when === 'allies-alive-gte') gates.push({ when: newCond.when, value: newCond.value })
+  if (Array.isArray(newCond.whenAll)) gates.push(...newCond.whenAll)
+  if (gates.length === 0) return false
+  return gates.every((g) => g.when === 'allies-alive-gte')
+}
+
+/**
+ * When user adds solo-survivor rule, fix AI output and append missing gates/steps.
+ * @param {string|undefined} userInput
+ * @param {string} heroClass
+ * @param {string[]} skillIds
+ * @param {Object[]} conditions
+ * @param {string[]} warnings
+ * @returns {Object[]}
+ */
+function supplementSoloSurvivorRules(userInput, heroClass, skillIds, conditions, warnings) {
+  if (!userMentionsSoloSurvivor(userInput)) return conditions
+  const healShieldIds = ['flash-heal', 'power-word-shield'].filter((id) => skillIds.includes(id))
+  let next = conditions.filter((c) => {
+    if (!healShieldIds.includes(c.skillId)) return true
+    if (!isWrongSoloRewriteHealShieldEntry(c)) return true
+    warnings.push(
+      `已忽略 AI 误写的「${c.skillId}」目标链（补充独自存活规则时不应改写治疗/盾链）`,
+    )
+    return false
+  })
+
+  const soloStep = { rule: 'lowest-hp', when: 'solo-survivor' }
+  let ba = next.find((c) => c.skillId === 'basic-attack')
+  if (ba) {
+    if (!basicAttackHasSoloStep(ba)) {
+      const rules = ba.targetRules?.length
+        ? [...ba.targetRules]
+        : ba.targetRule
+          ? [ba.targetRule]
+          : []
+      ba = { ...ba, targetRules: [soloStep, ...rules] }
+      delete ba.targetRule
+      const idx = next.findIndex((c) => c.skillId === 'basic-attack')
+      next[idx] = ba
+      warnings.push('已补充：独自存活时对血量最低敌人普通攻击（置于普攻目标链最前）')
+    }
+  } else {
+    next.push({ skillId: 'basic-attack', targetRules: [soloStep] })
+    warnings.push('已补充：独自存活时对血量最低敌人普通攻击')
+  }
+
+  for (const id of healShieldIds) {
+    const idx = next.findIndex((c) => c.skillId === id)
+    if (idx >= 0) {
+      next[idx] = stripHealShieldForSoloSupplementOnly(next[idx], id, warnings)
+      const merged = mergeAllyAliveGateOntoExisting(next[idx])
+      if (!conditionHasAlliesAliveGte(next[idx])) {
+        next[idx] = merged
+        warnings.push(`已补充：「${id}」仅在至少 2 名己方存活时尝试（独自存活时跳过）`)
+      }
+    } else {
+      next.push({ skillId: id, whenAll: [{ when: 'allies-alive-gte', value: 2 }] })
+      warnings.push(`已补充：「${id}」仅在至少 2 名己方存活时尝试（独自存活时跳过）`)
+    }
+  }
+
+  return next
+}
 
 function userMentionsConditions(userInput) {
   return CONDITION_KEYWORDS.some((re) => re.test(userInput))
@@ -1581,6 +1778,9 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
   }
 
   supplementBasicAttackIfMentioned(userInput, conditions, warnings)
+  if (userMentionsSoloSurvivor(userInput) && heroClass !== 'Priest') {
+    conditions = supplementSoloSurvivorRules(userInput, heroClass, skillIds, conditions, warnings)
+  }
 
   if (heroClass === 'Mage') {
     const mageBand = supplementMageHpBandTactics(userInput, priority, conditions, skillIds, warnings)
@@ -1601,6 +1801,7 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
     fixPriestPwsHealthyPartyShieldMistarget(conditions, warnings)
     stripRedundantPwsStep2Gates(conditions, warnings)
     fixPriestPwsSelfTargetingWhenNoThreatInUserText(userInput, conditions, warnings)
+    conditions = supplementSoloSurvivorRules(userInput, heroClass, skillIds, conditions, warnings)
     if (priestConvertLowestHpGlobal) {
       if (!conditions.some((c) => c.skillId === 'basic-attack')) {
         conditions.push({ skillId: 'basic-attack', targetRule: 'lowest-hp' })
@@ -1677,6 +1878,14 @@ export function mergeAiTacticsApply(existing, incoming) {
           out.conditions[idx] = merged
           continue
         }
+      }
+      if (idx >= 0 && isSoloSurvivorAllyGateSupplement(newCond)) {
+        out.conditions[idx] = mergeAllyAliveGateOntoExisting(out.conditions[idx])
+        continue
+      }
+      if (newCond.skillId === 'basic-attack' && idx >= 0 && basicAttackHasSoloStep(newCond)) {
+        out.conditions[idx] = prependSoloStepToBasicAttack(out.conditions[idx], newCond)
+        continue
       }
       const copy = { ...newCond }
       if (copy.targetRules?.length) delete copy.targetRule
@@ -1771,6 +1980,8 @@ const WHEN_DISPLAY = {
   'tank-no-shield': '坦克无真言术：盾',
   'enemy-all-hp-above': '全场敌人血量比例均高于（严格高于）',
   'every-ally-hp-gte': '己方全员血量比例不低于（含等于）',
+  'solo-survivor': '仅剩自己存活',
+  'allies-alive-gte': '存活己方不少于',
 }
 
 /**
@@ -1925,6 +2136,12 @@ export function conditionValueDisplay(when, value) {
             ? 0.7
             : 0.3
     return Math.round((typeof value === 'number' ? value : def) * 100) + '%'
+  }
+  if (when === 'allies-alive-gte') {
+    return String(typeof value === 'number' ? value : 2)
+  }
+  if (when === 'solo-survivor') {
+    return ''
   }
   if (when === 'target-has-debuff') {
     const map = { sunder: '破甲', freeze: '冰冻', burn: '燃烧' }

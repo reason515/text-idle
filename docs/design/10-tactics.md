@@ -108,6 +108,8 @@
 | tank-no-shield | 指定坦克身上无真言术：盾 | 对坦克套盾前判断 |
 | enemy-all-hp-above | **每个**存活敌方 HP 比例均 **>** X（严格高于）。用于在治疗/护盾侧门控「全场怪物仍高于斩杀线」，以便技能跳过、优先级落到普攻（配合牧师「敌方极低血量时先普攻」意图）。**不要**写在 **`basic-attack`** 的技能条件上（斩杀应由优先级与法术侧门控表达）；校验会剥离普攻上的误挂门控。 | 牧师斩杀让路 |
 | every-ally-hp-gte | **每个**存活己方 HP 比例 **≥** X（含等于）。用于「我方全员不低于 70%」等与 `ally-hp-below` 互补的全队血线门控（常见于真言术：盾）。 | 牧师全队偏高血线套盾 |
+| solo-survivor | 存活己方**恰好 1 名**（无 value）。常用于 **basic-attack** 目标链首步：独自存活时对敌人普攻。 | 牧师末位独存活下来时改打怪 |
+| allies-alive-gte | 存活己方人数 **≥** X（默认 **2**）。用于治疗/护盾技能级门控：仅在有队友时尝试，独自存活时跳过。 | 与 `solo-survivor` 普攻配对 |
 
 **说明**：
 
@@ -245,6 +247,7 @@
 - **`targetRule`**：解析结果对象 **始终携带 `targetRule` 字段**（可为合法枚举字符串或 **`null`**）。为 **`null` / 假值** 时会 **删除** 存档里已有的顶层默认目标，避免牧师斩杀模板清空顶层后仍残留旧的「坦克」等与战斗不符的配置。
 - **`conditions`**：按 **skillId** 合并：同 skillId **一般**为整段替换，新 skillId 则追加。
 - **牧师快速治疗例外**：若本次解析仅给出「任意己方血量低于 X% + 治疗血最少队友」类 **紧急补充**（`ally-hp-below` + `lowest-hp-ally`，且无完整 `targetRules` 链），合并时会将该步 **插入到** 已有 `flash-heal` 的 `targetRules` **最前**，并保留原有技能级 `when` 与后续链，避免覆盖整条战术。
+- **独自存活补充**：若解析结果仅为 **flash-heal** / **power-word-shield** 追加 `whenAll: [{ when: 'allies-alive-gte', value: 2 }]`（无 `targetRules`），合并时 **保留** 已有目标链并 **前置** 该门控。若 **basic-attack** 含 `{ rule: 'lowest-hp', when: 'solo-survivor' }` 步，合并时 **插入链首**，保留原有斩杀/阈值步。`validateAiTactics` 在用户原文含「只剩自己 / 独自存活 / 队友全灭」时会 **自动补充** 上述 delta，并 **忽略** 模型误写的 `self-if-enemy-targeting` 治疗/盾链。
 
 **战斗执行（牧师快速治疗门控）**：若 `flash-heal` 的 `targetRules` **首步**为 `{ when: ally-hp-below }`（紧急抬血），则当 **任意存活己方（含牧师自身）** 生命比例低于该阈值时，**允许**在本回合尝试快速治疗，即使技能级 `when`（如 `self-hp-below`）未满足；否则仍按技能级条件判定。实现见 `checkPriestFlashHealSkillAllowed`（`frontend/src/game/tactics.js`）与牧师技能路径（`frontend/src/game/combat.js`）。
 

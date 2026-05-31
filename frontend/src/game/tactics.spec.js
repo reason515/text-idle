@@ -439,6 +439,24 @@ describe('tactics', () => {
       const heroes = [tank]
       expect(checkCondition(cond, {}, null, heroes, [], { tankId: 'tank' })).toBe(false)
     })
+
+    it('solo-survivor passes when exactly one hero is alive', () => {
+      const priest = { id: 'p', currentHP: 50, maxHP: 100 }
+      const dead = { id: 't', currentHP: 0, maxHP: 200 }
+      expect(checkCondition({ when: 'solo-survivor' }, priest, null, [priest], [], {})).toBe(true)
+      expect(checkCondition({ when: 'solo-survivor' }, priest, null, [priest, dead], [], {})).toBe(true)
+      expect(checkCondition({ when: 'solo-survivor' }, priest, null, [priest, { id: 'a', currentHP: 80, maxHP: 100 }], [], {})).toBe(
+        false,
+      )
+    })
+
+    it('allies-alive-gte passes when enough heroes are alive', () => {
+      const priest = { id: 'p', currentHP: 50, maxHP: 100 }
+      const ally = { id: 'a', currentHP: 80, maxHP: 100 }
+      expect(checkCondition({ when: 'allies-alive-gte', value: 2 }, priest, null, [priest, ally], [], {})).toBe(true)
+      expect(checkCondition({ when: 'allies-alive-gte', value: 2 }, priest, null, [priest], [], {})).toBe(false)
+      expect(checkCondition({ when: 'allies-alive-gte' }, priest, null, [priest, ally], [], {})).toBe(true)
+    })
   })
 
   describe('evaluateTargetRuleStepGates', () => {
