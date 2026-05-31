@@ -59,7 +59,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 
 | Check | Location | Notes |
 |-------|----------|-------|
-| **Squad init** | `createFixedTrioSquad`, `IntroPage`, `main.js` | Fixed trio + starter white MainHand/Armor |
+| **Squad init** | `createFixedTrioSquad`, `applyStarterWhiteEquipment`, `createExpansionCharacter`, `IntroPage`, `main.js` | Fixed trio + expansion heroes: starter white MainHand/Armor |
 | **Recruit limit** | `getRecruitLimit(progress)` | 3 base, +1 after map 1 boss, +1 after map 2 boss, max 5 |
 | **Routing** | `main.js`, `IntroPage`, `CharacterSelectionPage` | Character select guards empty squad → main |
 | **Progress schema** | `combatProgress`, `unlockedMapCount` | Boss victory → `unlockNextMapAfterBoss` |

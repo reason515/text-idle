@@ -723,6 +723,21 @@ describe('heroes', () => {
       expect(character.skills).toEqual(['heroic-strike'])
       expect(character.skillEnhancements).toEqual({ 'heroic-strike': { enhanceCount: 1 } })
     })
+
+    it('equips starter MainHand and Armor (white quality) for expansion heroes', () => {
+      const druid = createExpansionCharacter(
+        { id: 'malfurion', name: '玛法里奥·怒风', class: 'Druid' },
+        { level: 7, allocatedAttrs: getInitialAttributes('Druid'), skills: ['rejuvenation', 'maul'] },
+      )
+      expect(druid.equipment?.MainHand?.quality).toBe('normal')
+      expect(druid.equipment?.Armor?.quality).toBe('normal')
+
+      const warlock = createExpansionCharacter(
+        { id: 'guldan', name: 'Guldan', class: 'Warlock' },
+        { level: 7, allocatedAttrs: getInitialAttributes('Warlock') },
+      )
+      expect(warlock.equipment?.MainHand?.baseName).toBe('\u6743\u6756')
+    })
   })
 
   describe('addHeroToSquad', () => {
@@ -775,6 +790,8 @@ describe('heroes', () => {
       expect(squad[0].level).toBe(5)
       expect(squad[0].strength).toBe(30)
       expect(squad[0].skills).toEqual(['heroic-strike'])
+      expect(squad[0].equipment?.MainHand?.quality).toBe('normal')
+      expect(squad[0].equipment?.Armor?.quality).toBe('normal')
     })
 
     it('returns false when squad is full', () => {

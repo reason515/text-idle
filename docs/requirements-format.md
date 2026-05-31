@@ -170,7 +170,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Fixed initial trio**: Warrior (tank), Mage (DPS), Priest (healer). No character selection at start; each has 2 fixed initial skills. Skill milestones: **enhance** at levels **3, 6, 9, …** (multiples of 3); **learn new** at **10, 20, …, 60** (multiples of 10), per [05-skills.md](design/05-skills.md) section 4.
-- **Starter gear**: Each of the three starts with normal (white) **MainHand** and **Armor** (Warrior: short sword; Mage/Priest: wand; chest: cloth tier-1 base from [06-equipment.md](./design/06-equipment.md); mid rolls, no affixes).
+- **Starter gear**: Each of the three starts with normal (white) **MainHand** and **Armor** (Warrior: short sword; Mage/Priest: wand; chest: cloth tier-1 base from [06-equipment.md](./design/06-equipment.md); mid rolls, no affixes). **Expansion heroes** (4th/5th seat) receive the same starter MainHand + Armor on join (wand for Mage/Priest/Warlock; short sword for Warrior; default tier-1 MainHand for other physical classes).
 - **Squad expansion**: After defeating map 1 boss (Hogger) → recruit **4th** hero (**Druid only**, Malfurion, join at **squad min level**, no hero-select UI); after defeating map 2 boss (VanCleef) → recruit **5th** hero (any available class except fixed trio / Druid duplicates, join at **squad min level**). Max 5 heroes.
 - **Classes (5th hero)**: Warrior, Paladin, Priest, Mage, Rogue, Hunter, Warlock, Shaman (Druid already in squad from map 1 expansion).
 - **Hero roster (one per class minimum)**:
@@ -1229,6 +1229,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC5c | Player skips a skill milestone during recruitment onboarding | Player confirms and hero joins | That milestone is **not** marked resolved; hero detail **Skills** tab still offers **Continue skill choice** for it |
 | AC6  | Player has completed all recruitment steps | Player confirms | Hero joins at designated level with assigned attributes and skills |
 | AC7  | Player views the squad after recruiting | Squad panel | 4th Druid and 5th expansion hero show **squad min level** at join (Druid has 2 fixed skills) |
+| AC7d | Player completes expansion hero recruitment | Player inspects the new hero's equipment | Hero has normal (white) **MainHand** and **Armor** equipped (same starter rules as fixed trio; wand for spell classes) |
 | AC7b | An expansion hero (e.g., Druid at squad min level) gains XP and levels up after joining | Level-up occurs | Hero receives **+3 unassignedPoints**; player can allocate them in hero detail like the fixed trio |
 | AC7c | An expansion hero reaches a new skill milestone after joining (e.g., Lv5→6, later Lv6→… milestone 6 if unresolved) | Milestone triggers | Skill choice modal or Skills tab entry appears; player chooses enhance/learn or skips; same rules as Example 26 |
 | AC8  | Player has defeated the zone boss on the second map (Westfall) | Boss is defeated | Third map unlocked; recruit modal for **5th** seat (free class choice) when `squad.length === 4` |

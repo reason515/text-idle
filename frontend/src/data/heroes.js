@@ -858,6 +858,50 @@ export function getSquadAverageLevel(squad) {
 }
 
 /**
+ * Starter MainHand config per class (white quality, level-1 base, mid rolls).
+ * Spell-only classes use wand; Warrior uses short sword; others use default tier-1 MainHand.
+ * @param {string} heroClass
+ * @returns {{ baseKey: string, baseName: string|null }}
+ */
+function getStarterWeaponConfig(heroClass) {
+  const coeff = CLASS_COEFFICIENTS[heroClass]
+  if (coeff && coeff.k_PhysAtk == null) {
+    return { baseKey: 'MainHandWand', baseName: '\u6743\u6756' }
+  }
+  if (heroClass === 'Warrior') {
+    return { baseKey: 'MainHand', baseName: '\u77ed\u5200' }
+  }
+  return { baseKey: 'MainHand', baseName: null }
+}
+
+/**
+ * Equip normal (white) MainHand and Armor when missing. Same rules as fixed trio (02-levels-monsters 1.2.0).
+ * @param {Object} character - Character with id, class, equipment
+ * @param {string} [idPrefix] - Unique prefix for generated item ids
+ */
+export function applyStarterWhiteEquipment(character, idPrefix = character.id) {
+  const equipment = { ...(character.equipment || {}) }
+  const prefix = idPrefix || character.id || 'hero'
+  if (!equipment.MainHand) {
+    const weaponCfg = getStarterWeaponConfig(character.class)
+    equipment.MainHand = createStarterWhiteItem({
+      id: `starter-${prefix}-mh`,
+      baseKey: weaponCfg.baseKey,
+      slot: 'MainHand',
+      baseName: weaponCfg.baseName,
+    })
+  }
+  if (!equipment.Armor) {
+    equipment.Armor = createStarterWhiteItem({
+      id: `starter-${prefix}-armor`,
+      baseKey: 'Armor',
+      slot: 'Armor',
+    })
+  }
+  character.equipment = equipment
+}
+
+/**
  * Create a character from a hero template with initial attributes.
  * @param {Object} hero - Hero template object (id, name, class)
  * @param {Object} opts - { skill?: string, skills?: string[] } optional skill id or skills array
@@ -926,6 +970,7 @@ export function createExpansionCharacter(hero, opts = {}) {
       markSkillMilestoneResolved(character, opts.levelChoice.milestoneLevel ?? 10)
     }
   }
+  applyStarterWhiteEquipment(character)
   return character
 }
 
@@ -958,18 +1003,9 @@ export function createFixedTrioSquad() {
     ],
   }
 
-  w.equipment = {
-    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-warrior', baseKey: 'MainHand', slot: 'MainHand', baseName: '\u77ed\u5200' }),
-    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-warrior', baseKey: 'Armor', slot: 'Armor' }),
-  }
-  m.equipment = {
-    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-mage', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' }),
-    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-mage', baseKey: 'Armor', slot: 'Armor' }),
-  }
-  p.equipment = {
-    MainHand: createStarterWhiteItem({ id: 'starter-trio-mh-priest', baseKey: 'MainHandWand', slot: 'MainHand', baseName: '\u6743\u6756' }),
-    Armor: createStarterWhiteItem({ id: 'starter-trio-armor-priest', baseKey: 'Armor', slot: 'Armor' }),
-  }
+  applyStarterWhiteEquipment(w, 'trio-warrior')
+  applyStarterWhiteEquipment(m, 'trio-mage')
+  applyStarterWhiteEquipment(p, 'trio-priest')
 
   return [w, m, p]
 }
