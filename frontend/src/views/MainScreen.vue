@@ -39,7 +39,7 @@
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
             class="hero-card card-with-float"
-            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0, 'hero-card-levelup-pulse': getLevelUpPulse(hero.id) }"
+            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0, 'hero-card-levelup-pulse': getLevelUpPulse(hero.id), 'hero-card-target-switch': getTargetSwitchPulseRole(hero.id) === 'hero' }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
@@ -142,7 +142,7 @@
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
             class="monster-card card-with-float"
-            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0 }"
+            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0, 'monster-card-target-switch': getTargetSwitchPulseRole(m.id) === 'monster' }"
             @click="selectedMonster = m"
           >
             <div
@@ -161,7 +161,7 @@
             </div>
             <div class="card-meta-row">
               <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
-              <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip">
+              <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip" :class="{ 'monster-target-row-switch': getTargetSwitchPulseRole(m.id) === 'monster' }">
                 <span class="monster-target-label">目标</span>
                 <span class="monster-target">
                   <span
@@ -2446,6 +2446,12 @@ import {
 } from '../ui/debuffDisplay.js'
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
 import {
+  TARGET_SWITCH_PULSE_MS,
+  applyTargetSwitchPulsePatch,
+  clearTargetSwitchPulsePatch,
+  resolveTargetSwitchPulseUnits,
+} from '../ui/combatTargetSwitchPulse.js'
+import {
   parseNaturalLanguageTactics,
   validateAiTactics,
   mergeAiTacticsApply,
@@ -2854,6 +2860,8 @@ const unitFloatingNumbers = ref({})
 /** @type {import('vue').Ref<Record<string, 'hp' | 'mp'>>} */
 const regenPulseByUnitId = ref({})
 const levelUpPulseByHeroId = ref({})
+/** @type {import('vue').Ref<Record<string, 'monster' | 'hero'>>} */
+const targetSwitchPulseByUnitId = ref({})
 let floatNumId = 0
 
 const REGEN_HERO_STAGGER_MS = 200
@@ -2929,6 +2937,19 @@ function triggerLevelUpPulse(heroId) {
     delete next[heroId]
     levelUpPulseByHeroId.value = next
   }, 900)
+}
+
+function getTargetSwitchPulseRole(unitId) {
+  return targetSwitchPulseByUnitId.value[unitId] ?? null
+}
+
+function triggerTargetSwitchPulse(entry) {
+  const units = resolveTargetSwitchPulseUnits(entry)
+  if (!units || isCombatUiDeferred()) return
+  targetSwitchPulseByUnitId.value = applyTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, units)
+  setTimeout(() => {
+    targetSwitchPulseByUnitId.value = clearTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, units)
+  }, TARGET_SWITCH_PULSE_MS)
 }
 
 function syncOneHeroDisplayAfterLevelUp(heroId) {
@@ -4468,6 +4489,7 @@ function applyOneCombatEntry(entry) {
       },
     }
   }
+  triggerTargetSwitchPulse(entry)
   addLogEntry(entry)
 
   if (applyRegenBatchInstant(entry)) {
@@ -6031,6 +6053,56 @@ onUnmounted(() => {
     filter: brightness(1);
   }
 }
+/* Target switch: amber scan on monster (no lunge toward center). */
+@keyframes monster-target-switch-scan {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    filter: brightness(1);
+  }
+  28% {
+    transform: translateY(-0.1rem) rotate(-1.4deg);
+    filter: brightness(1.1);
+  }
+  55% {
+    transform: translateY(0.05rem) rotate(1.1deg);
+    filter: brightness(1.14);
+  }
+  78% {
+    transform: translateY(-0.04rem) rotate(-0.5deg);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+    filter: brightness(1);
+  }
+}
+@keyframes hero-target-switch-focus {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  40% {
+    transform: scale(0.985);
+    filter: brightness(1.12);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes monster-target-row-flash {
+  0%,
+  100% {
+    border-color: var(--border-dark);
+    background: var(--bg-dark);
+    box-shadow: none;
+  }
+  45% {
+    border-color: var(--warning);
+    background: var(--bg-darker);
+    box-shadow: 0 0 10px var(--focus-glow);
+  }
+}
 /* Target hit: knockback away from center + squash + red flash (no forward lunge). */
 @keyframes hero-target-recoil {
   0% {
@@ -6914,6 +6986,12 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px var(--color-defeat), 0 0 20px rgba(255, 68, 68, 0.7), inset 0 0 0 1px var(--color-defeat);
   animation: hero-target-recoil 0.9s cubic-bezier(0.36, 0, 0.2, 1) forwards;
 }
+.hero-card.hero-card-target-switch {
+  z-index: 2;
+  transition: none;
+  animation: hero-target-switch-focus 0.75s ease-out forwards;
+  box-shadow: 0 0 0 2px var(--warning), 0 0 18px var(--focus-glow), inset 0 0 0 1px var(--warning);
+}
 .hero-card.defeated {
   opacity: 0.65;
   border-color: var(--color-defeat) !important;
@@ -7365,6 +7443,20 @@ onUnmounted(() => {
 .log-target-intent .log-intent-block {
   width: 100%;
 }
+.log-target-intent,
+.log-ot {
+  animation: log-target-switch-reveal 0.55s ease-out;
+}
+@keyframes log-target-switch-reveal {
+  from {
+    opacity: 0.35;
+    transform: translateX(-0.35rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 /* Taunt expired: same body line as other log rows (no muted secondary line). */
 .log-entry.log-intent-taunt-ended {
   font-size: var(--font-sm);
@@ -7393,6 +7485,9 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.monster-target-row.monster-target-row-switch {
+  animation: monster-target-row-flash 0.75s ease-out;
 }
 .monster-target-label {
   color: var(--text-label);
@@ -7486,6 +7581,12 @@ onUnmounted(() => {
   transition: none;
   box-shadow: 0 0 0 2px var(--color-defeat), 0 0 20px rgba(255, 68, 68, 0.7), inset 0 0 0 1px var(--color-defeat);
   animation: monster-target-recoil 0.9s cubic-bezier(0.36, 0, 0.2, 1) forwards;
+}
+.monster-card.monster-card-target-switch {
+  z-index: 2;
+  transition: none;
+  animation: monster-target-switch-scan 0.75s ease-in-out forwards;
+  box-shadow: 0 0 0 2px var(--warning), 0 0 16px var(--focus-glow), inset 0 0 0 1px var(--warning);
 }
 .monster-card.defeated {
   opacity: 0.65;
