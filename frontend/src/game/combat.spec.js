@@ -616,6 +616,56 @@ describe('combat progression and systems', () => {
     expect(eliteIds).toContain('defias-cutpurse')
   })
 
+  it('each map has a unique monster pool with distinct boss', () => {
+    for (const map of MAPS) {
+      const pool = MAP_MONSTER_POOLS[map.id]
+      expect(pool, map.id).toBeDefined()
+      expect(pool.normal.length).toBeGreaterThanOrEqual(3)
+      expect(pool.elite.length).toBeGreaterThanOrEqual(2)
+      expect(pool.boss?.id).toBeTruthy()
+      expect(pool.levelRange).toBeDefined()
+    }
+    const bossIds = MAPS.map((m) => MAP_MONSTER_POOLS[m.id].boss.id)
+    expect(new Set(bossIds).size).toBe(MAPS.length)
+  })
+
+  it('westfall encounters use westfall pool, not elwynn wolves', () => {
+    const pool = MAP_MONSTER_POOLS.westfall
+    expect(pool.normal.map((m) => m.id)).not.toContain('young-wolf')
+    expect(pool.boss.id).toBe('vancleef')
+    const rng = () => 0.1
+    const monsters = buildEncounterMonsters({
+      mapId: 'westfall',
+      squadSize: 3,
+      level: 8,
+      squadAverageLevel: 8,
+      rng,
+    })
+    for (const m of monsters) {
+      const westfallTypeIds = [...pool.normal, ...pool.elite].map((t) => t.id)
+      expect(westfallTypeIds).toContain(m.typeId)
+      expect(m.typeId).not.toBe('young-wolf')
+    }
+  })
+
+  it('later map bosses are stronger than earlier maps at the same level', () => {
+    const hogger = createMonster(MAP_MONSTER_POOLS['elwynn-forest'].boss, { tier: 'boss', level: 10 })
+    const vancleef = createMonster(MAP_MONSTER_POOLS.westfall.boss, { tier: 'boss', level: 10 })
+    const bangalash = createMonster(MAP_MONSTER_POOLS['stranglethorn-vale'].boss, { tier: 'boss', level: 10 })
+    expect(vancleef.maxHP).toBeGreaterThan(hogger.maxHP)
+    expect(bangalash.maxHP).toBeGreaterThan(vancleef.maxHP)
+    expect(bangalash.physAtk).toBeGreaterThan(hogger.physAtk)
+  })
+
+  it('later maps use higher levelRange offsets than elwynn', () => {
+    expect(MAP_MONSTER_POOLS.westfall.levelRange.min).toBeGreaterThanOrEqual(
+      MAP_MONSTER_POOLS['elwynn-forest'].levelRange.min
+    )
+    expect(MAP_MONSTER_POOLS['stranglethorn-vale'].levelRange.max).toBeGreaterThan(
+      MAP_MONSTER_POOLS['elwynn-forest'].levelRange.max
+    )
+  })
+
   it('AC11: squad with mixed levels (3, 10, 5) uses max level 10 for encounter', () => {
     const squad = [{ level: 3 }, { level: 10 }, { level: 5 }]
     const squadLevel = getSquadMaxLevel(squad)

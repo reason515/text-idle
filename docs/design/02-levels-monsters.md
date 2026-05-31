@@ -256,12 +256,24 @@ Resistance         = Base_Resistance * Factor + floor(Level * 0.5)
 | Stranglethorn Vale | Jungle Stalker, Bloodscalp Scout, Shadowmaw Panther | Bloodscalp Berserker, Elder Shadowmaw | King Bangalash |
 
 - 每张地图的怪物池可随版本扩展，保持探索新鲜感。
+- **实现**：五张地图均在 `frontend/src/game/combat.js` 的 `MAP_MONSTER_POOLS` 中配置独立 normal / elite / boss 池；未命中 `mapId` 时回退艾尔文森林（不应出现在正常进图流程）。
 
 ### 2.6 怪物等级与地图等级范围
 
 - **等级相关机制统一规则**：所有依赖玩家小队等级的机制（如遭遇怪物等级、地图难度等）均以**小队中最高英雄等级**为基准。若小队为空，则默认等级为 1。后续小队中可能存在多个角色，统一使用最高等级可保证难度与掉落与队伍实力匹配。
 - **等级基准**：以队伍中最高英雄等级为基准（baseLevel）。
 - **等级范围**：每张地图可配置 `levelRange: { min, max }`，表示相对 baseLevel 的偏移。例如 `{ min: -1, max: 2 }` 表示怪物等级在 [baseLevel-1, baseLevel+2] 内随机。
+- **各地图 levelRange（实现）**：越靠后的地图偏移越高，使同基准等级下遭遇等级与模板基础属性同步抬升：
+
+| 地图 | levelRange |
+|------|------------|
+| Elwynn Forest | `{ min: -1, max: 2 }` |
+| Westfall | `{ min: 0, max: 2 }` |
+| Duskwood | `{ min: 0, max: 3 }` |
+| Redridge Mountains | `{ min: 1, max: 3 }` |
+| Stranglethorn Vale | `{ min: 1, max: 4 }` |
+
+- **模板强度递进**：除等级偏移外，后续地图 normal / elite / boss 的 `base` 属性（HP、攻击、护甲/抗性）按地图序号逐级提高（约 +10% 量级/张），守关 BOSS 在同等级下明显强于前一张地图 BOSS。
 - **新手期上限（小队平均等级低于 5）**：在上述随机之后，若**小队算术平均等级**严格小于 5，则将本次遭遇中**每只怪物（含守关 BOSS）**的等级**再限制为不超过** `max(1, floor(小队平均等级))`。平均等级达到 5 及以上时不再应用此上限。实现见 `frontend/src/game/combat.js` 中 `buildEncounterMonsters` 的 `squadAverageLevel` 参数；平均等级由 `getSquadAverageLevel`（`frontend/src/data/heroes.js`）计算。
 - **同类型不同等级**：同一怪物类型（如 Young Wolf）在不同等级下属性不同，等级越高属性越强，体现地图内怪物强度差异。
 
