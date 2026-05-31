@@ -23,7 +23,7 @@ export const DRUID_FIXED_INITIAL_SKILLS = [
   },
   {
     id: 'maul',
-    name: '\u91cd\u6bb7',
+    name: '\u91cd\u6bb4',
     spec: '\u5b88\u62a4',
     manaCost: 12,
     coefficient: 1.0,

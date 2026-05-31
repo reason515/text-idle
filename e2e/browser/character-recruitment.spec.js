@@ -321,7 +321,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     const confirmRecruitB = await skipExpansionSkillChoicesUntilConfirm(page)
     await expect(confirmRecruitB).toBeVisible({ timeout: 15000 })
     await expect(confirmRecruitB.getByText('\u56de\u6625\u672f')).toBeVisible({ timeout: 5000 })
-    await expect(confirmRecruitB.getByText('\u91cd\u6bb7')).toBeVisible({ timeout: 5000 })
+    await expect(confirmRecruitB.getByText('\u91cd\u6bb4')).toBeVisible({ timeout: 5000 })
     await expect(confirmRecruitB.locator('.hero-class-level')).toContainText(/7\s*\u7ea7/)
   })
 
@@ -367,7 +367,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     await clickHeroDetailSkillsTab(page)
     await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
     await expect(page.locator('.detail-modal').getByText('\u56de\u6625\u672f').first()).toBeVisible()
-    await expect(page.locator('.detail-modal').getByText('\u91cd\u6bb7').first()).toBeVisible()
+    await expect(page.locator('.detail-modal').getByText('\u91cd\u6bb4').first()).toBeVisible()
     await expect(page.locator('.detail-modal .detail-empty-hint')).not.toBeVisible()
   })
 

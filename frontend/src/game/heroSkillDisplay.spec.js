@@ -14,7 +14,7 @@ describe('heroSkillDisplay', () => {
   it('getHeroSkillDisplay resolves Druid fixed and level skills', () => {
     const druid = { class: 'Druid', skillEnhancements: {} }
     expect(getHeroSkillDisplay('rejuvenation', druid).name).toBe('\u56de\u6625\u672f')
-    expect(getHeroSkillDisplay('maul', druid).name).toBe('\u91cd\u6bb7')
+    expect(getHeroSkillDisplay('maul', druid).name).toBe('\u91cd\u6bb4')
     expect(getHeroSkillDisplay('bear-form', druid).manaCost).toBe(8)
   })
 
