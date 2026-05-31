@@ -564,6 +564,14 @@ export const SKILL_NAME_MAP = {
     'flash-heal': '快速治疗',
     'power-word-shield': '真言术：盾',
   },
+  Druid: {
+    'basic-attack': '普通攻击',
+    'rejuvenation': '回春术',
+    'maul': '重殴',
+    'bear-form': '熊形态',
+    'regrowth': '愈合',
+    'rake': '斜掠',
+  },
 }
 
 function getSkillNameMap(heroClass, skillIds) {

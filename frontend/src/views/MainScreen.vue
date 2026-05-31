@@ -1764,7 +1764,7 @@
               @click="heroDetailTab = 'skills'"
             >技能</button>
             <button
-              v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0"
+              v-if="heroClassHasSkillDetailPanel(selectedHero.class) && heroSkillIds(selectedHero).length > 0"
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'tactics' }"
@@ -1922,10 +1922,10 @@
               </button>
               <span class="detail-skill-choice-banner-hint tooltip-wrap has-tip">
                 若曾跳过升级时的技能窗口，可在此完成选择
-                <span class="tooltip-text tooltip-below">战士与法师在 5、10、15 级等可强化或学习新技能；关闭或跳过弹窗后仍可在此继续。</span>
+                <span class="tooltip-text tooltip-below">战士、法师、牧师与德鲁伊在 3、6、10 级等里程碑可强化或学习新技能；关闭或跳过弹窗后仍可在此继续。</span>
               </span>
             </div>
-            <template v-if="(selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest') && heroSkillIds(selectedHero).length > 0">
+            <template v-if="heroClassHasSkillDetailPanel(selectedHero.class) && heroSkillIds(selectedHero).length > 0">
               <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
                   <span class="detail-label">{{ getHeroSkillDisplay(skillId, selectedHero).name }}</span>
@@ -1949,7 +1949,7 @@
             <div v-else class="detail-empty-hint">尚未学习技能。</div>
           </div>
           <div v-show="heroDetailTab === 'tactics'" class="detail-tab-pane">
-            <template v-if="selectedHero.class === 'Warrior' || selectedHero.class === 'Mage' || selectedHero.class === 'Priest'">
+            <template v-if="heroClassHasSkillDetailPanel(selectedHero.class)">
               <div class="detail-sep-line">AI 战术配置</div>
               <div class="detail-section ai-tactics-section" data-testid="ai-tactics-section">
                 <div v-if="aiTacticsShowKey" class="ai-tactics-key-block">
@@ -1987,7 +1987,9 @@
                     ? '例：先给自己上盾，然后治疗血量最低的队友；队友血量低于40%时才治疗'
                     : selectedHero.class === 'Warrior'
                       ? '例：先嘲讽，再破甲，目标选坦克仇恨最低的怪；盾牌猛击仅在目标有破甲减益时使用'
-                      : '例：先放火球术，再用奥术冲击；优先攻击血量最低的敌人'"
+                      : selectedHero.class === 'Druid'
+                        ? '例：先给血量最低的队友上回春术，再用重殴；熊形态在自身血量低于50%时使用'
+                        : '例：先放火球术，再用奥术冲击；优先攻击血量最低的敌人'"
                   rows="3"
                   :disabled="aiTacticsLoading"
                   @keydown.ctrl.enter="aiTacticsSubmit(selectedHero)"
@@ -2405,7 +2407,7 @@ import {
   planBattleXpDistribution,
 } from '../game/experience.js'
 import { hpBarColor } from '../ui/hpBarColor.js'
-import { getAnyWarriorSkillById, getSkillWithEnhancements, tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
+import { tickDebuffs, getEffectiveArmor } from '../game/warriorSkills.js'
 import { TACTICS_TARGET_RULE_INHERIT, getSkillPriority } from '../game/tactics.js'
 import {
   ENEMY_TARGET_L1,
@@ -2431,14 +2433,12 @@ function getMonsterArmorTooltip(unit) {
   }
   return `\u6bcf\u6b21\u53d7\u51fb\u5438\u6536 ${effective} \u7269\u7406\u4f24\u5bb3`
 }
-import { getAnyMageSkillById, getMageSkillWithEnhancements } from '../game/mageSkills.js'
+import { tickShieldDuration } from '../game/priestSkills.js'
 import {
-  getPriestSkillById,
-  getAnyPriestSkillById,
-  getPriestSkillWithEnhancements,
-  isPriestAllyTargetSkill,
-  tickShieldDuration,
-} from '../game/priestSkills.js'
+  heroClassHasSkillDetailPanel,
+  getHeroSkillDisplay,
+  skillTargetsAlliesForHero,
+} from '../game/heroSkillDisplay.js'
 import {
   getHeroSkillIds,
   hasSkillChoiceAtLevel,
@@ -3914,7 +3914,7 @@ function tacticsDefaultTargetOptions() {
 }
 
 function skillTargetsAllies(skillId, hero) {
-  return hero?.class === 'Priest' && isPriestAllyTargetSkill(skillId)
+  return skillTargetsAlliesForHero(skillId, hero)
 }
 
 function showWarriorTankTargetFallback(hero, skillId) {
@@ -4191,32 +4191,6 @@ function conditionValueAsPercent(val) {
   if (val == null) return 30
   const n = typeof val === 'number' ? val : parseFloat(val)
   return Math.round((Number.isNaN(n) ? 0.3 : n) * 100)
-}
-
-function getHeroSkillDisplay(skillId, hero = null) {
-  if (skillId === 'basic-attack') {
-    return { name: '普通攻击', spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
-  }
-  const heroClass = hero?.class
-  if (heroClass === 'Warrior') {
-    const base = getAnyWarriorSkillById(skillId)
-    if (!base) return { name: skillId, spec: '', effectDesc: '', rageCost: 0 }
-    const enhanced = hero ? getSkillWithEnhancements(hero, skillId) : null
-    return enhanced ?? base
-  }
-  if (heroClass === 'Mage') {
-    const base = getAnyMageSkillById(skillId)
-    if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
-    const enhanced = hero ? getMageSkillWithEnhancements(hero, skillId) : null
-    return enhanced ?? base
-  }
-  if (heroClass === 'Priest') {
-    const base = getAnyPriestSkillById(skillId)
-    if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
-    const enhanced = hero ? getPriestSkillWithEnhancements(hero, skillId) : null
-    return enhanced ?? base
-  }
-  return getAnyWarriorSkillById(skillId) ?? getAnyMageSkillById(skillId) ?? getAnyPriestSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '', rageCost: 0, manaCost: 0 }
 }
 
 function getPrimaryAttrFullTip(attrKey) {
