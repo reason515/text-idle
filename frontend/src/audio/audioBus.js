@@ -55,6 +55,7 @@ const SAMPLE_MANIFEST = {
   mapEntryStranglethorn: ['/audio/sfx/fs_map_stranglethorn.ogg'],
   levelUp: ['/audio/sfx/fs_level_up.ogg'],
   lootDrop: ['/audio/sfx/fs_loot_drop.ogg'],
+  monsterTargetSwitch: ['/audio/sfx/fs_monster_target_switch.ogg'],
   hpRegen: ['/audio/sfx/fs_skill_heal.wav'],
   mpRegen: ['/audio/sfx/fs_skill_shield.wav'],
 }
@@ -87,6 +88,7 @@ const SAMPLE_MAX_DURATION_SEC = {
   mapEntryStranglethorn: 4.4,
   levelUp: 1.7,
   lootDrop: 1.2,
+  monsterTargetSwitch: 0.35,
   hpRegen: 0.65,
   mpRegen: 0.55,
 }
@@ -781,6 +783,45 @@ function scheduleDodge(ctx) {
   g.connect(ctx.destination)
   noiseSrc.start(t)
   noiseSrc.stop(t + 0.062)
+}
+
+/**
+ * Monster target switch cue (intent line / OT alert).
+ * @param {AudioContext} ctx
+ */
+function scheduleMonsterTargetSwitch(ctx) {
+  const master = Math.max(0, Math.min(1, getAudioMasterVolume()))
+  if (master <= 0) return
+  const t = ctx.currentTime
+  const noiseBuf = getImpactNoiseBuffer(ctx)
+  const noiseSrc = ctx.createBufferSource()
+  noiseSrc.buffer = noiseBuf
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.setValueAtTime(900, t)
+  hp.frequency.exponentialRampToValueAtTime(1800, t + 0.04)
+  hp.Q.setValueAtTime(0.8, t)
+  const ng = ctx.createGain()
+  ng.gain.setValueAtTime(FLOOR, t)
+  ng.gain.linearRampToValueAtTime(0.18 * master, t + 0.003)
+  ng.gain.exponentialRampToValueAtTime(FLOOR, t + 0.08)
+  noiseSrc.connect(hp)
+  hp.connect(ng)
+  ng.connect(ctx.destination)
+  noiseSrc.start(t)
+  noiseSrc.stop(t + 0.085)
+  const ping = ctx.createOscillator()
+  ping.type = 'sine'
+  ping.frequency.setValueAtTime(620, t)
+  ping.frequency.exponentialRampToValueAtTime(420, t + 0.06)
+  const pg = ctx.createGain()
+  pg.gain.setValueAtTime(FLOOR, t)
+  pg.gain.linearRampToValueAtTime(0.08 * master, t + 0.004)
+  pg.gain.exponentialRampToValueAtTime(FLOOR, t + 0.07)
+  ping.connect(pg)
+  pg.connect(ctx.destination)
+  ping.start(t)
+  ping.stop(t + 0.075)
 }
 
 /**
@@ -1546,6 +1587,10 @@ function playSkillCategory(ctx, category, gainScale = 1) {
 export function playCombatLogLineSound(entry) {
   if (!canPlayCombatSfx()) return
   if (entry == null || entry.type === 'manaRegenBatch' || entry.type === 'unitDefeated') return
+  if (entry.type === 'monsterTargetIntent' || entry.type === 'ot') {
+    playMonsterTargetSwitchSound()
+    return
+  }
   const ctx = getOrCreateAudioContext()
   if (!ctx) return
   preloadSamples(ctx)
@@ -1745,6 +1790,18 @@ export function playLootDropSound() {
 }
 
 /**
+ * Monster target switch (`monsterTargetIntent` or non-redundant `ot` log lines).
+ */
+export function playMonsterTargetSwitchSound() {
+  if (!canPlayCombatSfx()) return
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  preloadSamples(ctx)
+  if (!tryPlaySample(ctx, 'monsterTargetSwitch', 0.68)) scheduleMonsterTargetSwitch(ctx)
+  resumeContextIfNeeded(ctx)
+}
+
+/**
  * Physical hit only (backward compat + tests).
  * @param {{ isCrit?: boolean }} opts
  */
@@ -1817,6 +1874,9 @@ function playCategoryForPreview(ctx, category) {
       return
     case 'lootDrop':
       if (!tryPlaySample(ctx, 'lootDrop', 0.85)) scheduleLootDrop(ctx)
+      return
+    case 'monsterTargetSwitch':
+      if (!tryPlaySample(ctx, 'monsterTargetSwitch', 0.68)) scheduleMonsterTargetSwitch(ctx)
       return
     case 'hpRegen':
       if (!tryPlaySample(ctx, 'hpRegen', 0.58)) scheduleSkillHealSynth(ctx, 0.55)

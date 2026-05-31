@@ -29,6 +29,15 @@ See `.env.example` for required variables. Playback may trim long files per cate
 | `fs_defeat.wav` | 253174 Retro You Lose SFX | see Freesound page | https://freesound.org/s/253174/ |
 | `fs_level_up.ogg` | 442943 Level Up | qubodup | https://freesound.org/s/442943/ |
 | `fs_loot_drop.ogg` | 735168 Item Pickup Chime | Irolan | https://freesound.org/s/735168/ |
+| `fs_monster_target_switch.ogg` | 786514 swoosh_v2 | migoreng1 | https://freesound.org/s/786514/ |
+
+## Monster target switch SFX (`monsterTargetIntent` / `ot` log lines)
+
+Playback: `playMonsterTargetSwitchSound()` via `playCombatLogLineSound(entry)` when the log line is revealed.
+
+| Manifest key | Local file | When |
+|--------------|------------|------|
+| `monsterTargetSwitch` | `fs_monster_target_switch.ogg` | Stable target intent changes (`monsterTargetIntent`); OT line when not redundant with intent |
 
 ## Unit defeated SFX (`unitDefeated` log line)
 
@@ -70,7 +79,7 @@ Playback: `playCombatRegenBatchSound(entry)` when the regen batch log line is re
 | `hpRegen` | `fs_skill_heal.wav` | Equipment HP regen at round end (`hpRegenBatch`) |
 | `mpRegen` | `fs_skill_shield.wav` | Spirit + equipment MP regen (`manaRegenBatch`) |
 
-Note: `fs_skill_taunt.mp3`, `fs_skill_frost.ogg`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, `fs_monster_death.ogg`, `fs_map_elwynn.ogg`, `fs_map_westfall.ogg`, `fs_map_duskwood.ogg`, `fs_map_redridge.ogg`, and `fs_map_stranglethorn.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
+Note: `fs_skill_taunt.mp3`, `fs_skill_frost.ogg`, `fs_level_up.ogg`, `fs_loot_drop.ogg`, `fs_monster_target_switch.ogg`, `fs_phys_crit.ogg`, `fs_magic_hit.ogg`, `fs_magic_crit.ogg`, `fs_dot_phys.ogg`, `fs_dot_magic.ogg`, `fs_encounter.ogg`, `fs_encounter_boss.ogg`, `fs_hero_death.ogg`, `fs_monster_death.ogg`, `fs_map_elwynn.ogg`, `fs_map_westfall.ogg`, `fs_map_duskwood.ogg`, `fs_map_redridge.ogg`, and `fs_map_stranglethorn.ogg` are CC0 HQ previews from the Freesound CDN when OAuth download is unavailable. Other skill files are OAuth originals.
 
 ## Progression and loot SFX
 

@@ -35,6 +35,7 @@ export const SFX_PREVIEW_GROUPS = [
       { category: 'encounterBoss', label: 'BOSS \u906d\u9047' },
       { category: 'heroDeath', label: '\u82f1\u96c4\u9635\u4ea1' },
       { category: 'monsterDeath', label: '\u602a\u7269\u9635\u4ea1' },
+      { category: 'monsterTargetSwitch', label: '\u602a\u7269\u76ee\u6807\u5207\u6362' },
     ],
   },
   {

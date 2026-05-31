@@ -69,6 +69,7 @@ $files = [ordered]@{
     fs_skill_shield = 570853
     fs_level_up     = 442943
     fs_loot_drop    = 735168
+    fs_monster_target_switch = 786514
     fs_map_elwynn       = 624092
     fs_map_westfall     = 348190
     fs_map_duskwood     = 578362

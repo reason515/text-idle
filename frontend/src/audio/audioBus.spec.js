@@ -23,6 +23,7 @@ import {
   playCombatVictorySound,
   playLevelUpSound,
   playLootDropSound,
+  playMonsterTargetSwitchSound,
   playMapEntrySound,
   playSfxPreview,
   preloadSamples,
@@ -352,6 +353,38 @@ describe('audioBus', () => {
     ctx.createOscillator.mockClear()
     ctx.createBufferSource.mockClear()
     playLootDropSound()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('plays monster target switch synthesis when no samples loaded', () => {
+    playMonsterTargetSwitchSound()
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createOscillator).toHaveBeenCalled()
+  })
+
+  it('uses monster target switch sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.3, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_monster_target_switch.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playMonsterTargetSwitchSound()
+    expect(ctx.createBufferSource).toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
+  it('playCombatLogLineSound monsterTargetIntent uses target switch sample when cached', () => {
+    const ctx = getOrCreateAudioContext()
+    const fakeBuffer = { duration: 0.3, sampleRate: 48000 }
+    __setSampleBufferForTests('/audio/sfx/fs_monster_target_switch.ogg', fakeBuffer)
+    ctx.createOscillator.mockClear()
+    ctx.createBufferSource.mockClear()
+    playCombatLogLineSound({
+      type: 'monsterTargetIntent',
+      monsterId: 'm1',
+      newTargetId: 'h1',
+    })
     expect(ctx.createBufferSource).toHaveBeenCalled()
     expect(ctx.createOscillator).not.toHaveBeenCalled()
   })
