@@ -45,7 +45,7 @@
 | **与休息步一致** | 战后休息**每一步**在日志中的 reveal 间隔，须与**本条**「每条日志步骤间隔」使用**同一毫秒值**（单一配置源），使统计上的**战斗行动步**与**休息步**在观感上等长；设计依据见 [13-player-statistics.md](./13-player-statistics.md) 7.5。实现上 `COMBAT_PACING_MS.restStepReveal` 应与 `getCombatLogStepDelayMs()` 对齐（或其一派生自另一）。 |
 | **其他正式服节奏** | 地图切换分隔、地图描述展示、遭遇信息、战败后间隔、战后循环间隔等毫秒数集中在 `frontend/src/game/combatPacing.js` 的 `COMBAT_PACING_MS`（与回合结算逻辑无关，仅 UI 表现）。 |
 | **E2E** | 自动化测试通过 `localStorage` 键 `e2eFastCombat=1` 或 URL 查询 `?e2e=1` 进入快速模式；`applyCombatPacingDelayMs` 对上述正式服毫秒数与日志步骤间隔一律返回 **0ms**，与玩家正式运行时的节奏**明确区分**（不依赖 `navigator.webdriver` 等隐式检测）。**例外**：战败结算小结出现后、进入战后休息前的真实停顿长度由 **`getDefeatBeforeRestPauseMs()`** 单独供给（正式服仍等价于 `COMBAT_PACING_MS.defeatBeforeRest`；快速模式下为约 **520ms**），避免因 `autoRest` 瞬时清空遭遇/回血导致界面留不住「阵亡态」而产生自动化竞态或难以人工观察的细节帧。 |
-| **音效（表现层）** | 与每条战斗日志揭示**同一时刻**触发短音（遭遇、物理 / 魔法 / 混合 / 闪避 / DoT / 胜负结算等按设计区分）；**遭遇**行与 `playCombatEncounterSound` 同步；扣血条件与伤害飘字一致。**阵亡**：致死伤害/DoT 行揭示后，**再占用一步**间隔揭示 `DEFEATED!` 行，并按我方/敌方播放 `heroDeath` / `monsterDeath`。**目标切换**（`monsterTargetIntent` / 非冗余 `ot`）同步卡片琥珀扫描/聚焦动效（见 [09-social-ui.md](./09-social-ui.md)）。**E2E 快速模式**与**浏览器标签页不可见**时不播放（`isE2eFastMode()`、`document.visibilityState`）。详见 [14-audio.md](./14-audio.md)。 |
+| **音效（表现层）** | 与每条战斗日志揭示**同一时刻**触发短音（遭遇、物理 / 魔法 / 混合 / 闪避 / DoT / 胜负结算等按设计区分）；**遭遇**行与 `playCombatEncounterSound` 同步；扣血条件与伤害飘字一致。**阵亡**：致死伤害/DoT 行揭示后，**再占用一步**间隔揭示 `DEFEATED!` 行，并按我方/敌方播放 `heroDeath` / `monsterDeath`。**目标切换**（`monsterTargetIntent` / 非冗余 `ot`）同步怪物卡「目标」行姓名切换动效（见 [09-social-ui.md](./09-social-ui.md)）。**E2E 快速模式**与**浏览器标签页不可见**时不播放（`isE2eFastMode()`、`document.visibilityState`）。详见 [14-audio.md](./14-audio.md)。 |
 
 ---
 

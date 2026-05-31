@@ -1,18 +1,67 @@
-/** Card pulse duration (ms) when monster attack target changes. */
-export const TARGET_SWITCH_PULSE_MS = 750
+/** Target row name-swap animation duration (ms). */
+export const TARGET_SWITCH_PULSE_MS = 900
+
+/**
+ * @typedef {object} TargetSwitchAnim
+ * @property {string | null} monsterId
+ * @property {string | null} heroId
+ * @property {string | null} previousTargetName
+ * @property {string | null} previousTargetClass
+ * @property {string} newTargetName
+ * @property {string | null} newTargetClass
+ */
+
+/**
+ * @param {object | null | undefined} entry
+ * @returns {TargetSwitchAnim | null}
+ */
+export function resolveTargetSwitchAnim(entry) {
+  if (entry?.type !== 'monsterTargetIntent' && entry?.type !== 'ot') return null
+  const monsterId = entry.monsterId ?? null
+  const heroId = entry.newTargetId ?? null
+  const newTargetName = entry.newTargetName ?? ''
+  if (!monsterId && !heroId) return null
+  if (!newTargetName && !heroId) return null
+  return {
+    monsterId,
+    heroId,
+    previousTargetName: entry.previousTargetName ?? null,
+    previousTargetClass: entry.previousTargetClass ?? null,
+    newTargetName,
+    newTargetClass: entry.newTargetClass ?? null,
+  }
+}
 
 /**
  * @param {object | null | undefined} entry
  * @returns {{ monsterId: string, heroId: string } | null}
  */
 export function resolveTargetSwitchPulseUnits(entry) {
-  if (entry?.type === 'monsterTargetIntent' || entry?.type === 'ot') {
-    const monsterId = entry.monsterId ?? null
-    const heroId = entry.newTargetId ?? null
-    if (!monsterId && !heroId) return null
-    return { monsterId, heroId }
-  }
-  return null
+  const anim = resolveTargetSwitchAnim(entry)
+  if (!anim) return null
+  return { monsterId: anim.monsterId, heroId: anim.heroId }
+}
+
+/**
+ * @param {Record<string, TargetSwitchAnim>} prev
+ * @param {TargetSwitchAnim} anim
+ * @returns {Record<string, TargetSwitchAnim>}
+ */
+export function applyTargetSwitchAnimPatch(prev, anim) {
+  if (!anim.monsterId) return prev
+  return { ...prev, [anim.monsterId]: anim }
+}
+
+/**
+ * @param {Record<string, TargetSwitchAnim>} prev
+ * @param {string | null | undefined} monsterId
+ * @returns {Record<string, TargetSwitchAnim>}
+ */
+export function clearTargetSwitchAnimPatch(prev, monsterId) {
+  if (!monsterId) return prev
+  const next = { ...prev }
+  delete next[monsterId]
+  return next
 }
 
 /**

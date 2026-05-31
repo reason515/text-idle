@@ -142,7 +142,7 @@
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
             class="monster-card card-with-float"
-            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0, 'monster-card-target-switch': getTargetSwitchPulseRole(m.id) === 'monster' }"
+            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0 }"
             @click="selectedMonster = m"
           >
             <div
@@ -161,17 +161,34 @@
             </div>
             <div class="card-meta-row">
               <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
-              <div v-if="monsterTargets[m.id]" class="monster-target-row tooltip-wrap has-tip" :class="{ 'monster-target-row-switch': getTargetSwitchPulseRole(m.id) === 'monster' }">
+              <div
+                v-if="monsterTargets[m.id]"
+                class="monster-target-row tooltip-wrap has-tip"
+                :class="{ 'monster-target-row-switch': !!getTargetSwitchAnim(m.id) }"
+              >
                 <span class="monster-target-label">目标</span>
-                <span class="monster-target">
+                <span class="monster-target-value">
+                  <template v-if="getTargetSwitchAnim(m.id)">
+                    <span
+                      v-if="getTargetSwitchAnim(m.id).previousTargetName"
+                      class="monster-target-from"
+                      :style="monsterTargetDisplayStyle(getTargetSwitchAnim(m.id).previousTargetClass, null)"
+                    >{{ getTargetSwitchAnim(m.id).previousTargetName }}</span>
+                    <span
+                      v-if="getTargetSwitchAnim(m.id).previousTargetName"
+                      class="monster-target-arrow"
+                      aria-hidden="true"
+                    >&rarr;</span>
+                    <span
+                      class="monster-target-to"
+                      :class="{ 'monster-target-to-first': !getTargetSwitchAnim(m.id).previousTargetName }"
+                      :style="monsterTargetDisplayStyle(getTargetSwitchAnim(m.id).newTargetClass, monsterTargets[m.id].targetTier)"
+                    >{{ getTargetSwitchAnim(m.id).newTargetName }}</span>
+                  </template>
                   <span
-                    :style="{
-                      color: monsterTargets[m.id].targetClass
-                        ? classColor(monsterTargets[m.id].targetClass)
-                        : monsterTargets[m.id].targetTier
-                          ? monsterTierColor(monsterTargets[m.id].targetTier)
-                          : 'var(--text-muted)',
-                    }"
+                    v-else
+                    class="monster-target-current"
+                    :style="monsterTargetDisplayStyle(monsterTargets[m.id].targetClass, monsterTargets[m.id].targetTier)"
                   >{{ monsterTargets[m.id].targetName }}</span>
                 </span>
                 <span class="tooltip-text">{{ monsterTargets[m.id].targetName }}</span>
@@ -2447,9 +2464,11 @@ import {
 import { monsterTargetPatchForTauntEntry, monsterTargetPatchForIntentEntry } from '../ui/monsterTargetFromCombatEntry.js'
 import {
   TARGET_SWITCH_PULSE_MS,
+  applyTargetSwitchAnimPatch,
   applyTargetSwitchPulsePatch,
+  clearTargetSwitchAnimPatch,
   clearTargetSwitchPulsePatch,
-  resolveTargetSwitchPulseUnits,
+  resolveTargetSwitchAnim,
 } from '../ui/combatTargetSwitchPulse.js'
 import {
   parseNaturalLanguageTactics,
@@ -2862,6 +2881,8 @@ const regenPulseByUnitId = ref({})
 const levelUpPulseByHeroId = ref({})
 /** @type {import('vue').Ref<Record<string, 'monster' | 'hero'>>} */
 const targetSwitchPulseByUnitId = ref({})
+/** @type {import('vue').Ref<Record<string, import('../ui/combatTargetSwitchPulse.js').TargetSwitchAnim>>} */
+const targetSwitchAnimByMonsterId = ref({})
 let floatNumId = 0
 
 const REGEN_HERO_STAGGER_MS = 200
@@ -2943,13 +2964,39 @@ function getTargetSwitchPulseRole(unitId) {
   return targetSwitchPulseByUnitId.value[unitId] ?? null
 }
 
+function getTargetSwitchAnim(monsterId) {
+  return targetSwitchAnimByMonsterId.value[monsterId] ?? null
+}
+
+function monsterTargetDisplayStyle(targetClass, targetTier) {
+  return {
+    color: targetClass
+      ? classColor(targetClass)
+      : targetTier
+        ? monsterTierColor(targetTier)
+        : 'var(--text-muted)',
+  }
+}
+
 function triggerTargetSwitchPulse(entry) {
-  const units = resolveTargetSwitchPulseUnits(entry)
-  if (!units || isCombatUiDeferred()) return
-  targetSwitchPulseByUnitId.value = applyTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, units)
-  setTimeout(() => {
-    targetSwitchPulseByUnitId.value = clearTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, units)
-  }, TARGET_SWITCH_PULSE_MS)
+  const anim = resolveTargetSwitchAnim(entry)
+  if (!anim || isCombatUiDeferred()) return
+  if (anim.monsterId) {
+    targetSwitchAnimByMonsterId.value = applyTargetSwitchAnimPatch(targetSwitchAnimByMonsterId.value, anim)
+    setTimeout(() => {
+      targetSwitchAnimByMonsterId.value = clearTargetSwitchAnimPatch(
+        targetSwitchAnimByMonsterId.value,
+        anim.monsterId
+      )
+    }, TARGET_SWITCH_PULSE_MS)
+  }
+  if (anim.heroId) {
+    const heroUnits = { monsterId: null, heroId: anim.heroId }
+    targetSwitchPulseByUnitId.value = applyTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, heroUnits)
+    setTimeout(() => {
+      targetSwitchPulseByUnitId.value = clearTargetSwitchPulsePatch(targetSwitchPulseByUnitId.value, heroUnits)
+    }, TARGET_SWITCH_PULSE_MS)
+  }
 }
 
 function syncOneHeroDisplayAfterLevelUp(heroId) {
@@ -6053,29 +6100,7 @@ onUnmounted(() => {
     filter: brightness(1);
   }
 }
-/* Target switch: amber scan on monster (no lunge toward center). */
-@keyframes monster-target-switch-scan {
-  0% {
-    transform: translateY(0) rotate(0deg);
-    filter: brightness(1);
-  }
-  28% {
-    transform: translateY(-0.1rem) rotate(-1.4deg);
-    filter: brightness(1.1);
-  }
-  55% {
-    transform: translateY(0.05rem) rotate(1.1deg);
-    filter: brightness(1.14);
-  }
-  78% {
-    transform: translateY(-0.04rem) rotate(-0.5deg);
-    filter: brightness(1.06);
-  }
-  100% {
-    transform: translateY(0) rotate(0deg);
-    filter: brightness(1);
-  }
-}
+/* Target switch: hero card inward focus (secondary cue). */
 @keyframes hero-target-switch-focus {
   0% {
     transform: scale(1);
@@ -6090,17 +6115,70 @@ onUnmounted(() => {
     filter: brightness(1);
   }
 }
-@keyframes monster-target-row-flash {
-  0%,
+@keyframes monster-target-row-emphasis {
+  0% {
+    border-color: var(--border-dark);
+    background: var(--bg-dark);
+    box-shadow: none;
+    transform: scale(1);
+  }
+  18% {
+    border-color: var(--warning);
+    background: var(--bg-darker);
+    box-shadow: 0 0 12px var(--focus-glow);
+    transform: scale(1.04);
+  }
   100% {
     border-color: var(--border-dark);
     background: var(--bg-dark);
     box-shadow: none;
+    transform: scale(1);
   }
-  45% {
-    border-color: var(--warning);
-    background: var(--bg-darker);
-    box-shadow: 0 0 10px var(--focus-glow);
+}
+@keyframes monster-target-from-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120%);
+    filter: brightness(0.75);
+  }
+}
+@keyframes monster-target-arrow-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes monster-target-to-in {
+  0% {
+    opacity: 0;
+    transform: translateY(110%) scale(0.92);
+    filter: brightness(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1.18);
+  }
+}
+@keyframes monster-target-to-first-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+    filter: brightness(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1.15);
   }
 }
 /* Target hit: knockback away from center + squash + red flash (no forward lunge). */
@@ -7479,6 +7557,7 @@ onUnmounted(() => {
   font-size: var(--font-sm);
   color: var(--text-muted);
   min-width: 0;
+  max-width: 100%;
   padding: 0.12rem 0.4rem;
   background: var(--bg-dark);
   border: 1px solid var(--border-dark);
@@ -7487,11 +7566,52 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 .monster-target-row.monster-target-row-switch {
-  animation: monster-target-row-flash 0.75s ease-out;
+  animation: monster-target-row-emphasis 0.9s ease-out;
+  z-index: 1;
 }
 .monster-target-label {
   color: var(--text-label);
   flex-shrink: 0;
+}
+.monster-target-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.monster-target-current {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.monster-target-row-switch .monster-target-from {
+  min-width: 0;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: monster-target-from-out 0.34s ease-in forwards;
+}
+.monster-target-row-switch .monster-target-arrow {
+  color: var(--warning);
+  font-weight: bold;
+  flex-shrink: 0;
+  line-height: 1;
+  animation: monster-target-arrow-pop 0.35s ease-out 0.12s forwards;
+  opacity: 0;
+}
+.monster-target-row-switch .monster-target-to {
+  min-width: 0;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: bold;
+  opacity: 0;
+  animation: monster-target-to-in 0.52s ease-out 0.28s forwards;
+}
+.monster-target-row-switch .monster-target-to.monster-target-to-first {
+  animation: monster-target-to-first-in 0.55s ease-out forwards;
 }
 .monster-target {
   color: var(--text-muted);
@@ -7581,12 +7701,6 @@ onUnmounted(() => {
   transition: none;
   box-shadow: 0 0 0 2px var(--color-defeat), 0 0 20px rgba(255, 68, 68, 0.7), inset 0 0 0 1px var(--color-defeat);
   animation: monster-target-recoil 0.9s cubic-bezier(0.36, 0, 0.2, 1) forwards;
-}
-.monster-card.monster-card-target-switch {
-  z-index: 2;
-  transition: none;
-  animation: monster-target-switch-scan 0.75s ease-in-out forwards;
-  box-shadow: 0 0 0 2px var(--warning), 0 0 16px var(--focus-glow), inset 0 0 0 1px var(--warning);
 }
 .monster-card.defeated {
   opacity: 0.65;
