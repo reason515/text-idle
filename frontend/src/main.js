@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import './style.css'
+import { ensurePlayerSaveLoaded, getSquadData, getTeamName } from './game/playerSave.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,24 +28,26 @@ const router = createRouter({
   ],
 })
 
-function getSquad() {
-  try {
-    const raw = localStorage.getItem('squad')
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
 router.beforeEach(async (to, _from, next) => {
   const hasToken = !!localStorage.getItem('token')
-  const hasTeamName = !!localStorage.getItem('teamName')
-  const squad = getSquad()
 
   if (to.meta.requiresAuth && !hasToken) {
     next('/login')
     return
   }
+
+  if (hasToken && to.meta.requiresAuth) {
+    try {
+      await ensurePlayerSaveLoaded()
+    } catch {
+      next('/login')
+      return
+    }
+  }
+
+  const hasTeamName = !!getTeamName()
+  const squad = getSquadData()
+
   // First-time player (no team name) must complete intro before character select
   if (to.path === '/character-select' && hasToken && !hasTeamName) {
     next('/intro')

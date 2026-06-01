@@ -12,6 +12,9 @@ const {
   pauseCombat,
   updateStoredState,
   uniqueTestEmail,
+  mutatePlayerSave,
+  getPlayerSave,
+  flushPlayerSaveOnPage,
 } = require('./testHelpers')
 
 const SAMPLE_HELM = {
@@ -229,7 +232,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
     }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
         delete h.currentHP
@@ -262,7 +265,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
     }, SAMPLE_WEAPON_RANGE, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
         delete h.currentHP
@@ -306,7 +309,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
     }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
     await pauseCombat(page)
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
         delete h.currentHP
@@ -329,10 +332,9 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.item-equip-confirm-section').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
 
-    const equipment = await page.evaluate(() => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      return squad[0]?.equipment || {}
-    })
+    await flushPlayerSaveOnPage(page)
+    const save = await getPlayerSave(page)
+    const equipment = save.squad[0]?.equipment || {}
     expect(equipment.Ring1).toBeDefined()
     expect(equipment.Ring2).toBeDefined()
   })
@@ -364,11 +366,8 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.equip-replace-option').first().click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
 
-    const invCount = await page.evaluate(() => {
-      const inv = JSON.parse(localStorage.getItem('playerInventory') || '[]')
-      return inv.length
-    })
-    expect(invCount).toBeGreaterThanOrEqual(1)
+    const saveRing = await getPlayerSave(page)
+    expect(saveRing.inventory.length).toBeGreaterThanOrEqual(1)
   })
 
   test('equipping to occupied non-ring slot shows replace confirmation', async ({ page }) => {
@@ -419,14 +418,12 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
     await expect(page.locator('.item-detail-modal')).not.toBeVisible({ timeout: 5000 })
 
-    const result = await page.evaluate(() => {
-      const inv = JSON.parse(localStorage.getItem('playerInventory') || '[]')
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      return {
-        invIds: inv.map((item) => item.id),
-        equippedHelmId: squad[0]?.equipment?.Helm?.id,
-      }
-    })
+    await flushPlayerSaveOnPage(page)
+    const saveAfter = await getPlayerSave(page)
+    const result = {
+      invIds: saveAfter.inventory.map((item) => item.id),
+      equippedHelmId: saveAfter.squad[0]?.equipment?.Helm?.id,
+    }
     expect(result.equippedHelmId).toBe('test-helm-2')
     expect(result.invIds).toContain('test-helm-armor')
   })

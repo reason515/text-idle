@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/text-idle/text-idle/internal/handler"
+	"github.com/text-idle/text-idle/internal/middleware"
 	"github.com/text-idle/text-idle/internal/repository"
 	"github.com/text-idle/text-idle/internal/service"
 	"gorm.io/gorm"
@@ -20,6 +21,10 @@ func NewRouter(db *gorm.DB, staticFS fs.FS) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
+	saveRepo := repository.NewPlayerSaveRepository(db)
+	saveService := service.NewSaveService(saveRepo)
+	saveHandler := handler.NewSaveHandler(saveService)
+	authMw := middleware.AuthRequired(userRepo)
 
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
@@ -31,6 +36,8 @@ func NewRouter(db *gorm.DB, staticFS fs.FS) *gin.Engine {
 	r.GET("/health", func(c *gin.Context) { c.Status(200) })
 	r.POST("/register", authHandler.Register)
 	r.POST("/login", authHandler.Login)
+	r.GET("/save", authMw, saveHandler.Get)
+	r.PUT("/save", authMw, saveHandler.Put)
 
 	if staticFS != nil {
 		sub, err := fs.Sub(staticFS, "web")

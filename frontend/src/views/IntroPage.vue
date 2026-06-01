@@ -173,6 +173,7 @@ import { getMageSkillById } from '../game/mageSkills.js'
 import { getPriestSkillById } from '../game/priestSkills.js'
 import { getLevelSkillById } from '../game/warriorLevelSkills.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
+import { setTeamName, flushPlayerSave } from '../game/playerSave.js'
 
 const PRIMARY_ATTR_LABELS = {
   strength: '力量',
@@ -269,7 +270,7 @@ function secondaryAttrsFor(hero) {
     .map((f) => ({ key: f.key, label: f.label, value: f.value }))
 }
 
-function goToHeroPreview() {
+async function goToHeroPreview() {
   const name = teamName.value.trim()
   if (!name) {
     error.value = '请输入队伍名称'
@@ -280,15 +281,17 @@ function goToHeroPreview() {
     return
   }
   error.value = ''
-  localStorage.setItem('teamName', name)
+  setTeamName(name)
+  await flushPlayerSave()
   step.value = 3
 }
 
-function startAdventure() {
+async function startAdventure() {
   const squad = createFixedTrioSquad()
   if (squad.length > 0) {
     saveSquad(squad)
   }
+  await flushPlayerSave()
   router.push('/main')
 }
 </script>

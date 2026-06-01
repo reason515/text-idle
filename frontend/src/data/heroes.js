@@ -7,6 +7,7 @@
  */
 
 import { getEquipmentBonuses, createStarterWhiteItem } from '../game/equipment.js'
+import { getSquadData, setSquadData } from '../game/playerSave.js'
 import { PHYS_MULTIPLIER_K, SPELL_MULTIPLIER_K } from '../game/damageUtils.js'
 import { ensureSkillMilestonesResolvedMigrated, markSkillMilestoneResolved } from '../game/skillChoice.js'
 import { fmtTipNum } from '../utils/formulaTip.js'
@@ -808,8 +809,7 @@ export const SQUAD_STORAGE_KEY = 'squad'
 
 export function getSquad() {
   try {
-    const raw = localStorage.getItem(SQUAD_STORAGE_KEY)
-    const squad = raw ? JSON.parse(raw) : []
+    const squad = getSquadData()
     let changed = false
     for (const h of squad) {
       if (!Array.isArray(h?.skillMilestonesResolved)) {
@@ -818,7 +818,7 @@ export function getSquad() {
       }
     }
     if (changed) {
-      localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
+      setSquadData(squad)
     }
     return squad
   } catch {
@@ -830,7 +830,7 @@ export function saveSquad(squad) {
   for (const h of squad) {
     ensureSkillMilestonesResolvedMigrated(h)
   }
-  localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
+  setSquadData(squad)
 }
 
 /**

@@ -54,7 +54,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { PLAYER_STATS_STORAGE_KEY } from '../game/playerStatistics.js'
+import { resetPlayerSaveOnServer, clearLegacyLocalSaveKeys } from '../game/playerSave.js'
 
 const router = useRouter()
 const email = ref('')
@@ -108,13 +108,8 @@ async function submit() {
       if (data.token) {
         localStorage.setItem('token', data.token)
       }
-      // Clear any existing game data for new user
-      localStorage.removeItem('teamName')
-      localStorage.removeItem('squad')
-      localStorage.removeItem('combatProgress')
-      localStorage.removeItem('playerGold')
-      localStorage.removeItem('playerInventory')
-      localStorage.removeItem(PLAYER_STATS_STORAGE_KEY)
+      clearLegacyLocalSaveKeys()
+      await resetPlayerSaveOnServer()
       router.push('/intro')
     } else {
       if (res.status === 409) {

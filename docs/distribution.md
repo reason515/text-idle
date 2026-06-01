@@ -20,7 +20,7 @@ npm run package:dist  # 构建并打成 zip 包
    - 浏览器打开 http://localhost:8080
    - 注册账号即可试玩
 
-存档保存在同目录下的 `text-idle.db`。
+存档保存在同目录下的 `text-idle.db`（账号与游戏进度均绑定服务端；浏览器仅保留登录 token 与 UI 偏好设置）。
 
 ## 跨平台构建（可选）
 

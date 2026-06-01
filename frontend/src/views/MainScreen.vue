@@ -2568,7 +2568,6 @@ import {
 } from '../audio/audioPreferences.js'
 import {
   MAX_BATTLE_TIMELINE_ENTRIES,
-  PLAYER_STATS_STORAGE_KEY,
   applyBattleToPlayerStats,
   applyRestToPlayerStats,
   createEmptyPlayerStats,
@@ -2579,6 +2578,14 @@ import {
   scaledPerStep,
   xpPerExplorationStep,
 } from '../game/playerStatistics.js'
+import {
+  getTeamName,
+  getCombatProgressData,
+  setCombatProgressData,
+  getPlayerStatsData,
+  setPlayerStatsData,
+  clearPlayerSaveCache,
+} from '../game/playerSave.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
@@ -2833,7 +2840,7 @@ function formatLogActionName(entry) {
 }
 
 const router = useRouter()
-const squadDisplayName = computed(() => localStorage.getItem('teamName')?.trim() || '小队')
+const squadDisplayName = computed(() => getTeamName()?.trim() || '小队')
 const currentSkillChoice = computed(() => pendingSkillChoices.value[0] ?? null)
 const squad = ref([])
 const displayHeroes = ref([])
@@ -3720,12 +3727,7 @@ watch(playerStatsModalTab, () => {
 
 function loadPlayerStats() {
   try {
-    const raw = localStorage.getItem(PLAYER_STATS_STORAGE_KEY)
-    if (!raw) {
-      playerStats.value = createEmptyPlayerStats()
-      return
-    }
-    playerStats.value = normalizePlayerStats(JSON.parse(raw))
+    playerStats.value = normalizePlayerStats(getPlayerStatsData())
   } catch {
     playerStats.value = createEmptyPlayerStats()
   }
@@ -3733,7 +3735,7 @@ function loadPlayerStats() {
 
 function savePlayerStats() {
   try {
-    localStorage.setItem(PLAYER_STATS_STORAGE_KEY, JSON.stringify(playerStats.value))
+    setPlayerStatsData(playerStats.value)
   } catch {
     /* ignore */
   }
@@ -3781,14 +3783,13 @@ function setHeroAsTank(hero, checked) {
 }
 function loadProgress() {
   try {
-    const raw = localStorage.getItem(COMBAT_PROGRESS_KEY)
-    progress.value = raw ? JSON.parse(raw) : createInitialProgress()
+    progress.value = getCombatProgressData()
   } catch {
     progress.value = createInitialProgress()
   }
 }
 function saveProgress() {
-  localStorage.setItem(COMBAT_PROGRESS_KEY, JSON.stringify(progress.value))
+  setCombatProgressData(progress.value)
 }
 
 function selectMap(mapId) {
@@ -4303,6 +4304,7 @@ function waitForRecruitPromptChoice() {
 }
 function logout() {
   localStorage.removeItem('token')
+  clearPlayerSaveCache()
   router.push('/login')
 }
 

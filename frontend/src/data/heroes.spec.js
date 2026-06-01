@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   HEROES,
   CLASS_COLORS,
   CLASS_INFO,
   CLASS_COEFFICIENTS,
   MAX_SQUAD_SIZE,
-  SQUAD_STORAGE_KEY,
   getSquad,
   saveSquad,
   getSquadMaxLevel,
@@ -27,16 +26,12 @@ import {
   LEVEL_HP_PER_LEVEL,
   LEVEL_MP_PER_LEVEL,
 } from './heroes.js'
+import { resetPlayerSaveForTests, setPlayerSaveMemoryOnly } from '../game/playerSave.js'
 
-const storage = {}
 describe('heroes', () => {
   beforeEach(() => {
-    vi.stubGlobal('localStorage', {
-      getItem: (k) => storage[k] ?? null,
-      setItem: (k, v) => { storage[k] = String(v) },
-      removeItem: (k) => { delete storage[k] },
-    })
-    delete storage[SQUAD_STORAGE_KEY]
+    setPlayerSaveMemoryOnly(true)
+    resetPlayerSaveForTests()
   })
 
   describe('getSquad', () => {
@@ -44,15 +39,10 @@ describe('heroes', () => {
       expect(getSquad()).toEqual([])
     })
 
-    it('returns parsed squad when valid JSON stored', () => {
+    it('returns parsed squad when valid data stored', () => {
       const squad = [{ id: 'varian', name: '瓦里安·乌瑞恩', class: 'Warrior' }]
-      localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(squad))
+      saveSquad(squad)
       expect(getSquad()).toEqual([{ ...squad[0], skillMilestonesResolved: [] }])
-    })
-
-    it('returns empty array when stored value is invalid JSON', () => {
-      localStorage.setItem(SQUAD_STORAGE_KEY, 'invalid')
-      expect(getSquad()).toEqual([])
     })
   })
 

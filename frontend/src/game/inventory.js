@@ -7,6 +7,7 @@
  */
 
 import { addGold } from './gold.js'
+import { getInventoryData, setInventoryData } from './playerSave.js'
 import { QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE, QUALITY_UNIQUE } from './equipment.js'
 
 export const INVENTORY_MAX = 100
@@ -17,14 +18,8 @@ const STORAGE_KEY = 'playerInventory'
  * @returns {Array} Array of equipment items (max 100)
  */
 export function getInventory() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  const parsed = getInventoryData()
+  return Array.isArray(parsed) ? parsed : []
 }
 
 /**
@@ -32,7 +27,7 @@ export function getInventory() {
  * @param {Array} items
  */
 function saveInventory(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  setInventoryData(items)
 }
 
 /**

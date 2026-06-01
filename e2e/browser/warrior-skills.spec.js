@@ -3,6 +3,7 @@ require('./globalHooks')
 
 const { registerAndGoToMain,
   uniqueTestEmail,
+  mutatePlayerSave,
 } = require('./testHelpers')
 
 test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
@@ -13,7 +14,7 @@ test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     // Fixed trio Warrior has Sunder Armor and Taunt. Reduce strength so Rage accumulates faster from taking hits.
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 2

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   getInventory,
   addToInventory,
@@ -9,17 +9,11 @@ import {
   INVENTORY_MAX,
 } from './inventory.js'
 import { QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE } from './equipment.js'
-
-const storage = {}
-const INVENTORY_KEY = 'playerInventory'
+import { resetPlayerSaveForTests, setInventoryData, setPlayerSaveMemoryOnly } from './playerSave.js'
 
 beforeEach(() => {
-  vi.stubGlobal('localStorage', {
-    getItem: (k) => storage[k] ?? null,
-    setItem: (k, v) => { storage[k] = String(v) },
-    removeItem: (k) => { delete storage[k] },
-  })
-  delete storage[INVENTORY_KEY]
+  setPlayerSaveMemoryOnly(true)
+  resetPlayerSaveForTests()
 })
 
 describe('inventory', () => {
@@ -30,7 +24,7 @@ describe('inventory', () => {
 
     it('returns parsed items when storage has data', () => {
       const items = [{ id: 'item-1', baseName: 'Cap', quality: 'normal' }]
-      storage[INVENTORY_KEY] = JSON.stringify(items)
+      setInventoryData(items)
       expect(getInventory()).toEqual(items)
     })
   })
@@ -50,7 +44,7 @@ describe('inventory', () => {
         baseName: 'Cap',
         quality: 'normal',
       }))
-      storage[INVENTORY_KEY] = JSON.stringify(items)
+      setInventoryData(items)
       const success = addToInventory({ id: 'new-item', baseName: 'Boots', quality: 'normal' })
       expect(success).toBe(false)
       expect(getInventory()).toHaveLength(INVENTORY_MAX)

@@ -1,7 +1,9 @@
 /**
  * Player gold (currency) storage and manipulation.
- * Gold is persisted in localStorage and accumulates from battle victories.
+ * Gold is persisted on the server with the player account.
  */
+
+import { getGoldAmount, setGoldAmount } from './playerSave.js'
 
 export const GOLD_STORAGE_KEY = 'playerGold'
 
@@ -10,14 +12,7 @@ export const GOLD_STORAGE_KEY = 'playerGold'
  * @returns {number} Current gold amount (>= 0)
  */
 export function getGold() {
-  try {
-    const raw = localStorage.getItem(GOLD_STORAGE_KEY)
-    if (raw == null || raw === '') return 0
-    const n = parseInt(raw, 10)
-    return Number.isNaN(n) || n < 0 ? 0 : n
-  } catch {
-    return 0
-  }
+  return getGoldAmount()
 }
 
 /**
@@ -29,7 +24,7 @@ export function addGold(amount) {
   const safe = Math.max(0, Math.floor(amount))
   const current = getGold()
   const next = current + safe
-  localStorage.setItem(GOLD_STORAGE_KEY, String(next))
+  setGoldAmount(next)
   return next
 }
 
@@ -43,7 +38,7 @@ export function deductGold(amount) {
   const current = getGold()
   if (safe > current) return current
   const next = current - safe
-  localStorage.setItem(GOLD_STORAGE_KEY, String(next))
+  setGoldAmount(next)
   return next
 }
 
@@ -53,5 +48,5 @@ export function deductGold(amount) {
  */
 export function setGold(amount) {
   const safe = Math.max(0, Math.floor(amount))
-  localStorage.setItem(GOLD_STORAGE_KEY, String(safe))
+  setGoldAmount(safe)
 }

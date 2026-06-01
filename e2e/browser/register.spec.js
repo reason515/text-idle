@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { uniqueTestEmail } = require('./testHelpers')
+const { uniqueTestEmail, getPlayerSave } = require('./testHelpers')
 
 test.describe('Register E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('Register E2E', () => {
     await expect(page.getByText('两次密码不一致')).toBeVisible()
   })
 
-  test('AC4: registration clears old localStorage data and redirects to intro', async ({ page }) => {
+  test('AC4: registration clears old save data and redirects to intro', async ({ page }) => {
     // Pre-populate localStorage with old game data (simulating previous session)
     await page.evaluate(() => {
       localStorage.setItem('teamName', 'Old Team')
@@ -96,21 +96,15 @@ test.describe('Register E2E', () => {
     await page.getByLabel('确认密码').fill('password123')
     await page.getByRole('button', { name: '注册' }).click()
 
-    // Should redirect to intro page, not main screen
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
-    
-    // Verify old data was cleared
-    const teamName = await page.evaluate(() => localStorage.getItem('teamName'))
-    const squad = await page.evaluate(() => localStorage.getItem('squad'))
-    const gold = await page.evaluate(() => localStorage.getItem('playerGold'))
-    const inventory = await page.evaluate(() => localStorage.getItem('playerInventory'))
-    expect(teamName).toBeNull()
-    expect(squad).toBeNull()
-    expect(gold).toBeNull()
-    expect(inventory).toBeNull()
-    
-    // Verify we're on intro page, not main screen with squad
+
+    const save = await getPlayerSave(page)
+    expect(save.teamName).toBe('')
+    expect(save.squad).toEqual([])
+    expect(save.gold).toBe(0)
+    expect(save.inventory).toEqual([])
+
     await expect(page.getByText('No characters in squad')).not.toBeVisible()
     await expect(page.getByText('Varian Wrynn')).not.toBeVisible()
   })

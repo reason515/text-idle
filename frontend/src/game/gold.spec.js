@@ -1,15 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { getGold, addGold, deductGold, setGold, GOLD_STORAGE_KEY } from './gold.js'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { getGold, addGold, deductGold, setGold } from './gold.js'
+import { resetPlayerSaveForTests, setPlayerSaveMemoryOnly, getGoldAmount, setGoldAmount } from './playerSave.js'
 
-const storage = {}
 describe('gold', () => {
   beforeEach(() => {
-    vi.stubGlobal('localStorage', {
-      getItem: (k) => storage[k] ?? null,
-      setItem: (k, v) => { storage[k] = String(v) },
-      removeItem: (k) => { delete storage[k] },
-    })
-    delete storage[GOLD_STORAGE_KEY]
+    setPlayerSaveMemoryOnly(true)
+    resetPlayerSaveForTests()
   })
 
   describe('getGold', () => {
@@ -18,17 +14,17 @@ describe('gold', () => {
     })
 
     it('returns stored value when valid', () => {
-      localStorage.setItem(GOLD_STORAGE_KEY, '100')
+      setGold(100)
       expect(getGold()).toBe(100)
     })
 
     it('returns 0 when stored value is invalid', () => {
-      localStorage.setItem(GOLD_STORAGE_KEY, 'abc')
+      setGoldAmount(Number.NaN)
       expect(getGold()).toBe(0)
     })
 
     it('returns 0 when stored value is negative', () => {
-      localStorage.setItem(GOLD_STORAGE_KEY, '-5')
+      setGoldAmount(-5)
       expect(getGold()).toBe(0)
     })
   })

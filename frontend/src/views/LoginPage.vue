@@ -52,6 +52,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { ensurePlayerSaveLoaded, getTeamName } from '../game/playerSave.js'
 
 const router = useRouter()
 const email = ref('')
@@ -97,7 +98,8 @@ async function submit() {
       if (data.token) {
         localStorage.setItem('token', data.token)
       }
-      const hasTeamName = !!localStorage.getItem('teamName')
+      await ensurePlayerSaveLoaded(true)
+      const hasTeamName = !!getTeamName()
       router.push(hasTeamName ? '/main' : '/intro')
     } else {
       if (res.status === 401) {

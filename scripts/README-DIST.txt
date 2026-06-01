@@ -5,4 +5,5 @@ Text Idle - How to Run
 2. Open browser: http://localhost:8080
 3. Register an account and play!
 
-The game saves progress in text-idle.db (created in the same folder as the exe).
+The game saves account and progress in text-idle.db (created in the same folder as the exe).
+The browser keeps only the login token and UI preferences (audio, combat log pacing).

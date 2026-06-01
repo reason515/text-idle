@@ -8,11 +8,13 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { clearPlayerSaveCache } from '../game/playerSave.js'
 
 const router = useRouter()
 
 function logout() {
   localStorage.removeItem('token')
+  clearPlayerSaveCache()
   router.push('/login')
 }
 </script>

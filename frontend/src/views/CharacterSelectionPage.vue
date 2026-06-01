@@ -236,6 +236,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { HEROES, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints, isDruidOnlyExpansionSlot } from '../game/combat.js'
+import { getCombatProgressData } from '../game/playerSave.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
 import {
@@ -324,14 +325,11 @@ function hideFormulaTooltip() {
 const pendingSkillId = ref(null)
 const selectedSkillId = ref(null)
 const showSkillError = ref(false)
-const COMBAT_PROGRESS_KEY = 'combatProgress'
-
 const squadIds = computed(() => new Set(getSquad().map((c) => c.id)))
 const squadSize = computed(() => getSquad().length)
 const progress = computed(() => {
   try {
-    const raw = localStorage.getItem(COMBAT_PROGRESS_KEY)
-    return raw ? JSON.parse(raw) : createInitialProgress()
+    return getCombatProgressData()
   } catch {
     return createInitialProgress()
   }

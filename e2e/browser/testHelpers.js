@@ -6,6 +6,161 @@ function uniqueTestEmail(prefix) {
   return `${prefix}-${crypto.randomUUID()}@example.com`
 }
 
+/** Game keys that live on the server save, not browser localStorage. */
+const SERVER_SAVE_LS_KEYS = new Set([
+  'teamName',
+  'squad',
+  'combatProgress',
+  'playerGold',
+  'playerInventory',
+  'textIdlePlayerStats',
+])
+
+async function installServerSaveShim(page) {
+  await page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) throw new Error('missing auth token for save shim')
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    const auth = { Authorization: `Bearer ${token}` }
+    const getRes = await fetch(`${apiBase}/save`, { headers: auth })
+    if (!getRes.ok) throw new Error(`load save failed: ${getRes.status}`)
+    /** @type {Record<string, unknown>} */
+    const save = await getRes.json()
+
+    const origGet = localStorage.getItem.bind(localStorage)
+    const origSet = localStorage.setItem.bind(localStorage)
+    const origRemove = localStorage.removeItem.bind(localStorage)
+
+    localStorage.getItem = (key) => {
+      if (key === 'teamName') return save.teamName || null
+      if (key === 'squad') return JSON.stringify(save.squad ?? [])
+      if (key === 'combatProgress') return JSON.stringify(save.combatProgress ?? {})
+      if (key === 'playerGold') return String(save.gold ?? 0)
+      if (key === 'playerInventory') return JSON.stringify(save.inventory ?? [])
+      if (key === 'textIdlePlayerStats') return JSON.stringify(save.playerStats ?? {})
+      return origGet(key)
+    }
+    localStorage.setItem = (key, value) => {
+      if (key === 'teamName') {
+        save.teamName = value
+        return
+      }
+      if (key === 'squad') {
+        save.squad = JSON.parse(value)
+        return
+      }
+      if (key === 'combatProgress') {
+        save.combatProgress = JSON.parse(value)
+        return
+      }
+      if (key === 'playerGold') {
+        save.gold = Math.max(0, parseInt(value, 10) || 0)
+        return
+      }
+      if (key === 'playerInventory') {
+        save.inventory = JSON.parse(value)
+        return
+      }
+      if (key === 'textIdlePlayerStats') {
+        save.playerStats = JSON.parse(value)
+        return
+      }
+      origSet(key, value)
+    }
+    localStorage.removeItem = (key) => {
+      if (key === 'teamName') {
+        save.teamName = ''
+        return
+      }
+      if (key === 'squad') {
+        save.squad = []
+        return
+      }
+      if (key === 'combatProgress') {
+        save.combatProgress = {}
+        return
+      }
+      if (key === 'playerGold') {
+        save.gold = 0
+        return
+      }
+      if (key === 'playerInventory') {
+        save.inventory = []
+        return
+      }
+      if (key === 'textIdlePlayerStats') {
+        save.playerStats = {}
+        return
+      }
+      origRemove(key)
+    }
+
+    window.__tiSaveShim = {
+      save,
+      apiBase,
+      auth,
+      origGet,
+      origSet,
+      origRemove,
+    }
+  })
+}
+
+async function persistServerSaveShim(page) {
+  await page.evaluate(async () => {
+    const shim = window.__tiSaveShim
+    if (!shim) throw new Error('save shim not installed')
+    const putRes = await fetch(`${shim.apiBase}/save`, {
+      method: 'PUT',
+      headers: { ...shim.auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify(shim.save),
+    })
+    if (putRes.status !== 204 && !putRes.ok) {
+      throw new Error(`persist save failed: ${putRes.status}`)
+    }
+    localStorage.getItem = shim.origGet
+    localStorage.setItem = shim.origSet
+    localStorage.removeItem = shim.origRemove
+    delete window.__tiSaveShim
+    if (typeof window.__reloadPlayerSave === 'function') {
+      await window.__reloadPlayerSave()
+    }
+  })
+}
+
+/**
+ * Run a page function with legacy localStorage keys mapped to /save API.
+ * @param {import('@playwright/test').Page} page
+ * @param {(...args: unknown[]) => void} mutationFn
+ * @param {unknown} [arg]
+ */
+async function runWithServerSaveShim(page, mutationFn, arg) {
+  await installServerSaveShim(page)
+  if (typeof arg === 'undefined') {
+    await page.evaluate(mutationFn)
+  } else {
+    await page.evaluate(mutationFn, arg)
+  }
+  await persistServerSaveShim(page)
+}
+
+async function flushPlayerSaveOnPage(page) {
+  await page.evaluate(async () => {
+    if (typeof window.__flushPlayerSave === 'function') {
+      await window.__flushPlayerSave()
+    }
+  })
+}
+
+async function getPlayerSave(page) {
+  return page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    const res = await fetch(`${apiBase}/save`, { headers: { Authorization: `Bearer ${token}` } })
+    return res.json()
+  })
+}
+
 async function setupNewRun(page) {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/register?e2e=1')
@@ -81,19 +236,19 @@ async function updateStoredState(page, pageFunction, arg, options = {}) {
   } = options
 
   if (pauseFirst) await pauseCombat(page)
-  // Use domcontentloaded for SPA routes to avoid load-event delays from timers/combat
   await page.goto(safePath, { waitUntil: 'domcontentloaded', timeout: 30000 })
-  if (typeof arg === 'undefined') {
-    await page.evaluate(pageFunction)
-  } else {
-    await page.evaluate(pageFunction, arg)
-  }
+  await runWithServerSaveShim(page, pageFunction, arg)
   await page.evaluate(() => { localStorage.setItem('e2eFastCombat', '1') })
   const url = returnPath === '/main' ? '/main?e2e=1' : returnPath
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
   if (expectReturnUrl && returnPath === '/main') {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
   }
+}
+
+/** Mutate server-backed save using legacy localStorage keys in the mutation callback. */
+async function mutatePlayerSave(page, mutationFn, arg) {
+  await runWithServerSaveShim(page, mutationFn, arg)
 }
 
 /** E2E-only: show recruit prompt modal on main (see MainScreen onMounted hook). */
@@ -115,5 +270,9 @@ module.exports = {
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
   updateStoredState,
+  mutatePlayerSave,
+  getPlayerSave,
+  flushPlayerSaveOnPage,
   simulateRecruitPromptModal,
+  SERVER_SAVE_LS_KEYS,
 }

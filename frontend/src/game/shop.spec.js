@@ -2,21 +2,15 @@
  * Shop (Gambling) system. Design reference: Example 24.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { buyFromShop, getShopPrice, SHOP_SLOTS } from './shop.js'
-import { getGold, setGold, deductGold, addGold } from './gold.js'
+import { getGold, setGold } from './gold.js'
 import { getInventory } from './inventory.js'
+import { resetPlayerSaveForTests, setInventoryData, setPlayerSaveMemoryOnly } from './playerSave.js'
 
-const storage = {}
 beforeEach(() => {
-  vi.stubGlobal('localStorage', {
-    getItem: (k) => storage[k] ?? null,
-    setItem: (k, v) => { storage[k] = String(v) },
-    removeItem: (k) => { delete storage[k] },
-  })
-  Object.keys(storage).forEach((k) => delete storage[k])
-  storage.playerGold = '0'
-  storage.playerInventory = '[]'
+  setPlayerSaveMemoryOnly(true)
+  resetPlayerSaveForTests()
 })
 
 describe('shop', () => {
@@ -117,7 +111,7 @@ describe('shop', () => {
         quality: 'normal',
         levelReq: 1,
       }))
-      storage.playerInventory = JSON.stringify(items)
+      setInventoryData(items)
       const result = buyFromShop('Helm', 5, () => 0.5)
       expect(result.success).toBe(true)
       expect(result.inventoryFull).toBe(true)

@@ -1,0 +1,294 @@
+/**
+ * Server-backed player save (account-bound progress).
+ * Game data is stored on the backend; only auth token stays in localStorage.
+ */
+
+import { createInitialProgress } from './combat.js'
+import { createEmptyPlayerStats, normalizePlayerStats } from './playerStatistics.js'
+
+/** Legacy localStorage keys cleared after migration to server save. */
+export const LEGACY_SAVE_KEYS = [
+  'teamName',
+  'squad',
+  'combatProgress',
+  'playerGold',
+  'playerInventory',
+  'textIdlePlayerStats',
+]
+
+/** @returns {{ teamName: string, squad: Array, combatProgress: object, gold: number, inventory: Array, playerStats: object }} */
+export function createEmptyPlayerSave() {
+  return {
+    teamName: '',
+    squad: [],
+    combatProgress: createInitialProgress(),
+    gold: 0,
+    inventory: [],
+    playerStats: createEmptyPlayerStats(),
+  }
+}
+
+function apiBase() {
+  return import.meta.env.DEV ? '/api' : ''
+}
+
+function authHeaders() {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  /** @type {Record<string, string>} */
+  const h = { 'Content-Type': 'application/json' }
+  if (token) h.Authorization = `Bearer ${token}`
+  return h
+}
+
+/** @param {unknown} raw */
+export function normalizePlayerSave(raw) {
+  const base = createEmptyPlayerSave()
+  if (!raw || typeof raw !== 'object') return base
+  const o = /** @type {Record<string, unknown>} */ (raw)
+  if (typeof o.teamName === 'string') base.teamName = o.teamName
+  if (Array.isArray(o.squad)) base.squad = o.squad
+  if (o.combatProgress && typeof o.combatProgress === 'object') {
+    base.combatProgress = { ...base.combatProgress, .../** @type {object} */ (o.combatProgress) }
+  }
+  const gold = Math.max(0, Math.floor(Number(o.gold) || 0))
+  base.gold = Number.isNaN(gold) ? 0 : gold
+  if (Array.isArray(o.inventory)) base.inventory = o.inventory
+  if (o.playerStats && typeof o.playerStats === 'object') {
+    base.playerStats = normalizePlayerStats(o.playerStats)
+  }
+  return base
+}
+
+function isSaveEmpty(save) {
+  return (
+    !save.teamName &&
+    (!save.squad || save.squad.length === 0) &&
+    save.gold === 0 &&
+    (!save.inventory || save.inventory.length === 0)
+  )
+}
+
+function readLegacyLocalSave() {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const teamName = localStorage.getItem('teamName') || ''
+    const squadRaw = localStorage.getItem('squad')
+    const squad = squadRaw ? JSON.parse(squadRaw) : []
+    const progressRaw = localStorage.getItem('combatProgress')
+    const combatProgress = progressRaw ? JSON.parse(progressRaw) : createInitialProgress()
+    const goldRaw = localStorage.getItem('playerGold')
+    const gold = goldRaw != null ? Math.max(0, parseInt(goldRaw, 10) || 0) : 0
+    const invRaw = localStorage.getItem('playerInventory')
+    const inventory = invRaw ? JSON.parse(invRaw) : []
+    const statsRaw = localStorage.getItem('textIdlePlayerStats')
+    const playerStats = statsRaw ? normalizePlayerStats(JSON.parse(statsRaw)) : createEmptyPlayerStats()
+    const hasLegacy =
+      teamName ||
+      (Array.isArray(squad) && squad.length > 0) ||
+      gold > 0 ||
+      (Array.isArray(inventory) && inventory.length > 0) ||
+      statsRaw
+    if (!hasLegacy) return null
+    return normalizePlayerSave({ teamName, squad, combatProgress, gold, inventory, playerStats })
+  } catch {
+    return null
+  }
+}
+
+export function clearLegacyLocalSaveKeys() {
+  if (typeof localStorage === 'undefined') return
+  for (const k of LEGACY_SAVE_KEYS) localStorage.removeItem(k)
+}
+
+/** @type {ReturnType<typeof createEmptyPlayerSave>|null} */
+let cache = null
+let loaded = false
+/** @type {Promise<ReturnType<typeof createEmptyPlayerSave>>|null} */
+let loadPromise = null
+/** @type {ReturnType<typeof setTimeout>|null} */
+let persistTimer = null
+let memoryOnly = import.meta.env.MODE === 'test'
+
+/** @param {boolean} [value] */
+export function setPlayerSaveMemoryOnly(value) {
+  memoryOnly = value
+}
+
+export function resetPlayerSaveForTests() {
+  cache = createEmptyPlayerSave()
+  loaded = true
+  loadPromise = null
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+}
+
+function getCache() {
+  if (!cache) cache = createEmptyPlayerSave()
+  return cache
+}
+
+export function getTeamName() {
+  return getCache().teamName || ''
+}
+
+/** @param {string} name */
+export function setTeamName(name) {
+  getCache().teamName = String(name || '').trim()
+  schedulePersist()
+}
+
+export function getSquadData() {
+  return getCache().squad || []
+}
+
+/** @param {Array} squad */
+export function setSquadData(squad) {
+  getCache().squad = Array.isArray(squad) ? squad : []
+  schedulePersist()
+}
+
+export function getCombatProgressData() {
+  return getCache().combatProgress || createInitialProgress()
+}
+
+/** @param {object} progress */
+export function setCombatProgressData(progress) {
+  getCache().combatProgress = progress
+  schedulePersist()
+}
+
+export function getGoldAmount() {
+  return Math.max(0, Math.floor(Number(getCache().gold) || 0))
+}
+
+/** @param {number} amount */
+export function setGoldAmount(amount) {
+  getCache().gold = Math.max(0, Math.floor(Number(amount) || 0))
+  schedulePersist()
+}
+
+export function getInventoryData() {
+  return getCache().inventory || []
+}
+
+/** @param {Array} items */
+export function setInventoryData(items) {
+  getCache().inventory = Array.isArray(items) ? items : []
+  schedulePersist()
+}
+
+export function getPlayerStatsData() {
+  return getCache().playerStats || createEmptyPlayerStats()
+}
+
+/** @param {object} stats */
+export function setPlayerStatsData(stats) {
+  getCache().playerStats = stats
+  schedulePersist()
+}
+
+/**
+ * Load save from server (or memory in tests). Idempotent unless force=true.
+ * @param {boolean} [force]
+ */
+export async function ensurePlayerSaveLoaded(force = false) {
+  if (memoryOnly) {
+    if (!loaded) {
+      cache = createEmptyPlayerSave()
+      loaded = true
+    }
+    return getCache()
+  }
+  if (loaded && !force) return getCache()
+  if (loadPromise && !force) return loadPromise
+
+  loadPromise = (async () => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) {
+      cache = createEmptyPlayerSave()
+      loaded = true
+      return cache
+    }
+    const res = await fetch(`${apiBase()}/save`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.status === 401) {
+      localStorage.removeItem('token')
+      cache = createEmptyPlayerSave()
+      loaded = true
+      return cache
+    }
+    if (!res.ok) {
+      throw new Error('failed to load save')
+    }
+    const data = await res.json()
+    cache = normalizePlayerSave(data)
+    if (isSaveEmpty(cache)) {
+      const legacy = readLegacyLocalSave()
+      if (legacy) {
+        cache = legacy
+        clearLegacyLocalSaveKeys()
+        await flushPlayerSave()
+      }
+    } else {
+      clearLegacyLocalSaveKeys()
+    }
+    loaded = true
+    return cache
+  })()
+
+  try {
+    return await loadPromise
+  } finally {
+    if (loaded) loadPromise = null
+  }
+}
+
+export function clearPlayerSaveCache() {
+  cache = createEmptyPlayerSave()
+  loaded = false
+  loadPromise = null
+}
+
+export async function resetPlayerSaveOnServer() {
+  cache = createEmptyPlayerSave()
+  loaded = true
+  clearLegacyLocalSaveKeys()
+  await flushPlayerSave()
+}
+
+function schedulePersist() {
+  if (memoryOnly) return
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    flushPlayerSave().catch(() => {})
+  }, 400)
+}
+
+/** Immediately persist in-memory save to server. */
+export async function flushPlayerSave() {
+  if (memoryOnly) return
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return
+  const body = JSON.stringify(getCache())
+  const res = await fetch(`${apiBase()}/save`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body,
+  })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    throw new Error('unauthorized')
+  }
+  if (!res.ok && res.status !== 204) {
+    throw new Error('failed to save')
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__reloadPlayerSave = () => ensurePlayerSaveLoaded(true)
+  window.__flushPlayerSave = () => flushPlayerSave()
+}

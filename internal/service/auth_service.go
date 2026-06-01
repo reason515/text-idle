@@ -37,15 +37,15 @@ func (s *AuthService) Register(email, password string) (string, error) {
 		return "", err
 	}
 
+	token := generateToken()
 	user := &model.User{
 		Email:    email,
 		Password: string(hashed),
+		Token:    token,
 	}
 	if err := s.userRepo.Create(user); err != nil {
 		return "", err
 	}
-
-	token := generateToken()
 	return token, nil
 }
 
@@ -57,7 +57,11 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return "", ErrInvalidCredentials
 	}
-	return generateToken(), nil
+	token := generateToken()
+	if err := s.userRepo.UpdateToken(user.ID, token); err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func generateToken() string {

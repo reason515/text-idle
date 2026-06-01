@@ -13,6 +13,8 @@ const {
   pauseCombat,
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
+  getPlayerSave,
+  flushPlayerSaveOnPage,
 } = require('./testHelpers')
 
 async function prepareWarriorFirstMilestone(page, { level = 2, xp = 173, baseSkill = 'sunder-armor' } = {}) {
@@ -176,8 +178,9 @@ test.describe('Skill choice milestones', () => {
     await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
 
     await expect(skillModal).not.toBeVisible()
-    const squadAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('squad') || '[]'))
-    const warrior = squadAfter.find((h) => h.class === 'Warrior')
+    await flushPlayerSaveOnPage(page)
+    const save = await getPlayerSave(page)
+    const warrior = save.squad.find((h) => h.class === 'Warrior')
     expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
 
     await pauseCombat(page)

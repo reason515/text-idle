@@ -6,6 +6,7 @@ const {
   dismissQueuedSkillChoiceModals,
   updateStoredState,
   uniqueTestEmail,
+  mutatePlayerSave,
 } = require('./testHelpers')
 
 test.describe('Combat Flow (Example 5-9)', () => {
@@ -483,7 +484,7 @@ test.describe('Threat Display (Example 32)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       for (const h of squad) {
         if (h.class === 'Mage') {
@@ -531,7 +532,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     // Strengthen warrior to guarantee victory (high HP/resist for magic, high str for phys)
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 80
@@ -557,7 +558,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 80
@@ -582,7 +583,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 1
@@ -626,7 +627,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     // Set xp=49 (one victory of 12 XP triggers level-up at threshold 50)
     // Set strength=50 to guarantee victory even against elite magic monsters
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].xp = 49
@@ -700,7 +701,7 @@ test.describe('Gold System (Example 16)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.evaluate(() => {
+    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         const h = squad[0]
