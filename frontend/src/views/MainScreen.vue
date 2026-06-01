@@ -2412,6 +2412,7 @@ import {
   getExpansionHeroLevel,
   isDruidOnlyExpansionSlot,
   buildEncounterMonsters,
+  getSquadMinLevel,
   runAutoCombat,
   startRestPhase,
   applyRestStep,
@@ -4825,11 +4826,13 @@ async function runCombatLoop() {
 
     const squadLevel = getSquadMaxLevel(squad.value)
     const squadAverageLevel = getSquadAverageLevel(squad.value)
+    const squadMinLevel = getSquadMinLevel(squad.value)
     const monsters = buildEncounterMonsters({
       mapId: progress.value.currentMapId,
       squadSize: squad.value.length,
       level: squadLevel,
       squadAverageLevel,
+      squadMinLevel,
       explorationProgress: progress.value.currentProgress,
       forceBoss: progress.value.bossAvailable,
     })

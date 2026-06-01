@@ -279,6 +279,7 @@ Resistance         = Base_Resistance * Factor + floor(Level * 0.5)
 
 - **模板强度递进**：除等级偏移外，后续地图 normal / elite / boss 的 `base` 属性（HP、攻击、护甲/抗性）按地图序号逐级提高（约 +10% 量级/张），守关 BOSS 在同等级下明显强于前一张地图 BOSS。
 - **新手期上限（小队平均等级低于 5）**：在上述随机之后，若**小队算术平均等级**严格小于 5，则将本次遭遇中**每只怪物（含守关 BOSS）**的等级**再限制为不超过** `max(1, floor(小队平均等级))`。平均等级达到 5 及以上时不再应用此上限。实现见 `frontend/src/game/combat.js` 中 `buildEncounterMonsters` 的 `squadAverageLevel` 参数；平均等级由 `getSquadAverageLevel`（`frontend/src/data/heroes.js`）计算。
+- **新手保护（小队最低等级 1–2）**：非 BOSS 遭遇的怪物**数量**在常规分布掷出后再限制：最低等级 **1** 时**始终少于**小队人数；最低等级 **2** 时**不超过**小队人数（见 [03-combat.md](./03-combat.md) 第二节）。最低等级 **3+** 不限制数量。由 `getSquadMinLevel` 计算；可与「平均等级低于 5」的等级上限同时生效。
 - **同类型不同等级**：同一怪物类型（如 Young Wolf）在不同等级下属性不同，等级越高属性越强，体现地图内怪物强度差异。
 
 ---

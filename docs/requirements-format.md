@@ -347,6 +347,7 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Monster count distribution**: Higher probability that monster count equals squad size; lower probability of fewer or more monsters (e.g., 70% equal, 15% fewer, 15% more).
+- **Newbie protection (squad min level)**: After the roll, non-boss monster count is capped by **minimum hero level**: **1** = always strictly less than squad size (`min(rolled, squadSize - 1)`, at least 1; squad size 1 exempt); **2** = at most squad size (`min(rolled, squadSize)`, no over-count rolls); **3+** = full distribution. Boss fights remain 1 monster.
 - **Victory**: All monsters dead → combat ends; post-combat rewards (exp, gold, loot); enter rest phase.
 - **Defeat**: All player heroes dead → combat ends; no rewards from this encounter; resurrection/death rules apply.
 
@@ -357,6 +358,8 @@ Then [expected result/verifiable behavior].
 | --- | ----------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AC1 | Squad has 3 heroes and enters combat on a map   | An encounter is generated  | Monster count is 3 with higher probability; 1–2 or 4–5 monsters occur with lower probability; distribution is configurable                                                         |
 | AC2 | Squad has N heroes (N = 1 to 5)                 | An encounter is generated  | Monster count follows the same distribution (usually N, sometimes N-1, N-2, or N+1, N+2 within valid range)                                                                        |
+| AC2b | Squad min hero level is 1 and squad has N heroes (N >= 2) | A non-boss encounter is generated | Monster count is always **less than** N (never equal or greater); at least 1 monster                                                                                              |
+| AC2c | Squad min hero level is 2 and squad has N heroes (N >= 1) | A non-boss encounter is generated | Monster count is **at most** N (never greater than N); may equal or be fewer than N                                                                                                |
 | AC3 | Combat is in progress and the last monster dies | All monsters are dead      | Combat ends with **victory**; post-combat rewards (exp, gold, loot) are granted; squad enters rest/recovery phase automatically                                                    |
 | AC4 | Combat is in progress and the last hero dies    | All player heroes are dead | Combat ends with **defeat**; no rewards (exp, gold, loot) from this encounter are granted; **exploration progress is deducted by a fixed amount (default 10 points, not below 0)** |
 | AC5 | Combat ends in victory                          | Victory is triggered       | Rest phase begins automatically; next combat starts automatically after rest completes (see Example 8)                                                                             |
@@ -415,7 +418,7 @@ Then [expected result/verifiable behavior].
 - **Example monsters (Elwynn Forest)**: Young Wolf, Kobold Miner, Defias Trapper, Forest Spider, Timber Wolf (normal); Kobold Geomancer, Defias Smuggler, Defias Cutpurse (elite); Hogger (Boss).
 - **Example monsters (Westfall)**: Defias Bandit, Harvest Watcher, Westfall Vulture, Defias Worker, Mine Spider (normal); Defias Pathstalker, Harvest Reaper, Defias Lieutenant (elite); Edwin VanCleef (Boss). Other maps follow [02-levels-monsters.md](design/02-levels-monsters.md) section 2.5.
 - **Map difficulty**: Each map uses its own `MAP_MONSTER_POOLS` entry; later maps have higher `base` stats and tighter/higher `levelRange` offsets so encounters scale with progression.
-- **Squad level for encounters**: Encounter monster level rolls use the **maximum level among squad members** as the baseline (baseLevel), then apply each map's `levelRange`. Empty squad defaults to level 1. **Early game**: When **squad arithmetic average level** is **strictly below 5**, each rolled monster level (including zone boss) is **capped** to `max(1, floor(average))` so random enemies do not exceed the party average. No cap when average level ≥ 5. See `buildEncounterMonsters` / `getSquadAverageLevel` in the codebase.
+- **Squad level for encounters**: Encounter monster level rolls use the **maximum level among squad members** as the baseline (baseLevel), then apply each map's `levelRange`. Empty squad defaults to level 1. **Early game**: When **squad arithmetic average level** is **strictly below 5**, each rolled monster level (including zone boss) is **capped** to `max(1, floor(average))` so random enemies do not exceed the party average. No cap when average level ≥ 5. **Newbie count**: Min level **1** caps below squad size (AC2b); min level **2** caps at squad size (AC2c). See `buildEncounterMonsters`, `getSquadAverageLevel`, `getSquadMinLevel`, `capEncounterSizeForNewbieProtection` in the codebase.
 
 **Acceptance Criteria**
 

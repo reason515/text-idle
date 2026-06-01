@@ -25,6 +25,7 @@ import {
   MONSTER_ARMOR_PEN_BY_TIER,
   unlockNextMapAfterBoss,
   generateEncounterSize,
+  capEncounterSizeForNewbieProtection,
   createMonster,
   buildEncounterMonsters,
   applyDamage,
@@ -574,6 +575,78 @@ describe('combat progression and systems', () => {
     expect(countFewer).toBeLessThan(3)
     expect(countMore).toBeGreaterThan(3)
     expect(countMore).toBeLessThanOrEqual(5)
+  })
+
+  it('Example7 AC2b: capEncounterSizeForNewbieProtection keeps count below squad when min Lv1', () => {
+    expect(capEncounterSizeForNewbieProtection(3, 3, 1)).toBe(2)
+    expect(capEncounterSizeForNewbieProtection(5, 3, 1)).toBe(2)
+    expect(capEncounterSizeForNewbieProtection(2, 3, 1)).toBe(2)
+    expect(capEncounterSizeForNewbieProtection(3, 3, 2)).toBe(3)
+    expect(capEncounterSizeForNewbieProtection(3, 3, null)).toBe(3)
+    expect(capEncounterSizeForNewbieProtection(2, 1, 1)).toBe(2)
+  })
+
+  it('Example7 AC2c: capEncounterSizeForNewbieProtection caps at squad size when min Lv2', () => {
+    expect(capEncounterSizeForNewbieProtection(5, 3, 2)).toBe(3)
+    expect(capEncounterSizeForNewbieProtection(4, 3, 2)).toBe(3)
+    expect(capEncounterSizeForNewbieProtection(2, 3, 2)).toBe(2)
+    expect(capEncounterSizeForNewbieProtection(5, 3, 3)).toBe(5)
+  })
+
+  it('Example7 AC2c: buildEncounterMonsters never exceeds squad size when min level is 2', () => {
+    const distribution = { equal: 0.7, fewer: 0.15, more: 0.15 }
+    const squadSize = 3
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize,
+      level: 2,
+      squadMinLevel: 2,
+      rng: fixedRng([0.95, 0.8]),
+      distribution,
+    })
+    expect(monsters.length).toBeLessThanOrEqual(squadSize)
+    expect(monsters.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('Example7 AC2b: buildEncounterMonsters caps monster count when squad min level is 1', () => {
+    const distribution = { equal: 0.7, fewer: 0.15, more: 0.15 }
+    const squadSize = 3
+    const rolls = [
+      fixedRng([0.2]),
+      fixedRng([0.95, 0.8]),
+      fixedRng([0.74, 0.9]),
+    ]
+    for (const rng of rolls) {
+      const monsters = buildEncounterMonsters({
+        mapId: 'elwynn-forest',
+        squadSize,
+        level: 1,
+        squadMinLevel: 1,
+        squadAverageLevel: 1,
+        rng,
+        distribution,
+      })
+      expect(monsters.length).toBeGreaterThanOrEqual(1)
+      expect(monsters.length).toBeLessThan(squadSize)
+    }
+    const atSquadSize = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize,
+      level: 2,
+      squadMinLevel: 2,
+      rng: () => 0.2,
+      distribution,
+    })
+    expect(atSquadSize.length).toBe(squadSize)
+    const overCountAllowed = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize,
+      level: 3,
+      squadMinLevel: 3,
+      rng: fixedRng([0.95, 0.8]),
+      distribution,
+    })
+    expect(overCountAllowed.length).toBeGreaterThan(squadSize)
   })
 
   it('Example9: monster attributes scale with tier multiplier', () => {

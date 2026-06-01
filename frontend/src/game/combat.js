@@ -824,6 +824,28 @@ export function generateEncounterSize(squadSize, distribution, rng = Math.random
   return clamp(safeSquadSize + add, 1, 5)
 }
 
+/**
+ * Newbie protection on rolled non-boss encounter size:
+ * - min level 1: count strictly below squad size (squad size 1 exempt)
+ * - min level 2: count at most squad size (no "more than party" rolls)
+ * - min level 3+: unchanged
+ * @param {number} count - rolled encounter size
+ * @param {number} squadSize
+ * @param {number|null|undefined} squadMinLevel - omit to disable
+ * @returns {number}
+ */
+export function capEncounterSizeForNewbieProtection(count, squadSize, squadMinLevel) {
+  const safeCount = clamp(count, 1, 5)
+  const safeSquadSize = clamp(squadSize, 1, 5)
+  if (squadMinLevel === 1 && safeSquadSize > 1) {
+    return clamp(Math.min(safeCount, safeSquadSize - 1), 1, 5)
+  }
+  if (squadMinLevel === 2) {
+    return clamp(Math.min(safeCount, safeSquadSize), 1, 5)
+  }
+  return safeCount
+}
+
 export function createMonster(template, options = {}) {
   const tier = options.tier ?? 'normal'
   const level = options.level ?? 1
@@ -875,6 +897,8 @@ export function buildEncounterMonsters({
   forceBoss = false,
   /** When squad average level is below 5, rolled enemy levels are capped to floor(squadAverageLevel). Omit to disable. */
   squadAverageLevel = null,
+  /** Min squad hero level: 1 caps count below squadSize; 2 caps at squadSize. Omit to disable. */
+  squadMinLevel = null,
   /** Current map exploration 0-100; scales monster stats and penetration before boss fight. */
   explorationProgress = 0,
 }) {
@@ -900,7 +924,11 @@ export function buildEncounterMonsters({
       }),
     ]
   }
-  const count = generateEncounterSize(squadSize, distribution, rng)
+  const count = capEncounterSizeForNewbieProtection(
+    generateEncounterSize(squadSize, distribution, rng),
+    squadSize,
+    squadMinLevel
+  )
   const monsters = []
   for (let i = 0; i < count; i += 1) {
     const isElite = rng() < 0.25
