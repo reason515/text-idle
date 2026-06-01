@@ -1209,14 +1209,282 @@ function stripRedundantFlashHealSkillLevelAllyHpBelow(conditions, warnings) {
   warnings.push('已移除快速治疗技能级「己方任意血量低于」条件（与目标链第一步重复）。')
 }
 
+function parsePctFromUserText(text, patterns) {
+  for (const re of patterns) {
+    const m = text.match(re)
+    if (m?.[1]) {
+      const n = Number(m[1])
+      if (n >= 1 && n <= 99) return n / 100
+    }
+  }
+  return null
+}
+
+/**
+ * Detect priest party triage: solo attack, enemy execute, ally heal band, healthy shield, fallback attack.
+ * @param {string|undefined} userInput
+ * @returns {{ healThreshold: number, shieldHealthyThreshold: number, enemyCutoff: number, mentionsSolo: boolean, mentionsUnshielded: boolean }|null}
+ */
+function parsePriestPartyHealShieldExecuteParams(userInput) {
+  if (!userInput || typeof userInput !== 'string') return null
+  const t = userInput.replace(/\s/g, '')
+
+  const hasHeal =
+    /快速治疗/.test(t) || (/治疗/.test(t) && /(?:我方|己方|队友|自己|角色|英雄|成员)/.test(t))
+  const hasShield =
+    /(?:真言术|套盾|上盾)/.test(t) || (/盾/.test(t) && /(?:我方|己方|队友|无|成员)/.test(t))
+  const hasBasic = /(?:普通攻击|普攻)/.test(t)
+  if (!hasHeal || !hasShield || !hasBasic) return null
+
+  const healThreshold = parsePctFromUserText(t, [
+    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,48}(?:快速治疗|治疗)/,
+    /(?:我方|己方|自己|角色|英雄|成员)[^%\n]{0,56}?(?:低于|小于)(\d+)\s*%[^%\n]{0,32}(?:快速治疗|治疗)/,
+  ])
+  const enemyCutoff = parsePctFromUserText(t, [
+    /HP最低[^%\n]{0,12}敌人[^%\n]{0,20}HP(?:低于|小于)(\d+)\s*%/,
+    /(?:敌人|敌方)[^%\n]{0,28}HP(?:低于|小于)(\d+)\s*%/,
+    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,28}(?:敌人|敌方)/,
+  ])
+  if (healThreshold == null || enemyCutoff == null) return null
+
+  return {
+    healThreshold,
+    shieldHealthyThreshold: healThreshold,
+    enemyCutoff,
+    mentionsSolo: userMentionsSoloSurvivor(userInput),
+    mentionsUnshielded: /无(?:真言术)?[·:：]?盾|没有盾|无盾|未有盾/.test(t),
+  }
+}
+
+function mergeSkillWhenAllGate(entry, gate) {
+  const out = { ...entry }
+  if (conditionHasAlliesAliveGte(out) && gate.when === 'allies-alive-gte') {
+    return out
+  }
+  if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
+    const has = out.whenAll.some((w) => w?.when === gate.when && (w.value ?? null) === (gate.value ?? null))
+    out.whenAll = has ? out.whenAll : [gate, ...out.whenAll]
+  } else if (out.when) {
+    out.whenAll = [gate, { when: out.when, value: out.value }]
+    delete out.when
+    delete out.value
+  } else {
+    out.whenAll = [gate]
+  }
+  return out
+}
+
+function ensureEnemyAllHpAboveOnPriestHealShieldEntry(entry, cutoff, onStep) {
+  const gate = { when: 'enemy-all-hp-above', value: cutoff }
+  if (onStep && entry.targetRules?.length) {
+    const tr = [...entry.targetRules]
+    const s0 = tr[0]
+    const base =
+      s0 === 'lowest-hp-ally'
+        ? { rule: 'lowest-hp-ally' }
+        : typeof s0 === 'object' && s0 !== null && typeof s0.rule === 'string'
+          ? { ...s0 }
+          : null
+    if (base) {
+      if (base.when === 'enemy-all-hp-above') return entry
+      if (Array.isArray(base.whenAll) && base.whenAll.some((w) => w?.when === 'enemy-all-hp-above')) return entry
+      const clauses = []
+      if (Array.isArray(base.whenAll) && base.whenAll.length > 0) {
+        clauses.push(...base.whenAll.filter((w) => w && w.when))
+      } else if (base.when) {
+        clauses.push({ when: base.when, value: base.value })
+      }
+      clauses.push(gate)
+      const outStep = { rule: base.rule }
+      if (clauses.length === 1) {
+        outStep.when = clauses[0].when
+        if (clauses[0].value !== undefined) outStep.value = clauses[0].value
+      } else {
+        outStep.whenAll = clauses
+      }
+      tr[0] = outStep
+      const next = { ...entry, targetRules: tr }
+      delete next.targetRule
+      return next
+    }
+  }
+  const out = { ...entry }
+  if (conditionHasEnemyAllHpAbove(out)) return out
+  if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
+    if (!out.whenAll.some((w) => w?.when === 'enemy-all-hp-above')) {
+      out.whenAll = [...out.whenAll, gate]
+    }
+  } else if (out.when) {
+    out.whenAll = [{ when: out.when, value: out.value }, gate]
+    delete out.when
+    delete out.value
+  } else {
+    out.whenAll = [gate]
+  }
+  return out
+}
+
+function ensureAllyHpBelowOnFlashHealFirstStep(entry, healThreshold, enemyCutoff) {
+  const out = { ...entry }
+  const first = out.targetRules?.[0]
+  if (typeof first === 'object' && first !== null && first.rule === 'lowest-hp-ally') {
+    const hasAlly = first.when === 'ally-hp-below' || first.whenAll?.some((w) => w?.when === 'ally-hp-below')
+    if (hasAlly) return out
+  }
+  const triageStep = {
+    rule: 'lowest-hp-ally',
+    whenAll: [
+      { when: 'ally-hp-below', value: healThreshold },
+      { when: 'enemy-all-hp-above', value: enemyCutoff },
+    ],
+  }
+  out.targetRules = [triageStep]
+  delete out.targetRule
+  return out
+}
+
+function ensureEveryAllyHpGteOnPws(entry, threshold) {
+  const out = { ...entry }
+  const gate = { when: 'every-ally-hp-gte', value: threshold }
+  if (Array.isArray(out.whenAll) && out.whenAll.some((w) => w?.when === 'every-ally-hp-gte')) return out
+  if (out.when === 'every-ally-hp-gte') return out
+  if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
+    out.whenAll = [...out.whenAll, gate]
+  } else if (out.when) {
+    out.whenAll = [{ when: out.when, value: out.value }, gate]
+    delete out.when
+    delete out.value
+  } else {
+    out.whenAll = [gate]
+  }
+  return out
+}
+
+function fixPriestPartyBasicAttackFallback(conditions, mentionsSolo) {
+  let ba = conditions.find((c) => c.skillId === 'basic-attack')
+  const soloStep = { rule: 'lowest-hp', when: 'solo-survivor' }
+  const fallbackStep = { rule: 'lowest-hp' }
+  if (!ba) {
+    const rules = mentionsSolo ? [soloStep, fallbackStep] : [fallbackStep]
+    conditions.push({ skillId: 'basic-attack', targetRules: rules })
+    return
+  }
+  let rules = ba.targetRules?.length
+    ? [...ba.targetRules]
+    : ba.targetRule
+      ? [ba.targetRule]
+      : []
+  rules = rules.filter((s) => {
+    if (typeof s !== 'object' || s === null) return true
+    if (s.when === 'ally-hp-below') return false
+    if (s.when === 'target-hp-below') return false
+    return true
+  })
+  if (mentionsSolo && !basicAttackHasSoloStep({ targetRules: rules })) {
+    rules.unshift(soloStep)
+  }
+  const hasFallback = rules.some(
+    (s) => s === 'lowest-hp' || (typeof s === 'object' && s !== null && s.rule === 'lowest-hp' && !s.when && !(s.whenAll?.length)),
+  )
+  if (!hasFallback) rules.push(fallbackStep)
+  ba = { ...ba, targetRules: rules }
+  delete ba.when
+  delete ba.value
+  delete ba.whenAll
+  delete ba.targetRule
+  const idx = conditions.findIndex((c) => c.skillId === 'basic-attack')
+  conditions[idx] = ba
+}
+
+/**
+ * Full priest party triage from natural language (solo attack, enemy execute via heal/shield gates, ally heal, healthy shield).
+ * @param {string|undefined} userInput
+ * @param {string[]} priority
+ * @param {Object[]} conditions
+ * @param {string[]} skillIds
+ * @param {string[]} warnings
+ */
+function supplementPriestPartyHealShieldExecuteTactics(userInput, priority, conditions, skillIds, warnings) {
+  const params = parsePriestPartyHealShieldExecuteParams(userInput)
+  if (!params) return
+  if (!skillIds.includes('flash-heal') || !skillIds.includes('power-word-shield')) return
+
+  const allyGate = { when: 'allies-alive-gte', value: 2 }
+  let changed = false
+
+  let fhIdx = conditions.findIndex((c) => c.skillId === 'flash-heal')
+  if (fhIdx < 0) {
+    conditions.push({ skillId: 'flash-heal' })
+    fhIdx = conditions.length - 1
+    changed = true
+  }
+  let fh = conditions[fhIdx]
+  const fhBefore = JSON.stringify(fh)
+  fh = mergeSkillWhenAllGate(fh, allyGate)
+  fh = ensureAllyHpBelowOnFlashHealFirstStep(fh, params.healThreshold, params.enemyCutoff)
+  fh = ensureEnemyAllHpAboveOnPriestHealShieldEntry(fh, params.enemyCutoff, true)
+  if (fh.when && !fh.whenAll) {
+    fh.whenAll = [{ when: fh.when, value: fh.value }]
+    delete fh.when
+    delete fh.value
+  }
+  if (JSON.stringify(fh) !== fhBefore) changed = true
+  conditions[fhIdx] = fh
+
+  let pwIdx = conditions.findIndex((c) => c.skillId === 'power-word-shield')
+  if (pwIdx < 0) {
+    conditions.push({ skillId: 'power-word-shield' })
+    pwIdx = conditions.length - 1
+    changed = true
+  }
+  let pw = conditions[pwIdx]
+  const pwBefore = JSON.stringify(pw)
+  pw = mergeSkillWhenAllGate(pw, allyGate)
+  pw = ensureEveryAllyHpGteOnPws(pw, params.shieldHealthyThreshold)
+  pw = ensureEnemyAllHpAboveOnPriestHealShieldEntry(pw, params.enemyCutoff, false)
+  const useLowestUnshielded =
+    params.mentionsUnshielded ||
+    pw.targetRule === 'tank' ||
+    (pw.targetRules?.length === 1 && (pw.targetRules[0] === 'tank' || pw.targetRules[0]?.rule === 'tank'))
+  if (useLowestUnshielded) {
+    pw.targetRules = ['lowest-hp-ally']
+    delete pw.targetRule
+  } else if (!pw.targetRules?.length && !pw.targetRule) {
+    pw.targetRules = ['lowest-hp-ally']
+  }
+  if (JSON.stringify(pw) !== pwBefore) changed = true
+  conditions[pwIdx] = pw
+
+  const baBefore = JSON.stringify(conditions.find((c) => c.skillId === 'basic-attack'))
+  fixPriestPartyBasicAttackFallback(conditions, params.mentionsSolo)
+  if (JSON.stringify(conditions.find((c) => c.skillId === 'basic-attack')) !== baBefore) changed = true
+
+  const baPriIdx = priority.indexOf('basic-attack')
+  if (baPriIdx >= 0) {
+    priority.splice(baPriIdx, 1)
+    changed = true
+  }
+
+  if (changed) {
+    warnings.push(
+      `已补全牧师队伍战术：快速治疗（己方<${Math.round(params.healThreshold * 100)}%且敌人均>${Math.round(params.enemyCutoff * 100)}%）、真言术：盾（全员>=${Math.round(params.shieldHealthyThreshold * 100)}%且无盾队友）、普攻兜底（${params.mentionsSolo ? '独自存活或' : ''}其余情况打血量最低敌人）；斩杀通过治疗/盾上的 enemy-all-hp-above 实现。`,
+    )
+  }
+}
+
 function supplementPriestEnemyExecutePostponeHeals(userInput, conditions, warnings) {
   if (!userInput || typeof userInput !== 'string') return
+  if (parsePriestPartyHealShieldExecuteParams(userInput)) return
   const mentionsEnemyHpPct =
-    /(?:敌人|敌方)[^。\n]{0,24}(?:低于|小于)[^。\n]{0,14}(\d+)\s*%/.test(userInput) ||
-    /(?:低于|小于)[^。\n]{0,14}(\d+)\s*%[^。\n]{0,18}(?:敌人|敌方)/.test(userInput)
+    /(?:敌人|敌方|HP最低[^。\n]{0,10}敌人)[^。\n]{0,24}(?:低于|小于|HP低于)[^。\n]{0,14}(\d+)\s*%/.test(userInput) ||
+    /(?:低于|小于|HP低于)[^。\n]{0,14}(\d+)\s*%[^。\n]{0,18}(?:敌人|敌方)/.test(userInput)
+  const compact = userInput.replace(/\s/g, '')
   const mentionsBasicFirst =
     /(?:优先|先)[^。\n]{0,24}(?:普攻|普通攻击)/.test(userInput) ||
-    /(?:普攻|普通攻击)[^。\n]{0,14}(?:优先|先)/.test(userInput.replace(/\s/g, ''))
+    /(?:普攻|普通攻击)[^。\n]{0,14}(?:优先|先)/.test(compact) ||
+    (/(?:普通攻击|普攻)/.test(compact) &&
+      mentionsEnemyHpPct &&
+      /(?:则|就)[^。\n]{0,20}(?:对其|对)[^。\n]{0,16}(?:使用|施放)?(?:普通攻击|普攻)/.test(compact))
   if (!mentionsEnemyHpPct || !mentionsBasicFirst) return
 
   let cutoff = 0.05
@@ -1823,6 +2091,7 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
     stripRedundantPwsStep2Gates(conditions, warnings)
     fixPriestPwsSelfTargetingWhenNoThreatInUserText(userInput, conditions, warnings)
     conditions = supplementSoloSurvivorRules(userInput, heroClass, skillIds, conditions, warnings)
+    supplementPriestPartyHealShieldExecuteTactics(userInput, priority, conditions, skillIds, warnings)
     if (priestConvertLowestHpGlobal) {
       if (!conditions.some((c) => c.skillId === 'basic-attack')) {
         conditions.push({ skillId: 'basic-attack', targetRule: 'lowest-hp' })

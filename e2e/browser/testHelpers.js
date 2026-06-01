@@ -260,6 +260,38 @@ async function simulateRecruitPromptModal(page, level = 5) {
   await pauseCombat(page)
 }
 
+/** Open hero detail modal on the Tactics tab. heroNameMatch is a substring of the hero card label. */
+async function openHeroTacticsTab(page, heroNameMatch) {
+  const card = page.locator('.squad-col .hero-card').filter({ hasText: heroNameMatch }).first()
+  await expect(card).toBeVisible({ timeout: 10000 })
+  await card.click()
+  await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
+  await page.locator('.detail-tab').filter({ hasText: '\u6218\u672f' }).click()
+  await expect(page.getByTestId('ai-tactics-section')).toBeVisible({ timeout: 5000 })
+}
+
+/** Set a dummy SiliconFlow key and reload so aiTactics module picks it up. */
+async function installE2eTacticsApiKey(page) {
+  await page.evaluate(() => {
+    localStorage.setItem('siliconflow_api_key', 'sk-e2e-test-key')
+  })
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 })
+  await page.evaluate(() => localStorage.setItem('e2eFastCombat', '1'))
+}
+
+/** Mock SiliconFlow chat/completions for AI tactics parse (returns JSON tactics payload). */
+async function mockAiTacticsCompletion(page, tacticsPayload) {
+  await page.route('**/v1/chat/completions', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        choices: [{ message: { content: JSON.stringify(tacticsPayload) } }],
+      }),
+    })
+  })
+}
+
 module.exports = {
   uniqueTestEmail,
   setupNewRun,
@@ -274,5 +306,8 @@ module.exports = {
   getPlayerSave,
   flushPlayerSaveOnPage,
   simulateRecruitPromptModal,
+  openHeroTacticsTab,
+  installE2eTacticsApiKey,
+  mockAiTacticsCompletion,
   SERVER_SAVE_LS_KEYS,
 }

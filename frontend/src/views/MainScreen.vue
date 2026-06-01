@@ -2022,12 +2022,12 @@
                   <span class="ai-tactics-hint">Ctrl+Enter 快捷提交</span>
                 </div>
                 <div v-if="aiTacticsError" class="ai-tactics-error" data-testid="ai-tactics-error">{{ aiTacticsError }}</div>
-                <div v-if="aiTacticsResult" class="ai-tactics-result">
+                <div v-if="aiTacticsResult" class="ai-tactics-result" data-testid="ai-tactics-result">
                   <div class="ai-tactics-explanation">{{ aiTacticsResult.explanation }}</div>
                   <div v-if="aiTacticsResult.warnings.length > 0" class="ai-tactics-warnings">
                     <div v-for="(w, i) in aiTacticsResult.warnings" :key="i" class="ai-tactics-warning-item">{{ w }}</div>
                   </div>
-                  <div class="ai-tactics-preview">
+                  <div class="ai-tactics-preview" data-testid="ai-tactics-preview">
                     <div class="ai-tactics-preview-label">解析预览</div>
                     <div v-if="aiTacticsResult.tactics.skillPriority?.length" class="ai-tactics-preview-row">
                       <span class="ai-tactics-preview-key">技能优先级</span>
@@ -2087,7 +2087,7 @@
                     </div>
                   </div>
                   <div class="ai-tactics-apply-row">
-                    <button type="button" class="btn btn-sm ai-tactics-apply-btn" @click="aiTacticsApply(selectedHero)">应用</button>
+                    <button type="button" class="btn btn-sm ai-tactics-apply-btn" data-testid="ai-tactics-apply" @click="aiTacticsApply(selectedHero)">应用</button>
                     <button type="button" class="btn btn-sm ai-tactics-discard-btn" @click="aiTacticsResult = null">放弃</button>
                   </div>
                 </div>

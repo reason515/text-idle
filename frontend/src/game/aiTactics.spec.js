@@ -190,6 +190,56 @@ describe('validateAiTactics', () => {
     expect(result.warnings.some((w) => w.includes('斩杀优先'))).toBe(true)
   })
 
+  it('fixes wrong AI priest party triage (60% heal, 10% execute, unshielded PWS, solo attack)', () => {
+    const user =
+      '若我方仅剩自己存活，则对HP最低的敌人使用普通攻击；若我方多人存活，且HP最低的敌人HP低于10%，则对其使用普通攻击；若我方多人存活且HP最低的敌人HP高于10%，则优先对我方HP低于60%的角色使用快速治疗，若我方多人存活且不存在HP低于60%的，则对无真言术·盾的我方成员施放真言术·盾，以上条件都不满足或MP不足时，对HP最低的敌人施放普通攻击'
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield', 'basic-attack'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [{ rule: 'lowest-hp-ally' }],
+          whenAll: [{ when: 'allies-alive-gte', value: 2 }],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRule: 'tank',
+          whenAll: [{ when: 'allies-alive-gte', value: 2 }],
+        },
+        {
+          skillId: 'basic-attack',
+          targetRules: [
+            { rule: 'lowest-hp', when: 'solo-survivor' },
+            { rule: 'lowest-hp', when: 'ally-hp-below', value: 0.1 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', user)
+    expect(result.tactics.skillPriority).toEqual(['flash-heal', 'power-word-shield'])
+
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.whenAll).toContainEqual({ when: 'allies-alive-gte', value: 2 })
+    expect(fh.targetRules[0].whenAll).toEqual([
+      { when: 'ally-hp-below', value: 0.6 },
+      { when: 'enemy-all-hp-above', value: 0.1 },
+    ])
+
+    const pw = result.tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+    expect(pw.whenAll).toEqual([
+      { when: 'allies-alive-gte', value: 2 },
+      { when: 'every-ally-hp-gte', value: 0.6 },
+      { when: 'enemy-all-hp-above', value: 0.1 },
+    ])
+    expect(pw.targetRules).toEqual(['lowest-hp-ally'])
+
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.targetRules[0]).toEqual({ rule: 'lowest-hp', when: 'solo-survivor' })
+    expect(ba.targetRules[1]).toEqual({ rule: 'lowest-hp' })
+    expect(ba.targetRules.some((s) => typeof s === 'object' && s?.when === 'ally-hp-below')).toBe(false)
+    expect(result.warnings.some((w) => w.includes('已补全牧师队伍战术'))).toBe(true)
+  })
+
   it('strips misleading priest basic-attack target-hp-below when user describes finisher plus otherwise lowest enemy', () => {
     const user =
       '1.若存在HP低于5%的敌人，优先对其施放普通攻击 2.若存在HP低于70%的我方英雄，对其施放快速治疗 3.若我方所有英雄HP均大于等于70%，则对无真言术盾buff的我方英雄施放真言术盾 4.其它情况下对HP最低的敌人施放普通攻击'
@@ -1455,5 +1505,93 @@ describe('targetRulesChainDisplay', () => {
     ]
     const s = targetRulesChainDisplay(steps, { skillId: 'flash-heal' })
     expect(s).not.toContain('无盾')
+  })
+})
+
+describe('validateAiTactics E2E-aligned mock payloads (Warrior / Mage / Priest)', () => {
+  const warriorSkills = ['sunder-armor', 'taunt', 'shield-slam']
+  const mageSkills = ['frostbolt', 'fireball']
+  const priestSkills = ['flash-heal', 'power-word-shield']
+
+  const priestPartyText =
+    '\u82e5\u6211\u65b9\u4ec5\u5269\u81ea\u5df1\u5b58\u6d3b\uff0c\u5219\u5bf9HP\u6700\u4f4e\u7684\u654c\u4eba\u4f7f\u7528\u666e\u901a\u653b\u51fb\uff1b' +
+    '\u82e5\u6211\u65b9\u591a\u4eba\u5b58\u6d3b\uff0c\u4e14HP\u6700\u4f4e\u7684\u654c\u4ebaHP\u4f4e\u4e8e10%\uff0c\u5219\u5bf9\u5176\u4f7f\u7528\u666e\u901a\u653b\u51fb\uff1b' +
+    '\u82e5\u6211\u65b9\u591a\u4eba\u5b58\u6d3b\u4e14HP\u6700\u4f4e\u7684\u654c\u4ebaHP\u9ad8\u4e8e10%\uff0c\u5219\u4f18\u5148\u5bf9\u6211\u65b9HP\u4f4e\u4e8e60%\u7684\u89d2\u8272\u4f7f\u7528\u5feb\u901f\u6cbb\u7597\uff0c' +
+    '\u82e5\u6211\u65b9\u591a\u4eba\u5b58\u6d3b\u4e14\u4e0d\u5b58\u5728HP\u4f4e\u4e8e60%\u7684\uff0c\u5219\u5bf9\u65e0\u771f\u8a00\u672f\u00b7\u76fe\u7684\u6211\u65b9\u6210\u5458\u65bd\u653e\u771f\u8a00\u672f\u00b7\u76fe\uff0c' +
+    '\u4ee5\u4e0a\u6761\u4ef6\u90fd\u4e0d\u6ee1\u8db3\u6216MP\u4e0d\u8db3\u65f6\uff0c\u5bf9HP\u6700\u4f4e\u7684\u654c\u4eba\u65bd\u653e\u666e\u901a\u653b\u51fb'
+
+  it('AC9 E2E mock: priest wrong AI output is corrected by party triage supplement', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield', 'basic-attack'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [{ rule: 'lowest-hp-ally' }],
+          whenAll: [{ when: 'allies-alive-gte', value: 2 }],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRule: 'tank',
+          whenAll: [{ when: 'allies-alive-gte', value: 2 }],
+        },
+        {
+          skillId: 'basic-attack',
+          targetRules: [
+            { rule: 'lowest-hp', when: 'solo-survivor' },
+            { rule: 'lowest-hp', when: 'ally-hp-below', value: 0.1 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', priestPartyText)
+    expect(result.tactics.skillPriority).toEqual(['flash-heal', 'power-word-shield'])
+    const pw = result.tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+    expect(pw?.targetRules).toEqual(['lowest-hp-ally'])
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba?.targetRules?.some((s) => typeof s === 'object' && s?.when === 'ally-hp-below')).toBe(false)
+  })
+
+  it('AC15 E2E mock: warrior wrong AI output gets basic-attack fallback chain', () => {
+    const userInput =
+      '\u5b58\u5728\u975e\u5766\u514b\u76ee\u6807\u65f6\u4f18\u5148\u5439\u8599\u5426\u5219\u7834\u7532\uff0c\u6012\u6c14\u4e0d\u8db3\u5219\u666e\u901a\u653b\u51fb'
+    const raw = {
+      skillPriority: ['taunt', 'sunder-armor'],
+      targetRule: 'threat-not-tank-random',
+      conditions: [
+        { skillId: 'taunt', targetRule: 'threat-not-tank-random' },
+        { skillId: 'sunder-armor', targetRules: ['threat-not-tank-random', 'lowest-hp'] },
+      ],
+    }
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior', userInput)
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba?.targetRules).toEqual(['default', 'lowest-hp'])
+    expect(result.warnings.some((w) => w.includes('\u5df2\u8865\u5145'))).toBe(true)
+  })
+
+  it('AC16 E2E mock: mage wrong AI output gets three-band HP supplement', () => {
+    const userInput =
+      '1. \u59cb\u7ec8\u6253HP\u6700\u4f4e\u7684\u654c\u4eba\n' +
+      '2. \u76ee\u6807HP\u4f4e\u4e8e5%\u65f6\u4f7f\u7528\u666e\u901a\u653b\u51fb\n' +
+      '3. \u76ee\u6807HP\u57285%-50%\u4e4b\u95f4\u65f6\u4f7f\u7528\u706b\u7403\u672f\n' +
+      '4. \u76ee\u6807HP\u572850%\u4ee5\u4e0a\u65f6\u4f7f\u7528\u5bd2\u51b0\u7bad'
+    const result = validateAiTactics({ skillPriority: ['fireball'], conditions: [] }, mageSkills, 'Mage', userInput)
+    expect(result.tactics.skillPriority).toEqual(['frostbolt', 'fireball'])
+    const frost = result.tactics.conditions.find((c) => c.skillId === 'frostbolt')
+    expect(frost?.when).toBe('target-hp-above')
+    expect(frost?.value).toBe(0.5)
+    const fire = result.tactics.conditions.find((c) => c.skillId === 'fireball')
+    expect(fire?.whenAll).toEqual([
+      { when: 'target-hp-above', value: 0.05 },
+      { when: 'target-hp-below', value: 0.5 },
+    ])
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba?.when).toBe('target-hp-below')
+    expect(ba?.value).toBe(0.05)
+  })
+
+  it('warrior tank tactics summary strings include sunder fallback chain labels', () => {
+    const chain = targetRulesChainDisplay(['threat-not-tank-random', 'lowest-hp'])
+    expect(chain).toContain('\u975e\u5766\u514b\u4ec7\u6068\u76ee\u6807\uff08\u968f\u673a\uff09')
+    expect(chain).toContain('\u8840\u91cf\u6700\u4f4e\u7684\u654c\u4eba')
   })
 })

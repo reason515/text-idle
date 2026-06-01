@@ -3,8 +3,8 @@
     <section class="login-card login-hero">
       <h1 class="hero-title">配好阵容与战术，<br/>让小队在你离开后继续变强。</h1>
       <p class="hero-desc">
-        组建 5 人小队，预设技能优先级与战术策略，离线挂机自动推进。
-        透明公式，深度搭配，看着队伍一步步变强。
+        从经典战法牧三人组启程，预设技能优先级与战术策略，通关后可逐步满编五人；
+        离线挂机自动推进。透明公式，深度搭配，看着队伍一步步变强。
       </p>
     </section>
     <div class="login-card auth-panel panel">
