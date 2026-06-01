@@ -39,7 +39,7 @@
             v-for="(hero, i) in displayHeroes"
             :key="hero.id + '-' + i"
             class="hero-card card-with-float"
-            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0, 'hero-card-levelup-pulse': getLevelUpPulse(hero.id), 'hero-card-target-switch': getTargetSwitchPulseRole(hero.id) === 'hero' }"
+            :class="{ acting: hero.id === currentActorId, targetHit: hero.id === currentTargetId, defeated: (hero.currentHP ?? 0) <= 0, 'hero-card-levelup-pulse': getLevelUpPulse(hero.id), 'hero-card-target-switch': getTargetSwitchPulseRole(hero.id) === 'hero', 'hero-card-defeat-pulse': getDefeatPulse(hero.id) }"
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
@@ -151,7 +151,7 @@
             v-for="(m, i) in currentMonsters"
             :key="m.id + '-' + i"
             class="monster-card card-with-float"
-            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0 }"
+            :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0, 'monster-card-defeat-pulse': getDefeatPulse(m.id) }"
             @click="selectedMonster = m"
           >
             <div
@@ -2491,6 +2491,12 @@ import {
   resolveTargetSwitchAnim,
 } from '../ui/combatTargetSwitchPulse.js'
 import {
+  DEFEAT_PULSE_MS,
+  applyDefeatPulsePatch,
+  clearDefeatPulsePatch,
+  getDefeatPulseActive,
+} from '../ui/combatDefeatPulse.js'
+import {
   parseNaturalLanguageTactics,
   validateAiTactics,
   mergeAiTacticsApply,
@@ -2908,6 +2914,7 @@ const regenPulseByUnitId = ref({})
 const levelUpPulseByHeroId = ref({})
 /** @type {import('vue').Ref<Record<string, 'monster' | 'hero'>>} */
 const targetSwitchPulseByUnitId = ref({})
+const defeatPulseByUnitId = ref({})
 /** @type {import('vue').Ref<Record<string, import('../ui/combatTargetSwitchPulse.js').TargetSwitchAnim>>} */
 const targetSwitchAnimByMonsterId = ref({})
 let floatNumId = 0
@@ -2989,6 +2996,18 @@ function triggerLevelUpPulse(heroId) {
 
 function getTargetSwitchPulseRole(unitId) {
   return targetSwitchPulseByUnitId.value[unitId] ?? null
+}
+
+function getDefeatPulse(unitId) {
+  return getDefeatPulseActive(defeatPulseByUnitId.value, unitId)
+}
+
+function triggerDefeatPulse(unitId) {
+  if (!unitId || isCombatUiDeferred()) return
+  defeatPulseByUnitId.value = applyDefeatPulsePatch(defeatPulseByUnitId.value, unitId)
+  setTimeout(() => {
+    defeatPulseByUnitId.value = clearDefeatPulsePatch(defeatPulseByUnitId.value, unitId)
+  }, DEFEAT_PULSE_MS)
 }
 
 function getTargetSwitchAnim(monsterId) {
@@ -4388,6 +4407,7 @@ function syncSelectedUnitsFromCombat() {
 
 function applyUnitDefeatedLogEntry(defeatEntry) {
   currentTargetId.value = defeatEntry.targetId ?? null
+  triggerDefeatPulse(defeatEntry.targetId)
   addLogEntry(defeatEntry)
   playCombatUnitDeathSound(defeatEntry)
 }
@@ -6240,6 +6260,102 @@ onUnmounted(() => {
     transform: translateX(0) scaleY(1) scaleX(1);
   }
 }
+/* Unit defeat: collapse away from arena center + desaturate into defeated styling. */
+@keyframes hero-unit-defeat-collapse {
+  0% {
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1);
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+  18% {
+    transform: translateX(-0.18rem) translateY(0) scale(1.03) rotate(-1deg);
+    filter: brightness(1.35) saturate(1.1);
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--color-defeat), 0 0 26px rgba(255, 68, 68, 0.75), inset 0 0 0 1px var(--color-defeat);
+  }
+  42% {
+    transform: translateX(-0.48rem) translateY(0.2rem) scale(0.95) rotate(-2.5deg);
+    filter: brightness(0.9) saturate(0.85);
+    opacity: 0.92;
+    box-shadow: 0 0 0 2px var(--color-defeat), 0 0 16px rgba(255, 68, 68, 0.45), inset 0 0 0 1px var(--color-defeat);
+  }
+  68% {
+    transform: translateX(-0.32rem) translateY(0.32rem) scale(0.92) rotate(-1.5deg);
+    filter: brightness(0.75) saturate(0.55);
+    opacity: 0.78;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.25), inset 0 0 0 1px var(--color-defeat);
+  }
+  100% {
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+    filter: brightness(0.65) saturate(0.5);
+    opacity: 0.65;
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+}
+@keyframes monster-unit-defeat-collapse {
+  0% {
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+    filter: brightness(1) saturate(1);
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+  18% {
+    transform: translateX(0.18rem) translateY(0) scale(1.03) rotate(1deg);
+    filter: brightness(1.35) saturate(1.1);
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--color-defeat), 0 0 26px rgba(255, 68, 68, 0.75), inset 0 0 0 1px var(--color-defeat);
+  }
+  42% {
+    transform: translateX(0.48rem) translateY(0.2rem) scale(0.95) rotate(2.5deg);
+    filter: brightness(0.9) saturate(0.85);
+    opacity: 0.92;
+    box-shadow: 0 0 0 2px var(--color-defeat), 0 0 16px rgba(255, 68, 68, 0.45), inset 0 0 0 1px var(--color-defeat);
+  }
+  68% {
+    transform: translateX(0.32rem) translateY(0.32rem) scale(0.92) rotate(1.5deg);
+    filter: brightness(0.75) saturate(0.55);
+    opacity: 0.78;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.25), inset 0 0 0 1px var(--color-defeat);
+  }
+  100% {
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+    filter: brightness(0.65) saturate(0.5);
+    opacity: 0.65;
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+}
+@keyframes defeated-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(-0.15rem);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.06) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes log-defeated-reveal {
+  0% {
+    opacity: 0;
+    transform: translateX(-0.35rem);
+    box-shadow: none;
+  }
+  40% {
+    opacity: 1;
+    transform: translateX(0.08rem);
+    box-shadow: 0 0 14px rgba(255, 68, 68, 0.35);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    box-shadow: none;
+  }
+}
 
 .btn-logout {
   min-height: 1.8rem;
@@ -7089,6 +7205,14 @@ onUnmounted(() => {
   border-color: var(--color-defeat) !important;
   background: rgba(255, 68, 68, 0.06);
 }
+.hero-card.hero-card-defeat-pulse {
+  z-index: 2;
+  transition: none;
+  animation: hero-unit-defeat-collapse 0.95s cubic-bezier(0.36, 0, 0.2, 1) forwards;
+}
+.hero-card.hero-card-defeat-pulse .defeated-badge {
+  animation: defeated-badge-pop 0.55s ease-out 0.12s both;
+}
 .defeated-badge {
   display: block;
   width: 100%;
@@ -7460,6 +7584,7 @@ onUnmounted(() => {
   gap: 0.35rem;
   color: var(--color-defeat);
   text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+  animation: log-defeated-reveal 0.55s ease-out;
 }
 .log-defeated-icon {
   font-size: var(--font-sm);
@@ -7720,6 +7845,14 @@ onUnmounted(() => {
   opacity: 0.65;
   border-color: var(--color-defeat) !important;
   background: rgba(255, 68, 68, 0.06);
+}
+.monster-card.monster-card-defeat-pulse {
+  z-index: 2;
+  transition: none;
+  animation: monster-unit-defeat-collapse 0.95s cubic-bezier(0.36, 0, 0.2, 1) forwards;
+}
+.monster-card.monster-card-defeat-pulse .defeated-badge {
+  animation: defeated-badge-pop 0.55s ease-out 0.12s both;
 }
 .monster-name {
   font-size: var(--font-base);
