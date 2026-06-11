@@ -1174,6 +1174,92 @@ function conditionHasEnemyAllHpAbove(cond) {
 }
 
 /**
+ * Priest heal/shield postpone pattern: enemy-all-hp-above on spells, basic attack as implicit fallback.
+ * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
+ * @returns {boolean}
+ */
+export function usesPriestExecuteDeferGates(tactics) {
+  const prio = tactics?.skillPriority
+  if (Array.isArray(prio) && prio.length > 0 && prio[0] === 'basic-attack') return false
+  if (!tactics?.conditions?.length) return false
+  const fh = tactics.conditions.find((c) => c.skillId === 'flash-heal')
+  const pw = tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+  return conditionHasEnemyAllHpAbove(fh) || conditionHasEnemyAllHpAbove(pw)
+}
+
+/**
+ * @param {{ conditions?: unknown[] }|null|undefined} tactics
+ * @returns {number|null}
+ */
+export function getPriestExecuteCutoffFromTactics(tactics) {
+  if (!tactics?.conditions?.length) return null
+  let cutoff = null
+  const scanWhenAll = (wa) => {
+    if (!Array.isArray(wa)) return
+    for (const w of wa) {
+      if (w?.when === 'enemy-all-hp-above' && typeof w.value === 'number') {
+        cutoff = w.value
+      }
+    }
+  }
+  for (const cond of tactics.conditions) {
+    if (cond.skillId !== 'flash-heal' && cond.skillId !== 'power-word-shield') continue
+    if (cond.when === 'enemy-all-hp-above' && typeof cond.value === 'number') {
+      cutoff = cond.value
+    }
+    scanWhenAll(cond.whenAll)
+    if (!Array.isArray(cond.targetRules)) continue
+    for (const step of cond.targetRules) {
+      if (typeof step !== 'object' || step === null) continue
+      if (step.when === 'enemy-all-hp-above' && typeof step.value === 'number') {
+        cutoff = step.value
+      }
+      scanWhenAll(step.whenAll)
+    }
+  }
+  return cutoff
+}
+
+/**
+ * UI-only skill order: when priest uses execute-defer gates, show basic attack first (matches player intent).
+ * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
+ * @param {string|undefined} heroClass
+ * @returns {string[]}
+ */
+export function priestTacticsDisplayPriority(tactics, heroClass) {
+  const prio = Array.isArray(tactics?.skillPriority) ? tactics.skillPriority.filter(Boolean) : []
+  if (heroClass === 'Priest' && usesPriestExecuteDeferGates(tactics)) {
+    return ['basic-attack', ...prio.filter((id) => id !== 'basic-attack')]
+  }
+  return prio
+}
+
+/**
+ * Whether UI should append implicit trailing basic attack after display priority.
+ * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
+ * @param {string|undefined} heroClass
+ * @returns {boolean}
+ */
+export function priestTacticsShowsImplicitBasicFallback(tactics, heroClass) {
+  if (heroClass === 'Priest' && usesPriestExecuteDeferGates(tactics)) return false
+  const prio = Array.isArray(tactics?.skillPriority) ? tactics.skillPriority : []
+  if (prio.length === 0) return false
+  if (prio.includes('basic-attack')) return false
+  return prio[prio.length - 1] !== 'basic-attack'
+}
+
+/**
+ * Preview / current-tactics section label for skill order row.
+ * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
+ * @param {string|undefined} heroClass
+ * @returns {string}
+ */
+export function priestTacticsPrioritySectionLabel(tactics, heroClass) {
+  if (heroClass === 'Priest' && usesPriestExecuteDeferGates(tactics)) return '出手顺序'
+  return '技能优先级'
+}
+
+/**
  * AI tactics preview helper: priest execute-before-heal messaging (gates vs explicit basic-attack priority).
  * @param {{ conditions?: unknown[], skillPriority?: string[] }|null|undefined} tactics
  * @returns {string}
@@ -1181,13 +1267,12 @@ function conditionHasEnemyAllHpAbove(cond) {
 export function priestExecuteFinisherPreviewNote(tactics) {
   const prio = tactics?.skillPriority
   if (Array.isArray(prio) && prio.length > 0 && prio[0] === 'basic-attack') {
-    return '说明：技能优先级已将「普通攻击」置于首位；本回合会先尝试普攻，再上治疗/护盾（仍受各技能条件约束）。'
+    return '本回合按顺序尝试：先普通攻击（受条件约束），再快速治疗 / 真言术：盾。'
   }
-  if (!tactics?.conditions?.length) return ''
-  const fh = tactics.conditions.find((c) => c.skillId === 'flash-heal')
-  const pw = tactics.conditions.find((c) => c.skillId === 'power-word-shield')
-  if (!conditionHasEnemyAllHpAbove(fh) && !conditionHasEnemyAllHpAbove(pw)) return ''
-  return '说明：普攻固定排在法术之后尝试；当场上有极低血敌人时，治疗/护盾会因「全场敌人血量高于斩杀线」不满足而跳过，本回合会先打出普攻（斩杀优先）。'
+  if (!usesPriestExecuteDeferGates(tactics)) return ''
+  const cutoff = getPriestExecuteCutoffFromTactics(tactics)
+  const pct = cutoff != null ? `${Math.round(cutoff * 100)}%` : '斩杀线'
+  return `有敌人 HP 不高于 ${pct} 时先普攻斩杀；否则按条件尝试快速治疗、真言术：盾；法术不可用（含缺蓝）时普攻打血量最低敌人。治疗/盾需「全场敌人均高于 ${pct}」才会施放。`
 }
 
 function stripRedundantFlashHealSkillLevelAllyHpBelow(conditions, warnings) {
@@ -1374,12 +1459,16 @@ function fixPriestPartyBasicAttackFallback(conditions, mentionsSolo) {
     : ba.targetRule
       ? [ba.targetRule]
       : []
-  rules = rules.filter((s) => {
-    if (typeof s !== 'object' || s === null) return true
-    if (s.when === 'ally-hp-below') return false
-    if (s.when === 'target-hp-below') return false
-    return true
-  })
+  rules = rules
+    .map((s) => stripEnemyAllHpAboveFromTargetRuleStep(s))
+    .filter((s) => s != null)
+    .filter((s) => {
+      if (typeof s !== 'object' || s === null) return true
+      if (s.when === 'ally-hp-below') return false
+      if (s.when === 'target-hp-below') return false
+      if (s.when === 'enemy-all-hp-above') return false
+      return true
+    })
   if (mentionsSolo && !basicAttackHasSoloStep({ targetRules: rules })) {
     rules.unshift(soloStep)
   }
@@ -1467,7 +1556,7 @@ function supplementPriestPartyHealShieldExecuteTactics(userInput, priority, cond
 
   if (changed) {
     warnings.push(
-      `已补全牧师队伍战术：快速治疗（己方<${Math.round(params.healThreshold * 100)}%且敌人均>${Math.round(params.enemyCutoff * 100)}%）、真言术：盾（全员>=${Math.round(params.shieldHealthyThreshold * 100)}%且无盾队友）、普攻兜底（${params.mentionsSolo ? '独自存活或' : ''}其余情况打血量最低敌人）；斩杀通过治疗/盾上的 enemy-all-hp-above 实现。`,
+      `已补全牧师队伍战术：预览出手顺序为 普通攻击→快速治疗→真言术：盾；快速治疗（己方<${Math.round(params.healThreshold * 100)}%且敌人均>${Math.round(params.enemyCutoff * 100)}%）、真言术：盾（全员>=${Math.round(params.shieldHealthyThreshold * 100)}%且无盾队友）、普攻兜底（${params.mentionsSolo ? '独自存活或' : ''}其余情况打血量最低敌人）；有敌人低于斩杀线时由治疗/盾门控跳过法术以实现斩杀优先。`,
     )
   }
 }
@@ -1606,6 +1695,29 @@ function stripMisleadingPriestBasicAttackFinisherGate(conditions, userInput, her
 }
 
 /**
+ * Remove enemy-all-hp-above from a targetRules step (belongs on heals/shield only).
+ * @param {string|object|null|undefined} step
+ * @returns {string|object|null}
+ */
+function stripEnemyAllHpAboveFromTargetRuleStep(step) {
+  if (typeof step === 'string') return step
+  if (!step || typeof step !== 'object' || typeof step.rule !== 'string') return step
+  if (step.when === 'enemy-all-hp-above') {
+    return { rule: step.rule }
+  }
+  if (Array.isArray(step.whenAll) && step.whenAll.length > 0) {
+    const filtered = step.whenAll.filter((w) => w && w.when !== 'enemy-all-hp-above')
+    if (filtered.length === step.whenAll.length) return step
+    if (filtered.length === 0) return { rule: step.rule }
+    if (filtered.length === 1) {
+      return { rule: step.rule, when: filtered[0].when, value: filtered[0].value }
+    }
+    return { rule: step.rule, whenAll: filtered }
+  }
+  return step
+}
+
+/**
  * enemy-all-hp-above belongs on heals/shield to postpone casts; never on basic-attack (misleading in UI; ignored by combat gate path).
  * @param {Object[]} conditions
  * @param {string[]} warnings
@@ -1632,6 +1744,32 @@ function stripPriestBasicAttackMisplacedEnemyAllHpAbove(conditions, warnings) {
       if (ba.whenAll[0].value !== undefined) ba.value = ba.whenAll[0].value
       delete ba.whenAll
     }
+  }
+  if (Array.isArray(ba.targetRules) && ba.targetRules.length > 0) {
+    const next = []
+    for (const step of ba.targetRules) {
+      const cleaned = stripEnemyAllHpAboveFromTargetRuleStep(step)
+      if (cleaned == null) {
+        changed = true
+        continue
+      }
+      if (JSON.stringify(cleaned) !== JSON.stringify(step)) changed = true
+      next.push(cleaned)
+    }
+    const deduped = []
+    for (const step of next) {
+      const prev = deduped[deduped.length - 1]
+      if (
+        prev === 'lowest-hp' &&
+        (step === 'lowest-hp' || (typeof step === 'object' && step?.rule === 'lowest-hp' && !step.when && !(step.whenAll?.length)))
+      ) {
+        changed = true
+        continue
+      }
+      deduped.push(step)
+    }
+    ba.targetRules = deduped
+    delete ba.targetRule
   }
   if (changed) {
     warnings.push(

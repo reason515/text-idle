@@ -13,6 +13,11 @@ import {
   extractFirstBalancedJsonObject,
   stripTrailingCommasInJson,
   priestExecuteFinisherPreviewNote,
+  priestTacticsDisplayPriority,
+  priestTacticsPrioritySectionLabel,
+  priestTacticsShowsImplicitBasicFallback,
+  usesPriestExecuteDeferGates,
+  getPriestExecuteCutoffFromTactics,
 } from './aiTactics.js'
 
 describe('parseAiTacticsResponseContent', () => {
@@ -802,6 +807,24 @@ describe('validateAiTactics Priest basic-attack cleanup', () => {
     expect(ba.targetRule).toBe('lowest-hp')
     expect(result.warnings.some((w) => w.includes('普攻') && w.includes('全场敌人血量高于'))).toBe(true)
   })
+
+  it('strips enemy-all-hp-above from basic-attack targetRules chain steps', () => {
+    const raw = {
+      skillPriority: ['flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'basic-attack',
+          targetRules: [
+            'lowest-hp',
+            { rule: 'lowest-hp', when: 'enemy-all-hp-above', value: 0.1 },
+          ],
+        },
+      ],
+    }
+    const result = validateAiTactics(raw, ['flash-heal', 'power-word-shield'], 'Priest')
+    const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
+    expect(ba.targetRules).toEqual(['lowest-hp'])
+  })
 })
 
 describe('validateAiTactics skillPriority dedupe', () => {
@@ -1379,7 +1402,66 @@ describe('priestExecuteFinisherPreviewNote', () => {
       conditions: [{ skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] }],
     })
     expect(s).toContain('普通攻击')
-    expect(s).toContain('首位')
+    expect(s).toContain('先')
+  })
+})
+
+describe('priestTacticsDisplayPriority', () => {
+  const deferTactics = {
+    skillPriority: ['flash-heal', 'power-word-shield'],
+    conditions: [
+      {
+        skillId: 'flash-heal',
+        targetRules: [
+          {
+            rule: 'lowest-hp-ally',
+            whenAll: [
+              { when: 'ally-hp-below', value: 0.7 },
+              { when: 'enemy-all-hp-above', value: 0.1 },
+            ],
+          },
+        ],
+      },
+      {
+        skillId: 'power-word-shield',
+        whenAll: [
+          { when: 'every-ally-hp-gte', value: 0.7 },
+          { when: 'enemy-all-hp-above', value: 0.1 },
+        ],
+        targetRules: ['lowest-hp-ally'],
+      },
+      { skillId: 'basic-attack', targetRules: ['lowest-hp'] },
+    ],
+  }
+
+  it('shows basic-attack first when execute-defer gates are on heals/shield', () => {
+    expect(usesPriestExecuteDeferGates(deferTactics)).toBe(true)
+    expect(priestTacticsDisplayPriority(deferTactics, 'Priest')).toEqual([
+      'basic-attack',
+      'flash-heal',
+      'power-word-shield',
+    ])
+    expect(priestTacticsShowsImplicitBasicFallback(deferTactics, 'Priest')).toBe(false)
+    expect(priestTacticsPrioritySectionLabel(deferTactics, 'Priest')).toBe('出手顺序')
+  })
+
+  it('keeps engine order when basic-attack is already first in skillPriority', () => {
+    const t = {
+      skillPriority: ['basic-attack', 'flash-heal'],
+      conditions: [{ skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] }],
+    }
+    expect(usesPriestExecuteDeferGates(t)).toBe(false)
+    expect(priestTacticsDisplayPriority(t, 'Priest')).toEqual(['basic-attack', 'flash-heal'])
+  })
+
+  it('includes execute cutoff in preview note', () => {
+    const s = priestExecuteFinisherPreviewNote(deferTactics)
+    expect(s).toContain('10%')
+    expect(s).toContain('先普攻')
+  })
+
+  it('getPriestExecuteCutoffFromTactics reads gate from flash-heal step', () => {
+    expect(getPriestExecuteCutoffFromTactics(deferTactics)).toBe(0.1)
   })
 })
 

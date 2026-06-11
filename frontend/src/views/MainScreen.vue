@@ -2030,23 +2030,17 @@
                   <div class="ai-tactics-preview" data-testid="ai-tactics-preview">
                     <div class="ai-tactics-preview-label">解析预览</div>
                     <div v-if="aiTacticsResult.tactics.skillPriority?.length" class="ai-tactics-preview-row">
-                      <span class="ai-tactics-preview-key">技能优先级</span>
+                      <span class="ai-tactics-preview-key">{{ aiTacticsPriorityLabel }}</span>
                       <span class="ai-tactics-preview-val ai-tactics-priority-chain">
-                        <template v-for="(skillId, pi) in aiTacticsResult.tactics.skillPriority" :key="`${skillId}-${pi}`">
+                        <template v-for="(skillId, pi) in aiTacticsDisplayPriority" :key="`${skillId}-${pi}`">
                           <span
                             class="ai-tactics-priority-token"
                             :class="skillId === 'basic-attack' ? 'ai-tactics-priority-token-basic' : 'ai-tactics-priority-token-skill'"
                             >{{ skillDisplayName(skillId, selectedHero.class) }}</span
                           >
-                          <span v-if="pi < aiTacticsResult.tactics.skillPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                          <span v-if="pi < aiTacticsDisplayPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
                         </template>
-                        <template
-                          v-if="
-                            !aiTacticsResult.tactics.skillPriority.includes('basic-attack') &&
-                            aiTacticsResult.tactics.skillPriority[aiTacticsResult.tactics.skillPriority.length - 1] !==
-                              'basic-attack'
-                          "
-                        >
+                        <template v-if="aiTacticsShowsImplicitBasic">
                           <span class="ai-tactics-priority-arrow">&gt;</span>
                           <span class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
                         </template>
@@ -2095,24 +2089,31 @@
               <div class="detail-sep-line">当前战术</div>
               <div v-if="selectedHero.tactics && (selectedHero.tactics.skillPriority?.length || selectedHero.tactics.targetRule || selectedHero.tactics.conditions?.length)" class="detail-section ai-tactics-current" data-testid="ai-tactics-current">
                 <div class="ai-tactics-current-row">
-                  <span class="ai-tactics-current-label">技能优先级</span>
+                  <span class="ai-tactics-current-label">{{ currentTacticsPriorityLabel }}</span>
                   <span class="ai-tactics-current-val ai-tactics-priority-chain">
-                    <template v-if="tacticsSkillPriority(selectedHero).length">
-                      <template v-for="(sid, pi) in tacticsSkillPriority(selectedHero)" :key="`${sid}-${pi}`">
+                    <template v-if="currentTacticsDisplayPriority.length">
+                      <template v-for="(sid, pi) in currentTacticsDisplayPriority" :key="`${sid}-${pi}`">
                         <span
                           class="ai-tactics-priority-token"
                           :class="sid === 'basic-attack' ? 'ai-tactics-priority-token-basic' : 'ai-tactics-priority-token-skill'"
-                          >{{ getHeroSkillDisplay(sid, selectedHero).name }}</span
+                          >{{ sid === 'basic-attack' ? '普通攻击' : getHeroSkillDisplay(sid, selectedHero).name }}</span
                         >
-                        <span v-if="pi < tacticsSkillPriority(selectedHero).length - 1" class="ai-tactics-priority-arrow">&gt;</span>
+                        <span v-if="pi < currentTacticsDisplayPriority.length - 1" class="ai-tactics-priority-arrow">&gt;</span>
                       </template>
-                      <template v-if="tacticsShowsImplicitBasicFallback(selectedHero)">
+                      <template v-if="currentTacticsShowsImplicitBasic">
                         <span class="ai-tactics-priority-arrow">&gt;</span>
                         <span class="ai-tactics-priority-token ai-tactics-priority-token-basic">普通攻击</span>
                       </template>
                     </template>
                     <span v-else class="ai-tactics-current-empty">未设置（按默认顺序）</span>
                   </span>
+                </div>
+                <div
+                  v-if="currentTacticsPriestExecuteHint"
+                  class="ai-tactics-current-row ai-tactics-preview-note-row"
+                >
+                  <span class="ai-tactics-current-label">说明</span>
+                  <span class="ai-tactics-current-val ai-tactics-preview-note-val">{{ currentTacticsPriestExecuteHint }}</span>
                 </div>
                 <div class="ai-tactics-current-row">
                   <span class="ai-tactics-current-label">默认目标</span>
@@ -2510,6 +2511,9 @@ import {
   tacticsSkillWhenDisplay,
   conditionValueDisplay,
   priestExecuteFinisherPreviewNote,
+  priestTacticsDisplayPriority,
+  priestTacticsPrioritySectionLabel,
+  priestTacticsShowsImplicitBasicFallback,
 } from '../game/aiTactics.js'
 import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes } from '../game/combatFloatingFeedback.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
@@ -2883,6 +2887,39 @@ const aiTacticsResult = ref(null)
 const aiTacticsPriestExecuteHint = computed(() => {
   const t = aiTacticsResult.value?.tactics
   return t ? priestExecuteFinisherPreviewNote(t) : ''
+})
+const aiTacticsPriorityLabel = computed(() => {
+  const cls = selectedHero.value?.class
+  const t = aiTacticsResult.value?.tactics
+  return t ? priestTacticsPrioritySectionLabel(t, cls) : '技能优先级'
+})
+const aiTacticsDisplayPriority = computed(() => {
+  const cls = selectedHero.value?.class
+  const t = aiTacticsResult.value?.tactics
+  return t ? priestTacticsDisplayPriority(t, cls) : []
+})
+const aiTacticsShowsImplicitBasic = computed(() => {
+  const cls = selectedHero.value?.class
+  const t = aiTacticsResult.value?.tactics
+  return t ? priestTacticsShowsImplicitBasicFallback(t, cls) : false
+})
+const currentTacticsPriestExecuteHint = computed(() => {
+  const t = selectedHero.value?.tactics
+  return t ? priestExecuteFinisherPreviewNote(t) : ''
+})
+const currentTacticsPriorityLabel = computed(() => {
+  const hero = selectedHero.value
+  return hero?.tactics ? priestTacticsPrioritySectionLabel(hero.tactics, hero.class) : '技能优先级'
+})
+const currentTacticsDisplayPriority = computed(() => {
+  const hero = selectedHero.value
+  if (!hero?.tactics) return []
+  return priestTacticsDisplayPriority(hero.tactics, hero.class)
+})
+const currentTacticsShowsImplicitBasic = computed(() => {
+  const hero = selectedHero.value
+  if (!hero?.tactics) return false
+  return priestTacticsShowsImplicitBasicFallback(hero.tactics, hero.class)
 })
 const aiTacticsError = ref('')
 const aiTacticsKeyInput = ref(getApiKey())
@@ -3922,20 +3959,16 @@ function tacticsSkillPriority(hero) {
   })
 }
 
-/** Engine fallback swing UI: omit when skillPriority already lists basic-attack (no duplicate implicit swing). */
+/** Engine fallback swing UI: omit when display list already includes basic-attack at front (defer gates) or in priority. */
 function tacticsShowsImplicitBasicFallback(hero) {
-  const ids = tacticsSkillPriority(hero)
-  if (ids.length === 0) return false
-  if (ids.includes('basic-attack')) return false
-  return ids[ids.length - 1] !== 'basic-attack'
+  return priestTacticsShowsImplicitBasicFallback(hero?.tactics, hero?.class)
 }
 
 function tacticsDisplaySkillList(hero) {
-  const ids = tacticsSkillPriority(hero)
-  if (!ids.length) return []
-  if (ids.includes('basic-attack')) return [...ids]
-  if (ids[ids.length - 1] !== 'basic-attack') return [...ids, 'basic-attack']
-  return [...ids]
+  const list = priestTacticsDisplayPriority(hero?.tactics, hero?.class)
+  if (!list.length) return []
+  if (priestTacticsShowsImplicitBasicFallback(hero?.tactics, hero?.class)) return [...list, 'basic-attack']
+  return list
 }
 
 /** Raw tactics.targetRule (null / undefined when unset). */
