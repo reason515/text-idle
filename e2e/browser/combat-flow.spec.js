@@ -175,7 +175,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     )?.trim() ?? ''
     expect(damageTypeVal).toMatch(/^(\u7269\u7406|\u6cd5\u672f|\u6df7\u5408)$/)
     const tierTag = (await detailModal.locator('.modal-tier-tag').textContent())?.trim() ?? ''
-    expect(tierTag).toMatch(/^(\u666e\u901a|\u7cbe\u82f1|\u9996\u9886)$/)
+    expect(tierTag).toMatch(/^(\u666e\u901a|\u7cbe\u82f1|BOSS)$/)
   })
 
   test('encounter message appears at battle start', async ({ page }) => {

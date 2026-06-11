@@ -166,7 +166,7 @@
             <div v-if="(m.currentHP ?? 0) <= 0" class="defeated-badge">DEFEATED</div>
             <div class="card-top">
               <span class="monster-name">{{ m.name }}</span>
-              <span class="monster-tier" :class="'tier-' + m.tier">{{ m.tier }}</span>
+              <span class="monster-tier" :class="'tier-' + m.tier">{{ monsterTierLabel(m.tier) }}</span>
             </div>
             <div class="card-meta-row">
               <span class="monster-level">Lv.{{ m.level ?? 1 }}</span>
@@ -2631,7 +2631,7 @@ const MONSTER_TIER_COLORS = {
 const MONSTER_TIER_LABELS = {
   normal: '\u666e\u901a',
   elite: '\u7cbe\u82f1',
-  boss: '\u9996\u9886',
+  boss: 'BOSS',
 }
 
 const MONSTER_DAMAGE_TYPE_LABELS = {
