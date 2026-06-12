@@ -103,6 +103,45 @@ test.describe('Tactics configuration (AI UI)', () => {
     await expect(page.locator('.ai-tactics-current-label').filter({ hasText: '技能优先级' })).toBeVisible()
   })
 
+  test('AC3b: AI parse shows processing state while waiting', async ({ page }) => {
+    const email = uniqueTestEmail('tactics-ac3b')
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await pauseCombat(page)
+
+    await page.route('**/v1/chat/completions', async (route) => {
+      await new Promise((r) => setTimeout(r, 600))
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                skillPriority: ['taunt'],
+                explanation: 'e2e loading mock',
+                warnings: [],
+              }),
+            },
+          }],
+        }),
+      })
+    })
+    await installE2eTacticsApiKey(page)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+
+    await openHeroTacticsTab(page, '\u74e6\u91cc\u5b89')
+    await page.getByTestId('ai-tactics-textarea').fill('\u5148\u5439\u8599\u518d\u7834\u7532')
+    await page.getByTestId('ai-tactics-submit').click()
+
+    const loading = page.getByTestId('ai-tactics-loading')
+    await expect(loading).toBeVisible({ timeout: 3000 })
+    await expect(loading).toContainText('\u5904\u7406\u4e2d')
+    await expect(loading).toContainText('AI \u6b63\u5728\u89e3\u6790\u6218\u672f\u89c4\u5219')
+    await expect(page.getByTestId('ai-tactics-result')).toBeVisible({ timeout: 15000 })
+    await expect(loading).not.toBeVisible()
+  })
+
   test('AC3: Parse without API key shows configure prompt', async ({ page }) => {
     const email = uniqueTestEmail('tactics-ac3')
     await registerAndGoToMain(page, email)

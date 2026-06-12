@@ -2021,6 +2021,19 @@
                   >{{ aiTacticsLoading ? '解析中...' : 'AI 解析' }}</button>
                   <span class="ai-tactics-hint">Ctrl+Enter 快捷提交</span>
                 </div>
+                <div
+                  v-if="aiTacticsLoading"
+                  class="ai-tactics-loading"
+                  data-testid="ai-tactics-loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div class="ai-tactics-loading-spinner" aria-hidden="true"></div>
+                  <div class="ai-tactics-loading-text">
+                    <span class="ai-tactics-loading-title">处理中</span>
+                    <span class="ai-tactics-loading-sub">AI 正在解析战术规则，请稍候...</span>
+                  </div>
+                </div>
                 <div v-if="aiTacticsError" class="ai-tactics-error" data-testid="ai-tactics-error">{{ aiTacticsError }}</div>
                 <div v-if="aiTacticsResult" class="ai-tactics-result" data-testid="ai-tactics-result">
                   <div class="ai-tactics-explanation">{{ aiTacticsResult.explanation }}</div>
@@ -8377,6 +8390,44 @@ input.tactics-condition-value[type="number"] {
   color: var(--text-placeholder);
   white-space: nowrap;
   line-height: 1.35;
+}
+.ai-tactics-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+}
+.ai-tactics-loading-spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--border-dark);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ai-tactics-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes ai-tactics-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ai-tactics-loading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.ai-tactics-loading-title {
+  font-size: var(--font-base);
+  color: var(--text-value);
+  font-weight: 600;
+}
+.ai-tactics-loading-sub {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 .ai-tactics-error {
   font-size: var(--font-sm);
