@@ -20,7 +20,7 @@ test.describe('Register E2E', () => {
     await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-    await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
+    await expect(page.getByText('欢迎来到挂机英雄团')).toBeVisible()
     // Verify that intro page is shown, not main screen with squad
     await expect(page.getByText('No characters in squad')).not.toBeVisible()
   })
@@ -97,7 +97,7 @@ test.describe('Register E2E', () => {
     await page.getByRole('button', { name: '注册' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-    await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
+    await expect(page.getByText('欢迎来到挂机英雄团')).toBeVisible()
 
     const save = await getPlayerSave(page)
     expect(save.teamName).toBe('')

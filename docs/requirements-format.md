@@ -1,6 +1,6 @@
 # Requirements Format: User Story + Acceptance Criteria
 
-This document defines the standard format for instantiated requirements in the Text Idle project.
+This document defines the standard format for instantiated requirements in the 挂机英雄团 (text-idle) project.
 
 ---
 

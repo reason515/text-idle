@@ -1,4 +1,4 @@
-# Build and package Text Idle for distribution.
+# Build and package 挂机英雄团 for distribution.
 # Creates dist/text-idle-<platform>.zip with executable and README.
 # Run from project root.
 
@@ -30,7 +30,7 @@ if (Test-Path $readmeSrc) {
     Copy-Item $readmeSrc -Destination $readmePath -Force
 } else {
     @"
-Text Idle - How to Run
+挂机英雄团 - How to Run
 ======================
 
 1. Run $exe (double-click or from terminal)

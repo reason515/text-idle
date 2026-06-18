@@ -10,10 +10,10 @@
   <div v-else class="app">
     <header class="header">
       <div class="header-brand">
-        <div class="brand-mark">TI</div>
+        <div class="brand-mark">挂机</div>
         <div class="brand-copy">
-          <p class="brand-kicker">Text Idle</p>
-          <h1>文字挂机</h1>
+          <p class="brand-kicker">文字策略放置 RPG</p>
+          <h1>挂机英雄团</h1>
         </div>
       </div>
       <div class="header-status">

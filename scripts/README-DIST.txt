@@ -1,4 +1,4 @@
-Text Idle - How to Run
+挂机英雄团 - How to Run
 =====================
 
 1. Run text-idle.exe (double-click or from terminal)

@@ -1,4 +1,4 @@
-# Build Text Idle for distribution (single executable with embedded frontend).
+# Build 挂机英雄团 for distribution (single executable with embedded frontend).
 # Output: dist/text-idle.exe (Windows) or dist/text-idle (Linux/macOS)
 # Run from project root.
 

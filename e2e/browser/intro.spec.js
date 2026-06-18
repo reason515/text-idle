@@ -14,7 +14,7 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-    await expect(page.getByText('欢迎来到 Text Idle')).toBeVisible()
+    await expect(page.getByText('欢迎来到挂机英雄团')).toBeVisible()
     await expect(page.getByText(/\u6587\u5b57\u6302\u673a RPG/)).toBeVisible()
   })
 

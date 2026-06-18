@@ -17,7 +17,7 @@
       <template v-if="step === 1">
         <div class="intro-body">
           <p>
-            这是一款文字挂机 RPG。系统会先为你准备三位英雄 --
+            《挂机英雄团》是一款文字挂机 RPG。系统会先为你准备三位英雄 --
             <span class="hero-tag hero-tank">坦克</span>
             <span class="hero-tag hero-dps">输出</span>
             <span class="hero-tag hero-heal">治疗</span>
@@ -202,7 +202,7 @@ const fixedTrioFull = computed(() => createFixedTrioSquad())
 const stepMeta = computed(() => {
   if (step.value === 1) {
     return {
-      title: '欢迎来到 Text Idle',
+      title: '欢迎来到挂机英雄团',
       subtitle: '先快速了解这款游戏的节奏、目标，以及你将如何带领小队成长。',
     }
   }
