@@ -2,6 +2,7 @@ import { getAnyWarriorSkillById } from './warriorSkills.js'
 import { getAnyMageSkillById } from './mageSkills.js'
 import { getAnyPriestSkillById } from './priestSkills.js'
 import { getAnyDruidSkillById } from './druidSkills.js'
+import { getMonsterSkillById } from './monsterSkills.js'
 
 const UNKNOWN = '\u672a\u77e5\u6280\u80fd'
 
@@ -18,5 +19,7 @@ export function displayNameForPlayerStatsSkillId(skillId) {
   if (p?.name) return p.name
   const d = getAnyDruidSkillById(sid)
   if (d?.name) return d.name
+  const monster = getMonsterSkillById(sid)
+  if (monster?.name) return monster.name
   return sid
 }

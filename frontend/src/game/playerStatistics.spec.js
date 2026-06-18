@@ -26,6 +26,7 @@ describe('playerStatistics', () => {
     expect(s.victoryCount).toBe(0)
     expect(s.battleTimeline).toEqual([])
     expect(s.damageByHero).toEqual({})
+    expect(s.injuryByHero).toEqual({})
   })
 
   it('explorationSteps sums combat and rest', () => {
@@ -175,6 +176,41 @@ describe('playerStatistics', () => {
       damageByHero: { z: { basic: 12.9, skill: 3.1 } },
     })
     expect(s.damageByHero).toEqual({ z: { basic: 12, skill: 3 } })
+  })
+
+  it('applyBattleToPlayerStats merges injuryByHeroDelta', () => {
+    let s = applyBattleToPlayerStats(createEmptyPlayerStats(), {
+      combatActionSteps: 1,
+      goldGained: 0,
+      xpGained: 0,
+      rounds: 1,
+      injuryByHeroDelta: { a: { basic: 10, skill: 5 } },
+    })
+    expect(s.injuryByHero).toEqual({ a: { basic: 10, skill: 5 } })
+    s = applyBattleToPlayerStats(s, {
+      combatActionSteps: 1,
+      goldGained: 0,
+      xpGained: 0,
+      rounds: 1,
+      injuryByHeroDelta: { a: { basic: 3, skill: 1, skillById: { 'stone-shard': 1 } }, b: { basic: 0, skill: 8 } },
+    })
+    expect(s.injuryByHero).toEqual({
+      a: { basic: 13, skill: 6, skillById: { 'stone-shard': 1 } },
+      b: { basic: 0, skill: 8 },
+    })
+  })
+
+  it('normalizePlayerStats parses injuryByHero', () => {
+    const s = normalizePlayerStats({
+      combatActionSteps: 0,
+      restSteps: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      displayScaleN: 100,
+      battleTimeline: [],
+      injuryByHero: { z: { basic: 12.9, skill: 3.1 } },
+    })
+    expect(s.injuryByHero).toEqual({ z: { basic: 12, skill: 3 } })
   })
 
   it('normalizePlayerStats parses battleTimeline', () => {

@@ -1031,6 +1031,15 @@
             >
               伤害统计
             </button>
+            <button
+              type="button"
+              class="detail-tab"
+              data-testid="player-stats-tab-injury"
+              :class="{ active: playerStatsModalTab === 'injury' }"
+              @click="playerStatsModalTab = 'injury'"
+            >
+              受伤统计
+            </button>
           </div>
 
           <div class="player-stats-modal-body game-scroll-alt">
@@ -1099,7 +1108,7 @@
               </div>
             </div>
             <div v-if="resetStatsConfirming" class="player-stats-reset-confirm detail-skill-choice-banner">
-              <p>确定清零统计数据？将重置本周期累计步数、收益、战斗胜负、场次趋势列表与伤害累计。</p>
+              <p>确定清零统计数据？将重置本周期累计步数、收益、战斗胜负、场次趋势列表与伤害/受伤累计。</p>
               <div class="player-stats-reset-actions player-stats-modal-inline-btns">
                 <button type="button" class="btn btn-danger player-stats-compact-btn" data-testid="player-stats-reset-confirm" @click="confirmResetPlayerStats">确定清零</button>
                 <button type="button" class="btn player-stats-compact-btn" @click="resetStatsConfirming = false">取消</button>
@@ -1335,6 +1344,134 @@
               </div>
             </div>
           </template>
+
+          <template v-else-if="playerStatsModalTab === 'injury'">
+            <div class="detail-skill-choice-banner player-stats-banner tooltip-wrap has-tip">
+              <p>
+                自上次清零起累计<strong>我方所受伤害</strong>（含护盾吸收）；各角色饼图按<strong>普攻与敌方技能</strong>拆分。不含无法在日志中单次归因的持续伤害等。
+              </p>
+              <span class="tooltip-text tooltip-wide">每场战斗结束时根据本场日志增量汇总；数值按有效伤害（含被护盾吸收部分）统计。各角色饼图扇区或图例行悬停显示数值与占比。点击「清零统计」将清空本节数据。</span>
+            </div>
+            <div
+              v-if="playerStatsInjurySquadTotal <= 0"
+              class="player-stats-damage-empty"
+              data-testid="player-stats-injury-empty"
+            >
+              本周期暂无累计受伤数据。进行战斗后会自动写入。
+            </div>
+            <div v-else class="player-stats-damage-layout" data-testid="player-stats-injury-section">
+              <div class="player-stats-damage-card player-stats-damage-card-wide">
+                <div class="player-stats-damage-card-title">小队受伤占比</div>
+                <div class="player-stats-pie-row">
+                  <svg
+                    class="player-stats-pie-svg"
+                    :viewBox="playerStatsInjurySharePie.viewBox"
+                    preserveAspectRatio="xMidYMid meet"
+                    aria-label="小队受伤占比饼图"
+                  >
+                    <template v-if="!playerStatsInjurySharePie.model.empty">
+                      <template v-for="(sl, si) in playerStatsInjurySharePie.model.slices" :key="'inj-share-' + si">
+                        <circle
+                          v-if="sl.kind === 'full'"
+                          class="player-stats-pie-slice"
+                          :cx="sl.cx"
+                          :cy="sl.cy"
+                          :r="sl.r"
+                          :fill="sl.fill"
+                        />
+                        <path
+                          v-else
+                          class="player-stats-pie-slice"
+                          :d="sl.d"
+                          :fill="sl.fill"
+                        />
+                      </template>
+                    </template>
+                    <circle
+                      v-else
+                      class="player-stats-pie-hole-fallback"
+                      :cx="playerStatsInjurySharePie.model.cx"
+                      :cy="playerStatsInjurySharePie.model.cy"
+                      :r="playerStatsInjurySharePie.model.r"
+                      fill="none"
+                      stroke="var(--border-dark)"
+                      stroke-dasharray="4 3"
+                    />
+                  </svg>
+                  <ul class="player-stats-pie-legend" aria-label="受伤占比图例">
+                    <li v-for="leg in playerStatsInjurySharePie.legend" :key="'inj-leg-' + leg.heroId">
+                      <span class="player-stats-legend-swatch" :style="{ background: leg.color }" aria-hidden="true" />
+                      <span class="player-stats-legend-name" :style="{ color: leg.color }">{{ leg.heroLabel }}</span>
+                      <span class="player-stats-legend-val">{{ leg.total }}</span>
+                      <span class="player-stats-legend-pct">{{ leg.pctLabel }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="player-stats-damage-grid-title">各角色受伤构成</div>
+              <div class="player-stats-damage-grid">
+                <div
+                  v-for="row in playerStatsPerHeroInjuryPies"
+                  :key="'inj-' + row.heroId"
+                  class="player-stats-damage-card"
+                >
+                  <div class="player-stats-damage-card-title" :style="{ color: classColor(row.heroClass) }">
+                    {{ row.heroLabel }}
+                  </div>
+                  <div v-if="row.total <= 0" class="player-stats-damage-mini-empty">暂无累计受伤</div>
+                  <template v-else>
+                    <div
+                      class="player-stats-pie-row player-stats-pie-row-compact player-stats-pie-hover-zone"
+                      @mouseleave="clearCompPieHover"
+                    >
+                      <svg
+                        class="player-stats-pie-svg player-stats-pie-svg-compact"
+                        :viewBox="row.viewBox"
+                        preserveAspectRatio="xMidYMid meet"
+                        :aria-label="row.heroLabel + ' 受伤构成'"
+                        @mousemove="onCompPieHoverMove"
+                      >
+                        <template v-for="(sl, si) in row.model.slices" :key="'inj-comp-' + row.heroId + '-' + si">
+                          <circle
+                            v-if="sl.kind === 'full'"
+                            class="player-stats-pie-slice player-stats-pie-slice-hoverable"
+                            :cx="sl.cx"
+                            :cy="sl.cy"
+                            :r="sl.r"
+                            :fill="sl.fill"
+                            @mouseenter="onCompPieSliceHover($event, sl)"
+                          />
+                          <path
+                            v-else
+                            class="player-stats-pie-slice player-stats-pie-slice-hoverable"
+                            :d="sl.d"
+                            :fill="sl.fill"
+                            @mouseenter="onCompPieSliceHover($event, sl)"
+                          />
+                        </template>
+                      </svg>
+                      <ul class="player-stats-pie-legend player-stats-pie-legend-compact player-stats-pie-legend-skill-only" :aria-label="row.heroLabel + ' 受伤构成图例'">
+                        <li
+                          v-for="leg in row.legend"
+                          :key="'inj-cleg-' + row.heroId + '-' + leg.key"
+                          @mouseenter="onCompPieLegendHover($event, row, leg)"
+                          @mousemove="onCompPieHoverMove"
+                        >
+                          <span class="player-stats-legend-swatch" :style="{ background: leg.fill }" aria-hidden="true" />
+                          <span
+                            class="player-stats-legend-name"
+                            :class="{ 'player-stats-legend-skill': leg.key !== '__basic__' }"
+                            :style="leg.key !== '__basic__' ? { color: 'var(--color-skill)', fontStyle: 'italic' } : {}"
+                          >{{ leg.label }}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
           </div>
 
           <div class="player-stats-modal-footer">
@@ -1363,7 +1500,7 @@
 
     <Teleport to="body">
       <div
-        v-if="showPlayerStatsModal && playerStatsModalTab === 'damage' && compPieHover"
+        v-if="showPlayerStatsModal && (playerStatsModalTab === 'damage' || playerStatsModalTab === 'injury') && compPieHover"
         class="player-stats-chart-tooltip player-stats-chart-tooltip-floating player-stats-comp-pie-tooltip"
         :style="{
           left: compPieTooltipLeftPx + 'px',
@@ -2601,6 +2738,7 @@ import {
   explorationSteps,
   goldPerExplorationStep,
   normalizeHeroDamageBook,
+  normalizeInjuryByHero,
   normalizePlayerStats,
   scaledPerStep,
   xpPerExplorationStep,
@@ -2614,6 +2752,7 @@ import {
   clearPlayerSaveCache,
 } from '../game/playerSave.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
+import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
@@ -3766,6 +3905,69 @@ const playerStatsDamageSharePie = computed(() => {
 
 const playerStatsPerHeroDamagePies = computed(() => {
   const book = normalizeHeroDamageBook(playerStats.value.damageByHero)
+  const heroes = squad.value || []
+  return heroes.map((h) => {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    const segments = buildHeroDamagePieSegments(r)
+    const total = segments.reduce((acc, s) => acc + s.value, 0)
+    const model = buildPieChartModel(COMP_PIE_GEOM, segments)
+    const legend = segments.map((s) => ({ key: s.key, label: s.label, fill: s.fill }))
+    return {
+      heroId: String(h.id),
+      heroLabel: heroDisplayName(h.name),
+      heroClass: h.class,
+      total,
+      model,
+      legend,
+      viewBox: COMP_PIE_VIEW_BOX,
+    }
+  })
+})
+
+const playerStatsInjurySquadTotal = computed(() => {
+  const book = normalizeInjuryByHero(playerStats.value.injuryByHero)
+  const heroes = squad.value || []
+  let sum = 0
+  for (const h of heroes) {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    sum += r.basic + r.skill
+  }
+  return sum
+})
+
+const playerStatsInjurySharePie = computed(() => {
+  const book = normalizeInjuryByHero(playerStats.value.injuryByHero)
+  const heroes = squad.value || []
+  let squadTotal = 0
+  /** @type {{ heroId: string, heroLabel: string, total: number, pctLabel: string, color: string }[]} */
+  const legend = []
+  const segments = []
+  for (const h of heroes) {
+    const r = book[h.id] || { basic: 0, skill: 0 }
+    const total = r.basic + r.skill
+    squadTotal += total
+    const heroLabel = heroDisplayName(h.name)
+    const color = classColor(h.class)
+    legend.push({
+      heroId: String(h.id),
+      heroLabel,
+      total,
+      pctLabel: '0%',
+      color,
+    })
+    if (total > 0) {
+      segments.push({ label: heroLabel, value: total, fill: color })
+    }
+  }
+  for (const row of legend) {
+    row.pctLabel = squadTotal > 0 ? `${Math.round((100 * row.total) / squadTotal)}%` : '0%'
+  }
+  const model = buildPieChartModel(SHARE_PIE_GEOM, segments)
+  return { model, legend, viewBox: SHARE_PIE_VIEW_BOX }
+})
+
+const playerStatsPerHeroInjuryPies = computed(() => {
+  const book = normalizeInjuryByHero(playerStats.value.injuryByHero)
   const heroes = squad.value || []
   return heroes.map((h) => {
     const r = book[h.id] || { basic: 0, skill: 0 }
@@ -5004,6 +5206,7 @@ async function runCombatLoop() {
         rounds: result.rounds ?? 0,
         outcome: 'victory',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
+        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
       })
       const restStepsVictory = await autoRest(result.heroesAfter)
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsVictory)
@@ -5033,6 +5236,7 @@ async function runCombatLoop() {
         rounds: result.rounds ?? 0,
         outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
+        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
       })
       const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
       playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsDefeat)
