@@ -22,6 +22,7 @@ export const ENEMY_TARGET_L2_BY_L1 = {
   ],
   threat: [
     { id: 'not-tank-random', rule: 'threat-not-tank-random', label: '目标不是坦克（随机）', requiresTank: true },
+    { id: 'not-tank-lowest', rule: 'threat-not-tank-lowest-hp', label: '目标不是坦克（HP最低）', requiresTank: true },
     { id: 'tank-top-random', rule: 'threat-tank-top-random', label: '目标是坦克（随机）', requiresTank: true },
     { id: 'tank-top-lowest', rule: 'threat-tank-top-lowest-on-tank', label: '目标是坦克且仇恨最低', requiresTank: true },
     { id: 'tank-top-highest', rule: 'threat-tank-top-highest-on-tank', label: '目标是坦克且仇恨最高', requiresTank: true },
@@ -36,6 +37,7 @@ const RULE_TO_PARTS = {
   'highest-hp': { l1: 'hp', l2: 'high' },
   'lowest-hp': { l1: 'hp', l2: 'low' },
   'threat-not-tank-random': { l1: 'threat', l2: 'not-tank-random' },
+  'threat-not-tank-lowest-hp': { l1: 'threat', l2: 'not-tank-lowest' },
   'threat-tank-top-random': { l1: 'threat', l2: 'tank-top-random' },
   'threat-tank-top-lowest-on-tank': { l1: 'threat', l2: 'tank-top-lowest' },
   'threat-tank-top-highest-on-tank': { l1: 'threat', l2: 'tank-top-highest' },

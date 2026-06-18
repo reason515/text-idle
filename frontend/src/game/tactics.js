@@ -608,6 +608,31 @@ function isThreatAllZeroAcrossPool(threat, aliveMonsters, aliveHeroes) {
 }
 
 /**
+ * Monsters whose top threat is not the designated tank (OT pool).
+ * Returns null when threat/heroes missing; empty pool when all on tank with non-zero threat.
+ * @param {Object[]} aliveMonsters
+ * @param {Record<string, Record<string, number>>|undefined} threat
+ * @param {Object[]} heroes
+ * @param {string|undefined} tankId
+ * @returns {Object[]|null}
+ */
+function getThreatNotTankMonsterPool(aliveMonsters, threat, heroes, tankId) {
+  if (!threat || !heroes) return null
+  const alive = aliveMonsters.filter((u) => (u.currentHP ?? 0) > 0)
+  if (alive.length === 0) return []
+  if (!tankId) return alive
+  const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
+  let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
+  if (pool.length === 0) {
+    if (isThreatAllZeroAcrossPool(threat, alive, aliveHeroes)) {
+      return alive
+    }
+    return []
+  }
+  return pool
+}
+
+/**
  * Pick a target from candidates using the target rule.
  * Threat rules against designated tank need opts.threat, opts.heroes, opts.tankId.
  * @param {Object[]} candidates - Alive targets (enemies or allies)
@@ -665,20 +690,18 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
 
   if (targetRule === 'threat-not-tank-random') {
     const { threat, heroes, tankId } = opts
-    if (!threat || !heroes) return null
-    if (!tankId) {
-      return pickRandomAlive(alive, rng)
-    }
-    const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
-    if (pool.length === 0) {
-      if (isThreatAllZeroAcrossPool(threat, alive, aliveHeroes)) {
-        pool = alive
-      } else {
-        return null
-      }
-    }
+    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId)
+    if (pool === null) return null
+    if (pool.length === 0) return null
     return pickRandomAlive(pool, rng)
+  }
+
+  if (targetRule === 'threat-not-tank-lowest-hp') {
+    const { threat, heroes, tankId } = opts
+    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId)
+    if (pool === null) return null
+    if (pool.length === 0) return null
+    return pool.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))
   }
 
   if (targetRule === 'threat-tank-top-random') {

@@ -395,7 +395,35 @@ describe('validateAiTactics', () => {
     const result = validateAiTactics(raw, warriorSkills, 'Warrior', userInput)
     const ba = result.tactics.conditions.find((c) => c.skillId === 'basic-attack')
     expect(ba).toEqual({ skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] })
-    expect(result.warnings.some((w) => w.includes('已补充'))).toBe(true)
+    expect(result.warnings.some((w) => w.includes('已补充') || w.includes('已补全'))).toBe(true)
+  })
+
+  it('supplements warrior tank OT tactics when user describes taunt-sunder-basic with OT lowest HP', () => {
+    const userInput =
+      '场上存在目标非坦克的敌人时，对其中HP最低的敌人使用嘲讽，如果嘲讽CD中，则对其使用破甲，如果怒气不足则对其使用普通攻击，如果所有敌人的目标都是坦克，则对其使用破甲，怒气不足时使用普通攻击'
+    const raw = {
+      skillPriority: ['sunder-armor', 'taunt'],
+      targetRule: 'lowest-hp',
+      conditions: [{ skillId: 'taunt', targetRule: 'lowest-hp' }],
+    }
+    const result = validateAiTactics(raw, warriorSkills, 'Warrior', userInput)
+    expect(result.tactics.skillPriority.indexOf('taunt')).toBeLessThan(
+      result.tactics.skillPriority.indexOf('sunder-armor'),
+    )
+    expect(result.tactics.targetRule).toBe('threat-not-tank-lowest-hp')
+    expect(result.tactics.conditions.find((c) => c.skillId === 'taunt')).toEqual({
+      skillId: 'taunt',
+      targetRule: 'threat-not-tank-lowest-hp',
+    })
+    expect(result.tactics.conditions.find((c) => c.skillId === 'sunder-armor')).toEqual({
+      skillId: 'sunder-armor',
+      targetRules: ['threat-not-tank-lowest-hp', 'lowest-hp'],
+    })
+    expect(result.tactics.conditions.find((c) => c.skillId === 'basic-attack')).toEqual({
+      skillId: 'basic-attack',
+      targetRules: ['default', 'lowest-hp'],
+    })
+    expect(result.warnings.some((w) => w.includes('已补全'))).toBe(true)
   })
 
   it('does not duplicate basic-attack when AI already included it', () => {

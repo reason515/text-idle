@@ -135,7 +135,7 @@ The player may describe one rule or many. Only output what the player mentioned;
 - **Tank**: The designated tank hero. Enemies primarily attack the tank due to threat.
 - **Threat**: Each enemy tracks threat per hero. "Top threat" = the hero with highest threat on that enemy.
 - IMPORTANT mapping for Chinese phrases to targetRule:
-  - "目标不是自己的敌人" / "目标不是坦克的敌人" / "没在打我的怪" / "打队友的怪" = enemies whose top-threat is NOT the tank = **"threat-not-tank-random"**
+  - "目标不是自己的敌人" / "目标不是坦克的敌人" / "没在打我的怪" / "打队友的怪" = enemies whose top-threat is NOT the tank = **"threat-not-tank-random"** (random among OT) OR **"threat-not-tank-lowest-hp"** when player says **HP最低 among those** (e.g. "对其中HP最低的敌人")
   - "在打我的怪" / "正在攻击坦克的敌人" = enemies whose top-threat IS the tank = "threat-tank-top-random"
   - "仇恨最低" / "快丢仇恨的怪" = among enemies attacking tank, lowest threat on tank = "threat-tank-top-lowest-on-tank"
 - "OT" / "抢到仇恨" / "脱离坦克控制" means an ally pulled aggro from tank = "ally-ot" condition
@@ -179,6 +179,7 @@ Return ONLY a JSON object (no markdown fences, no explanation text outside JSON)
 - "first" : 第一个敌人
 - "random" : 随机敌人
 - "threat-not-tank-random" : 没在打坦克的怪（随机）。关键词："目标不是自己"、"目标不是坦克"、"没在打我"、"打队友的怪"、"不是在攻击坦克的敌人"
+- "threat-not-tank-lowest-hp" : 没在打坦克的怪中**血量最低**的一只。关键词："对其中HP最低的敌人"、"非坦克怪里血最少的"
 - "threat-tank-top-random" : 正在打坦克的怪（随机）。关键词："在打我的怪"、"攻击坦克的敌人"
 - "threat-tank-top-lowest-on-tank" : 正在打坦克的怪中，对坦克仇恨最低的（最容易丢失仇恨的）。关键词："仇恨最低"、"快丢失仇恨"
 - "threat-tank-top-highest-on-tank" : 正在打坦克的怪中，对坦克仇恨最高的
@@ -321,7 +322,7 @@ ${getSkillNameMap(heroClass, skillIds)}
 9. If player only describes partial changes, only output those fields. Omit skillPriority/targetRule/conditions if not mentioned. **NEVER change skillPriority or global targetRule unless the player explicitly asks to change them.**
 10. **NEVER invent conditions the player did not explicitly mention.** Only add a "when" condition if the player clearly states a trigger (e.g. "HP below 30%", "target has debuff"). If the player only specifies priority and target, output ONLY skillPriority and targetRule - NO conditions.
 11. When player says "don't use skill X" or "不使用X" **in a conditional context** (e.g. "when all enemies on tank, don't use taunt"): set that skill's targetRules to ONLY include rules that match the OTHER scenario, so it naturally has no valid target in the described scenario. Do NOT remove the skill from skillPriority (it still applies in other situations).
-11b. **Taunt (\`taunt\`) target chain**: NEVER put \`lowest-hp\`, \`first\`, \`random\`, or \`highest-hp\` as a **fallback step after** \`threat-not-tank-random\` on **taunt**. Taunting "lowest HP" when all enemies are already on the tank is wrong. Use **only** \`targetRule: "threat-not-tank-random"\` OR a **single-step** \`targetRules: ["threat-not-tank-random"]\` for taunt. The two-step chain \`["threat-not-tank-random", "lowest-hp"]\` is for **sunder-armor** (or other damage skills) only — **not** for taunt.
+11b. **Taunt (\`taunt\`) target chain**: NEVER put \`lowest-hp\`, \`first\`, \`random\`, or \`highest-hp\` as a **fallback step after** \`threat-not-tank-random\` or \`threat-not-tank-lowest-hp\` on **taunt**. Use **only** a **single step**: \`targetRule: "threat-not-tank-random"\` OR \`"threat-not-tank-lowest-hp"\` when player picks lowest HP among OT enemies. The two-step chain \`["threat-not-tank-random", "lowest-hp"]\` is for **sunder-armor** (or other damage skills) only — **not** for taunt.
 12. When player says "don't use skill X" **unconditionally**: exclude from skillPriority.
 
 ## WRONG examples (NEVER do this)
@@ -439,18 +440,18 @@ Player: "先破甲再嘲讽，优先打没在打我的怪"
 Output: { "skillPriority": ["sunder-armor", "taunt"], "targetRule": "threat-not-tank-random" }
 
 Player (tank Warrior — full rule set matching OT + all-on-tank + rage fallback):
-"存在目标不是坦克的敌人时，优先对其施放嘲讽，如果嘲讽CD中则施放破甲，如果怒气不足则施放普通攻击。所有敌人目标都是坦克时，优先对HP最低的敌人施放破甲，怒气不足则施放普通攻击，不施放嘲讽"
+"场上存在目标非坦克的敌人时，对其中HP最低的敌人使用嘲讽，如果嘲讽CD中则施放破甲，如果怒气不足则施放普通攻击。所有敌人目标都是坦克时，优先对HP最低的敌人施放破甲，怒气不足则施放普通攻击，不施放嘲讽"
 Output: {
   "skillPriority": ["taunt", "sunder-armor"],
-  "targetRule": "threat-not-tank-random",
+  "targetRule": "threat-not-tank-lowest-hp",
   "conditions": [
-    { "skillId": "taunt", "targetRule": "threat-not-tank-random" },
-    { "skillId": "sunder-armor", "targetRules": ["threat-not-tank-random", "lowest-hp"] },
+    { "skillId": "taunt", "targetRule": "threat-not-tank-lowest-hp" },
+    { "skillId": "sunder-armor", "targetRules": ["threat-not-tank-lowest-hp", "lowest-hp"] },
     { "skillId": "basic-attack", "targetRules": ["default", "lowest-hp"] }
   ],
-  "explanation": "非坦克怪优先嘲讽，否则破甲；全员打坦克时破甲打最低血，嘲讽无目标跳过；怒气不足时普攻继承默认后打最低血。"
+  "explanation": "非坦克怪中血量最低优先嘲讽，CD/怒气不足则破甲或普攻；全员打坦克时破甲打全场最低血，嘲讽无目标跳过。"
 }
-Note: **basic-attack** is required in **conditions** so the preview shows normal-attack targeting; **targetRules** mirror sunder (global non-tank first, else lowest-hp).
+Note: **basic-attack** is required in **conditions** so the preview shows normal-attack targeting; **targetRules** mirror sunder (OT pool first, else global lowest-hp). Use **threat-not-tank-lowest-hp** (not plain **lowest-hp**) when player says **其中HP最低** among non-tank targets.
 
 Player: "优先对目标不是自己的敌人使用技能"
 Output: { "targetRule": "threat-not-tank-random" }
@@ -586,7 +587,7 @@ function getSkillNameMap(heroClass, skillIds) {
 
 const VALID_TARGET_RULES_ENEMY = new Set([
   'lowest-hp', 'highest-hp', 'first', 'random',
-  'threat-not-tank-random', 'threat-tank-top-random',
+  'threat-not-tank-random', 'threat-not-tank-lowest-hp', 'threat-tank-top-random',
   'threat-tank-top-lowest-on-tank', 'threat-tank-top-highest-on-tank',
 ])
 
@@ -1025,6 +1026,91 @@ function supplementBasicAttackIfMentioned(userInput, conditions, warnings) {
   warnings.push(
     '已补充：描述含怒气不足/法力不足或「否则」接普通攻击时，已为「普通攻击」添加目标链：默认 → 血量最低（与破甲在全员打坦克时的第二段一致）。',
   )
+}
+
+/**
+ * Player describes tank Warrior OT control: taunt non-tank targets first, sunder on CD/rage skip, all-on-tank sunder lowest HP.
+ * @param {string|undefined} userInput
+ * @returns {boolean}
+ */
+export function userMentionsWarriorTankOtPattern(userInput) {
+  if (!userInput || typeof userInput !== 'string') return false
+  const u = userInput.replace(/\s/g, '')
+  const hasOt =
+    /目标.{0,10}(不是|非).{0,8}坦克/.test(u) ||
+    /非坦克/.test(u) ||
+    /没.{0,6}打坦克/.test(u) ||
+    /打队友/.test(u)
+  return hasOt && /嘲讽/.test(u) && /破甲/.test(u)
+}
+
+/**
+ * Among non-tank-top enemies, pick lowest HP (not global lowest-hp).
+ * @param {string|undefined} userInput
+ * @returns {boolean}
+ */
+function userMentionsOtLowestHpAmongOt(userInput) {
+  if (!userInput || typeof userInput !== 'string') return false
+  const u = userInput.replace(/\s/g, '')
+  if (!/(其中|对).{0,16}HP最低|HP最低.{0,20}(敌人|怪)/.test(u)) return false
+  return (
+    /目标.{0,10}(不是|非).{0,8}坦克/.test(u) ||
+    /非坦克/.test(u) ||
+    /存在.{0,12}(不是|非).{0,8}坦克/.test(u)
+  )
+}
+
+/**
+ * Canonical tank Warrior OT + all-on-tank sunder config when natural language matches.
+ * @param {string|undefined} userInput
+ * @param {string} heroClass
+ * @param {string[]} skillIds
+ * @param {string[]} priority
+ * @param {Object[]} conditions
+ * @param {string|null} targetRule
+ * @param {string[]} warnings
+ * @returns {string|null} otRule when applied
+ */
+function supplementWarriorTankOtTactics(userInput, heroClass, skillIds, priority, conditions, targetRule, warnings) {
+  if (heroClass !== 'Warrior') return null
+  if (!userMentionsWarriorTankOtPattern(userInput)) return null
+  if (!skillIds.includes('taunt') || !skillIds.includes('sunder-armor')) return null
+
+  const otRule = userMentionsOtLowestHpAmongOt(userInput) ? 'threat-not-tank-lowest-hp' : 'threat-not-tank-random'
+  const otConditions = [
+    { skillId: 'taunt', targetRule: otRule },
+    { skillId: 'sunder-armor', targetRules: [otRule, 'lowest-hp'] },
+    { skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] },
+  ]
+
+  const before = JSON.stringify({ priority, targetRule, conditions })
+
+  if (!priority.includes('taunt')) priority.unshift('taunt')
+  if (!priority.includes('sunder-armor')) {
+    const ti = priority.indexOf('taunt')
+    priority.splice(ti + 1, 0, 'sunder-armor')
+  }
+  const tauntIdx = priority.indexOf('taunt')
+  const sunderIdx = priority.indexOf('sunder-armor')
+  if (tauntIdx >= 0 && sunderIdx >= 0 && tauntIdx > sunderIdx) {
+    priority.splice(tauntIdx, 1)
+    priority.splice(priority.indexOf('sunder-armor'), 0, 'taunt')
+  }
+
+  const kept = conditions.filter(
+    (c) => !['taunt', 'sunder-armor', 'basic-attack'].includes(c.skillId),
+  )
+  conditions.length = 0
+  conditions.push(...otConditions, ...kept)
+
+  if (JSON.stringify({ priority, targetRule: otRule, conditions }) !== before) {
+    warnings.push(
+      otRule === 'threat-not-tank-lowest-hp'
+        ? '已补全：坦克拉怪战术（非坦克怪中血量最低者优先嘲讽→破甲→普攻；全员打坦克时破甲打全场最低血，嘲讽无目标跳过）。'
+        : '已补全：坦克拉怪战术（非坦克怪优先嘲讽→破甲→普攻；全员打坦克时破甲打全场最低血，嘲讽无目标跳过）。',
+    )
+  }
+  return otRule
 }
 
 /**
@@ -2204,6 +2290,19 @@ export function validateAiTactics(raw, skillIds, heroClass, userInput) {
     }
   }
 
+  const warriorOtRule = supplementWarriorTankOtTactics(
+    userInput,
+    heroClass,
+    skillIds,
+    priority,
+    conditions,
+    targetRule,
+    warnings,
+  )
+  if (warriorOtRule) {
+    targetRule = warriorOtRule
+  }
+
   supplementBasicAttackIfMentioned(userInput, conditions, warnings)
   if (userMentionsSoloSurvivor(userInput) && heroClass !== 'Priest') {
     conditions = supplementSoloSurvivorRules(userInput, heroClass, skillIds, conditions, warnings)
@@ -2387,6 +2486,7 @@ const TARGET_RULE_DISPLAY = {
   'first': '第一个敌人',
   'random': '随机敌人',
   'threat-not-tank-random': '非坦克仇恨目标（随机）',
+  'threat-not-tank-lowest-hp': '非坦克仇恨目标中血量最低',
   'threat-tank-top-random': '坦克仇恨目标（随机）',
   'threat-tank-top-lowest-on-tank': '坦克仇恨目标中仇恨最低',
   'threat-tank-top-highest-on-tank': '坦克仇恨目标中仇恨最高',

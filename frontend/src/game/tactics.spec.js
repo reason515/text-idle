@@ -816,6 +816,29 @@ describe('tactics', () => {
       expect(r.id).toBe('m1')
     })
 
+    it('threat-not-tank-lowest-hp picks lowest HP among monsters whose top threat is not tank', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 10, mage: 80 },
+        m2: { tank: 90, mage: 5 },
+        m3: { tank: 5, mage: 90 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 50 },
+        { id: 'm2', currentHP: 100 },
+        { id: 'm3', currentHP: 30 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-not-tank-lowest-hp', Math.random, {
+        threat,
+        heroes,
+        tankId: 'tank',
+      })
+      expect(r.id).toBe('m3')
+    })
+
     it('threat-not-tank-random returns null when no non-tank-top monsters but threat is non-zero (all on tank)', () => {
       const heroes = [
         { id: 'tank', currentHP: 100 },
