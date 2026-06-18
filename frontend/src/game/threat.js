@@ -419,28 +419,23 @@ export function getTank(heroes, monsters, threat, designatedTank = null) {
 
 /**
  * ally-ot: at least one monster's highest-threat target is not the tank.
+ * Uses the same tie-break as getMonsterTargetStable (last hit sticky, then lowest hero id).
  * @param {Object[]} heroes
  * @param {Object[]} monsters
  * @param {Object} threat
  * @param {Object|null} designatedTank - Optional designated tank (from getDesignatedTank)
+ * @param {Object<string, string>|null} [monsterLastTargetById]
  * @returns {boolean}
  */
-export function isAllyOT(heroes, monsters, threat, designatedTank = null) {
+export function isAllyOT(heroes, monsters, threat, designatedTank = null, monsterLastTargetById = null) {
   const tank = getTank(heroes, monsters, threat, designatedTank)
   if (!tank) return false
   const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
+  const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   for (const m of aliveMonsters) {
     const table = threat[m.id] ?? {}
-    let maxThreat = -1
-    let topHero = null
-    for (const h of heroes) {
-      if ((h.currentHP ?? 0) <= 0) continue
-      const t = table[h.id] ?? 0
-      if (t > maxThreat) {
-        maxThreat = t
-        topHero = h
-      }
-    }
+    const lastId = monsterLastTargetById?.[m.id] ?? null
+    const topHero = getHighestThreatHeroStable(table, aliveHeroes, lastId)
     if (topHero && topHero.id !== tank.id) return true
   }
   return false

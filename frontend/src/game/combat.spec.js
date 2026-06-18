@@ -1082,6 +1082,57 @@ describe('combat progression and systems', () => {
     expect(warriorFirst.skillId).toBe('taunt')
   })
 
+  it('tank warrior opens with taunt when global and taunt target use threat-not-tank-lowest-hp', () => {
+    const warrior = sampleHero({
+      id: 'w-ot-lowest',
+      agility: 25,
+      isTank: true,
+      skills: ['taunt', 'sunder-armor'],
+      tactics: {
+        skillPriority: ['taunt', 'sunder-armor', 'basic-attack'],
+        targetRule: 'threat-not-tank-lowest-hp',
+        conditions: [
+          { skillId: 'sunder-armor', targetRules: ['threat-not-tank-lowest-hp', 'lowest-hp'] },
+          { skillId: 'taunt', targetRules: ['threat-not-tank-lowest-hp'] },
+          { skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] },
+        ],
+      },
+    })
+    const mage = sampleHero({
+      id: 'm-ot-lowest',
+      name: 'Mage',
+      class: 'Mage',
+      agility: 10,
+      skills: ['fireball'],
+      tactics: { skillPriority: ['fireball'], targetRule: 'lowest-hp' },
+    })
+    const monsters = [
+      createMonster(
+        {
+          id: 'wolf-a',
+          name: 'Wolf A',
+          damageType: 'physical',
+          base: { hp: 100, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 },
+      ),
+      createMonster(
+        {
+          id: 'wolf-b',
+          name: 'Wolf B',
+          damageType: 'physical',
+          base: { hp: 50, physAtk: 2, spellPower: 0, agility: 5, armor: 0, resistance: 0 },
+        },
+        { tier: 'normal', level: 1 },
+      ),
+    ]
+    const result = runAutoCombat({ heroes: [warrior, mage], monsters, rng: () => 0.5, maxRounds: 1 })
+    const warriorFirst = result.log.find((e) => e.actorId === warrior.id && e.round === 1)
+    expect(warriorFirst).toBeDefined()
+    expect(warriorFirst.skillId).toBe('taunt')
+    expect(warriorFirst.targetName).toBe('Wolf B')
+  })
+
   it('Example6/7: turn order uses agility and battle returns victory with rewards', () => {
     const heroes = [
       sampleHero({ id: 'h1', agility: 9, strength: 12 }),

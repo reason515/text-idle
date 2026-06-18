@@ -247,6 +247,13 @@ describe('threat', () => {
       }
       expect(isAllyOT([heroA, heroB], [monsterA, monsterB], threat)).toBe(false)
     })
+
+    it('returns true when lone monster threat tied but last target is non-tank', () => {
+      const threat = {
+        m1: { h1: 10, h2: 10 },
+      }
+      expect(isAllyOT([heroA, heroB], [monsterA], threat, null, { m1: 'h2' })).toBe(true)
+    })
   })
 
   describe('getThreatMultiplier', () => {

@@ -860,6 +860,25 @@ describe('tactics', () => {
       expect(r).toBeNull()
     })
 
+    it('threat-not-tank-random picks lone OT monster when threat tied but last target is non-tank', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100 },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 10, mage: 10 },
+      }
+      const monsters = [{ id: 'm1', currentHP: 50 }]
+      const r = pickTargetByRule(monsters, 'threat-not-tank-random', () => 0, {
+        threat,
+        heroes,
+        tankId: 'tank',
+        monsterLastTarget: { m1: 'mage' },
+      })
+      expect(r).not.toBeNull()
+      expect(r.id).toBe('m1')
+    })
+
     it('threat-tank-top-random picks random among monsters whose top threat is tank', () => {
       const heroes = [
         { id: 'tank', currentHP: 100 },

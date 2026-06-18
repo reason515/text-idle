@@ -5,6 +5,7 @@
 
 import { getSunderDebuff } from './warriorSkills.js'
 import { getShieldBuff } from './priestSkills.js'
+import { getHighestThreatHeroStable } from './threat.js'
 
 /** @typedef {{ when: string, value?: number|string }} WhenClause */
 /** @typedef {{ rule: string, when?: string, value?: number|string, whenAll?: WhenClause[] }} TargetRuleStep */
@@ -229,7 +230,11 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     if (!threat) return false
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
     const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
-    return aliveMonsters.some((m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id)
+    const monsterLastTarget = ctx?.monsterLastTarget
+    return aliveMonsters.some((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === actor.id
+    })
   }
 
   if (when === 'tank-hp-below') {
@@ -270,7 +275,11 @@ export function checkCondition(condition, actor, target, heroes, monsters, ctx) 
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
     const aliveMonsters = monsters.filter((m) => (m.currentHP ?? 0) > 0)
     if (aliveMonsters.length === 0) return true
-    return !aliveMonsters.some((m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id)
+    const monsterLastTarget = ctx?.monsterLastTarget
+    return !aliveMonsters.some((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === actor.id
+    })
   }
 
   if (when === 'resource-above') {
@@ -557,23 +566,17 @@ export function filterTargetsByCondition(targets, condition, actor, ctx) {
 }
 
 /**
+ * Resolve the hero id a monster would attack by threat (matches getMonsterTargetStable tie-break).
  * @param {Object} monster
  * @param {Record<string, Record<string, number>>} threat
  * @param {{ id: string }[]} aliveHeroes
+ * @param {string|null} [lastTargetId]
  * @returns {string|null}
  */
-function getTopThreatHeroId(monster, threat, aliveHeroes) {
+function getTopThreatHeroId(monster, threat, aliveHeroes, lastTargetId = null) {
   const table = threat[monster.id] ?? {}
-  let maxT = -1
-  let topId = null
-  for (const h of aliveHeroes) {
-    const t = table[h.id] ?? 0
-    if (t > maxT) {
-      maxT = t
-      topId = h.id
-    }
-  }
-  return topId
+  const hero = getHighestThreatHeroStable(table, aliveHeroes, lastTargetId)
+  return hero?.id ?? null
 }
 
 /**
@@ -614,15 +617,19 @@ function isThreatAllZeroAcrossPool(threat, aliveMonsters, aliveHeroes) {
  * @param {Record<string, Record<string, number>>|undefined} threat
  * @param {Object[]} heroes
  * @param {string|undefined} tankId
+ * @param {Record<string, string>|null|undefined} [monsterLastTarget]
  * @returns {Object[]|null}
  */
-function getThreatNotTankMonsterPool(aliveMonsters, threat, heroes, tankId) {
+function getThreatNotTankMonsterPool(aliveMonsters, threat, heroes, tankId, monsterLastTarget = null) {
   if (!threat || !heroes) return null
   const alive = aliveMonsters.filter((u) => (u.currentHP ?? 0) > 0)
   if (alive.length === 0) return []
   if (!tankId) return alive
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-  let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) !== tankId)
+  let pool = alive.filter((m) => {
+    const lastId = monsterLastTarget?.[m.id] ?? null
+    return getTopThreatHeroId(m, threat, aliveHeroes, lastId) !== tankId
+  })
   if (pool.length === 0) {
     if (isThreatAllZeroAcrossPool(threat, alive, aliveHeroes)) {
       return alive
@@ -678,9 +685,11 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
     if (!threat || !heroes || !monsList) return null
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
     const aliveMonsters = monsList.filter((m) => (m.currentHP ?? 0) > 0)
-    const anyTargetingActor = aliveMonsters.some(
-      (m) => getTopThreatHeroId(m, threat, aliveHeroes) === actor.id
-    )
+    const monsterLastTarget = opts.monsterLastTarget
+    const anyTargetingActor = aliveMonsters.some((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === actor.id
+    })
     return anyTargetingActor ? selfUnit : null
   }
 
@@ -689,16 +698,16 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
   }
 
   if (targetRule === 'threat-not-tank-random') {
-    const { threat, heroes, tankId } = opts
-    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId)
+    const { threat, heroes, tankId, monsterLastTarget } = opts
+    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId, monsterLastTarget)
     if (pool === null) return null
     if (pool.length === 0) return null
     return pickRandomAlive(pool, rng)
   }
 
   if (targetRule === 'threat-not-tank-lowest-hp') {
-    const { threat, heroes, tankId } = opts
-    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId)
+    const { threat, heroes, tankId, monsterLastTarget } = opts
+    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId, monsterLastTarget)
     if (pool === null) return null
     if (pool.length === 0) return null
     return pool.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))
@@ -711,7 +720,11 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
       return pickRandomAlive(alive, rng)
     }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    const monsterLastTarget = opts.monsterLastTarget
+    let pool = alive.filter((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === tankId
+    })
     if (pool.length === 0) {
       pool = alive
     }
@@ -725,7 +738,11 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
       return pickRandomAlive(alive, rng)
     }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    const monsterLastTarget = opts.monsterLastTarget
+    let pool = alive.filter((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === tankId
+    })
     if (pool.length === 0) {
       pool = alive
     }
@@ -748,7 +765,11 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
       return pickRandomAlive(alive, rng)
     }
     const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
-    let pool = alive.filter((m) => getTopThreatHeroId(m, threat, aliveHeroes) === tankId)
+    const monsterLastTarget = opts.monsterLastTarget
+    let pool = alive.filter((m) => {
+      const lastId = monsterLastTarget?.[m.id] ?? null
+      return getTopThreatHeroId(m, threat, aliveHeroes, lastId) === tankId
+    })
     if (pool.length === 0) {
       pool = alive
     }

@@ -1248,12 +1248,13 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
         rule === 'lowest-threat' ||
         rule === 'first-top-threat-not-self' ||
         rule === 'threat-not-tank-random' ||
+        rule === 'threat-not-tank-lowest-hp' ||
         rule === 'threat-tank-top-random' ||
         rule === 'threat-tank-top-lowest-on-tank' ||
         rule === 'threat-tank-top-highest-on-tank' ||
         rule === 'self-if-enemy-targeting')
     const pickOpts = needsThreatOpts
-      ? { threat, actor, heroes, tankId: designatedTank?.id, monsters }
+      ? { threat, actor, heroes, tankId: designatedTank?.id, monsters, monsterLastTarget }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank: getTankFn }
         : rule === 'self'
@@ -1867,6 +1868,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       threat,
       tauntState,
       designatedTank: designatedTankUnit,
+      monsterLastTarget,
     })
     if (!target) {
       return { ok: false }
@@ -1937,7 +1939,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         round,
         rng,
         threat,
-        isAllyOT: (h, m, t) => isAllyOT(h, m, t, designatedTankUnit),
+        monsterLastTarget,
+        isAllyOT: (h, m, t) => isAllyOT(h, m, t, designatedTankUnit, monsterLastTarget),
         tankId: designatedTankUnit?.id,
       }
       const conditions = getConditions(actor)
@@ -2014,6 +2017,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
+              monsterLastTarget,
             })
             if (!target) continue
             if (!checkCondition(cond, actor, target, heroUnits, monsterUnits, ctx)) continue
@@ -2027,6 +2031,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
+              monsterLastTarget,
             })
             if (!target) continue
           }
@@ -2271,6 +2276,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
+              monsterLastTarget,
             })
             if (!mageTarget) continue
             if (!checkCondition(mageCond, actor, mageTarget, heroUnits, monsterUnits, ctx)) continue
@@ -2284,6 +2290,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
+              monsterLastTarget,
             })
             if (!mageTarget) continue
           }
@@ -2504,6 +2511,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               threat,
               tauntState,
               designatedTank: designatedTankUnit,
+              monsterLastTarget,
             })
             if (!priestTarget) continue
           }
@@ -2760,6 +2768,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             threat,
             tauntState,
             designatedTank: designatedTankUnit,
+            monsterLastTarget,
           })
           if (!druidTarget) continue
           if (
@@ -2963,6 +2972,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             threat,
             tauntState,
             designatedTank: designatedTankUnit,
+            monsterLastTarget,
           }) ?? null
         if (!target) {
           emitMonsterIntentChangesIfNeeded()
