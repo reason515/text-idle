@@ -724,10 +724,13 @@
           <button type="button" class="command-action-btn topbar-btn" data-testid="audio-settings-open" @click="openAudioSettingsModal">
             音效
           </button>
-          <button class="topbar-btn command-placeholder" disabled>战术</button>
-          <button class="topbar-btn command-placeholder" disabled>任务</button>
-          <button class="topbar-btn command-placeholder" disabled>队伍</button>
-          <button class="topbar-btn command-placeholder" disabled>图鉴</button>
+        </div>
+        <div class="command-soon-row">
+          <span class="command-soon-label">敬请期待</span>
+          <button class="command-soon-btn" disabled>战术</button>
+          <button class="command-soon-btn" disabled>任务</button>
+          <button class="command-soon-btn" disabled>队伍</button>
+          <button class="command-soon-btn" disabled>图鉴</button>
         </div>
       </div>
 
@@ -5086,10 +5089,10 @@ onUnmounted(() => {
   display: flex;
   align-items: stretch;
   justify-content: stretch;
-  gap: 0.65rem;
+  gap: 0.6rem;
   padding: 0.55rem 0.75rem;
-  border-bottom: 2px solid var(--border-dark);
-  background: linear-gradient(180deg, var(--bg-panel), var(--bg-dark));
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
@@ -5131,11 +5134,11 @@ onUnmounted(() => {
 
 .command-deck {
   display: grid;
-  grid-template-columns: 12rem 32rem minmax(34rem, 1fr) 6rem;
-  gap: 0.65rem;
-  padding: 0.6rem 0.75rem;
-  border-top: 2px solid var(--border-dark);
-  background: linear-gradient(180deg, var(--bg-dark), var(--bg-panel));
+  grid-template-columns: 11rem 30rem minmax(30rem, 1fr) 6.5rem;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-top: 2px solid var(--border);
+  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
@@ -5146,19 +5149,26 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.6rem;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem 0.5rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: inset 0 1px 0 var(--border-subtle);
 }
 
 .command-label {
   color: var(--text-label);
-  font-size: var(--font-xs);
+  font-size: var(--font-sm);
   letter-spacing: 0.06em;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.command-label::before {
+  content: '> ';
+  color: var(--accent);
 }
 
 .command-stats-card {
@@ -5188,15 +5198,41 @@ onUnmounted(() => {
 
 .command-action-buttons {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.45rem;
 }
 
-.command-placeholder {
+.command-soon-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+.command-soon-label {
+  font-size: var(--font-xs);
   color: var(--text-muted);
-  border-color: var(--border-dark);
+  letter-spacing: 0.04em;
+}
+
+.command-soon-label::before {
+  content: '// ';
+  color: var(--border-dark);
+}
+
+.command-soon-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 1.6rem;
+  padding: 0.25rem 0.4rem;
+  font-family: inherit;
+  font-size: var(--font-xs);
+  background: var(--bg-dark);
+  border: 1px dashed var(--border-dark);
+  border-radius: 4px;
+  color: var(--text-muted);
   cursor: not-allowed;
-  opacity: 0.75;
 }
 
 .topbar-btn:disabled {
@@ -5235,11 +5271,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.3rem;
-  padding: 0.45rem 0.65rem;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem 0.5rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
-  border-radius: 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
 }
 
 .topbar-map-section {
@@ -5255,6 +5292,11 @@ onUnmounted(() => {
   color: var(--text-label);
   font-size: var(--font-sm);
   letter-spacing: 0.06em;
+}
+
+.topbar-label::before {
+  content: '> ';
+  color: var(--accent);
 }
 
 .map-btn {
@@ -5319,7 +5361,7 @@ onUnmounted(() => {
 .gold-value {
   font-weight: normal;
   min-width: 2ch;
-  font-size: var(--font-sm);
+  font-size: var(--font-md);
   line-height: 1;
   color: var(--color-gold);
 }
@@ -5340,8 +5382,8 @@ onUnmounted(() => {
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  gap: 0.25rem;
+  justify-content: flex-start;
+  gap: 0.4rem;
   margin: 0;
   background: var(--bg-darker);
   border: 1px solid var(--border);
@@ -5375,6 +5417,13 @@ onUnmounted(() => {
   gap: 0.45rem;
   width: 100%;
   min-width: 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.stats-eff-title-row .command-label {
+  padding-bottom: 0;
+  border-bottom: none;
 }
 .stats-eff-tap-hint {
   flex-shrink: 0;
