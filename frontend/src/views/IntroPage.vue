@@ -1,6 +1,7 @@
 <template>
-  <div class="intro-wrap">
-    <div class="panel intro-panel">
+  <div class="intro-screen">
+    <ConsoleFrame title="序章" max-width="54rem">
+      <div class="intro-content">
       <div class="intro-header">
         <div class="intro-step-track" aria-label="Progress">
           <span
@@ -106,7 +107,8 @@
           </button>
         </div>
       </template>
-    </div>
+      </div>
+    </ConsoleFrame>
 
     <!-- Hero Detail Modal -->
     <Teleport to="body">
@@ -167,11 +169,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import ConsoleFrame from '../components/ConsoleFrame.vue'
 import { createFixedTrioSquad, saveSquad, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getInitialAttributes, computeSecondaryAttributes } from '../data/heroes.js'
-import { getWarriorSkillById } from '../game/warriorSkills.js'
+import { getAnyWarriorSkillById } from '../game/warriorSkills.js'
 import { getMageSkillById } from '../game/mageSkills.js'
 import { getPriestSkillById } from '../game/priestSkills.js'
-import { getLevelSkillById } from '../game/warriorLevelSkills.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import { setTeamName, flushPlayerSave } from '../game/playerSave.js'
 
@@ -230,7 +232,7 @@ function getClassInfo(heroClass) {
 }
 
 function getSkillDef(heroClass, skillId) {
-  if (heroClass === 'Warrior') return getWarriorSkillById(skillId) ?? getLevelSkillById(skillId)
+  if (heroClass === 'Warrior') return getAnyWarriorSkillById(skillId)
   if (heroClass === 'Mage') return getMageSkillById(skillId)
   if (heroClass === 'Priest') return getPriestSkillById(skillId)
   return null
@@ -297,20 +299,17 @@ async function startAdventure() {
 </script>
 
 <style scoped>
-.intro-wrap {
+.intro-screen {
   width: 100%;
   min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: var(--bg-dark);
 }
 
-.intro-panel {
-  width: min(100%, 52rem);
-  padding: 2rem;
-  box-shadow: 0 0 12px var(--focus-glow);
+.intro-content {
+  padding: 1.75rem 2rem 1.5rem;
 }
 
 .intro-header {
@@ -324,18 +323,36 @@ async function startAdventure() {
 }
 
 .step-dot {
-  padding: 0.25rem 0.6rem;
+  position: relative;
+  padding: 0.3rem 0.7rem;
   font-size: var(--font-sm);
   color: var(--text-muted);
-  border-bottom: 2px solid transparent;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+}
+
+.step-dot::before {
+  content: '> ';
+  color: var(--text-muted);
 }
 
 .step-dot.is-active {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+
+.step-dot.is-active::before {
+  color: var(--accent);
 }
 
 .step-dot.is-complete {
+  color: var(--color-victory);
+  border-color: var(--border-dark);
+}
+
+.step-dot.is-complete::before {
+  content: '+ ';
   color: var(--color-victory);
 }
 
@@ -343,18 +360,25 @@ async function startAdventure() {
   font-size: var(--font-2xl);
   color: var(--text);
   margin: 0;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px var(--focus-glow);
 }
 
 .intro-subtitle {
   font-size: var(--font-base);
   color: var(--text-muted);
   margin: 0.5rem 0 0 0;
+  line-height: 1.6;
 }
 
 /* Step 1 */
 .intro-body {
   line-height: 1.7;
   margin-bottom: 0.5rem;
+  padding: 1rem 1.1rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-left: 3px solid var(--border);
 }
 
 .intro-body p {
@@ -401,12 +425,17 @@ async function startAdventure() {
   margin-bottom: 0.5rem;
 }
 
+.form-group label::before {
+  content: '> ';
+  color: var(--text-muted);
+}
+
 .form-group input {
   width: 100%;
   padding: 0.6rem 0.8rem;
   font-size: var(--font-lg);
-  background: var(--bg-elevated);
-  border: 2px solid var(--border);
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
   color: var(--text);
 }
 

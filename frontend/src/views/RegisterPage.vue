@@ -1,5 +1,5 @@
 <template>
-  <div class="panel auth-panel">
+  <AuthLayout title="注册">
     <h2>注册</h2>
     <form @submit.prevent="submit">
       <div class="form-group">
@@ -48,12 +48,13 @@
     <p class="link-msg">
       已有账号？<router-link to="/login">登录</router-link>
     </p>
-  </div>
+  </AuthLayout>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import AuthLayout from '../components/AuthLayout.vue'
 import { resetPlayerSaveOnServer, clearLegacyLocalSaveKeys } from '../game/playerSave.js'
 
 const router = useRouter()
@@ -136,17 +137,3 @@ async function submit() {
 }
 </script>
 
-<style scoped>
-.auth-panel {
-  width: min(100%, 42rem);
-}
-
-.link-msg {
-  margin-top: 1rem;
-  font-size: var(--font-base);
-  color: var(--text-label);
-}
-.link-msg a {
-  color: var(--accent);
-}
-</style>
