@@ -17,7 +17,7 @@ If running E2E manually or ports are in use:
 powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1
 ```
 
-The script also clears `test-results` and resets `text-idle.db` for a fresh run.
+The script also clears `test-results` and resets `text-idle.e2e.db` for a fresh run. Manual dev data in `text-idle.db` is not deleted.
 
 ## Run Commands
 

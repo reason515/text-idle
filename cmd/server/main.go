@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io/fs"
 	"log"
 
@@ -12,7 +13,10 @@ import (
 )
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("text-idle.db"), &gorm.Config{})
+	dbPath := flag.String("db", "text-idle.db", "path to SQLite database file")
+	flag.Parse()
+
+	db, err := gorm.Open(sqlite.Open(*dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -25,6 +29,6 @@ func main() {
 		staticFS = *f
 	}
 	r := server.NewRouter(db, staticFS)
-	log.Println("server starting on :8080")
+	log.Printf("server starting on :8080 (db=%s)", *dbPath)
 	r.Run(":8080")
 }

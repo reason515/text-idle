@@ -25,6 +25,7 @@ internal/static/web/*
 *.log
 *.exe
 text-idle.db
+text-idle.e2e.db
 
 # Playwright
 test-results/

@@ -15,7 +15,7 @@ alwaysApply: false
 ## Running
 
 - Playwright uses **4 workers** (parallel spec files; tests within a file stay ordered).
-- From repo root: `npm run e2e` (runs port release / DB reset per project script when configured).
+- From repo root: `npm run e2e` (runs port release; resets `text-idle.e2e.db` only; dev `text-idle.db` is preserved).
 - If ports 8080 / 5173 are in use or running manually: `powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1` first (see `workflow.mdc`).
 
 ## Combat pacing vs production
