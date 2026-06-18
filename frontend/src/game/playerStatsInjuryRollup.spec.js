@@ -23,7 +23,7 @@ describe('playerStatsInjuryRollup', () => {
       },
     ]
     expect(rollupHeroInjuryFromBattleLog(log)).toEqual({
-      h1: { basic: 12, skill: 30, skillById: { 'stone-shard': 30 } },
+      h1: { basic: 12, basicPhysical: 12, basicMagic: 0, skill: 30, skillById: { 'stone-shard': 30 } },
     })
   })
 
@@ -39,7 +39,7 @@ describe('playerStatsInjuryRollup', () => {
         shieldAbsorbed: 20,
       },
     ]
-    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({ h1: { basic: 20, skill: 0 } })
+    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({ h1: { basic: 20, basicPhysical: 20, basicMagic: 0, skill: 0 } })
   })
 
   it('skips misses, typed rows, hero attackers, and heals without hero target', () => {
@@ -70,7 +70,7 @@ describe('playerStatsInjuryRollup', () => {
         finalDamage: 4,
       },
     ]
-    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({ h2: { basic: 4, skill: 0 } })
+    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({ h2: { basic: 4, basicPhysical: 4, basicMagic: 0, skill: 0 } })
   })
 
   it('splits skill injury by skillId', () => {
@@ -95,7 +95,7 @@ describe('playerStatsInjuryRollup', () => {
       },
     ]
     expect(rollupHeroInjuryFromBattleLog(log)).toEqual({
-      h1: { basic: 0, skill: 30, skillById: { rend: 10, blackjack: 20 } },
+      h1: { basic: 0, basicPhysical: 0, basicMagic: 0, skill: 30, skillById: { rend: 10, blackjack: 20 } },
     })
   })
 
@@ -111,7 +111,33 @@ describe('playerStatsInjuryRollup', () => {
       },
     ]
     expect(rollupHeroInjuryFromBattleLog(log)).toEqual({
-      h1: { basic: 0, skill: 7, skillById: { __unknown__: 7 } },
+      h1: { basic: 0, basicPhysical: 0, basicMagic: 0, skill: 7, skillById: { __unknown__: 7 } },
+    })
+  })
+
+  it('splits basic injury by damageType physical vs magic', () => {
+    const log = [
+      {
+        actorId: 'm1',
+        actorTier: 'normal',
+        targetId: 'h1',
+        targetClass: 'Warrior',
+        action: 'basic',
+        damageType: 'physical',
+        finalDamage: 8,
+      },
+      {
+        actorId: 'm2',
+        actorTier: 'elite',
+        targetId: 'h1',
+        targetClass: 'Warrior',
+        action: 'basic',
+        damageType: 'magic',
+        finalDamage: 12,
+      },
+    ]
+    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({
+      h1: { basic: 20, basicPhysical: 8, basicMagic: 12, skill: 0 },
     })
   })
 

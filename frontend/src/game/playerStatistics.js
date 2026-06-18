@@ -80,12 +80,50 @@ export function normalizeHeroDamageBook(raw) {
 
 /** @param {unknown} raw */
 export function normalizeInjuryByHero(raw) {
-  return normalizeHeroDamageBook(raw)
+  if (!raw || typeof raw !== 'object') return {}
+  /** @type {Record<string, { basic: number, basicPhysical?: number, basicMagic?: number, skill: number, skillById?: Record<string, number> }>} */
+  const out = {}
+  for (const [k, v] of Object.entries(raw)) {
+    if (!v || typeof v !== 'object') continue
+    const vo = /** @type {Record<string, unknown>} */ (v)
+    const basic = Math.max(0, Math.floor(Number(vo.basic) || 0))
+    const basicPhysical = Math.max(0, Math.floor(Number(vo.basicPhysical) || 0))
+    const basicMagic = Math.max(0, Math.floor(Number(vo.basicMagic) || 0))
+    const skill = Math.max(0, Math.floor(Number(vo.skill) || 0))
+    const skillById = normalizeSkillById(vo.skillById)
+    /** @type {{ basic: number, skill: number, basicPhysical?: number, basicMagic?: number, skillById?: Record<string, number> }} */
+    const row = { basic, skill }
+    if (basicPhysical > 0 || basicMagic > 0) {
+      row.basicPhysical = basicPhysical
+      row.basicMagic = basicMagic
+    }
+    if (skillById) row.skillById = skillById
+    out[String(k)] = row
+  }
+  return out
 }
 
 /** @param {unknown} baseRaw @param {unknown} deltaRaw */
 export function mergeInjuryByHeroBooks(baseRaw, deltaRaw) {
-  return mergeHeroDamageBooks(baseRaw, deltaRaw)
+  const out = normalizeInjuryByHero(baseRaw)
+  for (const [id, v] of Object.entries(normalizeInjuryByHero(deltaRaw))) {
+    const p = out[id] || { basic: 0, skill: 0 }
+    const mergedById = mergeSkillByIdMaps(p.skillById, v.skillById)
+    const basicPhysical = (p.basicPhysical || 0) + (v.basicPhysical || 0)
+    const basicMagic = (p.basicMagic || 0) + (v.basicMagic || 0)
+    /** @type {{ basic: number, skill: number, basicPhysical?: number, basicMagic?: number, skillById?: Record<string, number> }} */
+    const row = {
+      basic: p.basic + v.basic,
+      skill: p.skill + v.skill,
+    }
+    if (basicPhysical > 0 || basicMagic > 0) {
+      row.basicPhysical = basicPhysical
+      row.basicMagic = basicMagic
+    }
+    if (mergedById) row.skillById = mergedById
+    out[id] = row
+  }
+  return out
 }
 
 /**

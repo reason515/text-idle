@@ -4,10 +4,10 @@
  * Counts finalDamage (strike strength including shield absorption per design 13 section 5.2).
  *
  * @param {unknown} log
- * @returns {Record<string, { basic: number, skill: number, skillById?: Record<string, number> }>}
+ * @returns {Record<string, { basic: number, basicPhysical: number, basicMagic: number, skill: number, skillById?: Record<string, number> }>}
  */
 export function rollupHeroInjuryFromBattleLog(log) {
-  /** @type {Record<string, { basic: number, skill: number, skillById: Record<string, number> }>} */
+  /** @type {Record<string, { basic: number, basicPhysical: number, basicMagic: number, skill: number, skillById: Record<string, number> }>} */
   const out = {}
   if (!Array.isArray(log)) return out
 
@@ -28,7 +28,7 @@ export function rollupHeroInjuryFromBattleLog(log) {
     if (targetId == null || targetId === '') continue
 
     const id = String(targetId)
-    if (!out[id]) out[id] = { basic: 0, skill: 0, skillById: {} }
+    if (!out[id]) out[id] = { basic: 0, basicPhysical: 0, basicMagic: 0, skill: 0, skillById: {} }
 
     const add = Math.floor(fd)
     const action = e.action
@@ -39,6 +39,11 @@ export function rollupHeroInjuryFromBattleLog(log) {
       out[id].skillById[sid] = (out[id].skillById[sid] || 0) + add
     } else if (action === 'basic' || action === 'attack') {
       out[id].basic += add
+      if (e.damageType === 'magic') {
+        out[id].basicMagic += add
+      } else {
+        out[id].basicPhysical += add
+      }
     }
   }
 

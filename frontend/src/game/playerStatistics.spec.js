@@ -178,29 +178,42 @@ describe('playerStatistics', () => {
     expect(s.damageByHero).toEqual({ z: { basic: 12, skill: 3 } })
   })
 
-  it('applyBattleToPlayerStats merges injuryByHeroDelta', () => {
+  it('applyBattleToPlayerStats merges injuryByHeroDelta with basic type split', () => {
     let s = applyBattleToPlayerStats(createEmptyPlayerStats(), {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
       rounds: 1,
-      injuryByHeroDelta: { a: { basic: 10, skill: 5 } },
+      injuryByHeroDelta: { a: { basic: 10, basicPhysical: 6, basicMagic: 4, skill: 5 } },
     })
-    expect(s.injuryByHero).toEqual({ a: { basic: 10, skill: 5 } })
+    expect(s.injuryByHero).toEqual({ a: { basic: 10, basicPhysical: 6, basicMagic: 4, skill: 5 } })
     s = applyBattleToPlayerStats(s, {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
       rounds: 1,
-      injuryByHeroDelta: { a: { basic: 3, skill: 1, skillById: { 'stone-shard': 1 } }, b: { basic: 0, skill: 8 } },
+      injuryByHeroDelta: { a: { basic: 3, basicPhysical: 3, skill: 1, skillById: { 'stone-shard': 1 } }, b: { basic: 0, skill: 8 } },
     })
     expect(s.injuryByHero).toEqual({
-      a: { basic: 13, skill: 6, skillById: { 'stone-shard': 1 } },
+      a: { basic: 13, basicPhysical: 9, basicMagic: 4, skill: 6, skillById: { 'stone-shard': 1 } },
       b: { basic: 0, skill: 8 },
     })
   })
 
-  it('normalizePlayerStats parses injuryByHero', () => {
+  it('normalizePlayerStats parses injuryByHero with basic type split', () => {
+    const s = normalizePlayerStats({
+      combatActionSteps: 0,
+      restSteps: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      displayScaleN: 100,
+      battleTimeline: [],
+      injuryByHero: { z: { basic: 12.9, basicPhysical: 8.2, basicMagic: 4.7, skill: 3.1 } },
+    })
+    expect(s.injuryByHero).toEqual({ z: { basic: 12, basicPhysical: 8, basicMagic: 4, skill: 3 } })
+  })
+
+  it('normalizePlayerStats keeps legacy injury basic without type split', () => {
     const s = normalizePlayerStats({
       combatActionSteps: 0,
       restSteps: 0,

@@ -1348,7 +1348,7 @@
           <template v-else-if="playerStatsModalTab === 'injury'">
             <div class="detail-skill-choice-banner player-stats-banner tooltip-wrap has-tip">
               <p>
-                自上次清零起累计<strong>我方所受伤害</strong>（含护盾吸收）；各角色饼图按<strong>普攻与敌方技能</strong>拆分。不含无法在日志中单次归因的持续伤害等。
+                自上次清零起累计<strong>我方所受伤害</strong>（含护盾吸收）；各角色饼图按<strong>敌方普攻（物理/魔法）与技能</strong>拆分。不含无法在日志中单次归因的持续伤害等。
               </p>
               <span class="tooltip-text tooltip-wide">每场战斗结束时根据本场日志增量汇总；数值按有效伤害（含被护盾吸收部分）统计。各角色饼图扇区或图例行悬停显示数值与占比。点击「清零统计」将清空本节数据。</span>
             </div>
@@ -1461,8 +1461,8 @@
                           <span class="player-stats-legend-swatch" :style="{ background: leg.fill }" aria-hidden="true" />
                           <span
                             class="player-stats-legend-name"
-                            :class="{ 'player-stats-legend-skill': leg.key !== '__basic__' }"
-                            :style="leg.key !== '__basic__' ? { color: 'var(--color-skill)', fontStyle: 'italic' } : {}"
+                            :class="{ 'player-stats-legend-skill': !isInjuryBasicPieKey(leg.key) }"
+                            :style="!isInjuryBasicPieKey(leg.key) ? { color: 'var(--color-skill)', fontStyle: 'italic' } : {}"
                           >{{ leg.label }}</span>
                         </li>
                       </ul>
@@ -2754,6 +2754,7 @@ import {
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
+import { buildHeroInjuryPieSegments, isInjuryBasicPieKey } from '../game/playerStatsHeroInjuryPie.js'
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
 import { buildWinRatePieSegments, summarizeBattleOutcomes } from '../game/playerStatsWinRate.js'
@@ -3971,7 +3972,7 @@ const playerStatsPerHeroInjuryPies = computed(() => {
   const heroes = squad.value || []
   return heroes.map((h) => {
     const r = book[h.id] || { basic: 0, skill: 0 }
-    const segments = buildHeroDamagePieSegments(r)
+    const segments = buildHeroInjuryPieSegments(r)
     const total = segments.reduce((acc, s) => acc + s.value, 0)
     const model = buildPieChartModel(COMP_PIE_GEOM, segments)
     const legend = segments.map((s) => ({ key: s.key, label: s.label, fill: s.fill }))
