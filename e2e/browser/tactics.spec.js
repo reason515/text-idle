@@ -88,8 +88,11 @@ test.describe('Tactics configuration (AI UI)', () => {
     await expect(page.locator('.detail-tab').filter({ hasText: '战术' })).toBeVisible()
     await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.getByTestId('ai-tactics-section')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('ai-tactics-template')).toBeVisible()
     await expect(page.getByTestId('ai-tactics-textarea')).toBeVisible()
+    await expect(page.getByTestId('ai-tactics-textarea')).toHaveValue(/\u573a\u4e0a\u5b58\u5728\u76ee\u6807\u975e\u5766\u514b\u7684\u654c\u4eba/)
     await expect(page.getByTestId('ai-tactics-submit')).toBeVisible()
+    await expect(page.getByTestId('ai-tactics-fill-template')).toBeVisible()
   })
 
   test('AC2: Current tactics summary shows after tactics tab (initial squad has default tactics)', async ({ page }) => {
@@ -101,6 +104,9 @@ test.describe('Tactics configuration (AI UI)', () => {
     await page.locator('.detail-tab').filter({ hasText: '战术' }).click()
     await expect(page.getByTestId('ai-tactics-current')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.ai-tactics-current-label').filter({ hasText: '技能优先级' })).toBeVisible()
+    await expect(page.getByTestId('ai-tactics-to-natural-language')).toBeEnabled()
+    await page.getByTestId('ai-tactics-to-natural-language').click()
+    await expect(page.getByTestId('ai-tactics-textarea')).toHaveValue(/\u573a\u4e0a\u5b58\u5728\u76ee\u6807\u975e\u5766\u514b\u7684\u654c\u4eba/)
   })
 
   test('AC3b: AI parse shows processing state while waiting', async ({ page }) => {

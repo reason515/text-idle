@@ -2271,22 +2271,37 @@
                   <span class="ai-tactics-key-ok">API Key 已配置</span>
                   <button type="button" class="btn btn-sm ai-tactics-key-change" @click="aiTacticsShowKey = true">修改</button>
                 </div>
-                <div class="ai-tactics-input-hint">用自然语言描述战术规则，AI 会自动解析为游戏配置。</div>
-                <textarea
-                  v-model="aiTacticsInput"
-                  class="ai-tactics-textarea"
-                  data-testid="ai-tactics-textarea"
-                  :placeholder="selectedHero.class === 'Priest'
-                    ? '例：先给自己上盾，然后治疗血量最低的队友；队友血量低于40%时才治疗'
-                    : selectedHero.class === 'Warrior'
-                      ? '例：先嘲讽，再破甲，目标选坦克仇恨最低的怪；盾牌猛击仅在目标有破甲减益时使用'
-                      : selectedHero.class === 'Druid'
-                        ? '例：先给血量最低的队友上回春术，再用重殴；熊形态在自身血量低于50%时使用'
-                        : '例：先放火球术，再用奥术冲击；优先攻击血量最低的敌人'"
-                  rows="3"
-                  :disabled="aiTacticsLoading"
-                  @keydown.ctrl.enter="aiTacticsSubmit(selectedHero)"
-                ></textarea>
+                <div class="ai-tactics-input-hint">用自然语言描述战术规则，AI 会自动解析为游戏配置。在下方编辑框中直接修改；已配置的战术也可在「当前战术」处转为自然语言。</div>
+                <div
+                  class="detail-skill-choice-banner ai-tactics-editor-banner"
+                  data-testid="ai-tactics-template"
+                >
+                  <div class="ai-tactics-editor-head">
+                    <span class="ai-tactics-editor-title">战术规则（自然语言）</span>
+                    <button
+                      type="button"
+                      class="btn btn-sm ai-tactics-template-fill-btn"
+                      data-testid="ai-tactics-fill-template"
+                      :disabled="aiTacticsLoading || !aiTacticsTemplateText"
+                      @click="aiTacticsFillTemplate()"
+                    >恢复模板</button>
+                  </div>
+                  <textarea
+                    v-model="aiTacticsInput"
+                    class="ai-tactics-textarea game-scroll"
+                    data-testid="ai-tactics-textarea"
+                    :placeholder="selectedHero.class === 'Priest'
+                      ? '例：先给自己上盾，然后治疗血量最低的队友；队友血量低于40%时才治疗'
+                      : selectedHero.class === 'Warrior'
+                        ? '例：先嘲讽，再破甲，目标选坦克仇恨最低的怪；盾牌猛击仅在目标有破甲减益时使用'
+                        : selectedHero.class === 'Druid'
+                          ? '例：先给血量最低的队友上回春术，再用重殴；熊形态在自身血量低于50%时使用'
+                          : '例：先放火球术，再用奥术冲击；优先攻击血量最低的敌人'"
+                    rows="6"
+                    :disabled="aiTacticsLoading"
+                    @keydown.ctrl.enter="aiTacticsSubmit(selectedHero)"
+                  ></textarea>
+                </div>
                 <div class="ai-tactics-actions">
                   <button
                     type="button"
@@ -2439,6 +2454,13 @@
                   </div>
                 </template>
                 <div class="ai-tactics-current-clear-row">
+                  <button
+                    type="button"
+                    class="btn btn-sm ai-tactics-to-nl-btn"
+                    data-testid="ai-tactics-to-natural-language"
+                    :disabled="aiTacticsLoading || !aiTacticsCanLoadCurrentNaturalLanguage"
+                    @click="aiTacticsLoadCurrentNaturalLanguage()"
+                  >转为自然语言</button>
                   <button type="button" class="btn btn-sm ai-tactics-discard-btn" data-testid="ai-tactics-clear-all" @click="aiTacticsClearAll(selectedHero)">清空全部战术</button>
                 </div>
               </div>
@@ -2804,6 +2826,9 @@ import {
   priestTacticsDisplayPriority,
   priestTacticsPrioritySectionLabel,
   priestTacticsShowsImplicitBasicFallback,
+  getTacticsNaturalLanguageTemplate,
+  getCurrentTacticsNaturalLanguage,
+  hasConfiguredTactics,
 } from '../game/aiTactics.js'
 import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes } from '../game/combatFloatingFeedback.js'
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
@@ -3191,6 +3216,16 @@ const showShopModal = ref(false)
 const selectedHero = ref(null)
 const heroDetailTab = ref('attrs')
 const aiTacticsInput = ref('')
+const aiTacticsTemplateText = computed(() => {
+  const hero = selectedHero.value
+  if (!hero) return ''
+  return getTacticsNaturalLanguageTemplate(hero.class, hero.tactics)
+})
+const aiTacticsCanLoadCurrentNaturalLanguage = computed(() => {
+  const hero = selectedHero.value
+  if (!hero) return false
+  return hasConfiguredTactics(hero.tactics)
+})
 const aiTacticsLoading = ref(false)
 const aiTacticsResult = ref(null)
 const aiTacticsPriestExecuteHint = computed(() => {
@@ -4316,6 +4351,22 @@ function heroSkillDisplayLevel(hero, skillId) {
 function aiTacticsSaveKey() {
   setApiKey(aiTacticsKeyInput.value)
   aiTacticsShowKey.value = !hasApiKey()
+}
+
+function aiTacticsFillTemplate() {
+  const hero = selectedHero.value
+  if (!hero) return
+  aiTacticsInput.value = getTacticsNaturalLanguageTemplate(hero.class, hero.tactics)
+}
+
+function aiTacticsLoadCurrentNaturalLanguage() {
+  const hero = selectedHero.value
+  if (!hero) return
+  const text = getCurrentTacticsNaturalLanguage(hero.class, hero.tactics)
+  if (!text) return
+  aiTacticsInput.value = text
+  aiTacticsResult.value = null
+  aiTacticsError.value = ''
 }
 
 async function aiTacticsSubmit(hero) {
@@ -5458,9 +5509,20 @@ async function runCombatLoop() {
 
 watch(selectedHero, (val, oldVal) => {
   if (val) {
-    if (!oldVal || oldVal.id !== val.id) heroDetailTab.value = 'attrs'
+    if (!oldVal || oldVal.id !== val.id) {
+      heroDetailTab.value = 'attrs'
+      aiTacticsInput.value = ''
+      aiTacticsResult.value = null
+      aiTacticsError.value = ''
+    }
   } else {
     hideFormulaTooltip()
+  }
+})
+
+watch([heroDetailTab, selectedHero], ([tab, hero]) => {
+  if (tab === 'tactics' && hero && !aiTacticsInput.value.trim() && !aiTacticsLoading.value) {
+    aiTacticsInput.value = getTacticsNaturalLanguageTemplate(hero.class, hero.tactics)
   }
 })
 
@@ -8939,8 +9001,10 @@ input.tactics-condition-value[type="number"] {
 .ai-tactics-key-row .btn.btn-sm,
 .ai-tactics-key-saved .btn.btn-sm,
 .ai-tactics-actions .btn.btn-sm,
-.ai-tactics-apply-row .btn.btn-sm,
-.ai-tactics-current-clear-row .btn.btn-sm {
+.ai-tactics-template-head .btn.btn-sm,
+.ai-tactics-editor-head .btn.btn-sm,
+.ai-tactics-current-clear-row .btn.btn-sm,
+.ai-tactics-apply-row .btn.btn-sm {
   width: auto;
   min-width: 0;
   margin-top: 0;
@@ -8975,12 +9039,35 @@ input.tactics-condition-value[type="number"] {
   border-radius: 4px;
   padding: 0.5rem 0.6rem;
 }
+.ai-tactics-template-banner,
+.ai-tactics-editor-banner {
+  margin-top: 0.35rem;
+}
+.ai-tactics-template-head,
+.ai-tactics-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.ai-tactics-template-title,
+.ai-tactics-editor-title {
+  font-size: var(--font-sm);
+  color: var(--text-value);
+  font-weight: 600;
+}
+.ai-tactics-template-fill-btn {
+  flex-shrink: 0;
+}
 .ai-tactics-textarea {
   width: 100%;
-  min-height: 3.5rem;
-  padding: 0.4rem 0.5rem;
+  min-height: 7rem;
+  padding: 0.55rem 0.6rem;
   font-family: inherit;
   font-size: var(--font-base);
+  line-height: 1.55;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -9241,6 +9328,8 @@ input.tactics-condition-value[type="number"] {
 .ai-tactics-current-clear-row {
   margin-top: 0.4rem;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
 }
 .ai-tactics-current-none {
   padding: 0.75rem;

@@ -4,6 +4,11 @@
  */
 
 import { jsonrepair } from 'jsonrepair'
+import {
+  FIXED_TRIO_WARRIOR_TACTICS,
+  FIXED_TRIO_MAGE_TACTICS,
+  FIXED_TRIO_PRIEST_TACTICS,
+} from '../data/heroes.js'
 
 const API_URL = 'https://api.siliconflow.cn/v1/chat/completions'
 const MODEL = 'Qwen/Qwen3-8B'
@@ -2685,4 +2690,330 @@ export function conditionValueDisplay(when, value) {
     return map[value] || String(value)
   }
   return String(value)
+}
+
+const CLASS_TEMPLATE_NOTES = {
+  Warrior:
+    '技能按优先级从上到下尝试；怒气不足或冷却未就绪时自动跳过。怒气不足以施放技能时，引擎会自动尝试普通攻击。',
+  Mage:
+    '始终以血量最低的敌人为目标。法力不足以施放法术时，引擎会自动尝试普通攻击。',
+  Priest:
+    '治疗与护盾按优先级尝试。法力不足以施放法术时，引擎会自动对血量最低的敌人普通攻击。',
+}
+
+const OT_ENEMY_TARGET_RULES = new Set(['threat-not-tank-lowest-hp', 'threat-not-tank-random'])
+
+function getConditionForSkill(tactics, skillId) {
+  return (tactics.conditions || []).find((c) => c.skillId === skillId)
+}
+
+function ruleIdFromStep(step) {
+  if (typeof step === 'string') return step
+  return step?.rule
+}
+
+function resourceShortagePhrase(heroClass) {
+  if (heroClass === 'Warrior') return '怒气不足'
+  if (heroClass === 'Mage' || heroClass === 'Priest') return '法力不足'
+  return '资源不足'
+}
+
+function hpPercent(value, fallback = 0) {
+  const n = typeof value === 'number' ? value : fallback
+  return `${Math.round(n * 100)}%`
+}
+
+function otEnemyTargetPhrase(ruleId) {
+  if (ruleId === 'threat-not-tank-lowest-hp') return '对其中HP最低的敌人'
+  if (ruleId === 'threat-not-tank-random') return '对其中一只非坦克仇恨的敌人'
+  return '对非坦克仇恨目标'
+}
+
+function tryFormatWarriorOtTankNarrative(tactics, heroClass) {
+  if (heroClass !== 'Warrior') return null
+  const priority = tactics.skillPriority || []
+  const tauntIdx = priority.indexOf('taunt')
+  const sunderIdx = priority.indexOf('sunder-armor')
+  if (tauntIdx < 0 || sunderIdx < 0 || tauntIdx > sunderIdx) return null
+
+  const tauntCond = getConditionForSkill(tactics, 'taunt')
+  const sunderCond = getConditionForSkill(tactics, 'sunder-armor')
+  if (tauntCond?.when === 'ally-ot') return null
+
+  const tauntRules = tauntCond?.targetRules || (tauntCond?.targetRule ? [tauntCond.targetRule] : [])
+  const sunderRules = sunderCond?.targetRules || (sunderCond?.targetRule ? [sunderCond.targetRule] : [])
+  const tauntFirst = ruleIdFromStep(tauntRules[0])
+  const sunderFirst = ruleIdFromStep(sunderRules[0])
+  const sunderSecond = ruleIdFromStep(sunderRules[1])
+
+  if (!OT_ENEMY_TARGET_RULES.has(tauntFirst)) return null
+  if (!OT_ENEMY_TARGET_RULES.has(sunderFirst)) return null
+  if (sunderSecond !== 'lowest-hp') return null
+
+  const tauntName = skillDisplayName('taunt', heroClass)
+  const sunderName = skillDisplayName('sunder-armor', heroClass)
+  const basicName = skillDisplayName('basic-attack', heroClass)
+  const hasBasic =
+    priority.includes('basic-attack') || !!getConditionForSkill(tactics, 'basic-attack')
+
+  const otPhrase = otEnemyTargetPhrase(tauntFirst)
+  let line1 = `1. 场上存在目标非坦克的敌人时，${otPhrase}使用${tauntName}；若${tauntName}冷却中或无法施放，则对其使用${sunderName}`
+  if (hasBasic) line1 += `；若怒气不足则对其使用${basicName}`
+  line1 += '。'
+
+  let line2 = `2. 若所有敌人的目标都是坦克，则对血量最低的敌人使用${sunderName}`
+  if (hasBasic) line2 += `；怒气不足时使用${basicName}`
+  line2 += '。'
+
+  return `${line1}\n${line2}`
+}
+
+function tryFormatMageHpBandNarrative(tactics, heroClass) {
+  if (heroClass !== 'Mage') return null
+  const frost = getConditionForSkill(tactics, 'frostbolt')
+  const fire = getConditionForSkill(tactics, 'fireball')
+  const basic = getConditionForSkill(tactics, 'basic-attack')
+  if (!frost || frost.when !== 'target-hp-above' || frost.value !== 0.5) return null
+  if (!fire?.whenAll?.length) return null
+  const fireLow = fire.whenAll.find((w) => w.when === 'target-hp-below')
+  const fireHigh = fire.whenAll.find((w) => w.when === 'target-hp-above')
+  if (!fireLow || fireLow.value !== 0.5 || !fireHigh || fireHigh.value !== 0.05) return null
+  if (!basic || basic.when !== 'target-hp-below' || basic.value !== 0.05) return null
+
+  const frostName = skillDisplayName('frostbolt', heroClass)
+  const fireName = skillDisplayName('fireball', heroClass)
+  const basicName = skillDisplayName('basic-attack', heroClass)
+
+  return [
+    '1. 始终选择HP最低的敌人为目标。',
+    `2. 目标HP低于${hpPercent(basic.value)}时使用${basicName}。`,
+    `3. 目标HP在${hpPercent(fireHigh.value)}-${hpPercent(fireLow.value)}之间时使用${fireName}。`,
+    `4. 目标HP在${hpPercent(frost.value)}以上时使用${frostName}。`,
+    `5. 法力不足时使用${basicName}。`,
+  ].join('\n')
+}
+
+function describePriestHealStepNarrative(step, healName) {
+  const rule = ruleIdFromStep(step)
+  if (rule === 'lowest-hp-ally' && step.when === 'ally-hp-below') {
+    return `若任意队友（含自身）HP低于${hpPercent(step.value, 0.7)}，对其中HP最低的队友使用${healName}。`
+  }
+  if (rule === 'self-if-enemy-targeting' && Array.isArray(step.whenAll)) {
+    const selfHp = step.whenAll.find((w) => w.when === 'self-hp-below')
+    if (selfHp) {
+      return `若被敌人盯上且自身HP低于${hpPercent(selfHp.value, 0.6)}，对自己使用${healName}。`
+    }
+  }
+  if (rule === 'tank' && Array.isArray(step.whenAll)) {
+    const tankBelow = step.whenAll.find((w) => w.when === 'tank-hp-below')
+    const notSelf = step.whenAll.find((w) => w.when === 'enemy-not-targeting-self')
+    if (tankBelow && notSelf) {
+      return `若无敌人盯上且坦克HP低于${hpPercent(tankBelow.value, 0.7)}，对坦克使用${healName}。`
+    }
+  }
+  return null
+}
+
+function describePriestShieldStepNarrative(step, shieldName) {
+  const rule = ruleIdFromStep(step)
+  if (rule === 'self-if-enemy-targeting' && Array.isArray(step.whenAll)) {
+    const noShield = step.whenAll.find((w) => w.when === 'self-no-shield')
+    if (noShield) {
+      return `若被敌人盯上且自身无盾，对自己使用${shieldName}。`
+    }
+  }
+  if (rule === 'tank' && Array.isArray(step.whenAll)) {
+    const tankAbove = step.whenAll.find((w) => w.when === 'tank-hp-above')
+    const noShield = step.whenAll.find((w) => w.when === 'tank-no-shield')
+    const notSelf = step.whenAll.find((w) => w.when === 'enemy-not-targeting-self')
+    if (tankAbove && noShield && notSelf) {
+      return `若无敌人盯上、坦克HP高于${hpPercent(tankAbove.value, 0.7)}且无盾，对坦克使用${shieldName}。`
+    }
+  }
+  return null
+}
+
+function tryFormatPriestTriageNarrative(tactics, heroClass) {
+  if (heroClass !== 'Priest') return null
+  const fh = getConditionForSkill(tactics, 'flash-heal')
+  const pws = getConditionForSkill(tactics, 'power-word-shield')
+  if (!fh?.targetRules?.length) return null
+
+  const healName = skillDisplayName('flash-heal', heroClass)
+  const shieldName = skillDisplayName('power-word-shield', heroClass)
+  const basicName = skillDisplayName('basic-attack', heroClass)
+  const lines = []
+  let n = 1
+
+  for (const step of fh.targetRules) {
+    const phrase = describePriestHealStepNarrative(step, healName)
+    if (phrase) {
+      lines.push(`${n}. ${phrase}`)
+      n++
+    }
+  }
+
+  if (pws?.targetRules?.length) {
+    for (const step of pws.targetRules) {
+      const phrase = describePriestShieldStepNarrative(step, shieldName)
+      if (phrase) {
+        lines.push(`${n}. ${phrase}`)
+        n++
+      }
+    }
+  }
+
+  if (lines.length < 2) return null
+
+  const hasBasic =
+    (tactics.skillPriority || []).includes('basic-attack') ||
+    !!getConditionForSkill(tactics, 'basic-attack') ||
+    tactics.targetRule === 'lowest-hp'
+  if (hasBasic) {
+    lines.push(`${n}. 法力不足时对HP最低的敌人使用${basicName}。`)
+  }
+
+  return lines.join('\n')
+}
+
+function describeSkillTargetNarrative(cond, heroClass) {
+  const skillName = skillDisplayName(cond.skillId, heroClass)
+  const whenText = tacticsSkillWhenDisplay(cond)
+  const parts = []
+
+  if (whenText) parts.push(whenText)
+
+  if (cond.targetRules?.length) {
+    const chainParts = []
+    for (let i = 0; i < cond.targetRules.length; i++) {
+      const label = targetRuleStepDisplay(cond.targetRules[i], { skillId: cond.skillId })
+      if (i === 0) chainParts.push(`目标为${label}`)
+      else if (targetRuleStepHasGate(cond.targetRules[i])) {
+        chainParts.push(`否则在满足条件时改选${label}`)
+      } else {
+        chainParts.push(`否则改选${label}`)
+      }
+    }
+    parts.push(chainParts.join('，'))
+  } else if (cond.targetRule) {
+    parts.push(`目标为${targetRuleDisplayName(cond.targetRule)}`)
+  }
+
+  if (parts.length === 0) return null
+  return `${skillName}：${parts.join('；')}`
+}
+
+function formatGenericTacticsNarrative(tactics, heroClass) {
+  const lines = []
+  let n = 1
+  const priority = Array.isArray(tactics.skillPriority) ? tactics.skillPriority : []
+  const resourcePhrase = resourceShortagePhrase(heroClass)
+
+  if (priority.length > 0) {
+    const order = priority.map((id) => skillDisplayName(id, heroClass)).join(' → ')
+    lines.push(
+      `${n}. 技能尝试顺序为 ${order}；前一项因冷却、条件或${resourcePhrase}无法施放时，尝试下一项。`,
+    )
+    n++
+  } else if (tactics.targetRule) {
+    lines.push(`${n}. 默认目标为${targetRuleDisplayName(tactics.targetRule)}。`)
+    n++
+  }
+
+  for (const cond of tactics.conditions || []) {
+    if (!cond?.skillId) continue
+    const phrase = describeSkillTargetNarrative(cond, heroClass)
+    if (phrase) {
+      lines.push(`${n}. ${phrase}。`)
+      n++
+    }
+  }
+
+  const note = CLASS_TEMPLATE_NOTES[heroClass]
+  if (note && n === 1) {
+    lines.push(`${n}. ${note}`)
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Resolve default trio tactics used as NL template when hero has no saved tactics.
+ * @param {string} heroClass
+ * @returns {Object|null}
+ */
+export function getDefaultTacticsForTemplate(heroClass) {
+  if (heroClass === 'Warrior') return FIXED_TRIO_WARRIOR_TACTICS
+  if (heroClass === 'Mage') return FIXED_TRIO_MAGE_TACTICS
+  if (heroClass === 'Priest') return FIXED_TRIO_PRIEST_TACTICS
+  return null
+}
+
+function tacticsHasContent(tactics) {
+  if (!tactics || typeof tactics !== 'object') return false
+  if (Array.isArray(tactics.skillPriority) && tactics.skillPriority.length > 0) return true
+  if (tactics.targetRule) return true
+  if (Array.isArray(tactics.conditions) && tactics.conditions.length > 0) return true
+  return false
+}
+
+/**
+ * Convert structured tactics into scenario-based natural language for the AI input.
+ * @param {Object} tactics
+ * @param {string} heroClass
+ * @returns {string}
+ */
+export function formatTacticsAsNaturalLanguage(tactics, heroClass) {
+  if (!tacticsHasContent(tactics)) return ''
+
+  const specialized = [
+    tryFormatWarriorOtTankNarrative,
+    tryFormatMageHpBandNarrative,
+    tryFormatPriestTriageNarrative,
+  ]
+  for (const fn of specialized) {
+    const text = fn(tactics, heroClass)
+    if (text) return text
+  }
+  return formatGenericTacticsNarrative(tactics, heroClass)
+}
+
+/**
+ * True when hero has any saved tactics fields worth converting to NL.
+ * @param {Object|null|undefined} tactics
+ * @returns {boolean}
+ */
+export function hasConfiguredTactics(tactics) {
+  return tacticsHasContent(tactics)
+}
+
+/**
+ * Convert the hero's saved (current) tactics to natural language; empty when nothing configured.
+ * @param {string} heroClass
+ * @param {Object|null|undefined} heroTactics
+ * @returns {string}
+ */
+export function getCurrentTacticsNaturalLanguage(heroClass, heroTactics) {
+  if (!tacticsHasContent(heroTactics)) return ''
+  return formatTacticsAsNaturalLanguage(heroTactics, heroClass)
+}
+
+/**
+ * Natural-language template for the tactics AI input: hero tactics when present, else class default trio.
+ * @param {string} heroClass
+ * @param {Object|null|undefined} heroTactics
+ * @returns {string}
+ */
+export function getTacticsNaturalLanguageTemplate(heroClass, heroTactics) {
+  const source = tacticsHasContent(heroTactics)
+    ? heroTactics
+    : getDefaultTacticsForTemplate(heroClass)
+  if (!source) {
+    return [
+      '1. 按已学技能设定优先级（例如：技能A → 技能B → 普通攻击）；前一项因冷却、条件或资源不足无法施放时，尝试下一项。',
+      '2. 说明每个技能的目标与触发条件（例如：仅当目标HP低于30%时使用斩杀）。',
+      '3. 怒气/法力不足时，引擎会自动尝试普通攻击（可在规则中写明）。',
+    ].join('\n')
+  }
+  return formatTacticsAsNaturalLanguage(source, heroClass)
 }

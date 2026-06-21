@@ -86,6 +86,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) (e.g. 10, 14, 20) | AC / design reference if formulas or log behavior changes |
 | **Unit tests** | `frontend/src/game/*.spec.js` | Lock formula and log helpers |
 | **Tactics schema** | `tactics.js`, `combat.js`, `aiTactics.js`, `docs/design/10-tactics.md` | `skillPriority` 含 `basic-attack`、新的 `when` 类型或牧师 fast-heal 预检 → 同步设计与 Vitest |
+| **Tactics NL template UI** | MainScreen 战术 Tab、`formatTacticsAsNaturalLanguage` / `getTacticsNaturalLanguageTemplate` / `getCurrentTacticsNaturalLanguage`（`aiTactics.js`） | 模板卡片 + 自动填入；**当前战术 → 转为自然语言**；变更默认三人组战术或 NL 段落格式时同步 [10-tactics.md](design/10-tactics.md) §7 与 Example 28 AC1–AC2、`e2e/browser/tactics.spec.js` |
 | **E2E** | `e2e/browser/*.spec.js` | When main-screen combat log or flow assertions need updating |
 
 **Examples to review**: 10 (battle log / detail), 14 (mage formula), 20 (equip / orb), plus any Example citing SpellPower or combat log.

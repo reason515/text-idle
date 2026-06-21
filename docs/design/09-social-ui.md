@@ -322,7 +322,8 @@ Attributes Tab 内布局：基础信息 | 左侧：一级属性+二级属性 | �
 
 # 游戏版本规划 (Roadmap)
 
-- **v0.1.0（MVP 内测，当前）**：Release Notes 见 [docs/releases/v0.1.0.md](../releases/v0.1.0.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.1（战术配置优化，当前）**：Release Notes 见 [docs/releases/v0.1.1.md](../releases/v0.1.1.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.0（MVP 内测）**：Release Notes 见 [docs/releases/v0.1.0.md](../releases/v0.1.0.md)。
 - **Alpha 版本核心功能列表**（规划中）
 - **Beta 版本核心功能列表**（规划中）
 - **正式上线版本核心功能列表**（规划中）

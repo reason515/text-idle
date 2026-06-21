@@ -18,6 +18,11 @@ import {
   priestTacticsShowsImplicitBasicFallback,
   usesPriestExecuteDeferGates,
   getPriestExecuteCutoffFromTactics,
+  formatTacticsAsNaturalLanguage,
+  getTacticsNaturalLanguageTemplate,
+  getCurrentTacticsNaturalLanguage,
+  hasConfiguredTactics,
+  getDefaultTacticsForTemplate,
 } from './aiTactics.js'
 
 describe('parseAiTacticsResponseContent', () => {
@@ -1703,5 +1708,70 @@ describe('validateAiTactics E2E-aligned mock payloads (Warrior / Mage / Priest)'
     const chain = targetRulesChainDisplay(['threat-not-tank-random', 'lowest-hp'])
     expect(chain).toContain('\u975e\u5766\u514b\u4ec7\u6068\u76ee\u6807\uff08\u968f\u673a\uff09')
     expect(chain).toContain('\u8840\u91cf\u6700\u4f4e\u7684\u654c\u4eba')
+  })
+})
+
+describe('formatTacticsAsNaturalLanguage / getTacticsNaturalLanguageTemplate', () => {
+  it('formats fixed trio warrior default as OT tank scenario narrative', () => {
+    const tactics = getDefaultTacticsForTemplate('Warrior')
+    const text = formatTacticsAsNaturalLanguage(tactics, 'Warrior')
+    expect(text).toContain('\u573a\u4e0a\u5b58\u5728\u76ee\u6807\u975e\u5766\u514b\u7684\u654c\u4eba')
+    expect(text).toContain('\u5632\u8bbd')
+    expect(text).toContain('\u7834\u7532')
+    expect(text).toContain('\u666e\u901a\u653b\u51fb')
+    expect(text).toContain('\u6240\u6709\u654c\u4eba\u7684\u76ee\u6807\u90fd\u662f\u5766\u514b')
+    expect(text).not.toContain('\u3010\u6280\u80fd\u4f18\u5148\u7ea7\u3011')
+  })
+
+  it('formats mage HP-band conditions as numbered narrative', () => {
+    const text = getTacticsNaturalLanguageTemplate('Mage', null)
+    expect(text).toContain('\u5bd2\u51b0\u7bad')
+    expect(text).toContain('\u706b\u7403\u672f')
+    expect(text).toContain('HP\u4f4e\u4e8e5%')
+    expect(text).toContain('5%-50%')
+    expect(text).toContain('50%\u4ee5\u4e0a')
+  })
+
+  it('uses hero tactics when present instead of class default', () => {
+    const custom = {
+      skillPriority: ['taunt'],
+      targetRule: 'first',
+      conditions: [{ skillId: 'taunt', when: 'ally-ot' }],
+    }
+    const text = getTacticsNaturalLanguageTemplate('Warrior', custom)
+    expect(text).toContain('\u961f\u53cb\u62a2\u5230\u4ec7\u6068')
+    expect(text).not.toContain('\u7834\u7532')
+  })
+
+  it('returns generic narrative scaffold for unsupported classes without defaults', () => {
+    const text = getTacticsNaturalLanguageTemplate('Rogue', null)
+    expect(text).toMatch(/^1\./)
+    expect(text).toContain('\u666e\u901a\u653b\u51fb')
+    expect(text).not.toContain('\u3010\u6280\u80fd\u4f18\u5148\u7ea7\u3011')
+  })
+
+  it('formats priest triage as scenario narrative', () => {
+    const text = formatTacticsAsNaturalLanguage(getDefaultTacticsForTemplate('Priest'), 'Priest')
+    expect(text).toContain('\u5feb\u901f\u6cbb\u7597')
+    expect(text).toContain('70%')
+    expect(text).toContain('\u771f\u8a00\u672f\uff1a\u76fe')
+    expect(text).toMatch(/^1\./)
+  })
+
+  it('getCurrentTacticsNaturalLanguage returns empty when no tactics configured', () => {
+    expect(getCurrentTacticsNaturalLanguage('Warrior', null)).toBe('')
+    expect(getCurrentTacticsNaturalLanguage('Warrior', {})).toBe('')
+    expect(hasConfiguredTactics(null)).toBe(false)
+  })
+
+  it('getCurrentTacticsNaturalLanguage formats saved hero tactics only', () => {
+    const custom = {
+      skillPriority: ['taunt'],
+      targetRule: 'first',
+      conditions: [{ skillId: 'taunt', when: 'ally-ot' }],
+    }
+    const text = getCurrentTacticsNaturalLanguage('Warrior', custom)
+    expect(text).toContain('\u961f\u53cb\u62a2\u5230\u4ec7\u6068')
+    expect(text).not.toContain('\u7834\u7532')
   })
 })
