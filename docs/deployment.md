@@ -25,6 +25,66 @@ $env:GOOS="linux"; $env:GOARCH="amd64"; npm run build:dist
 
 Output: `dist/text-idle` (Linux amd64, frontend embedded).
 
+## One-click deploy (Tencent Cloud, no domain)
+
+### Current internal test server
+
+| Item | Value |
+|------|--------|
+| Public IP | `119.45.224.68` |
+| SSH user | `ubuntu` (change `-SshUser` if your image uses `root`) |
+| SSH key (local, do **not** commit) | `D:\docs\tencent cloud key\reason515.pem` |
+| Game port | `8080` |
+| Register URL | http://119.45.224.68:8080/register |
+| Security group (inbound) | **22**, **8080** |
+
+Domain and HTTPS are **not** used for now; access via public IP + port.
+
+### Deploy (copy-paste)
+
+From the **project root** on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy-tencent.ps1 -KeyPath "D:\docs\tencent cloud key\reason515.pem"
+```
+
+Or via npm:
+
+```powershell
+npm run deploy:tencent -- -KeyPath "D:\docs\tencent cloud key\reason515.pem"
+```
+
+Re-run the same command after code changes to upload a new binary (existing DB is backed up on the server first).
+
+### Verify and operate
+
+```powershell
+# Public health check
+Invoke-WebRequest -Uri "http://119.45.224.68:8080/health" -UseBasicParsing
+
+# SSH shell
+ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68
+
+# Follow service logs
+ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68 "sudo journalctl -u text-idle -f"
+
+# Manual DB backup on server
+ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68 "sudo bash /opt/text-idle/backup-db.sh /var/lib/text-idle/text-idle.db /var/backups/text-idle"
+```
+
+### Script flags
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-KeyPath` | (required) | Local SSH private key (`.pem`) |
+| `-ServerHost` | `119.45.224.68` | VPS public IP |
+| `-SshUser` | `ubuntu` | SSH login user |
+| `-Port` | `8080` | Game HTTP port |
+
+The script builds the Linux binary, uploads via `scp`, installs the `systemd` service, and runs a `/health` check.
+
+Manual steps below remain valid if you prefer step-by-step install or HTTPS with a domain later.
+
 ## Install on VPS
 
 ```bash

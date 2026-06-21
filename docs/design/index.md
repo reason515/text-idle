@@ -31,4 +31,4 @@
 - **UI 规格**：主界面、战斗日志、角色/怪物面板 → [09-social-ui.md](./09-social-ui.md)
 - **UI 设计令牌**：颜色、字体、间距规范 → [11-ui-tokens.md](./11-ui-tokens.md)
 - **战斗数据分析**：每探索步收益（战斗行动步+休息）、每战斗行动步 DPS/HPS、清零、按英雄与技能下钻 → [13-player-statistics.md](./13-player-statistics.md)
-- **内测部署**：VPS + HTTPS + SQLite → [deployment.md](../deployment.md)
+- **内测部署**：腾讯云 `119.45.224.68:8080`（暂无域名）→ [deployment.md](../deployment.md) 一键命令与运维

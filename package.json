@@ -10,7 +10,8 @@
     "e2e:run": "concurrently -k -s first -n backend,frontend \"go run ./cmd/server -db text-idle.e2e.db\" \"cd frontend && npm run dev\" \"wait-on http-get://localhost:5173 http-get://localhost:8080/health && npx playwright test --config=e2e/browser/playwright.config.js\"",
     "e2e:headed": "npx playwright test --config=e2e/browser/playwright.config.js --headed",
     "build:dist": "powershell -ExecutionPolicy Bypass -File scripts/build-dist.ps1",
-    "package:dist": "powershell -ExecutionPolicy Bypass -File scripts/package-dist.ps1"
+    "package:dist": "powershell -ExecutionPolicy Bypass -File scripts/package-dist.ps1",
+    "deploy:tencent": "powershell -ExecutionPolicy Bypass -File scripts/deploy-tencent.ps1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
