@@ -79,6 +79,34 @@ ssh -i "D:\docs\tencent cloud key\reason515.pem" root@119.45.224.68 "bash /opt/t
 
 The script builds the Linux binary, uploads via `scp`, installs the `systemd` service, and runs a `/health` check.
 
+### Reset production data (wipe all players)
+
+Use when you need a **fresh internal test** on the live VPS. This removes the SQLite file at `/var/lib/text-idle/text-idle.db` (accounts, saves, leaderboard, message board, team-name claims). The game binary and systemd service are **not** removed.
+
+**Safety:** a backup is written to `/var/backups/text-idle` **before** deletion. You must pass **`-Confirm`** on the Windows wrapper (or `TEXT_IDLE_RESET_CONFIRM=yes` on the server script).
+
+From the **project root** on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/reset-prod-data-tencent.ps1 -KeyPath "D:\docs\tencent cloud key\reason515.pem" -SshUser root -Confirm
+```
+
+Or on the VPS directly (after copying `scripts/reset-prod-data.sh` or pasting it to `/tmp`):
+
+```bash
+sudo TEXT_IDLE_RESET_CONFIRM=yes bash /tmp/reset-prod-data.sh
+```
+
+After reset, open http://119.45.224.68:8080/register — GORM recreates empty tables on the next service start.
+
+| Reset script flag | Default | Meaning |
+|-------------------|---------|---------|
+| `-KeyPath` | (required) | Local SSH private key (`.pem`) |
+| `-ServerHost` | `119.45.224.68` | VPS public IP |
+| `-SshUser` | `ubuntu` (script default) | Use **`root`** for the current Tencent test VPS |
+| `-Port` | `8080` | Game HTTP port (health check after restart) |
+| `-Confirm` | off | **Required** to run; omitting it aborts without changes |
+
 Manual steps below remain valid if you prefer step-by-step install or HTTPS with a domain later.
 
 ## Install on VPS
@@ -210,3 +238,4 @@ This is not shipped in the MVP repo; use the systemd path above for the fastest 
 | Empty leaderboard | Players need >= 1000 lifetime exploration steps (`leaderboardTrack.lifetimeSteps`) |
 | Saves lost after restart | DB path must be on persistent volume, not inside ephemeral `/tmp` |
 | Permission denied on DB | `chown www-data:www-data /var/lib/text-idle` |
+| Need empty production DB | Use [Reset production data](#reset-production-data-wipe-all-players); confirm backup under `/var/backups/text-idle` first |
