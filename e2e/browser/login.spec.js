@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
-const { uniqueTestEmail } = require('./testHelpers')
+const { uniqueTestEmail, registerAndGoToMain } = require('./testHelpers')
 
 test.describe('Login E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -55,6 +55,24 @@ test.describe('Login E2E', () => {
     await page.getByRole('button', { name: '登录' }).click()
 
     await expect(page.getByText('邮箱或密码错误')).toBeVisible({ timeout: 5000 })
+  })
+
+  test('logout requires confirmation before redirecting to login', async ({ page }) => {
+    const email = uniqueTestEmail('logout-e2e')
+    await registerAndGoToMain(page, email)
+
+    await page.getByTestId('logout-btn').click()
+    await expect(page.getByTestId('logout-confirm-overlay')).toBeVisible()
+    await expect(page).toHaveURL(/\/main/)
+
+    await page.getByTestId('logout-cancel-btn').click()
+    await expect(page.getByTestId('logout-confirm-overlay')).not.toBeVisible()
+    await expect(page).toHaveURL(/\/main/)
+
+    await page.getByTestId('logout-btn').click()
+    await page.getByTestId('logout-confirm-btn').click()
+    await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
+    await expect(page.evaluate(() => localStorage.getItem('token'))).resolves.toBeNull()
   })
 
   test('AC3: unauthenticated user accessing protected page is redirected to login', async ({ page }) => {

@@ -848,7 +848,7 @@
       </div>
 
       <div class="command-account-card">
-        <button type="button" class="btn-logout command-action-btn topbar-btn" data-testid="logout-btn" @click="logout">登出</button>
+        <button type="button" class="btn-logout command-action-btn topbar-btn" data-testid="logout-btn" @click="logoutConfirming = true">登出</button>
       </div>
     </div>
 
@@ -1101,6 +1101,23 @@
             <button type="button" class="btn btn-sm" data-testid="audio-settings-close" @click="showAudioSettingsModal = false">
               关闭
             </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="logoutConfirming"
+        class="modal-overlay logout-confirm-overlay"
+        data-testid="logout-confirm-overlay"
+        @click.self="logoutConfirming = false"
+      >
+        <div class="logout-confirm-dialog" data-testid="logout-confirm-dialog">
+          <div class="logout-confirm-text">确定要登出吗？</div>
+          <div class="logout-confirm-actions">
+            <button type="button" class="btn btn-sm logout-confirm-btn" data-testid="logout-confirm-btn" @click="confirmLogout">确认</button>
+            <button type="button" class="btn btn-sm btn-secondary logout-confirm-btn" data-testid="logout-cancel-btn" @click="logoutConfirming = false">取消</button>
           </div>
         </div>
       </div>
@@ -3156,6 +3173,7 @@ const statsTimelineHoverTipTop = ref(0)
 const compPieHover = ref(null)
 const showMapModal = ref(false)
 const showAudioSettingsModal = ref(false)
+const logoutConfirming = ref(false)
 const sfxPreviewGroups = SFX_PREVIEW_GROUPS
 const audioSettingsMuted = ref(false)
 const audioSettingsMasterPct = ref(85)
@@ -4741,7 +4759,8 @@ function waitForRecruitPromptChoice() {
     recruitPromptResolve = resolve
   })
 }
-function logout() {
+function confirmLogout() {
+  logoutConfirming.value = false
   localStorage.removeItem('token')
   clearPlayerSaveCache()
   router.push('/login')
@@ -7505,11 +7524,13 @@ onUnmounted(() => {
   background: var(--bg-elevated) !important;
   box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
-.shop-confirm-overlay {
+.shop-confirm-overlay,
+.logout-confirm-overlay {
   z-index: 260;
   background: rgba(0, 0, 0, 0.55);
 }
-.shop-confirm-dialog {
+.shop-confirm-dialog,
+.logout-confirm-dialog {
   width: min(90vw, 26rem);
   padding: 1rem 1.1rem;
   background: var(--bg-panel);
@@ -7541,13 +7562,19 @@ onUnmounted(() => {
   color: var(--color-gold);
   font-weight: 600;
 }
-.shop-confirm-actions {
+.shop-confirm-actions,
+.logout-confirm-actions {
   display: flex;
   flex-direction: row;
   gap: 0.65rem;
   margin-top: 0.5rem;
 }
-.shop-confirm-actions .shop-confirm-btn {
+.logout-confirm-text {
+  font-size: var(--font-base);
+  color: var(--text);
+}
+.shop-confirm-actions .shop-confirm-btn,
+.logout-confirm-actions .logout-confirm-btn {
   flex: 1 1 0;
   min-width: 5.75rem;
   width: auto;
