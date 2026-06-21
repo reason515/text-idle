@@ -3229,10 +3229,23 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   }
 }
 
+/** Extra rest steps added per hero who died in the last combat (counts toward exploration steps). */
+export const REST_EXTRA_STEPS_PER_DEATH = 5
+
+function heroesFullyRecovered(heroes) {
+  return heroes.every((hero) => {
+    const hpFull = hero.currentHP >= hero.maxHP
+    const mpFull = hero.class === 'Warrior' ? true : hero.currentMP >= hero.maxMP
+    return hpFull && mpFull
+  })
+}
+
 export function startRestPhase(
   heroes,
-  { deathCount = 0, base = 3, spiritScale = 1, deathPenaltyScale = 0.2 } = {}
+  { deathCount = 0, base = 3, spiritScale = 1, extraStepsPerDeath = REST_EXTRA_STEPS_PER_DEATH } = {}
 ) {
+  const deaths = Math.max(0, Math.floor(Number(deathCount) || 0))
+  const perDeath = Math.max(0, Math.floor(Number(extraStepsPerDeath) || 0))
   return {
     heroes: heroes.map((hero) => ({
       ...hero,
@@ -3240,7 +3253,8 @@ export function startRestPhase(
       // Warriors: Rage resets to 0 after combat; does not recover during rest
       currentMP: hero.class === 'Warrior' ? 0 : (hero.currentMP ?? hero.maxMP),
     })),
-    config: { deathCount, base, spiritScale, deathPenaltyScale },
+    config: { deathCount: deaths, base, spiritScale, extraStepsPerDeath: perDeath },
+    penaltyStepsRemaining: deaths * perDeath,
     isComplete: false,
     step: 0,
   }
@@ -3249,11 +3263,14 @@ export function startRestPhase(
 export function applyRestStep(restState) {
   if (restState.isComplete) return restState
   const next = deepCopy(restState)
-  const { deathCount, base, spiritScale, deathPenaltyScale } = next.config
-  const penaltyFactor = 1 + deathCount * deathPenaltyScale
+  if (typeof next.penaltyStepsRemaining !== 'number') {
+    next.penaltyStepsRemaining = 0
+  }
+  const wasFullyRecovered = heroesFullyRecovered(next.heroes)
+  const { base, spiritScale } = next.config
   for (const hero of next.heroes) {
     const baseRecovery = base + hero.spirit * spiritScale + (hero.equipmentRecoveryBonus || 0)
-    const effectiveRecovery = Math.max(1, Math.floor(baseRecovery / penaltyFactor))
+    const effectiveRecovery = Math.max(1, Math.floor(baseRecovery))
     hero.currentHP = clamp(hero.currentHP + effectiveRecovery, 0, hero.maxHP)
     // Warriors: Rage does not recover during rest
     if (hero.class !== 'Warrior') {
@@ -3261,11 +3278,11 @@ export function applyRestStep(restState) {
     }
   }
   next.step += 1
-  next.isComplete = next.heroes.every((hero) => {
-    const hpFull = hero.currentHP >= hero.maxHP
-    const mpFull = hero.class === 'Warrior' ? true : hero.currentMP >= hero.maxMP
-    return hpFull && mpFull
-  })
+  const fullyRecovered = heroesFullyRecovered(next.heroes)
+  if (fullyRecovered && wasFullyRecovered && next.penaltyStepsRemaining > 0) {
+    next.penaltyStepsRemaining -= 1
+  }
+  next.isComplete = fullyRecovered && next.penaltyStepsRemaining <= 0
   return next
 }
 

@@ -2498,7 +2498,7 @@ describe('combat progression and systems', () => {
         equipmentRecoveryBonus: 2,
       },
     ]
-    let rest = startRestPhase(heroes, { deathCount: 1, base: 4, spiritScale: 1, deathPenaltyScale: 0.25 })
+    let rest = startRestPhase(heroes, { deathCount: 1, base: 4, spiritScale: 1 })
     expect(canStartNextCombat(rest)).toBe(false)
     rest = applyRestStep(rest)
     expect(rest.heroes[0].currentHP).toBeGreaterThan(100)
@@ -2509,7 +2509,7 @@ describe('combat progression and systems', () => {
     expect(canStartNextCombat(rest)).toBe(true)
   })
 
-  it('Example8: death penalty increases rest steps (more deaths = longer recovery)', () => {
+  it('Example8: death penalty adds REST_EXTRA_STEPS_PER_DEATH per fallen hero', () => {
     const hero = {
       ...sampleHero({ id: 'h-penalty', class: 'Mage', spirit: 5 }),
       maxHP: 100,
@@ -2520,31 +2520,32 @@ describe('combat progression and systems', () => {
     }
     const base = 4
     const spiritScale = 1
-    const deathPenaltyScale = 0.2
 
-    let restNoDeath = startRestPhase([{ ...hero }], { deathCount: 0, base, spiritScale, deathPenaltyScale })
+    let restNoDeath = startRestPhase([{ ...hero }], { deathCount: 0, base, spiritScale })
     let stepsNoDeath = 0
     while (!restNoDeath.isComplete) {
       restNoDeath = applyRestStep(restNoDeath)
       stepsNoDeath += 1
     }
 
-    let restOneDeath = startRestPhase([{ ...hero }], { deathCount: 1, base, spiritScale, deathPenaltyScale })
+    let restOneDeath = startRestPhase([{ ...hero }], { deathCount: 1, base, spiritScale })
     let stepsOneDeath = 0
     while (!restOneDeath.isComplete) {
       restOneDeath = applyRestStep(restOneDeath)
       stepsOneDeath += 1
     }
 
-    let restTwoDeaths = startRestPhase([{ ...hero }], { deathCount: 2, base, spiritScale, deathPenaltyScale })
+    let restTwoDeaths = startRestPhase([{ ...hero }], { deathCount: 2, base, spiritScale })
     let stepsTwoDeaths = 0
     while (!restTwoDeaths.isComplete) {
       restTwoDeaths = applyRestStep(restTwoDeaths)
       stepsTwoDeaths += 1
     }
 
-    expect(stepsOneDeath).toBeGreaterThan(stepsNoDeath)
-    expect(stepsTwoDeaths).toBeGreaterThan(stepsOneDeath)
+    expect(stepsOneDeath).toBe(stepsNoDeath + 5)
+    expect(stepsTwoDeaths).toBe(stepsNoDeath + 10)
+    expect(restOneDeath.penaltyStepsRemaining).toBe(0)
+    expect(restTwoDeaths.penaltyStepsRemaining).toBe(0)
   })
 
   it('Example29: tactics skillPriority Shield Slam before Sunder when target has sunder', () => {

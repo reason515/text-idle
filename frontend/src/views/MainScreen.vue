@@ -2761,6 +2761,7 @@ import {
   runAutoCombat,
   startRestPhase,
   applyRestStep,
+  REST_EXTRA_STEPS_PER_DEATH,
 } from '../game/combat.js'
 import {
   applyXPToHeroes,
@@ -5275,7 +5276,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   encounterInProgress.value = false
   currentMonsters.value = []
   const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
-  let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1, deathPenaltyScale: 0.2 })
+  let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1 })
 
   const startMsg = isDefeat
     ? '战败恢复中...'
@@ -5284,7 +5285,7 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   if (deathCount > 0) {
     addLogEntry({
       type: 'rest',
-      message: `死亡惩罚：${deathCount} 名英雄阵亡，恢复速度降低`,
+      message: `死亡惩罚：${deathCount} 名英雄阵亡，额外休息 ${deathCount * REST_EXTRA_STEPS_PER_DEATH} 步`,
       complete: false,
     })
   }
