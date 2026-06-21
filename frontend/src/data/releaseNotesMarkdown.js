@@ -94,3 +94,56 @@ export function getCurrentReleaseNotes() {
   }
   return parseReleaseNotesMarkdown(raw)
 }
+
+/**
+ * Compare semver strings for descending sort (newest first).
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function compareSemverDesc(a, b) {
+  const pa = a.split('.').map((n) => Number(n) || 0)
+  const pb = b.split('.').map((n) => Number(n) || 0)
+  for (let i = 0; i < 3; i++) {
+    const av = pa[i] ?? 0
+    const bv = pb[i] ?? 0
+    if (bv !== av) return bv - av
+  }
+  return 0
+}
+
+/** @returns {ParsedReleaseNote[]} Newest version first. */
+export function getAllReleaseNotes() {
+  return Object.keys(RELEASE_NOTES_RAW_BY_VERSION)
+    .sort(compareSemverDesc)
+    .map((version) => parseReleaseNotesMarkdown(RELEASE_NOTES_RAW_BY_VERSION[version]))
+}
+
+/**
+ * Split inline markdown into render segments (supports **bold** only).
+ * @param {string} text
+ * @returns {Array<{ kind: 'text' | 'strong', text: string }>}
+ */
+export function parseReleaseNoteInlineSegments(text) {
+  if (!text) return [{ kind: 'text', text: '' }]
+  /** @type {Array<{ kind: 'text' | 'strong', text: string }>} */
+  const segments = []
+  const re = /\*\*(.+?)\*\*/g
+  let lastIndex = 0
+  let match = re.exec(text)
+  while (match) {
+    if (match.index > lastIndex) {
+      segments.push({ kind: 'text', text: text.slice(lastIndex, match.index) })
+    }
+    segments.push({ kind: 'strong', text: match[1] })
+    lastIndex = match.index + match[0].length
+    match = re.exec(text)
+  }
+  if (lastIndex < text.length) {
+    segments.push({ kind: 'text', text: text.slice(lastIndex) })
+  }
+  if (segments.length === 0) {
+    segments.push({ kind: 'text', text })
+  }
+  return segments
+}

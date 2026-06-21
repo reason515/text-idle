@@ -12,23 +12,48 @@
         <div class="detail-skill-choice-banner version-info-banner">
           <p>
             当前版本
-            <span class="version-info-label">{{ release.label }}</span>
-            <span class="version-info-codename">（{{ release.codename }}）</span>
+            <span class="version-info-label">{{ currentRelease.label }}</span>
+            <span class="version-info-codename">（{{ currentRelease.codename }}）</span>
           </p>
-          <p class="version-info-date">发布日期：{{ release.date }}</p>
-          <p class="version-info-summary">{{ release.summary }}</p>
+          <p class="version-info-date">发布日期：{{ currentRelease.date }}</p>
         </div>
 
         <div class="version-notes-scroll game-scroll" data-testid="version-release-notes">
           <article
-            v-for="section in release.sections"
-            :key="section.title"
-            class="version-notes-section"
+            v-for="(rel, ri) in allReleases"
+            :key="rel.version"
+            class="version-release-block"
+            :data-testid="`version-release-${rel.version}`"
           >
-            <h3 class="version-notes-section-title">{{ section.title }}</h3>
-            <ul class="version-notes-list">
-              <li v-for="(item, idx) in section.items" :key="idx">{{ item }}</li>
-            </ul>
+            <header class="version-release-header">
+              <h2 class="version-release-title">
+                {{ rel.label }}
+                <span v-if="rel.version === currentRelease.version" class="version-release-current-tag">当前</span>
+              </h2>
+              <p class="version-release-meta">
+                <span class="version-info-codename">{{ rel.codename }}</span>
+                <span class="version-release-meta-sep">·</span>
+                <span class="version-info-date">发布日期 {{ rel.date }}</span>
+              </p>
+              <p v-if="rel.summary" class="version-info-summary">
+                <ReleaseNoteInline :text="rel.summary" />
+              </p>
+            </header>
+
+            <section
+              v-for="section in rel.sections"
+              :key="`${rel.version}-${section.title}`"
+              class="version-notes-section"
+            >
+              <h3 class="version-notes-section-title">{{ section.title }}</h3>
+              <ul class="version-notes-list">
+                <li v-for="(item, idx) in section.items" :key="idx">
+                  <ReleaseNoteInline :text="item" />
+                </li>
+              </ul>
+            </section>
+
+            <div v-if="ri < allReleases.length - 1" class="version-release-divider" aria-hidden="true"></div>
           </article>
         </div>
 
@@ -44,7 +69,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { getCurrentReleaseNotes } from '../data/releaseNotesMarkdown.js'
+import ReleaseNoteInline from './ReleaseNoteInline.vue'
+import { getAllReleaseNotes, getCurrentReleaseNotes } from '../data/releaseNotesMarkdown.js'
 
 defineProps({
   open: {
@@ -55,7 +81,8 @@ defineProps({
 
 const emit = defineEmits(['close'])
 
-const release = computed(() => getCurrentReleaseNotes())
+const currentRelease = computed(() => getCurrentReleaseNotes())
+const allReleases = computed(() => getAllReleaseNotes())
 </script>
 
 <style scoped>
@@ -124,6 +151,7 @@ const release = computed(() => getCurrentReleaseNotes())
   color: var(--text-value);
   font-size: var(--font-sm);
   line-height: 1.45;
+  margin: 0.35rem 0 0;
 }
 
 .version-notes-scroll {
@@ -131,6 +159,46 @@ const release = computed(() => getCurrentReleaseNotes())
   min-height: 0;
   overflow-y: auto;
   padding-right: 0.25rem;
+}
+
+.version-release-block {
+  margin-bottom: 0.25rem;
+}
+
+.version-release-header {
+  margin-bottom: 0.5rem;
+}
+
+.version-release-title {
+  margin: 0 0 0.2rem;
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-value);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.version-release-current-tag {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  line-height: 1.3;
+}
+
+.version-release-meta {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-label);
+}
+
+.version-release-meta-sep {
+  margin: 0 0.25rem;
+  color: var(--text-muted);
 }
 
 .version-notes-section {
@@ -158,6 +226,12 @@ const release = computed(() => getCurrentReleaseNotes())
 
 .version-notes-list li {
   margin-bottom: 0.25rem;
+}
+
+.version-release-divider {
+  height: 1px;
+  margin: 0.85rem 0 0.65rem;
+  background: var(--border-dark);
 }
 
 .version-info-footer {

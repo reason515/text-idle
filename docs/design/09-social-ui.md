@@ -54,7 +54,7 @@
   - **功能**（背包、商店、**音效**、**排行榜**、**版本**）与**资源**、**战斗统计**、**登出**同排单行展示；点击「排行榜」切换到 Feed「排行榜」Tab 并加载数据；点击「版本」打开版本信息与 Release Notes Modal。规划中入口（战术、队伍、图鉴等）暂不展示，待功能就绪后再开放。
   - **登出**：点击「登出」弹出二次确认（确认 / 取消）；确认后清除 token 并跳转登录页。E2E：`logout-btn`、`logout-confirm-overlay`、`logout-confirm-btn`、`logout-cancel-btn`。
   - **音效**面板（主音量、静音、试听、持久化键）见 [14-audio.md](./14-audio.md)。
-  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open`、`leaderboard-open`、`version-info-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`；版本 Modal：`version-info-modal`、`version-release-notes`、`version-info-close`。
+  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open`、`leaderboard-open`、`version-info-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`；版本 Modal：`version-info-modal`、`version-release-notes`、`version-release-{semver}`（各历史版本块）、`version-info-close`。Modal 内按 semver **从新到旧** 展示全部已注册 Release Notes；Markdown 内联 `**粗体**` 渲染为 UI 加粗，不显示原始星号。
 
 ## 英雄卡片（紧凑版）
 
