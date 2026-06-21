@@ -207,6 +207,9 @@ This is not shipped in the MVP repo; use the systemd path above for the fastest 
 
 | Issue | Check |
 |-------|--------|
+| `UNPROTECTED PRIVATE KEY FILE` / `bad permissions` (Windows) | Restrict `.pem` ACL to your user only (PowerShell): `icacls "D:\docs\tencent cloud key\reason515.pem" /inheritance:r; icacls "D:\docs\tencent cloud key\reason515.pem" /grant:r "$($env:USERNAME):(R)"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Authenticated Users"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Users"` |
+| `Permission denied (publickey)` after fixing key | TencentOS often uses `root`: add `-SshUser root`; confirm the key pair matches the instance in Tencent Cloud console |
+| SSH hangs / timeout | Security group inbound **22**; instance running; correct public IP |
 | 502 from Caddy | `systemctl status text-idle`, port 8080 listening |
 | Empty leaderboard | Players need >= 100 exploration steps in current stats period |
 | Saves lost after restart | DB path must be on persistent volume, not inside ephemeral `/tmp` |
