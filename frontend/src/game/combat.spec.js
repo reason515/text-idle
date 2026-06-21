@@ -1099,7 +1099,43 @@ describe('combat progression and systems', () => {
     expect(warriorFirst.skillId).toBe('taunt')
   })
 
-  it('fixed trio tank warrior opens with taunt when global target is threat-not-tank-random', () => {
+  it('fixed trio mage uses frostbolt on high-HP lowest enemy', () => {
+    const squad = createFixedTrioSquad()
+    const mage = squad.find((h) => h.class === 'Mage')
+    const monster = createMonster(
+      {
+        id: 'young-wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 3, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    const result = runAutoCombat({ heroes: [mage], monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const mageFirst = result.log.find((e) => e.actorId === mage.id && e.round === 1)
+    expect(mageFirst?.action).toBe('skill')
+    expect(mageFirst?.skillId).toBe('frostbolt')
+  })
+
+  it('fixed trio priest does not flash-heal when all allies are healthy', () => {
+    const squad = createFixedTrioSquad()
+    const priest = squad.find((h) => h.class === 'Priest')
+    const monster = createMonster(
+      {
+        id: 'young-wolf',
+        name: 'Young Wolf',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 3, spellPower: 0, agility: 2, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    const result = runAutoCombat({ heroes: squad, monsters: [monster], rng: () => 0.5, maxRounds: 1 })
+    const priestActs = result.log.filter((e) => e.actorId === priest.id && e.round === 1)
+    const flashHeal = priestActs.find((e) => e.skillId === 'flash-heal')
+    expect(flashHeal).toBeUndefined()
+  })
+
+  it('fixed trio tank warrior opens with taunt on OT lowest-HP target at combat start', () => {
     const squad = createFixedTrioSquad()
     const warrior = squad[0]
     warrior.agility = 25

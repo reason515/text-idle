@@ -59,6 +59,32 @@ const release = computed(() => getCurrentReleaseNotes())
 </script>
 
 <style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-box {
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  padding: 1.25rem;
+  min-width: 20rem;
+  box-shadow: 0 0 20px rgba(0, 204, 102, 0.25);
+}
+
+.modal-title {
+  font-size: var(--font-lg);
+  color: var(--text);
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .version-info-modal {
   max-width: min(88vw, 36rem);
   max-height: min(88vh, 44rem);

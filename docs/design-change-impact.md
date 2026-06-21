@@ -8,7 +8,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 
 | Topic | Current behavior | Primary references |
 |-------|------------------|-------------------|
-| **Initial squad** | 3 heroes via `createFixedTrioSquad()`; 2 fixed skills each | [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0, [05-skills.md](design/05-skills.md) 3.1, Example 3a/3b/4a |
+| **Initial squad** | 3 heroes via `createFixedTrioSquad()`; 2 fixed skills each; starter `tactics` (see 10-tactics.md §9) | [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0, [05-skills.md](design/05-skills.md) 3.1, Example 3a/3b/4a |
 | **Game start routing** | Intro → team name → hero preview → main; **no** `/character-select` for first squad | Example 3, 3a; `IntroPage.vue`, `main.js` |
 | **Expansion recruitment** | `/character-select` after map 1 or 2 boss; max 5 heroes; **4th** = **Druid only** (no hero grid); **5th** = any hero; join level = `getSquadMinLevel(squad)` | Example 4, 27; `getRecruitLimit`, `isDruidOnlyExpansionSlot`, `getExpansionHeroLevel`, `CharacterSelectionPage.vue` |
 | **Recruit limit** | `getRecruitLimit(progress)` = `clamp(2 + unlockedMapCount, 3, 5)` | Example 5; `combat.js` |

@@ -215,6 +215,7 @@ Then [expected result/verifiable behavior].
 | AC4b | Player has 4 characters and has defeated map 2 boss | Player triggers squad expansion for the **5th** seat | Player can select any available non-trio / non-duplicate hero; join level equals **minimum level in current squad**; Warrior/Mage initial skill pick applies (Example 27) |
 | AC5 | Player has 5 characters in the squad                                                     | Player views the squad panel                               | All 5 slots are filled; no further recruitment is available                                                                                                                                                                |
 | AC6 | Player has the fixed initial trio                                                        | Player inspects each hero's equipment                      | Each hero has MainHand and Armor equipped with normal (white) starter items                                                                                                                                                |
+| AC6a | Player has the fixed initial trio (per Example 4)                                        | Player opens each hero's Tactics tab                       | Each hero has pre-configured starter tactics (Warrior OT taunt + sunder chain; Mage HP-band frost/fire; Priest heal triage + shield when safe); see [10-tactics.md](design/10-tactics.md) section 9 |
 
 
 ---

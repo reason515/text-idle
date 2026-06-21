@@ -14,6 +14,9 @@ import {
   getInitialAttributes,
   createCharacter,
   createFixedTrioSquad,
+  FIXED_TRIO_WARRIOR_TACTICS,
+  FIXED_TRIO_MAGE_TACTICS,
+  FIXED_TRIO_PRIEST_TACTICS,
   createExpansionCharacter,
   computeSecondaryAttributes,
   buildWeaponSecondaryRows,
@@ -637,9 +640,30 @@ describe('heroes', () => {
       expect(priest?.skills).toEqual(['flash-heal', 'power-word-shield'])
     })
 
-    it('each hero has tactics', () => {
+    it('each hero has optimized starter tactics', () => {
       const squad = createFixedTrioSquad()
-      expect(squad.every((h) => h.tactics?.skillPriority?.length > 0)).toBe(true)
+      const warrior = squad.find((h) => h.class === 'Warrior')
+      const mage = squad.find((h) => h.class === 'Mage')
+      const priest = squad.find((h) => h.class === 'Priest')
+      expect(warrior?.tactics).toMatchObject({
+        skillPriority: FIXED_TRIO_WARRIOR_TACTICS.skillPriority,
+        targetRule: FIXED_TRIO_WARRIOR_TACTICS.targetRule,
+      })
+      expect(mage?.tactics).toMatchObject({
+        skillPriority: FIXED_TRIO_MAGE_TACTICS.skillPriority,
+        targetRule: FIXED_TRIO_MAGE_TACTICS.targetRule,
+      })
+      expect(priest?.tactics).toMatchObject({
+        skillPriority: FIXED_TRIO_PRIEST_TACTICS.skillPriority,
+        targetRule: FIXED_TRIO_PRIEST_TACTICS.targetRule,
+      })
+      const fh = priest?.tactics?.conditions?.find((c) => c.skillId === 'flash-heal')
+      expect(fh?.targetRules?.[0]).toEqual(
+        expect.objectContaining({ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }),
+      )
+      const frost = mage?.tactics?.conditions?.find((c) => c.skillId === 'frostbolt')
+      expect(frost?.when).toBe('target-hp-above')
+      expect(frost?.value).toBe(0.5)
     })
 
     it('each hero has starter MainHand weapon and Armor (white quality)', () => {

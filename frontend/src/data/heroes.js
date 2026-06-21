@@ -974,6 +974,66 @@ export function createExpansionCharacter(hero, opts = {}) {
   return character
 }
 
+/** Default tactics for fixed trio Warrior (tank). See docs/design/10-tactics.md starter trio. */
+export const FIXED_TRIO_WARRIOR_TACTICS = {
+  skillPriority: ['taunt', 'sunder-armor', 'basic-attack'],
+  targetRule: 'threat-not-tank-lowest-hp',
+  conditions: [
+    { skillId: 'taunt', targetRules: ['threat-not-tank-lowest-hp'] },
+    { skillId: 'sunder-armor', targetRules: ['threat-not-tank-lowest-hp', 'lowest-hp'] },
+    { skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] },
+  ],
+}
+
+/** Default tactics for fixed trio Mage (HP-band frost / fire). */
+export const FIXED_TRIO_MAGE_TACTICS = {
+  skillPriority: ['frostbolt', 'fireball'],
+  targetRule: 'lowest-hp',
+  conditions: [
+    { skillId: 'frostbolt', targetRule: 'lowest-hp', when: 'target-hp-above', value: 0.5 },
+    {
+      skillId: 'fireball',
+      targetRule: 'lowest-hp',
+      whenAll: [{ when: 'target-hp-above', value: 0.05 }, { when: 'target-hp-below', value: 0.5 }],
+    },
+    { skillId: 'basic-attack', targetRule: 'lowest-hp', when: 'target-hp-below', value: 0.05 },
+  ],
+}
+
+/** Default tactics for fixed trio Priest (heal triage, shield when safe, attack when idle). */
+export const FIXED_TRIO_PRIEST_TACTICS = {
+  skillPriority: ['flash-heal', 'power-word-shield'],
+  targetRule: 'lowest-hp',
+  conditions: [
+    {
+      skillId: 'flash-heal',
+      targetRules: [
+        { rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 },
+        { rule: 'self-if-enemy-targeting', whenAll: [{ when: 'self-hp-below', value: 0.6 }] },
+        {
+          rule: 'tank',
+          whenAll: [{ when: 'tank-hp-below', value: 0.7 }, { when: 'enemy-not-targeting-self' }],
+        },
+      ],
+    },
+    {
+      skillId: 'power-word-shield',
+      targetRules: [
+        { rule: 'self-if-enemy-targeting', whenAll: [{ when: 'self-no-shield' }] },
+        {
+          rule: 'tank',
+          whenAll: [
+            { when: 'tank-hp-above', value: 0.7 },
+            { when: 'tank-no-shield' },
+            { when: 'enemy-not-targeting-self' },
+          ],
+        },
+      ],
+    },
+    { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+  ],
+}
+
 /**
  * Create the fixed initial trio (Warrior, Mage, Priest) per design 02-levels-monsters 1.2.0.
  * Warrior: Sunder Armor, Taunt. Mage: Frostbolt, Fireball. Priest: Flash Heal, Power Word: Shield.
@@ -986,22 +1046,11 @@ export function createFixedTrioSquad() {
   if (!warrior || !mage || !priest) return []
   const w = createCharacter(warrior, { skills: ['sunder-armor', 'taunt'] })
   w.isTank = true
-  w.tactics = {
-    skillPriority: ['taunt', 'sunder-armor'],
-    targetRule: 'threat-not-tank-random',
-    conditions: [{ skillId: 'sunder-armor', targetRules: ['default', 'threat-tank-top-lowest-on-tank'] }],
-  }
+  w.tactics = { ...FIXED_TRIO_WARRIOR_TACTICS, conditions: [...FIXED_TRIO_WARRIOR_TACTICS.conditions] }
   const m = createCharacter(mage, { skills: ['frostbolt', 'fireball'] })
-  m.tactics = { skillPriority: ['frostbolt', 'fireball'], targetRule: 'lowest-hp' }
+  m.tactics = { ...FIXED_TRIO_MAGE_TACTICS, conditions: [...FIXED_TRIO_MAGE_TACTICS.conditions] }
   const p = createCharacter(priest, { skills: ['flash-heal', 'power-word-shield'] })
-  p.tactics = {
-    skillPriority: ['power-word-shield', 'flash-heal'],
-    targetRule: 'tank',
-    conditions: [
-      { skillId: 'flash-heal', targetRule: 'lowest-hp-ally' },
-      { skillId: 'power-word-shield', targetRule: 'tank' },
-    ],
-  }
+  p.tactics = { ...FIXED_TRIO_PRIEST_TACTICS, conditions: [...FIXED_TRIO_PRIEST_TACTICS.conditions] }
 
   applyStarterWhiteEquipment(w, 'trio-warrior')
   applyStarterWhiteEquipment(m, 'trio-mage')
