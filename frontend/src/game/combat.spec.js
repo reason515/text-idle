@@ -42,6 +42,7 @@ import {
   canStartNextCombat,
 } from './combat.js'
 import { mergeAiTacticsApply } from './aiTactics.js'
+import { pickTargetByRule } from './tactics.js'
 
 function fixedRng(values) {
   let index = 0
@@ -1167,6 +1168,61 @@ describe('combat progression and systems', () => {
     expect(warriorFirst).toBeDefined()
     expect(warriorFirst.skillId).toBe('taunt')
     expect(warriorFirst.targetName).toBe('Wolf B')
+  })
+
+  it('tank warrior basic-attack pickTarget skips lowest-HP on-tank monster when OT targets exist', () => {
+    const warrior = sampleHero({
+      id: 'w-ot-ba',
+      name: 'Tank',
+      agility: 25,
+      isTank: true,
+      currentHP: 500,
+      maxHP: 500,
+      skills: ['taunt', 'sunder-armor'],
+      tactics: {
+        skillPriority: ['taunt', 'sunder-armor', 'basic-attack'],
+        targetRule: 'threat-not-tank-lowest-hp',
+        conditions: [
+          { skillId: 'sunder-armor', targetRules: ['threat-not-tank-lowest-hp', 'lowest-hp'] },
+          { skillId: 'taunt', targetRules: ['threat-not-tank-lowest-hp'] },
+          { skillId: 'basic-attack', targetRules: ['default', 'lowest-hp'] },
+        ],
+      },
+    })
+    const mage = sampleHero({
+      id: 'm-ot-ba',
+      name: 'Mage',
+      class: 'Mage',
+      agility: 10,
+      currentHP: 200,
+      maxHP: 200,
+    })
+    const onTank = { id: 'wolf-tank', name: 'On Tank', side: 'monster', currentHP: 20, maxHP: 100 }
+    const otMid = { id: 'wolf-ot-mid', name: 'OT Mid', side: 'monster', currentHP: 70, maxHP: 100 }
+    const otHigh = { id: 'wolf-ot-high', name: 'OT High', side: 'monster', currentHP: 90, maxHP: 100 }
+    const heroes = [warrior, mage]
+    const monsters = [onTank, otMid, otHigh]
+    const threat = {
+      'wolf-tank': { 'w-ot-ba': 100, 'm-ot-ba': 10 },
+      'wolf-ot-mid': { 'w-ot-ba': 5, 'm-ot-ba': 80 },
+      'wolf-ot-high': { 'w-ot-ba': 5, 'm-ot-ba': 70 },
+    }
+    const target = pickTarget(warrior, heroes, monsters, {
+      skillId: 'basic-attack',
+      conditions: warrior.tactics.conditions,
+      threat,
+      tauntState: {},
+      designatedTank: warrior,
+      rng: () => 0.5,
+    })
+    const byRule = pickTargetByRule(monsters, 'threat-not-tank-lowest-hp', () => 0.5, {
+      threat,
+      heroes,
+      tankId: warrior.id,
+      tauntState: {},
+    })
+    expect(byRule?.name).toBe('OT Mid')
+    expect(target?.name).toBe('OT Mid')
   })
 
   it('Example6/7: turn order uses agility and battle returns victory with rewards', () => {

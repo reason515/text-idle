@@ -5,7 +5,7 @@
 
 import { getSunderDebuff } from './warriorSkills.js'
 import { getShieldBuff } from './priestSkills.js'
-import { getHighestThreatHeroStable } from './threat.js'
+import { getHighestThreatHeroStable, getMonsterTargetStable, getTank } from './threat.js'
 
 /** @typedef {{ when: string, value?: number|string }} WhenClause */
 /** @typedef {{ rule: string, when?: string, value?: number|string, whenAll?: WhenClause[] }} TargetRuleStep */
@@ -611,24 +611,53 @@ function isThreatAllZeroAcrossPool(threat, aliveMonsters, aliveHeroes) {
 }
 
 /**
- * Monsters whose top threat is not the designated tank (OT pool).
+ * Resolve tank hero id for threat-not-tank rules (designated tank > isTank flag > auto-detect).
+ * @param {Object[]} heroes
+ * @param {Object[]} aliveMonsters
+ * @param {Record<string, Record<string, number>>|undefined} threat
+ * @param {string|undefined} tankId
+ * @returns {string|undefined}
+ */
+function resolveThreatNotTankId(heroes, aliveMonsters, threat, tankId) {
+  if (tankId) return tankId
+  const flagged = heroes.find((h) => h.isTank === true)
+  if (flagged) return flagged.id
+  if (threat && aliveMonsters.length > 0) {
+    return getTank(heroes, aliveMonsters, threat, null)?.id
+  }
+  return undefined
+}
+
+/**
+ * Monsters whose attack intent is not the designated tank (OT pool).
+ * Uses getMonsterTargetStable (taunt override + threat + last-hit sticky), matching combat UI.
  * Returns null when threat/heroes missing; empty pool when all on tank with non-zero threat.
  * @param {Object[]} aliveMonsters
  * @param {Record<string, Record<string, number>>|undefined} threat
  * @param {Object[]} heroes
  * @param {string|undefined} tankId
  * @param {Record<string, string>|null|undefined} [monsterLastTarget]
+ * @param {Object} [tauntState]
  * @returns {Object[]|null}
  */
-function getThreatNotTankMonsterPool(aliveMonsters, threat, heroes, tankId, monsterLastTarget = null) {
+function getThreatNotTankMonsterPool(
+  aliveMonsters,
+  threat,
+  heroes,
+  tankId,
+  monsterLastTarget = null,
+  tauntState = {},
+) {
   if (!threat || !heroes) return null
   const alive = aliveMonsters.filter((u) => (u.currentHP ?? 0) > 0)
   if (alive.length === 0) return []
-  if (!tankId) return alive
+  const resolvedTankId = resolveThreatNotTankId(heroes, alive, threat, tankId)
+  if (!resolvedTankId) return alive
   const aliveHeroes = heroes.filter((h) => (h.currentHP ?? 0) > 0)
   let pool = alive.filter((m) => {
     const lastId = monsterLastTarget?.[m.id] ?? null
-    return getTopThreatHeroId(m, threat, aliveHeroes, lastId) !== tankId
+    const intent = getMonsterTargetStable(m, aliveHeroes, threat, tauntState, lastId)
+    return intent?.id !== resolvedTankId
   })
   if (pool.length === 0) {
     if (isThreatAllZeroAcrossPool(threat, alive, aliveHeroes)) {
@@ -698,16 +727,30 @@ export function pickTargetByRule(candidates, targetRule, rng = Math.random, opts
   }
 
   if (targetRule === 'threat-not-tank-random') {
-    const { threat, heroes, tankId, monsterLastTarget } = opts
-    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId, monsterLastTarget)
+    const { threat, heroes, tankId, monsterLastTarget, tauntState } = opts
+    const pool = getThreatNotTankMonsterPool(
+      alive,
+      threat,
+      heroes,
+      tankId,
+      monsterLastTarget,
+      tauntState ?? {},
+    )
     if (pool === null) return null
     if (pool.length === 0) return null
     return pickRandomAlive(pool, rng)
   }
 
   if (targetRule === 'threat-not-tank-lowest-hp') {
-    const { threat, heroes, tankId, monsterLastTarget } = opts
-    const pool = getThreatNotTankMonsterPool(alive, threat, heroes, tankId, monsterLastTarget)
+    const { threat, heroes, tankId, monsterLastTarget, tauntState } = opts
+    const pool = getThreatNotTankMonsterPool(
+      alive,
+      threat,
+      heroes,
+      tankId,
+      monsterLastTarget,
+      tauntState ?? {},
+    )
     if (pool === null) return null
     if (pool.length === 0) return null
     return pool.reduce((a, b) => ((a.currentHP ?? 0) < (b.currentHP ?? 0) ? a : b))

@@ -1276,7 +1276,15 @@ export function pickTarget(actor, heroes, monsters, opts = {}) {
         rule === 'threat-tank-top-highest-on-tank' ||
         rule === 'self-if-enemy-targeting')
     const pickOpts = needsThreatOpts
-      ? { threat, actor, heroes, tankId: designatedTank?.id, monsters, monsterLastTarget }
+      ? {
+          threat,
+          actor,
+          heroes,
+          tankId: designatedTank?.id,
+          monsters,
+          monsterLastTarget,
+          tauntState: tauntState ?? {},
+        }
       : rule === 'tank' && threat
         ? { threat, heroes, monsters, getTank: getTankFn }
         : rule === 'self'

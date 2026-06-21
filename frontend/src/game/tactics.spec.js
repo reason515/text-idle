@@ -839,6 +839,51 @@ describe('tactics', () => {
       expect(r.id).toBe('m3')
     })
 
+    it('threat-not-tank-lowest-hp excludes taunted-on-tank monster even when top threat is not tank', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100, isTank: true },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 10, mage: 100 },
+        m2: { tank: 5, mage: 80 },
+        m3: { tank: 5, mage: 70 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 30 },
+        { id: 'm2', currentHP: 80 },
+        { id: 'm3', currentHP: 90 },
+      ]
+      const tauntState = { m1: { casterId: 'tank', actionsRemaining: 2 } }
+      const r = pickTargetByRule(monsters, 'threat-not-tank-lowest-hp', Math.random, {
+        threat,
+        heroes,
+        tankId: 'tank',
+        tauntState,
+      })
+      expect(r.id).toBe('m2')
+    })
+
+    it('threat-not-tank-lowest-hp resolves tank from isTank when tankId omitted', () => {
+      const heroes = [
+        { id: 'tank', currentHP: 100, isTank: true },
+        { id: 'mage', currentHP: 100 },
+      ]
+      const threat = {
+        m1: { tank: 100, mage: 10 },
+        m2: { tank: 5, mage: 80 },
+      }
+      const monsters = [
+        { id: 'm1', currentHP: 30 },
+        { id: 'm2', currentHP: 80 },
+      ]
+      const r = pickTargetByRule(monsters, 'threat-not-tank-lowest-hp', Math.random, {
+        threat,
+        heroes,
+      })
+      expect(r.id).toBe('m2')
+    })
+
     it('threat-not-tank-random returns null when no non-tank-top monsters but threat is non-zero (all on tank)', () => {
       const heroes = [
         { id: 'tank', currentHP: 100 },
