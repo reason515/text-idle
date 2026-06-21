@@ -2859,6 +2859,93 @@ describe('combat progression and systems', () => {
     expect(priestActs.some((e) => e.skillId === 'power-word-shield')).toBe(true)
   })
 
+  it('Priest execute-defer fallback basic attack targets lowest-HP enemy not first enemy', () => {
+    const priest = sampleHero({
+      id: 'p1',
+      name: 'Anduin',
+      class: 'Priest',
+      agility: 99,
+      intellect: 40,
+      spirit: 15,
+      currentMP: 200,
+      skills: ['flash-heal', 'power-word-shield'],
+      tactics: {
+        skillPriority: ['flash-heal', 'power-word-shield'],
+        conditions: [
+          {
+            skillId: 'flash-heal',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'ally-hp-below', value: 0.7 },
+                  { when: 'enemy-all-hp-above', value: 0.1 },
+                ],
+              },
+            ],
+          },
+          {
+            skillId: 'power-word-shield',
+            targetRules: [
+              {
+                rule: 'lowest-hp-ally',
+                whenAll: [
+                  { when: 'every-ally-hp-gte', value: 0.7 },
+                  { when: 'self-no-shield' },
+                  { when: 'enemy-all-hp-above', value: 0.1 },
+                ],
+              },
+            ],
+          },
+          { skillId: 'basic-attack', targetRules: ['lowest-hp'] },
+        ],
+      },
+    })
+    const tank = sampleHero({
+      id: 't1',
+      name: 'Tank',
+      class: 'Warrior',
+      agility: 5,
+      strength: 20,
+      isTank: true,
+      currentHP: 100,
+      maxHP: 100,
+      skills: ['heroic-strike'],
+      tactics: { skillPriority: ['heroic-strike'] },
+    })
+    const m1 = createMonster(
+      {
+        id: 'm1',
+        name: 'Healthy Mob',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    m1.currentHP = 150
+    m1.maxHP = 200
+    const m2 = createMonster(
+      {
+        id: 'm2',
+        name: 'Execute Mob',
+        damageType: 'physical',
+        base: { hp: 200, physAtk: 2, spellPower: 0, agility: 1, armor: 0, resistance: 0 },
+      },
+      { tier: 'normal', level: 1 },
+    )
+    m2.currentHP = 1
+    m2.maxHP = 200
+    const result = runAutoCombat({
+      heroes: [tank, priest],
+      monsters: [m1, m2],
+      rng: () => 0.5,
+      maxRounds: 1,
+    })
+    const basic = result.log.find((e) => e.actorName === 'Anduin' && e.action === 'basic')
+    expect(basic).toBeDefined()
+    expect(basic.targetName).toBe('Execute Mob')
+  })
+
   it('solo priest with solo-survivor supplement basic-attacks instead of heal/shield', () => {
     const baseTactics = {
       skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],

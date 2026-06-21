@@ -14,6 +14,7 @@ import {
   filterTargetsByCondition,
   pickTargetByRule,
   isTacticsConditionInactive,
+  relaxBasicAttackConditionsKeepingTargetRules,
   tacticsConditionWhenRequiresPickedTarget,
   tacticsHpRatioWhenSkipsPreFilter,
 } from './tactics.js'
@@ -1063,6 +1064,39 @@ describe('tactics', () => {
         })
         expect(r).toBeNull()
       })
+    })
+  })
+
+  describe('relaxBasicAttackConditionsKeepingTargetRules', () => {
+    it('keeps targetRule and strips when gates', () => {
+      const conditions = [
+        { skillId: 'basic-attack', targetRule: 'lowest-hp', when: 'target-hp-below', value: 0.1 },
+        { skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] },
+      ]
+      expect(relaxBasicAttackConditionsKeepingTargetRules(conditions)).toEqual([
+        { skillId: 'flash-heal', targetRules: [{ rule: 'lowest-hp-ally', when: 'ally-hp-below', value: 0.7 }] },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+      ])
+    })
+
+    it('keeps targetRules chain and strips per-step when', () => {
+      const conditions = [
+        {
+          skillId: 'basic-attack',
+          targetRules: [
+            { rule: 'lowest-hp', when: 'target-hp-below', value: 0.1 },
+            'lowest-hp',
+          ],
+        },
+      ]
+      expect(relaxBasicAttackConditionsKeepingTargetRules(conditions)).toEqual([
+        { skillId: 'basic-attack', targetRules: ['lowest-hp', 'lowest-hp'] },
+      ])
+    })
+
+    it('returns original list when no basic-attack condition', () => {
+      const conditions = [{ skillId: 'flash-heal', targetRule: 'lowest-hp-ally' }]
+      expect(relaxBasicAttackConditionsKeepingTargetRules(conditions)).toEqual(conditions)
     })
   })
 })

@@ -72,6 +72,7 @@ import {
   getAllyHpBelowThresholdFromStep,
   isUnsafePlainLowestAllyFallbackAfterEmergencyTriage,
   pickTargetByRule,
+  relaxBasicAttackConditionsKeepingTargetRules,
   tacticsConditionWhenRequiresPickedTarget,
   tacticsHpRatioWhenSkipsPreFilter,
 } from './tactics.js'
@@ -2988,7 +2989,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           (actor.class === 'Druid' && druidPriorityNoCastThisTurn))
       const conditionsForBasicAttack =
         relaxBasicAttackTacticGates && actor.side === 'hero'
-          ? (conditions || []).filter((c) => c.skillId !== 'basic-attack')
+          ? relaxBasicAttackConditionsKeepingTargetRules(conditions || [])
           : conditions
 
       // Basic attack / monster skill path

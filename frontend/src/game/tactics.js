@@ -527,6 +527,30 @@ export function checkPriestFlashHealSkillAllowed(priestCond, actor, heroes, mons
 }
 
 /**
+ * Strip skill-level and per-step when gates from basic-attack tactics but keep targetRule/targetRules.
+ * Used when Mage/Priest/Druid spell priority failed and implicit fallback basic attack must still
+ * honor lowest-hp (etc.) instead of inheriting global default "first".
+ * @param {TacticsCondition[]} conditions
+ * @returns {TacticsCondition[]}
+ */
+export function relaxBasicAttackConditionsKeepingTargetRules(conditions) {
+  if (!Array.isArray(conditions) || conditions.length === 0) return []
+  const ba = conditions.find((c) => c.skillId === 'basic-attack')
+  if (!ba) return conditions
+  const relaxed = { skillId: 'basic-attack' }
+  if (Array.isArray(ba.targetRules) && ba.targetRules.length > 0) {
+    relaxed.targetRules = ba.targetRules.map((step) => {
+      if (typeof step === 'string') return step
+      if (typeof step === 'object' && step !== null && typeof step.rule === 'string') return step.rule
+      return step
+    })
+  } else if (ba.targetRule) {
+    relaxed.targetRule = ba.targetRule
+  }
+  return [...conditions.filter((c) => c.skillId !== 'basic-attack'), relaxed]
+}
+
+/**
  * Filter targets by condition (e.g. target-has-debuff filters to only debuffed targets).
  * Returns original list if condition does not filter targets.
  * @param {Object[]} targets - Candidate targets
