@@ -2,12 +2,14 @@ import { APP_VERSION } from './version.js'
 import releaseNotesV010 from '../../../docs/releases/v0.1.0.md?raw'
 import releaseNotesV011 from '../../../docs/releases/v0.1.1.md?raw'
 import releaseNotesV012 from '../../../docs/releases/v0.1.2.md?raw'
+import releaseNotesV013 from '../../../docs/releases/v0.1.3.md?raw'
 
 /** @type {Record<string, string>} */
 const RELEASE_NOTES_RAW_BY_VERSION = {
   '0.1.0': releaseNotesV010,
   '0.1.1': releaseNotesV011,
   '0.1.2': releaseNotesV012,
+  '0.1.3': releaseNotesV013,
 }
 
 /**
