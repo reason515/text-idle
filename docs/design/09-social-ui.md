@@ -51,10 +51,10 @@
 - **右栏（战斗日志）**：战斗日志逐条动画显示（每条间隔默认 5s，可调，见战斗设计「客户端战斗日志播放节奏」），颜色区分伤害类型；提供**暂停/继续**按钮，可暂停日志滚动以便详细查看；日志跨战斗持续保留，每场战斗间以分割线分隔
 - **最右社交预留区**：Feed 面板含 Tab：**战斗日志**（默认）、**世界聊天**（占位）、**排行榜**（效率 TOP 10）。排行榜见上文「效率排行榜（MVP）」；世界聊天仍为占位输入框。
 - **底部资源与功能区**：主界面底部为 `command-deck` 单行布局（顶部 `--border` 绿色分隔）：**资源**（金币，字号与功能按钮一致，数值仍用 `--color-gold`）、**战斗统计**（金币/经验每 N 步效率，点击打开统计 Modal）、**功能**（背包、商店、音效、排行榜）、**登出**。规划中入口暂不展示。
-  - **功能**（背包、商店、**音效**、**排行榜**）与**资源**、**战斗统计**、**登出**同排单行展示；点击「排行榜」切换到 Feed「排行榜」Tab 并加载数据。规划中入口（战术、队伍、图鉴等）暂不展示，待功能就绪后再开放。
+  - **功能**（背包、商店、**音效**、**排行榜**、**版本**）与**资源**、**战斗统计**、**登出**同排单行展示；点击「排行榜」切换到 Feed「排行榜」Tab 并加载数据；点击「版本」打开版本信息与 Release Notes Modal。规划中入口（战术、队伍、图鉴等）暂不展示，待功能就绪后再开放。
   - **登出**：点击「登出」弹出二次确认（确认 / 取消）；确认后清除 token 并跳转登录页。E2E：`logout-btn`、`logout-confirm-overlay`、`logout-confirm-btn`、`logout-cancel-btn`。
   - **音效**面板（主音量、静音、试听、持久化键）见 [14-audio.md](./14-audio.md)。
-  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open` 与 `leaderboard-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`。
+  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open`、`leaderboard-open`、`version-info-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`；版本 Modal：`version-info-modal`、`version-release-notes`、`version-info-close`。
 
 ## 英雄卡片（紧凑版）
 
@@ -321,6 +321,8 @@ Attributes Tab 内布局：基础信息 | 左侧：一级属性+二级属性 | �
   - 客户端不参与任何权威数值计算，仅接收服务端结果并展示
 
 # 游戏版本规划 (Roadmap)
-- **Alpha 版本核心功能列表**
-- **Beta 版本核心功能列表**
-- **正式上线版本核心功能列表**
+
+- **v0.1.0（MVP 内测，当前）**：Release Notes 见 [docs/releases/v0.1.0.md](../releases/v0.1.0.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **Alpha 版本核心功能列表**（规划中）
+- **Beta 版本核心功能列表**（规划中）
+- **正式上线版本核心功能列表**（规划中）

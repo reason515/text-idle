@@ -844,6 +844,9 @@
           <button type="button" class="command-action-btn topbar-btn" data-testid="leaderboard-open" @click="openLeaderboardTab">
             排行榜
           </button>
+          <button type="button" class="command-action-btn topbar-btn" data-testid="version-info-open" @click="showVersionInfoModal = true">
+            版本
+          </button>
         </div>
       </div>
 
@@ -1027,6 +1030,10 @@
           </div>
         </div>
       </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <VersionInfoModal :open="showVersionInfoModal" @close="showVersionInfoModal = false" />
     </Teleport>
 
     <Teleport to="body">
@@ -2750,6 +2757,7 @@ import {
 } from '../game/skillChoice.js'
 import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillEnhancementLimits.js'
 import SkillChoiceModal from '../components/SkillChoiceModal.vue'
+import VersionInfoModal from '../components/VersionInfoModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
   DEBUFF_DISPLAY,
@@ -3173,6 +3181,7 @@ const statsTimelineHoverTipTop = ref(0)
 const compPieHover = ref(null)
 const showMapModal = ref(false)
 const showAudioSettingsModal = ref(false)
+const showVersionInfoModal = ref(false)
 const logoutConfirming = ref(false)
 const sfxPreviewGroups = SFX_PREVIEW_GROUPS
 const audioSettingsMuted = ref(false)
