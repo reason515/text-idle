@@ -24,7 +24,7 @@ import {
   affixAllowedOnSlot,
 } from './slotAffixPools.js'
 
-export { PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL }
+export { AFFIX_POOL, PHYS_WEAPON_AFFIX_POOL, SPELL_WEAPON_AFFIX_POOL }
 export { ARMOR_AFFIX_POOL, SHIELD_AFFIX_POOL, ORB_AFFIX_POOL, RING_AFFIX_POOL, AMULET_AFFIX_POOL }
 
 /** Quality identifiers */
@@ -574,6 +574,7 @@ function applyAffixToItem(item, affix) {
     item.spiBonus = (item.spiBonus || 0) + val
   } else if (stat === 'rageOnKill') item.rageOnKill = (item.rageOnKill || 0) + val
   else if (stat === 'doubleStrikePct') item.doubleStrikePct = (item.doubleStrikePct || 0) + val
+  else if (stat === 'physAtk') item.physAtk = (item.physAtk || 0) + val
 }
 
 /**
