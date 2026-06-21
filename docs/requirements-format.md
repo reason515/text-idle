@@ -138,7 +138,7 @@ Then [expected result/verifiable behavior].
 
 **Design Reference (from design doc)**
 
-- **Main layout**: Three-column battlefield layout per [09-social-ui.md](design/09-social-ui.md): Squad (left), Combat Log (center), Monsters (right) — two armies facing off. Top bar: map selector, exploration progress, gold, backpack, shop, user. Bottom bar: expandable function area (world chat, future features).
+- **Main layout**: Three-column battlefield layout per [09-social-ui.md](design/09-social-ui.md): Squad (left), Combat Log (center), Monsters (right) — two armies facing off. Top bar: map selector, exploration progress, gold, backpack, shop, user. Bottom bar: expandable function area (message board, leaderboard, future features).
 - **Initial state**: Squad has 3 hero cards; map is Elwynn Forest (only option); combat may auto-start or require map confirmation.
 - **Hero cards**: Each shows name, class (WoW color), level 1, HP bar, resource bar; click opens detail modal.
 - **Reference**: [09-social-ui.md](design/09-social-ui.md).
@@ -1603,6 +1603,31 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC5 | Player has <1000 lifetime exploration steps  | Player opens leaderboard                       | Self area indicates not yet eligible; not listed in TOP 10          |
 | AC6 | Another player already uses team name "Alpha"       | New player saves team name "Alpha" on intro    | Save rejected; user sees a clear duplicate-name message             |
 | AC7 | Player keeps their existing team name on save       | Save syncs                                     | Save succeeds (no false duplicate conflict)                         |
+
+---
+
+## Example 38: Global Message Board
+
+**User Story**
+
+> As a player on a shared server,  
+> I want to leave permanent messages visible to all players with my squad name and timestamp,  
+> So that I can share tips and coordinate without real-time chat.
+
+**Design Reference (from design doc)**
+
+- **API**: `GET /message-board`, `POST /message-board` (auth required); see [09-social-ui.md](design/09-social-ui.md) **留言板 (MVP)**.
+- **Display name**: Save `teamName` (empty -> UI shows untitled squad label).
+
+**Acceptance Criteria**
+
+
+| #   | Given                                  | When                                      | Then                                                                 |
+| --- | -------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Player is logged in on the main screen | Player opens the **留言板** Feed tab      | Message list and composer are shown (empty state or prior messages) |
+| AC2 | Player has a team name in save         | Player posts non-empty message text       | Message appears with squad name, local timestamp, and content       |
+| AC3 | Player posted a message                | Player reloads and reopens message board  | Same message is still listed (permanent retention)                  |
+| AC4 | Player submits whitespace-only text    | Send is attempted                         | Message is rejected; user sees an error                             |
 
 ---
 

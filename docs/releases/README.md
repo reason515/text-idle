@@ -4,7 +4,8 @@ Version-specific release notes for in-game **版本** modal and internal distrib
 
 | Version | File | Status |
 |---------|------|--------|
-| v0.1.1 | [v0.1.1.md](./v0.1.1.md) | Current — tactics UX patch |
+| v0.1.2 | [v0.1.2.md](./v0.1.2.md) | Current — global message board |
+| v0.1.1 | [v0.1.1.md](./v0.1.1.md) | Tactics UX patch |
 | v0.1.0 | [v0.1.0.md](./v0.1.0.md) | MVP internal test |
 
 ## Conventions

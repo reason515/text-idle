@@ -24,7 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}, &model.MessageBoardEntry{}); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 

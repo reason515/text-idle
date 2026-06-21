@@ -100,6 +100,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎事件一致；护盾吸收是否计入「受到的伤害」 |
 | **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |
 | **Leaderboard** | `leaderboard_service.go`, `leaderboardTrack`, MainScreen Feed Tab | Rolling last 1000 steps; lifetime ≥ 1000; stats reset does not clear track |
+| **Message board** | `message_board_service.go`, `GET/POST /message-board`, MainScreen Feed Tab | Permanent global messages; team name + timestamp; E2E `message-board.spec.js`; Example 38 |
 | **Team name** | `team_name_service.go`, `GET /team-name/check`, IntroPage, `PUT /save` | 非空队名全服唯一；序章预检 check；409 on save conflict；E2E 用唯一队名 |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) | 若用户故事或 AC 引用统计面板或清零流程 |
 

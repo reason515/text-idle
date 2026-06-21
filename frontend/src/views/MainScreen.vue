@@ -237,7 +237,7 @@
       </div>
       </div>
 
-      <aside class="feed-panel battle-panel" aria-label="战斗日志与世界聊天">
+      <aside class="feed-panel battle-panel" aria-label="战斗日志与留言板">
         <div class="feed-tabs" role="tablist">
           <button
             type="button"
@@ -257,9 +257,9 @@
             :aria-selected="mainFeedTab === 'chat'"
             :class="{ active: mainFeedTab === 'chat' }"
             data-testid="feed-tab-chat"
-            @click="mainFeedTab = 'chat'"
+            @click="openMessageBoardTab"
           >
-            世界聊天
+            留言板
           </button>
           <button
             type="button"
@@ -647,36 +647,69 @@
 
         <div
           v-show="mainFeedTab === 'chat'"
-          class="feed-tab-panel feed-chat-wrap"
+          class="feed-tab-panel feed-message-board-wrap"
           role="tabpanel"
         >
-          <div class="feed-chat-hint panel-subtitle">频道与实时消息即将开放，以下为界面预览。</div>
-          <div class="chat-inline-messages">
-            <div class="chat-inline-item">
-              <span class="chat-channel-tag">世界</span>
-              <span class="chat-inline-author">系统</span>
-              <span class="chat-inline-text">世界聊天区域预留中，后续可用于实时频道与系统公告。</span>
-            </div>
-            <div class="chat-inline-item">
-              <span class="chat-channel-tag">示例</span>
-              <span class="chat-inline-author">玩家A</span>
-              <span class="chat-inline-text">有人准备挑战下一张地图的首领吗？</span>
-            </div>
-            <div class="chat-inline-item">
-              <span class="chat-channel-tag">示例</span>
-              <span class="chat-inline-author">玩家B</span>
-              <span class="chat-inline-text">我刚刷到一件不错的法系装备，晚点可以分享配置思路。</span>
-            </div>
+          <div class="feed-message-board-header">
+            <p class="panel-subtitle">全服留言永久保留，展示小队名称与发布时间。</p>
+            <button
+              type="button"
+              class="btn btn-sm feed-message-board-refresh"
+              data-testid="message-board-refresh"
+              :disabled="messageBoardLoading"
+              @click="loadMessageBoard"
+            >
+              {{ messageBoardLoading ? '刷新中...' : '刷新' }}
+            </button>
           </div>
-          <div class="chat-inline-composer">
-            <label class="chat-composer-label" for="worldChatPreview">世界消息</label>
+          <p v-if="messageBoardError" class="error-msg feed-message-board-error">{{ messageBoardError }}</p>
+          <div
+            ref="messageBoardListEl"
+            class="message-board-list game-scroll"
+            data-testid="message-board-list"
+          >
+            <div v-if="messageBoardLoading && !messageBoardMessages.length" class="empty-hint">
+              加载留言中...
+            </div>
+            <div v-else-if="!messageBoardMessages.length" class="empty-hint">暂无留言，写下第一条吧。</div>
+            <article
+              v-for="msg in messageBoardMessages"
+              :key="msg.id"
+              class="message-board-item"
+              :class="{ 'message-board-item-self': msg.is_self }"
+              data-testid="message-board-item"
+            >
+              <div class="message-board-meta">
+                <span class="message-board-author">{{ displayMessageBoardTeamName(msg.team_name) }}</span>
+                <time class="message-board-time" :datetime="msg.created_at">{{
+                  formatMessageBoardTime(msg.created_at)
+                }}</time>
+              </div>
+              <p class="message-board-content">{{ msg.content }}</p>
+            </article>
+          </div>
+          <div class="message-board-composer">
+            <label class="message-board-composer-label" for="messageBoardInput">留言</label>
             <textarea
-              id="worldChatPreview"
-              class="chat-inline-input"
-              placeholder="世界聊天功能即将开放"
-              disabled
+              id="messageBoardInput"
+              v-model="messageBoardDraft"
+              class="message-board-input"
+              data-testid="message-board-input"
+              placeholder="写下你的留言..."
+              rows="2"
+              maxlength="500"
+              :disabled="messageBoardPosting"
+              @keydown.enter.exact.prevent="submitMessageBoard"
             ></textarea>
-            <button type="button" class="btn chat-send-btn" disabled>发送</button>
+            <button
+              type="button"
+              class="btn btn-sm message-board-send-btn"
+              data-testid="message-board-send"
+              :disabled="messageBoardPosting || !messageBoardDraft.trim()"
+              @click="submitMessageBoard"
+            >
+              {{ messageBoardPosting ? '发送中...' : '发送' }}
+            </button>
           </div>
         </div>
 
@@ -2934,6 +2967,12 @@ import {
   formatLeaderboardRank,
   formatLeaderboardValue,
 } from '../game/leaderboardApi.js'
+import {
+  displayTeamName as displayMessageBoardTeamName,
+  fetchMessageBoard,
+  formatMessageBoardTime,
+  postMessageBoard,
+} from '../game/messageBoardApi.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -3283,7 +3322,7 @@ const TANK_ROLE_TIP_TEXT = '指定为小队坦克，用于仇恨相关战术'
 const formulaTooltip = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
-/** Right feed column: battle log vs world chat preview vs leaderboard */
+/** Right feed column: battle log vs message board vs leaderboard */
 const mainFeedTab = ref('log')
 const leaderboardGoldRows = ref([])
 const leaderboardXpRows = ref([])
@@ -3291,6 +3330,13 @@ const leaderboardXpRows = ref([])
 const leaderboardSelf = ref(null)
 const leaderboardLoading = ref(false)
 const leaderboardError = ref('')
+/** @type {import('vue').Ref<import('../game/messageBoardApi.js').MessageBoardItem[]>} */
+const messageBoardMessages = ref([])
+const messageBoardLoading = ref(false)
+const messageBoardPosting = ref(false)
+const messageBoardError = ref('')
+const messageBoardDraft = ref('')
+const messageBoardListEl = ref(null)
 const isRunning = ref(false)
 const isPaused = ref(false)
 const currentActorId = ref(null)
@@ -3371,6 +3417,50 @@ async function loadLeaderboard() {
 function openLeaderboardTab() {
   mainFeedTab.value = 'leaderboard'
   loadLeaderboard()
+}
+
+async function scrollMessageBoardToBottom() {
+  await nextTick()
+  const el = messageBoardListEl.value
+  if (el) el.scrollTop = el.scrollHeight
+}
+
+async function loadMessageBoard() {
+  messageBoardLoading.value = true
+  messageBoardError.value = ''
+  try {
+    const data = await fetchMessageBoard()
+    const rows = Array.isArray(data.messages) ? data.messages : []
+    messageBoardMessages.value = [...rows].reverse()
+    await scrollMessageBoardToBottom()
+  } catch (e) {
+    messageBoardMessages.value = []
+    messageBoardError.value = e instanceof Error ? e.message : '加载留言板失败'
+  } finally {
+    messageBoardLoading.value = false
+  }
+}
+
+function openMessageBoardTab() {
+  mainFeedTab.value = 'chat'
+  loadMessageBoard()
+}
+
+async function submitMessageBoard() {
+  const text = messageBoardDraft.value.trim()
+  if (!text || messageBoardPosting.value) return
+  messageBoardPosting.value = true
+  messageBoardError.value = ''
+  try {
+    const item = await postMessageBoard(text)
+    messageBoardMessages.value = [...messageBoardMessages.value, item]
+    messageBoardDraft.value = ''
+    await scrollMessageBoardToBottom()
+  } catch (e) {
+    messageBoardError.value = e instanceof Error ? e.message : '发送留言失败'
+  } finally {
+    messageBoardPosting.value = false
+  }
 }
 
 function getFloatingNumbers(unitId) {
@@ -7715,120 +7805,143 @@ onUnmounted(() => {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* World chat preview (feed panel tab) */
-.chat-inline-messages {
+/* Message board (feed panel tab) */
+.feed-message-board-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.feed-message-board-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-bottom: 0.35rem;
+}
+
+.feed-message-board-header .panel-subtitle {
+  margin: 0;
   flex: 1;
   min-width: 0;
+}
+
+.feed-message-board-refresh {
+  flex-shrink: 0;
+}
+
+.feed-message-board-error {
+  flex-shrink: 0;
+  margin: 0 0 0.35rem;
+}
+
+.message-board-list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.25rem 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-
-.chat-inline-item {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.15rem 0.35rem;
-  font-size: var(--font-sm);
-  background: var(--bg-darker);
-  border: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.chat-channel-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.2rem;
-  padding: 0.05rem 0.25rem;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-dark);
-  color: var(--text-label);
-  font-size: var(--font-xs);
-  flex-shrink: 0;
-}
-
-.chat-inline-author {
-  color: var(--text-value);
-  font-size: var(--font-sm);
-  flex-shrink: 0;
-}
-
-.chat-inline-text {
-  color: var(--text-muted);
-  font-size: var(--font-sm);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-inline-composer {
-  display: flex;
-  align-items: center;
   gap: 0.35rem;
-  flex-shrink: 0;
-  padding: 0.25rem 0;
-}
-
-.chat-composer-label {
-  color: var(--text-label);
-  font-size: var(--font-sm);
-  flex-shrink: 0;
-}
-
-.chat-inline-input {
-  width: 14rem;
-  min-height: 1.8rem;
-  max-height: 1.8rem;
-  resize: none;
-  padding: 0.25rem 0.5rem;
-  font-family: inherit;
-  font-size: var(--font-sm);
-  background: var(--bg-darker);
-  border: 1px solid var(--border-dark);
-  color: var(--text-muted);
-}
-
-.chat-inline-input:disabled {
-  opacity: 1;
-}
-
-.chat-send-btn {
-  margin-top: 0;
-  width: auto;
-  padding: 0.25rem 0.6rem;
-  font-size: var(--font-sm);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-dark);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-.chat-send-btn:hover:disabled {
-  background: var(--bg-elevated);
-  border-color: var(--border-dark);
-  color: var(--text-muted);
-  box-shadow: none;
-  text-shadow: none;
-}
-
-.feed-chat-wrap .chat-inline-messages {
-  flex: 1;
-  min-height: 0;
   padding: 0.35rem;
   background: var(--bg-darker);
   border: 1px solid var(--border-dark);
   border-radius: 6px;
 }
 
-.feed-chat-wrap .chat-inline-text {
-  white-space: normal;
-  line-height: 1.4;
+.message-board-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.35rem 0.45rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.message-board-item-self {
+  border-color: var(--border);
+  background: var(--bg-panel);
+}
+
+.message-board-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.message-board-author {
+  color: var(--text-value);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-board-time {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  flex-shrink: 0;
+}
+
+.message-board-content {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message-board-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding-top: 0.35rem;
+}
+
+.message-board-composer-label {
+  color: var(--text-label);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+  padding-bottom: 0.35rem;
+}
+
+.message-board-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.4rem;
+  max-height: 4.5rem;
+  resize: vertical;
+  padding: 0.35rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  color: var(--text);
+}
+
+.message-board-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--focus-glow);
+}
+
+.message-board-input:disabled {
+  opacity: 0.7;
+}
+
+.message-board-send-btn {
+  margin-top: 0;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .feed-chat-wrap .chat-inline-composer {

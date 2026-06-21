@@ -1,10 +1,12 @@
+- **留言板 (Message Board)**
+	- **MVP**: 主界面 Feed 区「留言板」Tab（`data-testid="feed-tab-chat"` 保留兼容）；`GET /message-board`、`POST /message-board`（均需登录）。全服玩家可留言，**永久保留**（无删除接口）；每条展示存档 `teamName`（空则 UI「未命名队伍」）与 `created_at`（本地 `YYYY-MM-DD HH:mm`）。列表默认最近 100 条，按时间**新→旧**查询、UI **旧→新**滚动展示；发送成功后追加到底部。正文 trim 后非空，最长 500 字符。
 - **排行榜 (Leaderboards)**
 	- **效率排行榜（MVP）**: 主界面 Feed 区「排行榜」Tab；底部功能区亦有「排行榜」入口；`GET /leaderboard`（需登录）。展示全服 **金币效率** 与 **经验效率** 各 TOP 10。排名口径：**最近 1000 探索步**内累计金币/经验 ÷ 1000（界面展示为每 100 步）；**总步数**（`lifetimeSteps`）≥ 1000 方可上榜。数据来自存档 `leaderboardTrack`（滚动窗口，**不因个人统计清零而重置**），与 [13-player-statistics.md](./13-player-statistics.md) 7.7 一致。**展示名**为存档 `teamName`（空则 UI 显示「未命名队伍」）；**非空队名全服唯一**（`GET /team-name/check` 预检；`PUT /save` 冲突返回 409 `team name already taken`），以保证排行榜可区分玩家。序章命名步先调用 check 再写入存档。列表采用**表格式四列**（排名、队伍、效率值、总步数），金币/经验效率数值分别使用 `--color-gold` / `--color-exp`。**E2E 测试账号**（邮箱 `@example.com`）在正式库（非 `*e2e*.db`）中不参与排行，启动时会清理其历史条目。
 	- **荣誉 / PVP 排行榜**: 规则与展示（与关卡偶遇、荣誉积分对应）— 未实现
 	- **其他排行榜**: 待补充完善
 - **交易市场 (Trading Market)**: 交易模式与限制
 - **PVP遭遇战 (PvP Encounters)**: 匹配与战斗规则
-- **聊天系统 (Chat)**
+- **实时聊天 (Chat)**: 未实现；当前弱联网留言见上文「留言板」
 
 # 用户界面与用户体验 (UI/UX)
 
@@ -32,10 +34,9 @@
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ [挂机英雄团]   [当前地图名 ▼]   [背包][商店]   [金币 + 金/(N步) 经验/(N步)]   [用户名][退出]      │  ← 顶部栏（N=1/10/100 见 13-player-statistics 7.4）
 ├──────────────┬──────────────┬──────────────────────────────┬──────────────┤
-│  小队 (左)   │ 当前怪物(中左)│    战斗日志 (右，主区)        │ 世界聊天预留 │
-│ [英雄卡×3-5] │ [怪物卡×N]   │  [逐条动画，默认5s/条可调] [暂停]│ [频道列表]   │
-│              │              │  [胜/败结果 + 奖励信息]       │ [输入框占位] │
-│ [招募按钮]   │              │  [当前地图探索进度条]         │ [发送按钮]   │
+│  小队 (左)   │ 当前怪物(中左)│    战斗日志 (右，主区)        │ 留言板       │
+│ [英雄卡×3-5] │ [怪物卡×N]   │  [逐条动画，默认5s/条可调] [暂停]│ [留言列表]   │
+│              │              │  [胜/败结果 + 奖励信息]       │ [输入+发送]  │
 └──────────────┴──────────────┴──────────────────────────────┴──────────────┘
 ```
 
@@ -49,12 +50,12 @@
   - **满编**：5 人时不再显示招募入口。
 - **中左栏（怪物）**：当前战斗中的怪物卡片，显示名称、Tier 标签、HP 条；点击弹出详情 Modal；与小队相邻便于同时关注敌我状态
 - **右栏（战斗日志）**：战斗日志逐条动画显示（每条间隔默认 5s，可调，见战斗设计「客户端战斗日志播放节奏」），颜色区分伤害类型；提供**暂停/继续**按钮，可暂停日志滚动以便详细查看；日志跨战斗持续保留，每场战斗间以分割线分隔
-- **最右社交预留区**：Feed 面板含 Tab：**战斗日志**（默认）、**世界聊天**（占位）、**排行榜**（效率 TOP 10）。排行榜见上文「效率排行榜（MVP）」；世界聊天仍为占位输入框。
+- **最右社交区**：Feed 面板含 Tab：**战斗日志**（默认）、**留言板**、**排行榜**（效率 TOP 10）。留言板见上文「留言板（MVP）」；排行榜见「效率排行榜（MVP）」。
 - **底部资源与功能区**：主界面底部为 `command-deck` 单行布局（顶部 `--border` 绿色分隔）：**资源**（金币，字号与功能按钮一致，数值仍用 `--color-gold`）、**战斗统计**（金币/经验每 N 步效率，点击打开统计 Modal）、**功能**（背包、商店、音效、排行榜）、**登出**。规划中入口暂不展示。
   - **功能**（背包、商店、**音效**、**排行榜**、**版本**）与**资源**、**战斗统计**、**登出**同排单行展示；点击「排行榜」切换到 Feed「排行榜」Tab 并加载数据；点击「版本」打开版本信息与 Release Notes Modal。规划中入口（战术、队伍、图鉴等）暂不展示，待功能就绪后再开放。
   - **登出**：点击「登出」弹出二次确认（确认 / 取消）；确认后清除 token 并跳转登录页。E2E：`logout-btn`、`logout-confirm-overlay`、`logout-confirm-btn`、`logout-cancel-btn`。
   - **音效**面板（主音量、静音、试听、持久化键）见 [14-audio.md](./14-audio.md)。
-  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open`、`leaderboard-open`、`version-info-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`；版本 Modal：`version-info-modal`、`version-release-notes`、`version-release-{semver}`（各历史版本块）、`version-info-close`。Modal 内按 semver **从新到旧** 展示全部已注册 Release Notes；Markdown 内联 `**粗体**` 渲染为 UI 加粗，不显示原始星号。
+  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open`、`leaderboard-open`、`version-info-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`（留言板）、`feed-tab-leaderboard`；留言板：`message-board-list`、`message-board-input`、`message-board-send`、`message-board-item`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`；版本 Modal：`version-info-modal`、`version-release-notes`、`version-release-{semver}`（各历史版本块）、`version-info-close`。Modal 内按 semver **从新到旧** 展示全部已注册 Release Notes；Markdown 内联 `**粗体**` 渲染为 UI 加粗，不显示原始星号。
 
 ## 英雄卡片（紧凑版）
 
@@ -322,7 +323,8 @@ Attributes Tab 内布局：基础信息 | 左侧：一级属性+二级属性 | �
 
 # 游戏版本规划 (Roadmap)
 
-- **v0.1.1（战术配置优化，当前）**：Release Notes 见 [docs/releases/v0.1.1.md](../releases/v0.1.1.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.2（全服留言板，当前）**：Release Notes 见 [docs/releases/v0.1.2.md](../releases/v0.1.2.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.1（战术配置优化）**：Release Notes 见 [docs/releases/v0.1.1.md](../releases/v0.1.1.md)。
 - **v0.1.0（MVP 内测）**：Release Notes 见 [docs/releases/v0.1.0.md](../releases/v0.1.0.md)。
 - **Alpha 版本核心功能列表**（规划中）
 - **Beta 版本核心功能列表**（规划中）
