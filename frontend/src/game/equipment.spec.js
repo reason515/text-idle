@@ -13,6 +13,7 @@ import {
   PHYS_WEAPON_AFFIX_POOL,
   SPELL_WEAPON_AFFIX_POOL,
   itemMatchesSlot,
+  resolveEquipmentStorageKey,
   QUALITY_NORMAL,
   QUALITY_MAGIC,
   QUALITY_RARE,
@@ -309,6 +310,29 @@ describe('equipment', () => {
       expect(itemMatchesSlot({ slot: 'Armor' }, 'Armor')).toBe(true)
       expect(itemMatchesSlot({ slot: 'OffHand' }, 'OffHand')).toBe(true)
       expect(itemMatchesSlot({ slot: 'Helm' }, 'Armor')).toBe(false)
+    })
+  })
+
+  describe('resolveEquipmentStorageKey', () => {
+    it('uses Ring1/Ring2 display slot for Ring items, not item.slot Ring', () => {
+      const ring = { slot: 'Ring', id: 'ring-1' }
+      expect(resolveEquipmentStorageKey('Ring1', ring)).toBe('Ring1')
+      expect(resolveEquipmentStorageKey('Ring2', ring)).toBe('Ring2')
+    })
+
+    it('maps MainHand display to TwoHand storage for two-hand weapons', () => {
+      const staff = { slot: 'TwoHand', id: 'staff-1' }
+      expect(resolveEquipmentStorageKey('MainHand', staff)).toBe('TwoHand')
+    })
+
+    it('maps MainHand display to MainHand storage for one-hand weapons', () => {
+      const sword = { slot: 'MainHand', id: 'sword-1' }
+      expect(resolveEquipmentStorageKey('MainHand', sword)).toBe('MainHand')
+    })
+
+    it('passes through other display slots unchanged', () => {
+      const helm = { slot: 'Helm', id: 'helm-1' }
+      expect(resolveEquipmentStorageKey('Helm', helm)).toBe('Helm')
     })
   })
 

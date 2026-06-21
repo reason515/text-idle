@@ -2878,6 +2878,7 @@ import {
   getEquipReasonsStructured,
   getEquipmentBonuses,
   itemMatchesSlot,
+  resolveEquipmentStorageKey,
   SHOP_QUALITY_ODDS,
   QUALITY_NORMAL,
   QUALITY_MAGIC,
@@ -3911,7 +3912,7 @@ function confirmUnequipEquipment() {
   const hero = squad.value.find((h) => h.id === selectedHero.value?.id)
   if (!hero) return
   hero.equipment = hero.equipment || {}
-  const storageKey = ctx.item?.slot ?? ctx.slot
+  const storageKey = resolveEquipmentStorageKey(ctx.slot, ctx.item)
   addToInventory(ctx.item)
   delete hero.equipment[storageKey]
   inventoryVersion.value++

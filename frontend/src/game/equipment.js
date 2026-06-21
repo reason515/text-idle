@@ -851,6 +851,22 @@ export function itemMatchesSlot(item, slot) {
   return item.slot === slot
 }
 
+/**
+ * Map UI equipment slot to hero.equipment storage key when removing gear.
+ * Ring items are stored under Ring1/Ring2, not item.slot "Ring".
+ * Two-hand weapons are stored under TwoHand while shown in the MainHand row.
+ * @param {string} displaySlot - Slot from EQUIPMENT_SLOTS (e.g. MainHand, Ring1)
+ * @param {Object|null} item - Equipped item
+ * @returns {string}
+ */
+export function resolveEquipmentStorageKey(displaySlot, item) {
+  if (!displaySlot) return displaySlot
+  if (displaySlot === 'MainHand') {
+    return item?.slot === 'TwoHand' ? 'TwoHand' : 'MainHand'
+  }
+  return displaySlot
+}
+
 export { EQUIPMENT_SLOTS, SLOT_LABELS }
 
 const MAINHAND_SLOT = 'MainHand'
