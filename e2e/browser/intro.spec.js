@@ -1,8 +1,14 @@
 const { test, expect } = require('@playwright/test')
+const crypto = require('crypto')
 require('./globalHooks')
 const { setupNewRun,
   uniqueTestEmail,
+  registerAndGoToMain,
 } = require('./testHelpers')
+
+function uniqueTeamName(prefix) {
+  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`
+}
 
 test.describe('Opening Introduction E2E', () => {
   test('AC1: first-time player sees game introduction', async ({ page }) => {
@@ -43,7 +49,7 @@ test.describe('Opening Introduction E2E', () => {
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
-    await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByLabel('队伍名称').fill(uniqueTeamName('Hero'))
     await page.getByRole('button', { name: '下一步' }).click()
 
     await expect(page.getByText('你的初始队伍')).toBeVisible()
@@ -63,7 +69,7 @@ test.describe('Opening Introduction E2E', () => {
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
-    await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByLabel('队伍名称').fill(uniqueTeamName('Hero'))
     await page.getByRole('button', { name: '下一步' }).click()
     await expect(page.getByText('你的初始队伍')).toBeVisible()
     await page.getByRole('button', { name: '开始冒险' }).click()
@@ -87,7 +93,7 @@ test.describe('Opening Introduction E2E', () => {
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
     await page.getByRole('button', { name: '下一步' }).click()
-    await page.getByLabel('队伍名称').fill('勇者小队')
+    await page.getByLabel('队伍名称').fill(uniqueTeamName('Hero'))
     await page.getByRole('button', { name: '下一步' }).click()
     await page.getByRole('button', { name: '开始冒险' }).click()
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
@@ -100,5 +106,28 @@ test.describe('Opening Introduction E2E', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
     await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.col-header').first()).toBeVisible()
+  })
+
+  test('duplicate team name is rejected on intro naming step', async ({ page, browser }) => {
+    const takenName = uniqueTeamName('Taken')
+    const firstEmail = uniqueTestEmail('intro-dup-a')
+    await registerAndGoToMain(page, firstEmail, { teamName: takenName })
+
+    const ctx2 = await browser.newContext()
+    const page2 = await ctx2.newPage()
+    await page2.goto('/register?e2e=1')
+    const secondEmail = uniqueTestEmail('intro-dup-b')
+    await page2.getByLabel('\u90ae\u7bb1').fill(secondEmail)
+    await page2.getByLabel('\u5bc6\u7801\uff08\u81f3\u5c11 8 \u4f4d\uff09').fill('password123')
+    await page2.getByLabel('\u786e\u8ba4\u5bc6\u7801').fill('password123')
+    await page2.getByRole('button', { name: '\u6ce8\u518c' }).click()
+    await expect(page2).toHaveURL(/\/intro/, { timeout: 5000 })
+    await page2.getByRole('button', { name: '下一步' }).click()
+    await page2.getByLabel('队伍名称').fill(takenName)
+    await expect(page2.getByLabel('队伍名称')).toHaveValue(takenName)
+    await page2.getByRole('button', { name: '下一步' }).click()
+    await expect(page2.locator('.error-msg')).toContainText('已被使用', { timeout: 10000 })
+    await expect(page2.getByText('为你的队伍起个名字')).toBeVisible()
+    await ctx2.close()
   })
 })

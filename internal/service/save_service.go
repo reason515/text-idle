@@ -11,11 +11,21 @@ import (
 var ErrSaveNotFound = errors.New("save not found")
 
 type SaveService struct {
-	saveRepo *repository.PlayerSaveRepository
+	saveRepo           *repository.PlayerSaveRepository
+	leaderboardService *LeaderboardService
+	teamNameService    *TeamNameService
 }
 
-func NewSaveService(saveRepo *repository.PlayerSaveRepository) *SaveService {
-	return &SaveService{saveRepo: saveRepo}
+func NewSaveService(
+	saveRepo *repository.PlayerSaveRepository,
+	leaderboardService *LeaderboardService,
+	teamNameService *TeamNameService,
+) *SaveService {
+	return &SaveService{
+		saveRepo:           saveRepo,
+		leaderboardService: leaderboardService,
+		teamNameService:    teamNameService,
+	}
 }
 
 func emptySaveJSON() string {
@@ -42,5 +52,18 @@ func (s *SaveService) PutSave(userID uint, data json.RawMessage) error {
 	if !json.Valid(data) {
 		return errors.New("invalid json")
 	}
-	return s.saveRepo.Upsert(userID, string(data))
+	if s.teamNameService != nil {
+		if err := s.teamNameService.ValidateAndSyncClaim(userID, data); err != nil {
+			return err
+		}
+	}
+	if err := s.saveRepo.Upsert(userID, string(data)); err != nil {
+		return err
+	}
+	if s.leaderboardService != nil {
+		if err := s.leaderboardService.UpsertFromSaveJSON(userID, data); err != nil {
+			return err
+		}
+	}
+	return nil
 }

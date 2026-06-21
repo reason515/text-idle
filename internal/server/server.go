@@ -22,8 +22,14 @@ func NewRouter(db *gorm.DB, staticFS fs.FS) *gin.Engine {
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 	saveRepo := repository.NewPlayerSaveRepository(db)
-	saveService := service.NewSaveService(saveRepo)
+	leaderboardRepo := repository.NewLeaderboardRepository(db)
+	teamNameRepo := repository.NewTeamNameRepository(db)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
+	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	saveHandler := handler.NewSaveHandler(saveService)
+	teamNameHandler := handler.NewTeamNameHandler(teamNameService)
+	leaderboardHandler := handler.NewLeaderboardHandler(leaderboardService)
 	authMw := middleware.AuthRequired(userRepo)
 
 	r := gin.Default()
@@ -38,6 +44,8 @@ func NewRouter(db *gorm.DB, staticFS fs.FS) *gin.Engine {
 	r.POST("/login", authHandler.Login)
 	r.GET("/save", authMw, saveHandler.Get)
 	r.PUT("/save", authMw, saveHandler.Put)
+	r.GET("/team-name/check", authMw, teamNameHandler.Check)
+	r.GET("/leaderboard", authMw, leaderboardHandler.Get)
 
 	if staticFS != nil {
 		sub, err := fs.Sub(staticFS, "web")

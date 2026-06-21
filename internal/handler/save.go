@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -48,7 +49,14 @@ func (h *SaveHandler) Put(c *gin.Context) {
 		return
 	}
 	if err := h.saveService.PutSave(userID.(uint), json.RawMessage(body)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, service.ErrTeamNameTaken):
+			c.JSON(http.StatusConflict, gin.H{"error": "team name already taken"})
+		case errors.Is(err, service.ErrTeamNameInvalid):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "team name invalid"})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.Status(http.StatusNoContent)

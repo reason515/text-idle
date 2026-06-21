@@ -50,15 +50,8 @@
               />
               <p v-if="error" class="error-msg">{{ error }}</p>
             </div>
-            <div class="team-suggestions">
-              <span class="suggestion-label">试试：</span>
-              <button
-                v-for="name in suggestedNames"
-                :key="name"
-                type="button"
-                class="suggestion-btn"
-                @click="teamName = name"
-              >{{ name }}</button>
+            <div class="detail-skill-choice-banner team-name-hint">
+              队伍名称在全服唯一，将显示在排行榜中；请自行取名，避免与他人重复。
             </div>
             <div class="intro-actions">
               <button type="button" class="btn btn-secondary" @click="step = 1">
@@ -176,6 +169,7 @@ import { getMageSkillById } from '../game/mageSkills.js'
 import { getPriestSkillById } from '../game/priestSkills.js'
 import { heroDisplayName } from '../game/heroDisplayName.js'
 import { setTeamName, flushPlayerSave } from '../game/playerSave.js'
+import { checkTeamNameAvailable } from '../game/teamNameApi.js'
 
 const PRIMARY_ATTR_LABELS = {
   strength: '力量',
@@ -190,8 +184,6 @@ const stepItems = [
   { id: 2, name: '命名' },
   { id: 3, name: '出发' },
 ]
-
-const suggestedNames = ['晨星远征队', '灰烬守望', '北境先遣团']
 
 const router = useRouter()
 const step = ref(1)
@@ -283,8 +275,39 @@ async function goToHeroPreview() {
     return
   }
   error.value = ''
-  setTeamName(name)
-  await flushPlayerSave()
+  try {
+    const available = await checkTeamNameAvailable(name)
+    if (!available) {
+      error.value = '该队伍名称已被使用，请换一个'
+      return
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    if (msg === 'team name invalid') {
+      error.value = '队伍名称需为 2-20 个字符'
+      return
+    }
+    error.value = '无法验证队名，请稍后重试'
+    return
+  }
+  setTeamName(name, { skipPersist: true })
+  try {
+    await flushPlayerSave()
+  } catch (e) {
+    setTeamName('', { skipPersist: true })
+    const msg = e instanceof Error ? e.message : ''
+    const status = e && typeof e === 'object' && 'status' in e ? Number(e.status) : 0
+    if (msg === 'team name already taken' || status === 409) {
+      error.value = '该队伍名称已被使用，请换一个'
+      return
+    }
+    if (msg === 'team name invalid') {
+      error.value = '队伍名称需为 2-20 个字符'
+      return
+    }
+    error.value = '保存失败，请稍后重试'
+    return
+  }
   step.value = 3
 }
 
@@ -449,35 +472,6 @@ async function startAdventure() {
   margin: 0.5rem 0 0 0;
   font-size: var(--font-sm);
   color: var(--error);
-}
-
-.team-suggestions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.suggestion-label {
-  font-size: var(--font-sm);
-  color: var(--text-muted);
-}
-
-.suggestion-btn {
-  padding: 0.2rem 0.5rem;
-  font-family: inherit;
-  font-size: var(--font-sm);
-  background: var(--bg-dark);
-  border: 1px solid var(--border-dark);
-  color: var(--text-value);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.suggestion-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 /* Actions */

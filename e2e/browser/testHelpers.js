@@ -171,7 +171,7 @@ async function setupNewRun(page) {
 }
 
 async function registerAndGoToMain(page, email, options = {}) {
-  const teamName = options.teamName || 'Combat Squad'
+  const teamName = options.teamName || `Squad-${crypto.randomUUID().slice(0, 8)}`
   await setupNewRun(page)
   await page.getByLabel('邮箱').fill(email)
   await page.getByLabel('密码（至少 8 位）').fill('password123')

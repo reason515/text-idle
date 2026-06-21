@@ -98,6 +98,8 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Combat/rest log pacing** | [03-combat.md](design/03-combat.md) 1.3, `combatPacing.js`, MainScreen loop | 战斗日志步间 ms 与 `restStepReveal` 一致（[13-player-statistics.md](design/13-player-statistics.md) 7.5）；战败小结至战后休息前另见 `getDefeatBeforeRestPauseMs`（E2E 快速模式下短真实停顿，与其它 `applyCombatPacingDelayMs` 归零并存） |
 | **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎事件一致；护盾吸收是否计入「受到的伤害」 |
 | **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |
+| **Leaderboard** | `leaderboard_service.go`, MainScreen Feed Tab | 效率榜与 1.6 口径一致；≥100 探索步；清零后 upsert |
+| **Team name** | `team_name_service.go`, `GET /team-name/check`, IntroPage, `PUT /save` | 非空队名全服唯一；序章预检 check；409 on save conflict；E2E 用唯一队名 |
 | **Requirements Examples** | [requirements-format.md](../requirements-format.md) | 若用户故事或 AC 引用统计面板或清零流程 |
 
 ## 9. Audio (client-only presentation)

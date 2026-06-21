@@ -22,7 +22,7 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}); err != nil {
 		t.Fatalf("failed to migrate: %v", err)
 	}
 
@@ -30,7 +30,11 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	authService := service.NewAuthService(userRepo)
 	authHandler := NewAuthHandler(authService)
 	saveRepo := repository.NewPlayerSaveRepository(db)
-	saveService := service.NewSaveService(saveRepo)
+	leaderboardRepo := repository.NewLeaderboardRepository(db)
+	teamNameRepo := repository.NewTeamNameRepository(db)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
+	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	saveHandler := NewSaveHandler(saveService)
 	authMw := middleware.AuthRequired(userRepo)
 
@@ -141,5 +145,58 @@ func TestSave_InvalidToken_ReturnsUnauthorized(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestSave_DuplicateTeamName_ReturnsConflict(t *testing.T) {
+	r, token := setupSaveTestRouter(t)
+	payload := map[string]interface{}{
+		"teamName": "Taken Squad",
+		"squad":    []interface{}{},
+		"combatProgress": map[string]interface{}{
+			"unlockedMapCount": 1,
+			"currentMapId":     "elwynn-forest",
+			"currentProgress":  0,
+			"bossAvailable":    false,
+		},
+		"gold":      0,
+		"inventory": []interface{}{},
+		"playerStats": map[string]interface{}{
+			"combatActionSteps": 0,
+			"restSteps":         0,
+			"cumulativeGold":    0,
+			"cumulativeXp":      0,
+			"displayScaleN":     100,
+		},
+	}
+	body, _ := json.Marshal(payload)
+
+	reg2, _ := json.Marshal(map[string]string{"email": "other@example.com", "password": "password123"})
+	regReq := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(reg2))
+	regReq.Header.Set("Content-Type", "application/json")
+	regW := httptest.NewRecorder()
+	r.ServeHTTP(regW, regReq)
+	if regW.Code != http.StatusCreated {
+		t.Fatalf("register second user failed: %d", regW.Code)
+	}
+	var regResp RegisterResponse
+	json.Unmarshal(regW.Body.Bytes(), &regResp)
+
+	putReq := httptest.NewRequest(http.MethodPut, "/save", bytes.NewReader(body))
+	putReq.Header.Set("Content-Type", "application/json")
+	putReq.Header.Set("Authorization", "Bearer "+token)
+	putW := httptest.NewRecorder()
+	r.ServeHTTP(putW, putReq)
+	if putW.Code != http.StatusNoContent {
+		t.Fatalf("first put expected 204, got %d", putW.Code)
+	}
+
+	putReq2 := httptest.NewRequest(http.MethodPut, "/save", bytes.NewReader(body))
+	putReq2.Header.Set("Content-Type", "application/json")
+	putReq2.Header.Set("Authorization", "Bearer "+regResp.Token)
+	putW2 := httptest.NewRecorder()
+	r.ServeHTTP(putW2, putReq2)
+	if putW2.Code != http.StatusConflict {
+		t.Fatalf("duplicate team name expected 409, got %d body=%s", putW2.Code, putW2.Body.String())
 	}
 }

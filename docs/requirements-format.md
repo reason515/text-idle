@@ -96,7 +96,7 @@ Then [expected result/verifiable behavior].
 | AC3 | Player is on the team name step       | Player enters a name and clicks "Next" | Team name is saved and player sees the hero preview step (3 fixed heroes)        |
 | AC4 | Player is on the hero preview step    | Player clicks "Start Adventure"        | Fixed trio is created and player is redirected to the main screen                |
 | AC5 | Player has completed the intro before | Player logs in                         | Player is redirected directly to the main screen (skips intro)                   |
-
+| AC6 | Another player already uses the entered team name | Player enters that name on the team name step and clicks "Next" | Name check fails; player sees a duplicate-name message and stays on the team name step |
 
 ---
 
@@ -1573,6 +1573,35 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | Player is on the main screen in production (not E2E fast mode)       | Combat resolves a hit that deals HP damage (same condition as floating damage numbers) | A short hit sound may play in sync with that combat log line; **physical / magic / mixed** and related events use distinct timbres per [14-audio.md](design/14-audio.md) (browser autoplay may require a prior user gesture; **mute** disables output) |
 | AC4 | Automated E2E tests run with `e2eFastCombat` / `?e2e=1`              | Combat log advances                                                       | **No** audio output is produced from the game's audio bus (suppressed with fast combat pacing) |
 | AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again |
+
+---
+
+## Example 37: Efficiency Leaderboard (Internal MVP)
+
+**User Story**
+
+> As a player on a shared server,  
+> I want to see TOP 10 rankings for gold and XP efficiency across all players,  
+> So that I can compare progression with friends during internal testing.
+
+**Design Reference (from design doc)**
+
+- **Metrics**: [13-player-statistics.md](design/13-player-statistics.md) 1.6, 7.7 (exploration steps denominator; display per 100 steps).
+- **UI**: [09-social-ui.md](design/09-social-ui.md) Feed panel **排行榜** Tab.
+- **Deploy**: [deployment.md](deployment.md) (HTTPS VPS; registration without email verification in MVP).
+
+**Acceptance Criteria**
+
+
+| #   | Given                                      | When                                           | Then                                                                 |
+| --- | ------------------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Player is logged in on the main screen     | Player opens the **排行榜** Feed tab           | Gold and XP efficiency TOP 10 sections are shown (or empty state)   |
+| AC2 | Player's current stats period has ≥100 exploration steps | Player's save syncs to the server (`PUT /save`) | Player may appear on one or both boards; self rank shown at bottom |
+| AC3 | Player resets combat statistics            | Save syncs after reset                         | Leaderboard entry updates; player may drop below threshold          |
+| AC4 | Player taps **刷新** on the leaderboard tab | Request completes                              | Lists refresh from `GET /leaderboard`                                |
+| AC5 | Player has <100 exploration steps in current period | Player opens leaderboard                       | Self area indicates not yet eligible; not listed in TOP 10          |
+| AC6 | Another player already uses team name "Alpha"       | New player saves team name "Alpha" on intro    | Save rejected; user sees a clear duplicate-name message             |
+| AC7 | Player keeps their existing team name on save       | Save syncs                                     | Save succeeds (no false duplicate conflict)                         |
 
 ---
 

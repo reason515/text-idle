@@ -29,3 +29,9 @@ func (r *PlayerSaveRepository) Upsert(userID uint, saveData string) error {
 	}
 	return r.db.Save(&row).Error
 }
+
+func (r *PlayerSaveRepository) ListAll() ([]model.PlayerSave, error) {
+	var rows []model.PlayerSave
+	err := r.db.Find(&rows).Error
+	return rows, err
+}

@@ -133,10 +133,10 @@ export function getTeamName() {
   return getCache().teamName || ''
 }
 
-/** @param {string} name */
-export function setTeamName(name) {
+/** @param {string} name @param {{ skipPersist?: boolean }} [options] */
+export function setTeamName(name, options = {}) {
   getCache().teamName = String(name || '').trim()
-  schedulePersist()
+  if (!options.skipPersist) schedulePersist()
 }
 
 export function getSquadData() {
@@ -271,6 +271,10 @@ function schedulePersist() {
 /** Immediately persist in-memory save to server. */
 export async function flushPlayerSave() {
   if (memoryOnly) return
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
   const body = JSON.stringify(getCache())
@@ -284,7 +288,21 @@ export async function flushPlayerSave() {
     throw new Error('unauthorized')
   }
   if (!res.ok && res.status !== 204) {
-    throw new Error('failed to save')
+    const raw = await res.text()
+    /** @type {{ error?: string }} */
+    let data = {}
+    try {
+      data = raw ? JSON.parse(raw) : {}
+    } catch {
+      data = {}
+    }
+    let msg = typeof data.error === 'string' ? data.error : 'failed to save'
+    if (msg === 'failed to save' && res.status === 409) {
+      msg = 'team name already taken'
+    }
+    const err = new Error(msg)
+    /** @type {any} */ (err).status = res.status
+    throw err
   }
 }
 

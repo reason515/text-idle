@@ -261,6 +261,17 @@
           >
             世界聊天
           </button>
+          <button
+            type="button"
+            class="feed-tab"
+            role="tab"
+            :aria-selected="mainFeedTab === 'leaderboard'"
+            :class="{ active: mainFeedTab === 'leaderboard' }"
+            data-testid="feed-tab-leaderboard"
+            @click="openLeaderboardTab"
+          >
+            排行榜
+          </button>
         </div>
 
         <div
@@ -666,6 +677,99 @@
               disabled
             ></textarea>
             <button type="button" class="btn chat-send-btn" disabled>发送</button>
+          </div>
+        </div>
+
+        <div
+          v-show="mainFeedTab === 'leaderboard'"
+          class="feed-tab-panel feed-leaderboard-wrap game-scroll"
+          role="tabpanel"
+        >
+          <div class="feed-leaderboard-header">
+            <div class="panel-heading">
+              <span class="col-header">效率排行榜</span>
+              <p class="panel-subtitle">全服玩家按探索步效率排名（TOP 10）</p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm player-stats-compact-btn"
+              data-testid="leaderboard-refresh"
+              :disabled="leaderboardLoading"
+              @click="loadLeaderboard"
+            >
+              {{ leaderboardLoading ? '刷新中...' : '刷新' }}
+            </button>
+          </div>
+
+          <div class="detail-skill-choice-banner feed-leaderboard-banner tooltip-wrap has-tip">
+            <span
+              >口径与主界面战斗统计一致：每 100 探索步金币/经验；至少 100 探索步方可上榜；清零统计后排名会更新。</span
+            >
+            <span class="tooltip-text tooltip-wide tooltip-below"
+              >探索步 = 战斗行动步 + 休息步。效率 = 本周期累计金币或经验 / 探索步。展示值为每 100 探索步。</span
+            >
+          </div>
+
+          <p v-if="leaderboardError" class="error-msg feed-leaderboard-error">{{ leaderboardError }}</p>
+
+          <section class="feed-leaderboard-section" aria-label="金币效率排行榜">
+            <h3 class="feed-leaderboard-title">
+              <span class="stat-label">金币效率</span>
+              <span class="feed-leaderboard-unit">/ 每 100 探索步</span>
+            </h3>
+            <ol v-if="leaderboardGoldRows.length" class="feed-leaderboard-list" data-testid="leaderboard-gold-list">
+              <li
+                v-for="row in leaderboardGoldRows"
+                :key="'gold-' + row.rank + '-' + row.team_name"
+                class="feed-leaderboard-row"
+                :class="{ 'feed-leaderboard-row-self': row.is_self }"
+              >
+                <span class="feed-leaderboard-rank">#{{ row.rank }}</span>
+                <span class="feed-leaderboard-name">{{ displayLeaderboardTeamName(row.team_name) }}</span>
+                <span class="feed-leaderboard-value val-gold">{{ formatLeaderboardValue(row.value_per_100_steps) }}</span>
+                <span class="feed-leaderboard-steps">{{ row.exploration_steps }} 步</span>
+              </li>
+            </ol>
+            <p v-else class="empty-hint">暂无上榜玩家。</p>
+          </section>
+
+          <section class="feed-leaderboard-section" aria-label="经验效率排行榜">
+            <h3 class="feed-leaderboard-title">
+              <span class="stat-label">经验效率</span>
+              <span class="feed-leaderboard-unit">/ 每 100 探索步</span>
+            </h3>
+            <ol v-if="leaderboardXpRows.length" class="feed-leaderboard-list" data-testid="leaderboard-xp-list">
+              <li
+                v-for="row in leaderboardXpRows"
+                :key="'xp-' + row.rank + '-' + row.team_name"
+                class="feed-leaderboard-row"
+                :class="{ 'feed-leaderboard-row-self': row.is_self }"
+              >
+                <span class="feed-leaderboard-rank">#{{ row.rank }}</span>
+                <span class="feed-leaderboard-name">{{ displayLeaderboardTeamName(row.team_name) }}</span>
+                <span class="feed-leaderboard-value val-exp">{{ formatLeaderboardValue(row.value_per_100_steps) }}</span>
+                <span class="feed-leaderboard-steps">{{ row.exploration_steps }} 步</span>
+              </li>
+            </ol>
+            <p v-else class="empty-hint">暂无上榜玩家。</p>
+          </section>
+
+          <div v-if="leaderboardSelf" class="feed-leaderboard-self">
+            <span class="command-label">你的排名</span>
+            <template v-if="leaderboardSelf.eligible">
+              <span
+                >金币 {{ formatLeaderboardRank(leaderboardSelf.gold_rank) }}（{{
+                  formatLeaderboardValue(leaderboardSelf.gold_per_100_steps)
+                }}/100步）</span
+              >
+              <span class="feed-leaderboard-self-sep">|</span>
+              <span
+                >经验 {{ formatLeaderboardRank(leaderboardSelf.xp_rank) }}（{{
+                  formatLeaderboardValue(leaderboardSelf.xp_per_100_steps)
+                }}/100步）</span
+              >
+            </template>
+            <span v-else>探索步未满 100，暂未上榜。</span>
           </div>
         </div>
       </aside>
@@ -2755,6 +2859,12 @@ import { buildHeroInjuryPieSegments, isInjuryBasicPieKey } from '../game/playerS
 import { buildPieChartModel } from '../game/playerStatsPieChart.js'
 import { buildTimelineTrendChartModel } from '../game/playerStatsTimelineChart.js'
 import { buildWinRatePieSegments, summarizeBattleOutcomes } from '../game/playerStatsWinRate.js'
+import {
+  displayTeamName as displayLeaderboardTeamName,
+  fetchLeaderboard,
+  formatLeaderboardRank,
+  formatLeaderboardValue,
+} from '../game/leaderboardApi.js'
 
 const RESOURCE_MAP = {
   Warrior: { label: '怒气', fillClass: 'rage-fill' },
@@ -3092,8 +3202,14 @@ const TANK_ROLE_TIP_TEXT = '指定为小队坦克，用于仇恨相关战术'
 const formulaTooltip = ref(null)
 const inventoryVersion = ref(0)
 const logListEl = ref(null)
-/** Right feed column: battle log vs world chat preview */
+/** Right feed column: battle log vs world chat preview vs leaderboard */
 const mainFeedTab = ref('log')
+const leaderboardGoldRows = ref([])
+const leaderboardXpRows = ref([])
+/** @type {import('vue').Ref<import('../game/leaderboardApi.js').LeaderboardSelf|null>} */
+const leaderboardSelf = ref(null)
+const leaderboardLoading = ref(false)
+const leaderboardError = ref('')
 const isRunning = ref(false)
 const isPaused = ref(false)
 const currentActorId = ref(null)
@@ -3151,6 +3267,29 @@ function showToast(payload) {
   setTimeout(() => {
     toastMessages.value = toastMessages.value.filter((t) => t.id !== id)
   }, 2800)
+}
+
+async function loadLeaderboard() {
+  leaderboardLoading.value = true
+  leaderboardError.value = ''
+  try {
+    const data = await fetchLeaderboard()
+    leaderboardGoldRows.value = Array.isArray(data.gold_top10) ? data.gold_top10 : []
+    leaderboardXpRows.value = Array.isArray(data.xp_top10) ? data.xp_top10 : []
+    leaderboardSelf.value = data.self || null
+  } catch (e) {
+    leaderboardGoldRows.value = []
+    leaderboardXpRows.value = []
+    leaderboardSelf.value = null
+    leaderboardError.value = e instanceof Error ? e.message : '加载排行榜失败'
+  } finally {
+    leaderboardLoading.value = false
+  }
+}
+
+function openLeaderboardTab() {
+  mainFeedTab.value = 'leaderboard'
+  loadLeaderboard()
 }
 
 function getFloatingNumbers(unitId) {
@@ -6866,6 +7005,120 @@ onUnmounted(() => {
 
 .feed-chat-wrap {
   gap: 0.45rem;
+}
+
+.feed-leaderboard-wrap {
+  gap: 0.55rem;
+}
+
+.feed-leaderboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.feed-leaderboard-banner {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.feed-leaderboard-error {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.feed-leaderboard-section {
+  flex-shrink: 0;
+}
+
+.feed-leaderboard-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-value);
+}
+
+.feed-leaderboard-unit {
+  font-size: var(--font-xs);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.feed-leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.feed-leaderboard-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto auto;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.35rem 0.45rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px;
+  font-size: var(--font-sm);
+}
+
+.feed-leaderboard-row-self {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.feed-leaderboard-rank {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-leaderboard-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-value);
+}
+
+.feed-leaderboard-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.feed-leaderboard-steps {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  white-space: nowrap;
+}
+
+.feed-leaderboard-self {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 0.55rem 0.65rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  color: var(--text-value);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.feed-leaderboard-self-sep {
+  color: var(--text-muted);
 }
 
 .feed-chat-hint {
