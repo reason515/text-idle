@@ -321,11 +321,8 @@
                     >
                       <span :style="{ color: classColor(row.heroClass) }">{{ row.heroName }}</span
                       ><span class="val-exp"> +{{ row.xp }}</span>
-                      <span class="tooltip-text tooltip-wide tooltip-below">
-                        贡献：输出 {{ row.contributions?.damageDealt ?? 0 }}，治疗
-                        {{ row.contributions?.healingDone ?? 0 }}，护盾
-                        {{ row.contributions?.shieldMitigated ?? 0 }}，承伤
-                        {{ row.contributions?.damageTaken ?? 0 }}
+                      <span class="tooltip-text tooltip-below">
+                        贡献：输出 {{ row.contributions?.damageDealt ?? 0 }}，治疗 {{ row.contributions?.healingDone ?? 0 }}，护盾 {{ row.contributions?.shieldMitigated ?? 0 }}，承伤 {{ row.contributions?.damageTaken ?? 0 }}
                       </span>
                     </span>
                   </div>
@@ -7805,6 +7802,12 @@ onUnmounted(() => {
 }
 .log-xp-hero-row {
   font-size: var(--font-sm);
+}
+.log-xp-hero-row .tooltip-text {
+  right: auto;
+  left: 0;
+  white-space: nowrap;
+  min-width: max-content;
 }
 .log-summary .val-exp { color: var(--color-exp); font-weight: normal; margin-left: 0.5rem; }
 .log-summary .val-gold { color: var(--color-gold); font-weight: normal; margin-left: 0.3rem; }
