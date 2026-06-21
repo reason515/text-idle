@@ -78,10 +78,12 @@ func serveSPA(fsys fs.FS) gin.HandlerFunc {
 			defer f.Close()
 			stat, statErr := f.Stat()
 			if statErr == nil && !stat.IsDir() {
+				c.Status(http.StatusOK)
 				serveStaticFile(c.Writer, c.Request, fsys, path)
 				return
 			}
 		}
+		c.Status(http.StatusOK)
 		serveStaticFile(c.Writer, c.Request, fsys, "index.html")
 	}
 }

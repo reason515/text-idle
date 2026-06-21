@@ -92,6 +92,9 @@ func TestServeSPA_routes(t *testing.T) {
 		c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 		serveSPA(fsys)(c)
 
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d", rec.Code)
+		}
 		if rec.Header().Get("Cache-Control") != "no-cache, must-revalidate" {
 			t.Fatalf("cache-control = %q", rec.Header().Get("Cache-Control"))
 		}
@@ -106,6 +109,9 @@ func TestServeSPA_routes(t *testing.T) {
 		c.Request = httptest.NewRequest(http.MethodGet, "/main", nil)
 		serveSPA(fsys)(c)
 
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d", rec.Code)
+		}
 		if rec.Body.String() != "<html>spa</html>" {
 			t.Fatalf("body = %q", rec.Body.String())
 		}
