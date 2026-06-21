@@ -32,7 +32,7 @@ Output: `dist/text-idle` (Linux amd64, frontend embedded).
 | Item | Value |
 |------|--------|
 | Public IP | `119.45.224.68` |
-| SSH user | `ubuntu` (change `-SshUser` if your image uses `root`) |
+| SSH user | `root` (TencentOS on this instance; Ubuntu images often use `ubuntu` — pass `-SshUser`) |
 | SSH key (local, do **not** commit) | `D:\docs\tencent cloud key\reason515.pem` |
 | Game port | `8080` |
 | Register URL | http://119.45.224.68:8080/register |
@@ -42,17 +42,13 @@ Domain and HTTPS are **not** used for now; access via public IP + port.
 
 ### Deploy (copy-paste)
 
-From the **project root** on Windows:
+From the **project root** on Windows, run PowerShell **directly** (recommended):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/deploy-tencent.ps1 -KeyPath "D:\docs\tencent cloud key\reason515.pem"
+powershell -ExecutionPolicy Bypass -File scripts/deploy-tencent.ps1 -KeyPath "D:\docs\tencent cloud key\reason515.pem" -SshUser root
 ```
 
-Or via npm:
-
-```powershell
-npm run deploy:tencent -- -KeyPath "D:\docs\tencent cloud key\reason515.pem"
-```
+> **Do not use** `npm run deploy:tencent -- -KeyPath "..."` — npm does not forward `-KeyPath` to the script. The key path (especially with spaces) is split into wrong arguments and `scp`/`ssh` fail with `Permission denied (publickey)`.
 
 Re-run the same command after code changes to upload a new binary (existing DB is backed up on the server first).
 
@@ -63,13 +59,13 @@ Re-run the same command after code changes to upload a new binary (existing DB i
 Invoke-WebRequest -Uri "http://119.45.224.68:8080/health" -UseBasicParsing
 
 # SSH shell
-ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68
+ssh -i "D:\docs\tencent cloud key\reason515.pem" root@119.45.224.68
 
 # Follow service logs
-ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68 "sudo journalctl -u text-idle -f"
+ssh -i "D:\docs\tencent cloud key\reason515.pem" root@119.45.224.68 "journalctl -u text-idle -f"
 
 # Manual DB backup on server
-ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68 "sudo bash /opt/text-idle/backup-db.sh /var/lib/text-idle/text-idle.db /var/backups/text-idle"
+ssh -i "D:\docs\tencent cloud key\reason515.pem" root@119.45.224.68 "bash /opt/text-idle/backup-db.sh /var/lib/text-idle/text-idle.db /var/backups/text-idle"
 ```
 
 ### Script flags
@@ -78,7 +74,7 @@ ssh -i "D:\docs\tencent cloud key\reason515.pem" ubuntu@119.45.224.68 "sudo bash
 |------|---------|---------|
 | `-KeyPath` | (required) | Local SSH private key (`.pem`) |
 | `-ServerHost` | `119.45.224.68` | VPS public IP |
-| `-SshUser` | `ubuntu` | SSH login user |
+| `-SshUser` | `ubuntu` (script default) | SSH login user; use **`root`** for the current Tencent test VPS |
 | `-Port` | `8080` | Game HTTP port |
 
 The script builds the Linux binary, uploads via `scp`, installs the `systemd` service, and runs a `/health` check.
@@ -160,7 +156,7 @@ Share with friends: `https://your.domain.com/register`
 
 ## Data persistence
 
-- SQLite file: `/var/lib/text-idle/text-idle.db` (accounts + saves + leaderboard)
+- SQLite file: `/var/lib/text-idle/text-idle.db` (accounts, saves, leaderboard, message board)
 - **Do not** delete this directory when upgrading the binary; only replace `/opt/text-idle/text-idle`
 - Back up before upgrades:
 
@@ -207,8 +203,8 @@ This is not shipped in the MVP repo; use the systemd path above for the fastest 
 
 | Issue | Check |
 |-------|--------|
+| `Permission denied (publickey)` right after deploy script starts upload | Use **PowerShell directly** with quoted `-KeyPath` (not `npm run deploy:tencent -- -KeyPath ...`). On this VPS use **`-SshUser root`**. Confirm the `.pem` matches the instance key in Tencent Cloud console |
 | `UNPROTECTED PRIVATE KEY FILE` / `bad permissions` (Windows) | Restrict `.pem` ACL to your user only (PowerShell): `icacls "D:\docs\tencent cloud key\reason515.pem" /inheritance:r; icacls "D:\docs\tencent cloud key\reason515.pem" /grant:r "$($env:USERNAME):(R)"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Authenticated Users"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Users"` |
-| `Permission denied (publickey)` after fixing key | TencentOS often uses `root`: add `-SshUser root`; confirm the key pair matches the instance in Tencent Cloud console |
 | SSH hangs / timeout | Security group inbound **22**; instance running; correct public IP |
 | 502 from Caddy | `systemctl status text-idle`, port 8080 listening |
 | Empty leaderboard | Players need >= 1000 lifetime exploration steps (`leaderboardTrack.lifetimeSteps`) |
