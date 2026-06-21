@@ -31,10 +31,15 @@ func main() {
 	leaderboardRepo := repository.NewLeaderboardRepository(db)
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	teamNameRepo := repository.NewTeamNameRepository(db)
-	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	userRepo := repository.NewUserRepository(db)
+	includeTest := service.LeaderboardIncludeTestUsers(*dbPath)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, includeTest)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	if err := teamNameService.BackfillAll(); err != nil {
 		log.Printf("team name backfill warning: %v", err)
+	}
+	if err := leaderboardService.PurgeTestUserEntries(); err != nil {
+		log.Printf("leaderboard purge test users warning: %v", err)
 	}
 	if err := leaderboardService.BackfillAll(); err != nil {
 		log.Printf("leaderboard backfill warning: %v", err)
@@ -44,7 +49,7 @@ func main() {
 	if f := static.GetFS(); f != nil {
 		staticFS = *f
 	}
-	r := server.NewRouter(db, staticFS)
+	r := server.NewRouter(db, staticFS, includeTest)
 
 	addr := resolveListenAddr(*addrFlag)
 	log.Printf("server starting on %s (db=%s)", addr, *dbPath)

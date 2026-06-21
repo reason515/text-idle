@@ -32,7 +32,7 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	leaderboardRepo := repository.NewLeaderboardRepository(db)
 	teamNameRepo := repository.NewTeamNameRepository(db)
-	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	saveHandler := NewSaveHandler(saveService)

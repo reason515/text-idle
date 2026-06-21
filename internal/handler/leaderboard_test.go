@@ -32,7 +32,7 @@ func setupLeaderboardTestRouter(t *testing.T) (*gin.Engine, string) {
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	leaderboardRepo := repository.NewLeaderboardRepository(db)
 	teamNameRepo := repository.NewTeamNameRepository(db)
-	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	saveHandler := NewSaveHandler(saveService)
@@ -81,15 +81,21 @@ func TestLeaderboard_PutSaveThenGet_ReturnsSelfEligible(t *testing.T) {
 		"gold":      0,
 		"inventory": []interface{}{},
 		"playerStats": map[string]interface{}{
-			"combatActionSteps": 100,
+			"combatActionSteps": 1000,
 			"restSteps":         0,
-			"cumulativeGold":    500,
+			"cumulativeGold":    5000,
 			"cumulativeXp":      200,
 			"displayScaleN":     100,
 			"battleCount":       0,
 			"victoryCount":      0,
 			"battleTimeline":    []interface{}{},
 			"damageByHero":      map[string]interface{}{},
+		},
+		"leaderboardTrack": map[string]interface{}{
+			"lifetimeSteps": 1000,
+			"segments": []interface{}{
+				map[string]interface{}{"steps": 1000, "gold": 5000, "xp": 200},
+			},
 		},
 	}
 	body, _ := json.Marshal(payload)

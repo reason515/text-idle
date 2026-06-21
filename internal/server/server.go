@@ -17,14 +17,14 @@ import (
 // NewRouter creates the application router with all routes and middleware.
 // Used by both main.go and E2E tests to ensure identical behavior.
 // staticFS: when non-nil (release build), serves embedded frontend; when nil (dev), API only.
-func NewRouter(db *gorm.DB, staticFS fs.FS) *gin.Engine {
+func NewRouter(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	leaderboardRepo := repository.NewLeaderboardRepository(db)
 	teamNameRepo := repository.NewTeamNameRepository(db)
-	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, includeTestUsersInLeaderboard)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	saveHandler := handler.NewSaveHandler(saveService)

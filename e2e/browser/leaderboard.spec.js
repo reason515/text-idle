@@ -19,10 +19,10 @@ test.describe('Efficiency leaderboard (Feed tab)', () => {
       localStorage.setItem(
         'textIdlePlayerStats',
         JSON.stringify({
-          combatActionSteps: 100,
+          combatActionSteps: 1000,
           restSteps: 0,
-          cumulativeGold: 500,
-          cumulativeXp: 200,
+          cumulativeGold: 5000,
+          cumulativeXp: 2000,
           displayScaleN: 100,
           battleCount: 1,
           victoryCount: 1,
@@ -52,5 +52,16 @@ test.describe('Efficiency leaderboard (Feed tab)', () => {
     await expect(page.getByTestId('feed-tab-log')).toBeVisible()
     await expect(page.getByTestId('feed-tab-chat')).toBeVisible()
     await expect(page.getByTestId('feed-tab-leaderboard')).toBeVisible()
+  })
+
+  test('command deck leaderboard button opens feed leaderboard tab', async ({ page }) => {
+    const email = uniqueTestEmail('leaderboard-menu')
+    await registerAndGoToMain(page, email)
+    await pauseCombat(page)
+    await expect(page.getByTestId('leaderboard-open')).toBeVisible()
+    await expect(page.getByRole('button', { name: '任务' })).toHaveCount(0)
+    await page.getByTestId('leaderboard-open').click()
+    await expect(page.getByTestId('feed-tab-leaderboard')).toHaveClass(/active/)
+    await expect(page.getByTestId('leaderboard-gold-list')).toBeVisible({ timeout: 10000 })
   })
 })

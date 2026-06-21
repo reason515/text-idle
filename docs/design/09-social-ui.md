@@ -1,5 +1,5 @@
 - **排行榜 (Leaderboards)**
-	- **效率排行榜（MVP）**: 主界面 Feed 区「排行榜」Tab；`GET /leaderboard`（需登录）。展示全服 **金币效率** 与 **经验效率** 各 TOP 10，口径与 [13-player-statistics.md](./13-player-statistics.md) 1.6 一致（每探索步；界面展示为每 100 探索步）。上榜门槛：探索步数 ≥ 100。**展示名**为存档 `teamName`（空则 UI 显示「未命名队伍」）；**非空队名全服唯一**（`GET /team-name/check` 预检；`PUT /save` 冲突返回 409 `team name already taken`），以保证排行榜可区分玩家。序章命名步先调用 check 再写入存档。
+	- **效率排行榜（MVP）**: 主界面 Feed 区「排行榜」Tab；底部功能区亦有「排行榜」入口；`GET /leaderboard`（需登录）。展示全服 **金币效率** 与 **经验效率** 各 TOP 10。排名口径：**最近 1000 探索步**内累计金币/经验 ÷ 1000（界面展示为每 100 步）；**总步数**（`lifetimeSteps`）≥ 1000 方可上榜。数据来自存档 `leaderboardTrack`（滚动窗口，**不因个人统计清零而重置**），与 [13-player-statistics.md](./13-player-statistics.md) 7.7 一致。**展示名**为存档 `teamName`（空则 UI 显示「未命名队伍」）；**非空队名全服唯一**（`GET /team-name/check` 预检；`PUT /save` 冲突返回 409 `team name already taken`），以保证排行榜可区分玩家。序章命名步先调用 check 再写入存档。列表采用**表格式四列**（排名、队伍、效率值、总步数），金币/经验效率数值分别使用 `--color-gold` / `--color-exp`。**E2E 测试账号**（邮箱 `@example.com`）在正式库（非 `*e2e*.db`）中不参与排行，启动时会清理其历史条目。
 	- **荣誉 / PVP 排行榜**: 规则与展示（与关卡偶遇、荣誉积分对应）— 未实现
 	- **其他排行榜**: 待补充完善
 - **交易市场 (Trading Market)**: 交易模式与限制
@@ -50,10 +50,10 @@
 - **中左栏（怪物）**：当前战斗中的怪物卡片，显示名称、Tier 标签、HP 条；点击弹出详情 Modal；与小队相邻便于同时关注敌我状态
 - **右栏（战斗日志）**：战斗日志逐条动画显示（每条间隔默认 5s，可调，见战斗设计「客户端战斗日志播放节奏」），颜色区分伤害类型；提供**暂停/继续**按钮，可暂停日志滚动以便详细查看；日志跨战斗持续保留，每场战斗间以分割线分隔
 - **最右社交预留区**：Feed 面板含 Tab：**战斗日志**（默认）、**世界聊天**（占位）、**排行榜**（效率 TOP 10）。排行榜见上文「效率排行榜（MVP）」；世界聊天仍为占位输入框。
-- **底部资源与功能区**：在实现中主界面底部为 `command-deck`，沿用「复古终端控制台」视觉（顶部 `--border` 绿色分隔、每张卡片标题带 `> ` 标记与下划线分隔），四栏分区：**资源**（金币，数值用 `--color-gold` 适当放大）、**战斗统计**入口（金币/经验每 N 步效率，点击打开统计 Modal）、**功能**按钮组、**账号**（登出）。
-  - **功能**区分两组：**可用功能**（背包、商店、**音效**设置）为实线按钮、突出可点击；**敬请期待**（战术、任务、队伍、图鉴等规划中入口）为虚线、`--text-muted` 弱化按钮并以「// 敬请期待」标注，避免与可用功能混淆。
+- **底部资源与功能区**：主界面底部为 `command-deck` 单行布局（顶部 `--border` 绿色分隔）：**资源**（金币，字号与功能按钮一致，数值仍用 `--color-gold`）、**战斗统计**（金币/经验每 N 步效率，点击打开统计 Modal）、**功能**（背包、商店、音效、排行榜）、**登出**。规划中入口暂不展示。
+  - **功能**（背包、商店、**音效**、**排行榜**）与**资源**、**战斗统计**、**登出**同排单行展示；点击「排行榜」切换到 Feed「排行榜」Tab 并加载数据。规划中入口（战术、队伍、图鉴等）暂不展示，待功能就绪后再开放。
   - **音效**面板（主音量、静音、试听、持久化键）见 [14-audio.md](./14-audio.md)。
-  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency` 与 `audio-settings-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`。
+  - E2E 选择器须保持：`.gold-display` / `.gold-value`、`.backpack-btn`（含 `背包 x/100`）、`.shop-btn`（含「商店」）、`player-stats-efficiency`、`audio-settings-open` 与 `leaderboard-open` testid；Feed Tab：`feed-tab-log`、`feed-tab-chat`、`feed-tab-leaderboard`；排行榜列表：`leaderboard-gold-list`、`leaderboard-xp-list`。
 
 ## 英雄卡片（紧凑版）
 

@@ -1586,7 +1586,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 **Design Reference (from design doc)**
 
-- **Metrics**: [13-player-statistics.md](design/13-player-statistics.md) 1.6, 7.7 (exploration steps denominator; display per 100 steps).
+- **Metrics**: [13-player-statistics.md](design/13-player-statistics.md) 7.7 (rolling last 1000 exploration steps; display per 100 steps; `leaderboardTrack` independent of stats reset).
 - **UI**: [09-social-ui.md](design/09-social-ui.md) Feed panel **排行榜** Tab.
 - **Deploy**: [deployment.md](deployment.md) (HTTPS VPS; registration without email verification in MVP).
 
@@ -1596,10 +1596,10 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | #   | Given                                      | When                                           | Then                                                                 |
 | --- | ------------------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------- |
 | AC1 | Player is logged in on the main screen     | Player opens the **排行榜** Feed tab           | Gold and XP efficiency TOP 10 sections are shown (or empty state)   |
-| AC2 | Player's current stats period has ≥100 exploration steps | Player's save syncs to the server (`PUT /save`) | Player may appear on one or both boards; self rank shown at bottom |
-| AC3 | Player resets combat statistics            | Save syncs after reset                         | Leaderboard entry updates; player may drop below threshold          |
+| AC2 | Player's `leaderboardTrack.lifetimeSteps` ≥ 1000 | Player's save syncs to the server (`PUT /save`) | Player may appear on one or both boards; self rank shown at bottom |
+| AC3 | Player resets combat statistics (`playerStats` only) | Save syncs after reset                         | Leaderboard entry unchanged (still uses `leaderboardTrack`)        |
 | AC4 | Player taps **刷新** on the leaderboard tab | Request completes                              | Lists refresh from `GET /leaderboard`                                |
-| AC5 | Player has <100 exploration steps in current period | Player opens leaderboard                       | Self area indicates not yet eligible; not listed in TOP 10          |
+| AC5 | Player has <1000 lifetime exploration steps  | Player opens leaderboard                       | Self area indicates not yet eligible; not listed in TOP 10          |
 | AC6 | Another player already uses team name "Alpha"       | New player saves team name "Alpha" on intro    | Save rejected; user sees a clear duplicate-name message             |
 | AC7 | Player keeps their existing team name on save       | Save syncs                                     | Save succeeds (no false duplicate conflict)                         |
 

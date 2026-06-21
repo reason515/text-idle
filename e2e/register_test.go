@@ -24,7 +24,7 @@ func setupE2E(t *testing.T) (*gin.Engine, *gorm.DB) {
 		t.Fatalf("failed to migrate: %v", err)
 	}
 
-	r := server.NewRouter(db, nil)
+	r := server.NewRouter(db, nil, true)
 	return r, db
 }
 

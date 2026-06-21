@@ -208,9 +208,11 @@
 
 ### 7.7 与全服效率排行榜
 
-- 服务端从存档 `playerStats` 派生 **每探索步金币/经验**，与 1.6、7.4 公式一致；榜单展示 **每 100 探索步**（固定倍率）。
-- 探索步 &lt; 100 不参与排名；玩家 **清零统计** 后下次存档同步会更新或下榜。
-- 实现：`internal/service/leaderboard_service.go`、`GET /leaderboard`、主界面 Feed「排行榜」Tab。
+- 排行榜使用存档内独立字段 `leaderboardTrack`（**不因「清零统计」重置**）：滚动保留**最近 1000 探索步**内的金币/经验片段；`lifetimeSteps` 为账号累计探索步（战斗行动步 + 休息步）。
+- 排名效率：`窗口内累计金币（或经验） / 1000`；界面展示 **每 100 探索步**（×100）。
+- **参与门槛**：`lifetimeSteps` ≥ 1000；未满则不上榜。
+- 个人战斗统计 Modal 的「清零统计」仅重置 `playerStats`（本周期分析用），**不影响** `leaderboardTrack` 与排行榜。
+- 实现：`frontend/src/game/leaderboardTrack.js`、`internal/service/leaderboard_track.go`、`leaderboard_service.go`、`GET /leaderboard`、主界面 Feed「排行榜」Tab。
 
 ---
 

@@ -22,7 +22,7 @@ func setupTeamNameTestDB(t *testing.T) (*gorm.DB, *SaveService, *TeamNameService
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	lbRepo := repository.NewLeaderboardRepository(db)
 	teamRepo := repository.NewTeamNameRepository(db)
-	lbSvc := NewLeaderboardService(lbRepo, saveRepo)
+	lbSvc := NewLeaderboardService(lbRepo, saveRepo, repository.NewUserRepository(db), true)
 	teamSvc := NewTeamNameService(teamRepo, saveRepo)
 	saveSvc := NewSaveService(saveRepo, lbSvc, teamSvc)
 	return db, saveSvc, teamSvc

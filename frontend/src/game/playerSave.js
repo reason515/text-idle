@@ -4,6 +4,11 @@
  */
 
 import { createInitialProgress } from './combat.js'
+import {
+  createEmptyLeaderboardTrack,
+  migrateLeaderboardTrackFromPlayerStats,
+  normalizeLeaderboardTrack,
+} from './leaderboardTrack.js'
 import { createEmptyPlayerStats, normalizePlayerStats } from './playerStatistics.js'
 
 /** Legacy localStorage keys cleared after migration to server save. */
@@ -16,7 +21,7 @@ export const LEGACY_SAVE_KEYS = [
   'textIdlePlayerStats',
 ]
 
-/** @returns {{ teamName: string, squad: Array, combatProgress: object, gold: number, inventory: Array, playerStats: object }} */
+/** @returns {{ teamName: string, squad: Array, combatProgress: object, gold: number, inventory: Array, playerStats: object, leaderboardTrack: import('./leaderboardTrack.js').LeaderboardTrack }} */
 export function createEmptyPlayerSave() {
   return {
     teamName: '',
@@ -25,6 +30,7 @@ export function createEmptyPlayerSave() {
     gold: 0,
     inventory: [],
     playerStats: createEmptyPlayerStats(),
+    leaderboardTrack: createEmptyLeaderboardTrack(),
   }
 }
 
@@ -55,6 +61,14 @@ export function normalizePlayerSave(raw) {
   if (Array.isArray(o.inventory)) base.inventory = o.inventory
   if (o.playerStats && typeof o.playerStats === 'object') {
     base.playerStats = normalizePlayerStats(o.playerStats)
+  }
+  if (o.leaderboardTrack && typeof o.leaderboardTrack === 'object') {
+    base.leaderboardTrack = normalizeLeaderboardTrack(o.leaderboardTrack)
+  } else {
+    base.leaderboardTrack = migrateLeaderboardTrackFromPlayerStats(
+      createEmptyLeaderboardTrack(),
+      base.playerStats,
+    )
   }
   return base
 }
@@ -186,6 +200,16 @@ export function getPlayerStatsData() {
 /** @param {object} stats */
 export function setPlayerStatsData(stats) {
   getCache().playerStats = stats
+  schedulePersist()
+}
+
+export function getLeaderboardTrackData() {
+  return getCache().leaderboardTrack || createEmptyLeaderboardTrack()
+}
+
+/** @param {import('./leaderboardTrack.js').LeaderboardTrack} track */
+export function setLeaderboardTrackData(track) {
+  getCache().leaderboardTrack = normalizeLeaderboardTrack(track)
   schedulePersist()
 }
 

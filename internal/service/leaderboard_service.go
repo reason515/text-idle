@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/text-idle/text-idle/internal/model"
@@ -12,23 +14,35 @@ import (
 )
 
 const (
-	LeaderboardMinExplorationSteps = 100
+	LeaderboardMinExplorationSteps = LeaderboardMinLifetimeSteps
 	LeaderboardDisplayScaleN       = 100
 )
 
 type LeaderboardService struct {
-	leaderboardRepo *repository.LeaderboardRepository
-	saveRepo        *repository.PlayerSaveRepository
+	leaderboardRepo  *repository.LeaderboardRepository
+	saveRepo         *repository.PlayerSaveRepository
+	userRepo         *repository.UserRepository
+	includeTestUsers bool
 }
 
 func NewLeaderboardService(
 	leaderboardRepo *repository.LeaderboardRepository,
 	saveRepo *repository.PlayerSaveRepository,
+	userRepo *repository.UserRepository,
+	includeTestUsers bool,
 ) *LeaderboardService {
 	return &LeaderboardService{
-		leaderboardRepo: leaderboardRepo,
-		saveRepo:        saveRepo,
+		leaderboardRepo:  leaderboardRepo,
+		saveRepo:         saveRepo,
+		userRepo:         userRepo,
+		includeTestUsers: includeTestUsers,
 	}
+}
+
+// LeaderboardIncludeTestUsers enables test-account rows when using the E2E database.
+func LeaderboardIncludeTestUsers(dbPath string) bool {
+	base := strings.ToLower(filepath.Base(dbPath))
+	return strings.Contains(base, "e2e")
 }
 
 type savePayload struct {
@@ -43,21 +57,6 @@ type playerStatsPayload struct {
 	CumulativeXp      float64 `json:"cumulativeXp"`
 }
 
-func explorationSteps(combat, rest int) int {
-	total := combat + rest
-	if total < 0 {
-		return 0
-	}
-	return total
-}
-
-func perExplorationStep(total float64, steps int) float64 {
-	if steps <= 0 {
-		return 0
-	}
-	return total / float64(steps)
-}
-
 func defaultTeamName(name string) string {
 	return name
 }
@@ -67,29 +66,58 @@ func parseLeaderboardEntry(userID uint, saveJSON json.RawMessage) (*model.Leader
 	if err := json.Unmarshal(saveJSON, &payload); err != nil {
 		return nil, err
 	}
-	var stats playerStatsPayload
-	if len(payload.PlayerStats) > 0 {
-		if err := json.Unmarshal(payload.PlayerStats, &stats); err != nil {
-			return nil, err
-		}
+	track, _, err := parseLeaderboardTrackFromSave(saveJSON)
+	if err != nil {
+		return nil, err
 	}
-	steps := explorationSteps(stats.CombatActionSteps, stats.RestSteps)
+	if track.LifetimeSteps < LeaderboardMinLifetimeSteps {
+		return nil, nil
+	}
+	_, windowGold, windowXp := windowTotals(track)
 	return &model.LeaderboardEntry{
 		UserID:           userID,
 		TeamName:         defaultTeamName(payload.TeamName),
-		ExplorationSteps: steps,
-		GoldPerStep:      perExplorationStep(stats.CumulativeGold, steps),
-		XpPerStep:        perExplorationStep(stats.CumulativeXp, steps),
+		ExplorationSteps: track.LifetimeSteps,
+		GoldPerStep:      windowGold / float64(LeaderboardWindowSteps),
+		XpPerStep:        windowXp / float64(LeaderboardWindowSteps),
 		UpdatedAt:        time.Now().UTC(),
 	}, nil
 }
 
+func (s *LeaderboardService) PurgeTestUserEntries() error {
+	if s.includeTestUsers {
+		return nil
+	}
+	return s.leaderboardRepo.DeleteTestUserEntries()
+}
+
+func (s *LeaderboardService) shouldSkipTestUser(userID uint) (bool, error) {
+	if s.includeTestUsers || s.userRepo == nil {
+		return false, nil
+	}
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return model.IsE2ETestEmail(user.Email), nil
+}
+
 func (s *LeaderboardService) UpsertFromSaveJSON(userID uint, saveJSON json.RawMessage) error {
+	skip, err := s.shouldSkipTestUser(userID)
+	if err != nil {
+		return err
+	}
+	if skip {
+		return s.leaderboardRepo.DeleteByUserID(userID)
+	}
 	entry, err := parseLeaderboardEntry(userID, saveJSON)
 	if err != nil {
 		return err
 	}
-	if entry.ExplorationSteps < LeaderboardMinExplorationSteps {
+	if entry == nil {
 		return s.leaderboardRepo.DeleteByUserID(userID)
 	}
 	return s.leaderboardRepo.Upsert(entry)
@@ -102,6 +130,16 @@ func (s *LeaderboardService) BackfillAll() error {
 	}
 	for _, row := range saves {
 		if row.SaveData == "" {
+			continue
+		}
+		skip, err := s.shouldSkipTestUser(row.UserID)
+		if err != nil {
+			return err
+		}
+		if skip {
+			if err := s.leaderboardRepo.DeleteByUserID(row.UserID); err != nil {
+				return err
+			}
 			continue
 		}
 		if err := s.UpsertFromSaveJSON(row.UserID, json.RawMessage(row.SaveData)); err != nil {
@@ -150,11 +188,11 @@ func toRow(entry model.LeaderboardEntry, rank int, selfUserID uint, valuePerStep
 }
 
 func (s *LeaderboardService) GetLeaderboard(selfUserID uint) (*LeaderboardResponse, error) {
-	goldRows, err := s.leaderboardRepo.Top10Gold()
+	goldRows, err := s.leaderboardRepo.Top10Gold(s.includeTestUsers)
 	if err != nil {
 		return nil, err
 	}
-	xpRows, err := s.leaderboardRepo.Top10Xp()
+	xpRows, err := s.leaderboardRepo.Top10Xp(s.includeTestUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -174,20 +212,20 @@ func (s *LeaderboardService) GetLeaderboard(selfUserID uint) (*LeaderboardRespon
 	}
 
 	self := LeaderboardSelf{Eligible: false}
-	if selfEntry != nil && selfEntry.ExplorationSteps >= LeaderboardMinExplorationSteps {
+	if selfEntry != nil && selfEntry.ExplorationSteps >= LeaderboardMinLifetimeSteps {
 		self.Eligible = true
 		self.TeamName = selfEntry.TeamName
 		self.ExplorationSteps = selfEntry.ExplorationSteps
 		self.GoldPer100Steps = roundDisplay(selfEntry.GoldPerStep * LeaderboardDisplayScaleN)
 		self.XpPer100Steps = roundDisplay(selfEntry.XpPerStep * LeaderboardDisplayScaleN)
 
-		goldAbove, err := s.leaderboardRepo.CountRankedAboveGold(selfEntry)
+		goldAbove, err := s.leaderboardRepo.CountRankedAboveGold(selfEntry, s.includeTestUsers)
 		if err != nil {
 			return nil, err
 		}
 		self.GoldRank = int(goldAbove) + 1
 
-		xpAbove, err := s.leaderboardRepo.CountRankedAboveXp(selfEntry)
+		xpAbove, err := s.leaderboardRepo.CountRankedAboveXp(selfEntry, s.includeTestUsers)
 		if err != nil {
 			return nil, err
 		}

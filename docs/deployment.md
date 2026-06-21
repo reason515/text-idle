@@ -211,6 +211,6 @@ This is not shipped in the MVP repo; use the systemd path above for the fastest 
 | `Permission denied (publickey)` after fixing key | TencentOS often uses `root`: add `-SshUser root`; confirm the key pair matches the instance in Tencent Cloud console |
 | SSH hangs / timeout | Security group inbound **22**; instance running; correct public IP |
 | 502 from Caddy | `systemctl status text-idle`, port 8080 listening |
-| Empty leaderboard | Players need >= 100 exploration steps in current stats period |
+| Empty leaderboard | Players need >= 1000 lifetime exploration steps (`leaderboardTrack.lifetimeSteps`) |
 | Saves lost after restart | DB path must be on persistent volume, not inside ephemeral `/tmp` |
 | Permission denied on DB | `chown www-data:www-data /var/lib/text-idle` |
