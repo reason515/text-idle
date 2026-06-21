@@ -94,7 +94,7 @@
   --focus-glow: rgba(0, 255, 136, 0.4);
   --focus-glow-phys: rgba(255, 170, 68, 0.4);
 
-  font-family: 'Ark Pixel', 'Press Start 2P', monospace;
+  font-family: 'Ark Pixel', monospace;
 }
 
 * {

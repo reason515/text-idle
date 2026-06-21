@@ -666,11 +666,14 @@ describe('audioBus', () => {
     expect(ctx.resume).toHaveBeenCalled()
   })
 
-  it('unlockAudioContext preloads samples and resumes when suspended', () => {
+  it('unlockAudioContext resumes when suspended without preloading samples', () => {
     const ctx = getOrCreateAudioContext()
     ctx.state = 'suspended'
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }))
     unlockAudioContext()
     expect(ctx.resume).toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
   })
 
   it('bindAudioUnlockOnFirstGesture registers one-time listeners', () => {
@@ -685,10 +688,13 @@ describe('audioBus', () => {
     expect(addSpy.mock.calls[1][0]).toBe('keydown')
   })
 
-  it('tryUnlockAudioOnLoad attempts to resume context', () => {
+  it('tryUnlockAudioOnLoad resumes context without preloading samples', () => {
     const ctx = getOrCreateAudioContext()
     ctx.state = 'suspended'
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }))
     tryUnlockAudioOnLoad()
     expect(ctx.resume).toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
   })
 })

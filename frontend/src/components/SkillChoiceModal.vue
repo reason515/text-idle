@@ -175,7 +175,7 @@ watch(() => [props.hero, props.level], () => {
 
 <style scoped>
 .modal-overlay {
-  font-family: 'Ark Pixel', 'Press Start 2P', monospace;
+  font-family: 'Ark Pixel', monospace;
 }
 .skill-choice-modal {
   max-width: 36rem;

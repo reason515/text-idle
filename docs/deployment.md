@@ -231,6 +231,7 @@ This is not shipped in the MVP repo; use the systemd path above for the fastest 
 
 | Issue | Check |
 |-------|--------|
+| Slow page load on every refresh | Release build serves embedded static assets with **gzip** (JS/CSS/HTML) and **Cache-Control** (long cache for hashed `/assets/*`, 7-day for `/fonts/` and `/audio/`). First visit still downloads fonts (~1.5 MB) and JS; SFX preload starts on **first click/key**, not on page load. Remove unused assets before deploy (`npm run build:dist` copies `frontend/dist` only). |
 | `Permission denied (publickey)` right after deploy script starts upload | Use **PowerShell directly** with quoted `-KeyPath` (not `npm run deploy:tencent -- -KeyPath ...`). On this VPS use **`-SshUser root`**. Confirm the `.pem` matches the instance key in Tencent Cloud console |
 | `UNPROTECTED PRIVATE KEY FILE` / `bad permissions` (Windows) | Restrict `.pem` ACL to your user only (PowerShell): `icacls "D:\docs\tencent cloud key\reason515.pem" /inheritance:r; icacls "D:\docs\tencent cloud key\reason515.pem" /grant:r "$($env:USERNAME):(R)"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Authenticated Users"; icacls "D:\docs\tencent cloud key\reason515.pem" /remove "Users"` |
 | SSH hangs / timeout | Security group inbound **22**; instance running; correct public IP |

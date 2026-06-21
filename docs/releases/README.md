@@ -4,7 +4,8 @@ Version-specific release notes for in-game **版本** modal and internal distrib
 
 | Version | File | Status |
 |---------|------|--------|
-| v0.1.3 | [v0.1.3.md](./v0.1.3.md) | Current — death rest penalty and equip fixes |
+| v0.1.4 | [v0.1.4.md](./v0.1.4.md) | Current — production load performance |
+| v0.1.3 | [v0.1.3.md](./v0.1.3.md) | Death rest penalty and equip fixes |
 | v0.1.2 | [v0.1.2.md](./v0.1.2.md) | Global message board |
 | v0.1.1 | [v0.1.1.md](./v0.1.1.md) | Tactics UX patch |
 | v0.1.0 | [v0.1.0.md](./v0.1.0.md) | MVP internal test |

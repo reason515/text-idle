@@ -83,7 +83,7 @@
 - **合成回退**：分层 **Web Audio** — 短白噪声 + 带通（冲击瞬态）+ 低频正弦下潜（闷响体量）；暴击额外叠加短促中频泛音；魔法叠 shimmer；阵亡 / 胜利 / 失败 / 闪避 / DoT 各自一份单层方案。**样本未就绪或加载失败时使用**。
 - **抑制输出**：`isE2eFastMode()`（与 [combatPacing.js](../../frontend/src/game/combatPacing.js) 相同条件）或用户静音时，战斗向 API（含 `playCombatDamageLineSound`、阵亡与结算音等）立即返回。设置面板 **试听** 使用 `playSfxPreview(category)`（`playCombatHitPreview` 为物理命中/暴击别名）：**忽略静音**，仍在 **E2E 快速模式**或 **标签页后台** 下关闭（与可见性策略一致，避免切页后误触发扬声器）。
 - **浏览器策略**：新建 `AudioContext` 常见初始状态为 `suspended`。应在**用户点击的同一次调用**内先 **connect + `start()` 调度** 振荡器，再调用 `resume()`（不要依赖 `resume().then` 里才去 `start()`，否则部分环境下永远不发声）。试听不要用 `async/await` 插入在点击与 `resume` 之间。
-- **自动解锁**：`App.vue` 挂载时调用 `bindAudioUnlockOnFirstGesture()`（首次 `pointerdown` / `keydown` 捕获阶段解锁）与 `tryUnlockAudioOnLoad()`（对已允许自动播放的来源尽力 `resume`）。`unlockAudioContext()` 在用户手势内同步调用；战斗循环中已调度的节点在 `resume` 成功后会补播。首次访问且浏览器禁止自动播放时，仍需任意一次点击才能出声（不限于「试听」按钮）。
+- **自动解锁**：`App.vue` 挂载时调用 `bindAudioUnlockOnFirstGesture()`（首次 `pointerdown` / `keydown` 捕获阶段解锁并**开始预加载样本**）与 `tryUnlockAudioOnLoad()`（对已允许自动播放的来源尽力 `resume`，**不预加载样本**）。`unlockAudioContext()` 在用户手势内同步调用，仅恢复上下文；样本在首次手势或首次战斗 SFX 时再加载。战斗循环中已调度的节点在 `resume` 成功后会补播。首次访问且浏览器禁止自动播放时，仍需任意一次点击才能出声（不限于「试听」按钮）。
 - **HTML5 后备**：`playSfxPreview` 在无法创建 `AudioContext` 或 Web Audio 调度抛错时，会尝试用 **data:audio/wav** 短哔声（仍用主音量；E2E 快速模式不执行试听）。
 - **测试**：`resetSharedAudioContextForTests()` 清空缓存的 `AudioContext`、试听 WAV、样本缓存与 `preloadKicked` 标记（仅单元测试）；`__setSampleBufferForTests(url, buffer)` 用于在测试中直接注入已解码的 buffer 验证样本路径。
 

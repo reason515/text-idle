@@ -137,7 +137,7 @@
 ### 2.1 字体族
 
 ```css
-font-family: 'Ark Pixel', 'Press Start 2P', monospace;
+font-family: 'Ark Pixel', monospace;
 ```
 
 - 全局继承，无需在组件内重复声明

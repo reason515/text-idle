@@ -2,8 +2,6 @@ package server
 
 import (
 	"io/fs"
-	"net/http"
-	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -61,26 +59,4 @@ func NewRouter(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) 
 	}
 
 	return r
-}
-
-// serveSPA serves static files; falls back to index.html for SPA client-side routing.
-// Uses http.ServeFileFS to avoid redirect loop (FileFromFS redirects index.html -> /).
-func serveSPA(fsys fs.FS) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		path := strings.TrimPrefix(c.Request.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
-		}
-		f, err := fsys.Open(path)
-		if err == nil {
-			defer f.Close()
-			stat, err := f.Stat()
-			if err == nil && !stat.IsDir() {
-				http.ServeFileFS(c.Writer, c.Request, fsys, path)
-				return
-			}
-		}
-		// SPA fallback: serve index.html (no redirect)
-		http.ServeFileFS(c.Writer, c.Request, fsys, "index.html")
-	}
 }

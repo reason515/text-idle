@@ -180,7 +180,6 @@ function canPlayPreviewSfx() {
 export function unlockAudioContext() {
   const ctx = getOrCreateAudioContext()
   if (!ctx) return false
-  preloadSamples(ctx)
   resumeContextIfNeeded(ctx)
   return ctx.state === 'running'
 }
@@ -199,10 +198,13 @@ export async function resumeAudioContext() {
 }
 
 /**
- * Best-effort unlock on load (works when the browser already allows autoplay for this origin).
+ * Best-effort resume on load (works when the browser already allows autoplay for this origin).
+ * Does not preload samples; those load on first user gesture or first combat SFX.
  */
 export function tryUnlockAudioOnLoad() {
-  unlockAudioContext()
+  const ctx = getOrCreateAudioContext()
+  if (!ctx) return
+  resumeContextIfNeeded(ctx)
 }
 
 /**
@@ -214,6 +216,8 @@ export function bindAudioUnlockOnFirstGesture() {
   gestureUnlockBound = true
   const unlock = () => {
     unlockAudioContext()
+    const ctx = getOrCreateAudioContext()
+    if (ctx) preloadSamples(ctx)
   }
   document.addEventListener('pointerdown', unlock, { capture: true, once: true })
   document.addEventListener('keydown', unlock, { capture: true, once: true })

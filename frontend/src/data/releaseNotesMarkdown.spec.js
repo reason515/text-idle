@@ -3,27 +3,27 @@ import { APP_VERSION, APP_VERSION_LABEL } from './version.js'
 import { getCurrentReleaseNotes, getAllReleaseNotes, parseReleaseNotesMarkdown, parseReleaseNoteInlineSegments } from './releaseNotesMarkdown.js'
 
 describe('version', () => {
-  it('exposes v0.1.3 label', () => {
-    expect(APP_VERSION).toBe('0.1.3')
-    expect(APP_VERSION_LABEL).toBe('v0.1.3')
+  it('exposes v0.1.4 label', () => {
+    expect(APP_VERSION).toBe('0.1.4')
+    expect(APP_VERSION_LABEL).toBe('v0.1.4')
   })
 })
 
 describe('releaseNotesMarkdown', () => {
-  it('parses docs/releases/v0.1.3.md sections', () => {
+  it('parses docs/releases/v0.1.4.md sections', () => {
     const release = getCurrentReleaseNotes()
-    expect(release.version).toBe('0.1.3')
+    expect(release.version).toBe('0.1.4')
     expect(release.date).toBe('2026-06-21')
-    expect(release.sections.some((s) => s.title === '战后休息与阵亡惩罚')).toBe(true)
-    expect(release.sections.find((s) => s.title === '战后休息与阵亡惩罚')?.items).toContain(
-      '角色阵亡后**不再降低每步恢复速度**；全员 HP/MP 回满后，按**每名阵亡者额外 5 步**休息（计入休息步与探索步）',
+    expect(release.sections.some((s) => s.title === '加载与静态资源')).toBe(true)
+    expect(release.sections.find((s) => s.title === '加载与静态资源')?.items).toContain(
+      '页面打开时**不再立即预加载全部战斗音效**（约 3 MB）；改为**首次点击或按键**后再后台加载，首次战斗仍会按需拉取样本',
     )
   })
 
   it('getAllReleaseNotes returns newest first and includes past versions', () => {
     const all = getAllReleaseNotes()
-    expect(all.map((r) => r.version)).toEqual(['0.1.3', '0.1.2', '0.1.1', '0.1.0'])
-    expect(all[3].sections.some((s) => s.title === '账号与存档')).toBe(true)
+    expect(all.map((r) => r.version)).toEqual(['0.1.4', '0.1.3', '0.1.2', '0.1.1', '0.1.0'])
+    expect(all[4].sections.some((s) => s.title === '账号与存档')).toBe(true)
   })
 
   it('parseReleaseNoteInlineSegments renders **bold** as segments', () => {
