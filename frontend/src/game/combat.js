@@ -846,6 +846,17 @@ export function capEncounterSizeForNewbieProtection(count, squadSize, squadMinLe
   return safeCount
 }
 
+/**
+ * Random minion count for zone boss fights: 0 .. squadSize - 1 (boss + minions <= squadSize).
+ * @param {number} squadSize
+ * @param {() => number} [rng]
+ * @returns {number}
+ */
+export function generateBossMinionCount(squadSize, rng = Math.random) {
+  const safeSquadSize = clamp(squadSize, 1, 5)
+  return Math.floor(rng() * safeSquadSize)
+}
+
 export function createMonster(template, options = {}) {
   const tier = options.tier ?? 'normal'
   const level = options.level ?? 1
@@ -916,13 +927,24 @@ export function buildEncounterMonsters({
 
   if (forceBoss) {
     const bossLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
-    return [
+    const monsters = [
       createMonster(pool.boss, {
         tier: 'boss',
         level: bossLevel,
         explorationProgress: explorationForScale,
       }),
     ]
+    const minionCount = generateBossMinionCount(squadSize, rng)
+    for (let i = 0; i < minionCount; i += 1) {
+      const isElite = rng() < 0.25
+      const tier = isElite ? 'elite' : 'normal'
+      const template = isElite ? pickRandom(pool.elite, rng) : pickRandom(pool.normal, rng)
+      const monsterLevel = applyEarlyCap(randomLevelInRange(level, levelRange, rng))
+      monsters.push(
+        createMonster(template, { tier, level: monsterLevel, explorationProgress: explorationForScale })
+      )
+    }
+    return monsters
   }
   const count = capEncounterSizeForNewbieProtection(
     generateEncounterSize(squadSize, distribution, rng),

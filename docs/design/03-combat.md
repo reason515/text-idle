@@ -69,6 +69,12 @@
   - **最低等级为 3 及以上**：不应用上述数量上限，恢复完整分布（含多于队伍）。
   实现见 `capEncounterSizeForNewbieProtection` / `buildEncounterMonsters` 的 `squadMinLevel`；最低等级由 `getSquadMinLevel` 计算。
 
+### 2.2 守关 BOSS 遭遇规模
+
+- **固定 BOSS + 随机小弟**：探索度满后触发的守关战**始终包含 1 只 BOSS**，并**随机附带 0 至 (小队人数 − 1) 只**地图小怪（从该地图 normal / elite 池抽取，25% 精英概率与非 BOSS 遭遇相同）。
+- **总人数上限**：BOSS + 小弟总数**不超过**我方英雄人数（例如 3 人队最多 BOSS + 2 小弟；仅 1 人时仅 BOSS）。
+- **不适用**非 BOSS 的 70/15/15 数量分布与新手数量保护；怪物等级规则（最高等级基准、`levelRange`、平均等级低于 5 的上限）对 BOSS 与小弟同样生效。实现见 `generateBossMinionCount` / `buildEncounterMonsters` 的 `forceBoss` 分支。
+
 ---
 
 ## 三、胜负判定 (Victory & Defeat)

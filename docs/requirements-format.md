@@ -347,7 +347,8 @@ Then [expected result/verifiable behavior].
 **Design Reference (from design doc)**
 
 - **Monster count distribution**: Higher probability that monster count equals squad size; lower probability of fewer or more monsters (e.g., 70% equal, 15% fewer, 15% more).
-- **Newbie protection (squad min level)**: After the roll, non-boss monster count is capped by **minimum hero level**: **1** = always strictly less than squad size (`min(rolled, squadSize - 1)`, at least 1; squad size 1 exempt); **2** = at most squad size (`min(rolled, squadSize)`, no over-count rolls); **3+** = full distribution. Boss fights remain 1 monster.
+- **Newbie protection (squad min level)**: After the roll, non-boss monster count is capped by **minimum hero level**: **1** = always strictly less than squad size (`min(rolled, squadSize - 1)`, at least 1; squad size 1 exempt); **2** = at most squad size (`min(rolled, squadSize)`, no over-count rolls); **3+** = full distribution.
+- **Zone boss encounter size**: Always **1 boss** plus **0 to (squadSize - 1)** random minions from the map pool (25% elite chance, same as non-boss fights); **total monsters never exceed squad size** (solo squad = boss only). Does not use the 70/15/15 distribution or newbie count caps.
 - **Victory**: All monsters dead → combat ends; post-combat rewards (exp, gold, loot); enter rest phase.
 - **Defeat**: All player heroes dead → combat ends; no rewards from this encounter; resurrection/death rules apply.
 
@@ -360,6 +361,7 @@ Then [expected result/verifiable behavior].
 | AC2 | Squad has N heroes (N = 1 to 5)                 | An encounter is generated  | Monster count follows the same distribution (usually N, sometimes N-1, N-2, or N+1, N+2 within valid range)                                                                        |
 | AC2b | Squad min hero level is 1 and squad has N heroes (N >= 2) | A non-boss encounter is generated | Monster count is always **less than** N (never equal or greater); at least 1 monster                                                                                              |
 | AC2c | Squad min hero level is 2 and squad has N heroes (N >= 1) | A non-boss encounter is generated | Monster count is **at most** N (never greater than N); may equal or be fewer than N                                                                                                |
+| AC2d | Squad enters a zone boss fight (exploration 100%, boss available) | Boss encounter is generated | Encounter has **exactly 1 boss** plus **0 to N-1** minions from the map pool; **total monster count is at most N** (N = squad size); minions use normal/elite pool rolls                                                                 |
 | AC3 | Combat is in progress and the last monster dies | All monsters are dead      | Combat ends with **victory**; post-combat rewards (exp, gold, loot) are granted; squad enters rest/recovery phase automatically                                                    |
 | AC4 | Combat is in progress and the last hero dies    | All player heroes are dead | Combat ends with **defeat**; no rewards (exp, gold, loot) from this encounter are granted; **exploration progress is deducted by a fixed amount (default 10 points, not below 0)** |
 | AC5 | Combat ends in victory                          | Victory is triggered       | Rest phase begins automatically; next combat starts automatically after rest completes (see Example 8)                                                                             |

@@ -25,6 +25,7 @@ import {
   MONSTER_ARMOR_PEN_BY_TIER,
   unlockNextMapAfterBoss,
   generateEncounterSize,
+  generateBossMinionCount,
   capEncounterSizeForNewbieProtection,
   createMonster,
   buildEncounterMonsters,
@@ -862,9 +863,43 @@ describe('combat progression and systems', () => {
     }
   })
 
+  it('generateBossMinionCount rolls 0 .. squadSize - 1', () => {
+    expect(generateBossMinionCount(3, () => 0)).toBe(0)
+    expect(generateBossMinionCount(3, () => 0.99)).toBe(2)
+    expect(generateBossMinionCount(1, () => 0.99)).toBe(0)
+    expect(generateBossMinionCount(5, () => 0.8)).toBe(4)
+  })
+
+  it('boss encounter: boss plus minions, total at most squad size', () => {
+    const squadSize = 3
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize,
+      level: 5,
+      forceBoss: true,
+      rng: fixedRng([0.2, 0.5, 0.1, 0.3]),
+    })
+    expect(monsters.length).toBe(2)
+    expect(monsters[0].tier).toBe('boss')
+    expect(monsters.length).toBeLessThanOrEqual(squadSize)
+    expect(monsters.slice(1).every((m) => m.tier === 'normal' || m.tier === 'elite')).toBe(true)
+  })
+
+  it('boss encounter with squad size 1 is boss only', () => {
+    const monsters = buildEncounterMonsters({
+      mapId: 'elwynn-forest',
+      squadSize: 1,
+      level: 5,
+      forceBoss: true,
+      rng: () => 0.99,
+    })
+    expect(monsters).toHaveLength(1)
+    expect(monsters[0].tier).toBe('boss')
+  })
+
   it('early game: boss level also respects floor(avg) cap when avg < 5', () => {
     const rngHigh = () => 0.99
-    const [boss] = buildEncounterMonsters({
+    const monsters = buildEncounterMonsters({
       mapId: 'elwynn-forest',
       squadSize: 3,
       level: 5,
@@ -872,6 +907,7 @@ describe('combat progression and systems', () => {
       forceBoss: true,
       rng: rngHigh,
     })
+    const boss = monsters.find((m) => m.tier === 'boss')
     expect(boss.tier).toBe('boss')
     expect(boss.level).toBe(2)
   })
