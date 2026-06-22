@@ -323,7 +323,8 @@ Attributes Tab 内布局：基础信息 | 左侧：一级属性+二级属性 | �
 
 # 游戏版本规划 (Roadmap)
 
-- **v0.1.4（轻装上阵，当前）**：Release Notes 见 [docs/releases/v0.1.4.md](../releases/v0.1.4.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.5（步进明晰，当前）**：Release Notes 见 [docs/releases/v0.1.5.md](../releases/v0.1.5.md)（索引 [docs/releases/README.md](../releases/README.md)）；主界面底部「版本」入口读取该 Markdown 并展示。
+- **v0.1.4（轻装上阵）**：Release Notes 见 [docs/releases/v0.1.4.md](../releases/v0.1.4.md)。
 - **v0.1.3（阵亡休憩）**：Release Notes 见 [docs/releases/v0.1.3.md](../releases/v0.1.3.md)。
 - **v0.1.2（全服留言板）**：Release Notes 见 [docs/releases/v0.1.2.md](../releases/v0.1.2.md)。
 - **v0.1.1（战术配置优化）**：Release Notes 见 [docs/releases/v0.1.1.md](../releases/v0.1.1.md)。

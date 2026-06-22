@@ -1,5 +1,5 @@
 /** Semantic app version (semver without leading "v"). */
-export const APP_VERSION = '0.1.4'
+export const APP_VERSION = '0.1.5'
 
 /** Display label shown in UI. */
 export const APP_VERSION_LABEL = `v${APP_VERSION}`
