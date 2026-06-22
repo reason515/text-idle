@@ -1364,10 +1364,10 @@
                   场次序号
                 </text>
                 <polyline
-                  v-if="playerStatsTimelineChartModel.roundsLine"
+                  v-if="playerStatsTimelineChartModel.stepsLine"
                   fill="none"
-                  :points="playerStatsTimelineChartModel.roundsLine"
-                  class="player-stats-line-rounds"
+                  :points="playerStatsTimelineChartModel.stepsLine"
+                  class="player-stats-line-steps"
                 />
                 <polyline
                   v-if="playerStatsTimelineChartModel.xpLine"
@@ -1391,7 +1391,7 @@
                   :class="'marker-' + mk.kind"
                 />
                 <g class="player-stats-svg-legend" pointer-events="none">
-                  <text :x="playerStatsTimelineChartModel.plot.x + 6" :y="14" class="player-stats-svg-legend-label legend-svg-rounds">回合</text>
+                  <text :x="playerStatsTimelineChartModel.plot.x + 6" :y="14" class="player-stats-svg-legend-label legend-svg-steps">步数</text>
                   <text :x="playerStatsTimelineChartModel.plot.x + 52" :y="14" class="player-stats-svg-legend-label legend-svg-gold">金币</text>
                   <text :x="playerStatsTimelineChartModel.plot.x + 104" :y="14" class="player-stats-svg-legend-label legend-svg-xp">经验</text>
                 </g>
@@ -1674,7 +1674,7 @@
         role="tooltip"
       >
         <div class="player-stats-chart-tooltip-title">第 {{ statsTimelineHoverIdx + 1 }} 场</div>
-        <div>回合 <span class="tip-val-rounds">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].rounds }}</span></div>
+        <div>步数 <span class="tip-val-steps">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].steps }}</span></div>
         <div>金币 <span class="tip-val-gold">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].goldGained }}</span></div>
         <div>经验 <span class="tip-val-xp">{{ playerStatsBattleTimeline[statsTimelineHoverIdx].xpGained }}</span></div>
       </div>
@@ -5517,7 +5517,6 @@ async function runCombatLoop() {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: result.rewards.gold,
         xpGained: result.rewards.exp,
-        rounds: result.rounds ?? 0,
         outcome: 'victory',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
         injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
@@ -5553,7 +5552,6 @@ async function runCombatLoop() {
         combatActionSteps: result.combatActionSteps ?? 0,
         goldGained: 0,
         xpGained: 0,
-        rounds: result.rounds ?? 0,
         outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
         damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
         injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
@@ -6232,7 +6230,7 @@ onUnmounted(() => {
   margin-bottom: 0.25rem;
   font-size: var(--font-xs);
 }
-.player-stats-chart-tooltip .tip-val-rounds {
+.player-stats-chart-tooltip .tip-val-steps {
   color: var(--color-mp);
   font-weight: 600;
 }
@@ -6248,7 +6246,7 @@ onUnmounted(() => {
   font-size: 11px;
   font-family: inherit;
 }
-.legend-svg-rounds {
+.legend-svg-steps {
   fill: var(--color-mp);
 }
 .legend-svg-gold {
@@ -6307,7 +6305,7 @@ onUnmounted(() => {
   stroke: var(--bg-dark);
   stroke-width: 1;
 }
-.player-stats-point-marker.marker-rounds {
+.player-stats-point-marker.marker-steps {
   fill: var(--color-mp);
 }
 .player-stats-point-marker.marker-gold {
@@ -6321,7 +6319,7 @@ onUnmounted(() => {
   stroke: var(--border-dark);
   stroke-width: 1;
 }
-.player-stats-line-rounds {
+.player-stats-line-steps {
   fill: none;
   stroke: var(--color-mp);
   stroke-width: 2;

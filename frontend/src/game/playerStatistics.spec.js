@@ -48,7 +48,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 12,
       goldGained: 30,
       xpGained: 100,
-      rounds: 5,
       endedAtMs: 1700000000000,
       outcome: 'victory',
     })
@@ -59,7 +58,7 @@ describe('playerStatistics', () => {
     expect(next.victoryCount).toBe(1)
     expect(next.battleTimeline).toHaveLength(1)
     expect(next.battleTimeline[0]).toMatchObject({
-      rounds: 5,
+      steps: 12,
       goldGained: 30,
       xpGained: 100,
       endedAtMs: 1700000000000,
@@ -72,7 +71,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 3,
       goldGained: 0,
       xpGained: 0,
-      rounds: 2,
       outcome: 'defeat',
     })
     expect(next.battleCount).toBe(1)
@@ -86,23 +84,21 @@ describe('playerStatistics', () => {
       combatActionSteps: 1,
       goldGained: 1,
       xpGained: 1,
-      rounds: 2,
       endedAtMs: 100,
     })
     s = applyBattleToPlayerStats(s, {
-      combatActionSteps: 1,
+      combatActionSteps: 3,
       goldGained: 2,
       xpGained: 3,
-      rounds: 4,
       endedAtMs: 200,
     })
-    expect(s.battleTimeline.map((e) => e.rounds)).toEqual([2, 4])
+    expect(s.battleTimeline.map((e) => e.steps)).toEqual([1, 3])
   })
 
   it('normalizeBattleTimeline drops invalid rows and caps length', () => {
     const over = []
     for (let i = 0; i < MAX_BATTLE_TIMELINE_ENTRIES + 5; i += 1) {
-      over.push({ endedAtMs: 1000 + i, rounds: 1, goldGained: 0, xpGained: 0 })
+      over.push({ endedAtMs: 1000 + i, steps: 1, goldGained: 0, xpGained: 0 })
     }
     const trimmed = normalizeBattleTimeline(over)
     expect(trimmed.length).toBe(MAX_BATTLE_TIMELINE_ENTRIES)
@@ -129,7 +125,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
-      rounds: 1,
       damageByHeroDelta: { a: { basic: 10, skill: 5 } },
     })
     expect(s.damageByHero).toEqual({ a: { basic: 10, skill: 5 } })
@@ -137,7 +132,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
-      rounds: 1,
       damageByHeroDelta: { a: { basic: 3, skill: 1, skillById: { x: 1 } }, b: { basic: 0, skill: 8 } },
     })
     expect(s.damageByHero).toEqual({
@@ -183,7 +177,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
-      rounds: 1,
       injuryByHeroDelta: { a: { basic: 10, basicPhysical: 6, basicMagic: 4, skill: 5 } },
     })
     expect(s.injuryByHero).toEqual({ a: { basic: 10, basicPhysical: 6, basicMagic: 4, skill: 5 } })
@@ -191,7 +184,6 @@ describe('playerStatistics', () => {
       combatActionSteps: 1,
       goldGained: 0,
       xpGained: 0,
-      rounds: 1,
       injuryByHeroDelta: { a: { basic: 3, basicPhysical: 3, skill: 1, skillById: { 'stone-shard': 1 } }, b: { basic: 0, skill: 8 } },
     })
     expect(s.injuryByHero).toEqual({
@@ -233,11 +225,23 @@ describe('playerStatistics', () => {
       cumulativeGold: 0,
       cumulativeXp: 0,
       displayScaleN: 100,
-      battleTimeline: [{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }],
+      battleTimeline: [{ endedAtMs: 50, steps: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }],
     })
-    expect(s.battleTimeline).toEqual([{ endedAtMs: 50, rounds: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }])
+    expect(s.battleTimeline).toEqual([{ endedAtMs: 50, steps: 3, goldGained: 10, xpGained: 20, outcome: 'victory' }])
     expect(s.battleCount).toBe(1)
     expect(s.victoryCount).toBe(1)
+  })
+
+  it('normalizePlayerStats migrates legacy battleTimeline rounds to steps', () => {
+    const s = normalizePlayerStats({
+      combatActionSteps: 0,
+      restSteps: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      displayScaleN: 100,
+      battleTimeline: [{ endedAtMs: 50, rounds: 7, goldGained: 0, xpGained: 0 }],
+    })
+    expect(s.battleTimeline[0].steps).toBe(7)
   })
 
   it('normalizePlayerStats backfills battle counts from timeline when missing', () => {
@@ -248,8 +252,8 @@ describe('playerStatistics', () => {
       cumulativeXp: 0,
       displayScaleN: 100,
       battleTimeline: [
-        { endedAtMs: 1, rounds: 1, goldGained: 5, xpGained: 0 },
-        { endedAtMs: 2, rounds: 1, goldGained: 0, xpGained: 0, outcome: 'defeat' },
+        { endedAtMs: 1, steps: 1, goldGained: 5, xpGained: 0 },
+        { endedAtMs: 2, steps: 1, goldGained: 0, xpGained: 0, outcome: 'defeat' },
       ],
     })
     expect(s.battleCount).toBe(2)

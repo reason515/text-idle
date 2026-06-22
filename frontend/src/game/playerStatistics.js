@@ -11,7 +11,7 @@ export const PLAYER_STATS_STORAGE_KEY = 'textIdlePlayerStats'
 export const MAX_BATTLE_TIMELINE_ENTRIES = 250
 
 /**
- * @typedef {{ endedAtMs: number, rounds: number, goldGained: number, xpGained: number, outcome?: 'victory' | 'defeat' | 'draw' }} BattleTimelineEntry
+ * @typedef {{ endedAtMs: number, steps: number, goldGained: number, xpGained: number, outcome?: 'victory' | 'defeat' | 'draw' }} BattleTimelineEntry
  */
 
 /** @returns {{ combatActionSteps: number, restSteps: number, cumulativeGold: number, cumulativeXp: number, displayScaleN: number, battleCount: number, victoryCount: number, battleTimeline: BattleTimelineEntry[], damageByHero: Record<string, { basic: number, skill: number, skillById?: Record<string, number> }>, injuryByHero: Record<string, { basic: number, skill: number, skillById?: Record<string, number> }> }} */
@@ -155,12 +155,14 @@ export function normalizeBattleTimeline(raw) {
     if (!e || typeof e !== 'object') continue
     const endedAtMs = Number(/** @type {{ endedAtMs?: unknown }} */ (e).endedAtMs)
     if (!Number.isFinite(endedAtMs)) continue
-    const rounds = Math.max(0, Math.floor(Number(/** @type {{ rounds?: unknown }} */ (e).rounds) || 0))
+    const eo = /** @type {{ steps?: unknown, rounds?: unknown }} */ (e)
+    const stepsRaw = eo.steps ?? eo.rounds
+    const steps = Math.max(0, Math.floor(Number(stepsRaw) || 0))
     const goldGained = Math.max(0, Math.floor(Number(/** @type {{ goldGained?: unknown }} */ (e).goldGained) || 0))
     const xpGained = Math.max(0, Math.floor(Number(/** @type {{ xpGained?: unknown }} */ (e).xpGained) || 0))
     const outcome = normalizeBattleOutcome(/** @type {{ outcome?: unknown }} */ (e).outcome, goldGained)
     /** @type {BattleTimelineEntry} */
-    const row = { endedAtMs, rounds, goldGained, xpGained }
+    const row = { endedAtMs, steps, goldGained, xpGained }
     if (outcome) row.outcome = outcome
     out.push(row)
   }
@@ -176,7 +178,7 @@ export function explorationSteps(stats) {
 
 /**
  * @param {object} stats
- * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, rounds?: number, endedAtMs?: number, outcome?: string, damageByHeroDelta?: Record<string, { basic?: number, skill?: number, skillById?: Record<string, number> }>, injuryByHeroDelta?: Record<string, { basic?: number, skill?: number, skillById?: Record<string, number> }> }} battle
+ * @param {{ combatActionSteps?: number, goldGained?: number, xpGained?: number, steps?: number, endedAtMs?: number, outcome?: string, damageByHeroDelta?: Record<string, { basic?: number, skill?: number, skillById?: Record<string, number> }>, injuryByHeroDelta?: Record<string, { basic?: number, skill?: number, skillById?: Record<string, number> }> }} battle
  */
 export function applyBattleToPlayerStats(stats, battle) {
   const base = stats && typeof stats === 'object' ? { ...createEmptyPlayerStats(), ...stats } : createEmptyPlayerStats()
@@ -187,10 +189,11 @@ export function applyBattleToPlayerStats(stats, battle) {
   const endedAtMs = Number.isFinite(Number(endedRaw)) ? Number(endedRaw) : Date.now()
   const goldGained = Math.max(0, Math.floor(Number(battle.goldGained) || 0))
   const outcome = normalizeBattleOutcome(battle.outcome, goldGained)
+  const stepsRaw = battle.steps ?? battle.combatActionSteps
   /** @type {BattleTimelineEntry} */
   const entry = {
     endedAtMs,
-    rounds: Math.max(0, Math.floor(Number(battle.rounds) || 0)),
+    steps: Math.max(0, Math.floor(Number(stepsRaw) || 0)),
     goldGained,
     xpGained: Math.max(0, Math.floor(Number(battle.xpGained) || 0)),
   }

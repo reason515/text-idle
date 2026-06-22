@@ -1,10 +1,18 @@
 /**
- * SVG trend chart: rounds, gold, xp per battle share one vertical scale (max = peak across all three).
+ * SVG trend chart: combat action steps, gold, xp per battle share one vertical scale (max = peak across all three).
  */
 
 /**
- * @typedef {{ endedAtMs: number, rounds: number, goldGained: number, xpGained: number }} BattleTimelineEntry
+ * @typedef {{ endedAtMs: number, steps: number, goldGained: number, xpGained: number, rounds?: number }} BattleTimelineEntry
  */
+
+/** @param {BattleTimelineEntry} entry */
+function entrySteps(entry) {
+  if (entry.steps != null && Number.isFinite(Number(entry.steps))) {
+    return Math.max(0, Math.floor(Number(entry.steps)))
+  }
+  return Math.max(0, Math.floor(Number(entry.rounds) || 0))
+}
 
 /**
  * @param {BattleTimelineEntry[]} entries
@@ -29,11 +37,11 @@ export function buildTimelineTrendChartModel(entries) {
     xBattleTicks: [],
     hGrid: [],
     vGrid: [],
-    roundsLine: '',
+    stepsLine: '',
     goldLine: '',
     xpLine: '',
     pointMarkers: [],
-    maxRounds: 0,
+    maxSteps: 0,
     maxGold: 0,
     maxXp: 0,
   }
@@ -42,10 +50,10 @@ export function buildTimelineTrendChartModel(entries) {
   const n = list.length
   if (n === 0) return emptyModel
 
-  const maxRounds = Math.max(0, ...list.map((e) => Math.max(0, e.rounds || 0)))
+  const maxSteps = Math.max(0, ...list.map((e) => entrySteps(e)))
   const maxGold = Math.max(0, ...list.map((e) => Math.max(0, e.goldGained || 0)))
   const maxXp = Math.max(0, ...list.map((e) => Math.max(0, e.xpGained || 0)))
-  const globalMax = Math.max(maxRounds, maxGold, maxXp, 1)
+  const globalMax = Math.max(maxSteps, maxGold, maxXp, 1)
 
   /** @param {number} i */
   function xAt(i) {
@@ -60,13 +68,13 @@ export function buildTimelineTrendChartModel(entries) {
     return plotY + innerH * (1 - ratio)
   }
 
-  const roundsPts = []
+  const stepsPts = []
   const goldPts = []
   const xpPts = []
   for (let i = 0; i < n; i += 1) {
     const e = list[i]
     const xr = xAt(i)
-    roundsPts.push([xr, yFromValue(e.rounds || 0)])
+    stepsPts.push([xr, yFromValue(entrySteps(e))])
     goldPts.push([xr, yFromValue(e.goldGained || 0)])
     xpPts.push([xr, yFromValue(e.xpGained || 0)])
   }
@@ -75,7 +83,7 @@ export function buildTimelineTrendChartModel(entries) {
     return pts.map((p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ')
   }
 
-  const roundsLine = toLine(roundsPts)
+  const stepsLine = toLine(stepsPts)
   const goldLine = toLine(goldPts)
   const xpLine = toLine(xpPts)
 
@@ -121,12 +129,12 @@ export function buildTimelineTrendChartModel(entries) {
     y2: plotY + innerH,
   }))
 
-  /** @type {{ cx: number, cy: number, kind: 'rounds'|'gold'|'xp' }[]} */
+  /** @type {{ cx: number, cy: number, kind: 'steps'|'gold'|'xp' }[]} */
   const pointMarkers = []
   const showMarkers = n <= 24
   if (showMarkers) {
     for (let i = 0; i < n; i += 1) {
-      pointMarkers.push({ cx: roundsPts[i][0], cy: roundsPts[i][1], kind: 'rounds' })
+      pointMarkers.push({ cx: stepsPts[i][0], cy: stepsPts[i][1], kind: 'steps' })
       pointMarkers.push({ cx: goldPts[i][0], cy: goldPts[i][1], kind: 'gold' })
       pointMarkers.push({ cx: xpPts[i][0], cy: xpPts[i][1], kind: 'xp' })
     }
@@ -140,11 +148,11 @@ export function buildTimelineTrendChartModel(entries) {
     xBattleTicks,
     hGrid,
     vGrid,
-    roundsLine,
+    stepsLine,
     goldLine,
     xpLine,
     pointMarkers,
-    maxRounds,
+    maxSteps,
     maxGold,
     maxXp,
   }
