@@ -212,7 +212,7 @@ Then [expected result/verifiable behavior].
 | AC2 | Player has started the adventure                                                         | Player views the squad panel                               | The squad has 3 heroes: Warrior (tank), Mage (DPS), Priest (healer); each has 2 fixed initial skills (e.g., Warrior: Sunder Armor, Taunt; Mage: Frostbolt, Fireball; Priest: Flash Heal, Power Word: Shield)               |
 | AC3 | Player has at least 1 character in the squad                                             | Player views the squad panel                               | Each character's name, class (with class color), level, and initial attributes (Strength, Agility, Intellect, Stamina, Spirit) are displayed according to their class's base values                                        |
 | AC4 | Player has fewer than 5 characters and has defeated map 1 boss | Player triggers squad expansion for the **4th** seat | Only **Druid** (Malfurion) is recruited; join level equals **minimum level in current squad**; **2 fixed skills** (Rejuvenation, Maul); no hero-select grid (Example 27) |
-| AC4b | Player has 4 characters and has defeated map 2 boss | Player triggers squad expansion for the **5th** seat | Player can select any available non-trio / non-duplicate hero; join level equals **minimum level in current squad**; Warrior/Mage initial skill pick applies (Example 27) |
+| AC4b | Player has 4 characters and has defeated map 2 boss | Player triggers squad expansion for the **5th** seat | Player can select any available non-trio / non-duplicate hero; join level equals **minimum level in current squad**; hero receives **2 fixed initial skills** for their class (no skill pick step; Example 27) |
 | AC5 | Player has 5 characters in the squad                                                     | Player views the squad panel                               | All 5 slots are filled; no further recruitment is available                                                                                                                                                                |
 | AC6 | Player has the fixed initial trio                                                        | Player inspects each hero's equipment                      | Each hero has MainHand and Armor equipped with normal (white) starter items                                                                                                                                                |
 | AC6a | Player has the fixed initial trio (per Example 4)                                        | Player opens each hero's Tactics tab                       | Each hero has pre-configured starter tactics (Warrior OT taunt + sunder chain; Mage HP-band frost/fire; Priest heal triage + shield when safe); see [10-tactics.md](design/10-tactics.md) section 9 |
@@ -550,54 +550,44 @@ Then [expected result/verifiable behavior].
 
 ---
 
-## Example 12: Warrior Initial Skill Selection (Expansion Heroes Only)
+## Example 12: Warrior Fixed Initial Skills (All Warriors)
 
 **User Story**
 
 > As a player,  
-> I want to choose one initial skill when recruiting a Warrior hero as an expansion hero,  
-> So that I can shape the Warrior's role (Arms DPS, Fury sustain, or Protection tank) from the start.
+> I want every Warrior to start with Sunder Armor and Taunt as fixed initial skills,  
+> So that I can learn threat mechanics from the first battle and specialize via the Lv 10 learn-new pool (not at recruitment).
 
 **Design Reference (from design doc)**
 
-- **Scope**: Applies to **expansion hero** recruitment only. The fixed initial trio's Warrior has 2 fixed skills (Sunder Armor, Taunt) and does not use this flow.
-- **Trigger**: When a Warrior expansion hero joins the squad (during recruitment flow after map 1 or 2 boss defeat).
-- **Options**: Exactly 3 skills, one from each spec (Arms, Fury, Protection). Player must pick 1.
-- **Result**: The chosen skill becomes the Warrior's first and only skill until skill milestones apply (first **enhance** window at **Lv 3**; first **learn new** pool at **Lv 10**; see [05-skills.md](design/05-skills.md) section 4).
-- **Initial skills**:
-
-  | Spec       | Skill | English       | Cost    | Effect                                                                                                                         |
-  | ---------- | ----- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-  | Arms       | 英勇打击  | Heroic Strike | 15 Rage | Single-target physical damage, 1.2x coefficient                                                                                |
-  | Fury       | 嗜血    | Bloodthirst   | 20 Rage | Single-target physical damage 1.2x, heal 15% of damage dealt                                                                   |
-  | Protection | 破甲    | Sunder Armor  | 15 Rage | Single-target 0.8x damage, target Armor -8 for 3 rounds; if armor below 0 after reduction, +2% damage per excess point; stacks |
-
+- **Scope**: Fixed initial trio Warrior and any future Warrior hero; **no** recruitment skill pick.
+- **Fixed skills**: **Sunder Armor** + **Taunt** (see Example 13b for combat/threat AC).
+- **First learn-new pool**: **Lv 10** — Cleave (Arms), Whirlwind (Fury), Defensive Stance (Protection); see [05-skills.md](design/05-skills.md) 8.1.4 / 8.1.3.
+- **Legacy**: `WARRIOR_INITIAL_SKILLS` (Heroic Strike / Bloodthirst / Sunder pick-1) and recruitment UI are **deprecated** (05-skills 3.4, 8.1.7). Heroic/Bloodthirst combat AC remain in Example 13 for skills still in code.
 
 **Acceptance Criteria**
 
 
-| #   | Given                                                                                   | When                                                      | Then                                                                                                                      |
-| --- | --------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| AC1 | Player is recruiting a Warrior hero (e.g., from character selection or squad expansion) | Recruitment flow reaches the Warrior skill selection step | A skill selection UI is shown with exactly 3 options: Heroic Strike (Arms), Bloodthirst (Fury), Sunder Armor (Protection) |
-| AC2 | Player is on the Warrior initial skill selection screen                                 | Player views each option                                  | Each skill displays its name, spec label (Arms/Fury/Protection), cost, and effect summary                                 |
-| AC3 | Player is on the Warrior initial skill selection screen                                 | Player selects one skill (e.g., Bloodthirst) and confirms | The selected skill is assigned to the Warrior; the Warrior joins the squad with that skill as their only available skill  |
-| AC4 | Player has recruited a Warrior with Heroic Strike                                       | Player views the Warrior's skill list or combat UI        | Only Heroic Strike is listed; **Lv 3** allows enhance only; the first **learn new** pool is at **Lv 10**                  |
-| AC5 | Player has recruited a Warrior with Bloodthirst                                         | Player views the Warrior's skill list or combat UI        | Only Bloodthirst is listed; **Lv 3** allows enhance only; the first **learn new** pool is at **Lv 10**                    |
-| AC6 | Player has recruited a Warrior with Sunder Armor                                        | Player views the Warrior's skill list or combat UI        | Only Sunder Armor is listed; **Lv 3** allows enhance only; the first **learn new** pool is at **Lv 10**                   |
-| AC7 | Player has not yet completed the skill selection                                        | Player attempts to proceed without selecting              | The flow does not complete; player must select one of the 3 skills before the Warrior joins the squad                     |
+| #   | Given                                                                 | When                                      | Then                                                                                                      |
+| --- | --------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| AC1 | Player starts a new game (fixed trio) or recruits any Warrior expansion hero | Warrior joins the squad                   | Warrior has exactly **2** skills: Sunder Armor and Taunt; **no** initial skill selection step in onboarding |
+| AC2 | Warrior is level 1–9                                                  | Player opens skill choice for milestones  | Only **enhance** options for Sunder/Taunt at Lv 3/6/9; **no** learn-new until Lv 10                       |
+| AC3 | Warrior reaches Lv 10 (or resolves Lv 10 milestone during recruitment) | Learn-new milestone opens                 | Player may pick one of Cleave, Whirlwind, or Defensive Stance (Example 26)                                |
 
 
 ---
 
-## Example 13: Warrior Initial Skills (Implementation and Use)
+## Example 13: Warrior Skills — Heroic Strike, Bloodthirst, Sunder (Combat Mechanics)
 
 **User Story**
 
 > As a player,  
-> I want my Warrior's initial skill to perform correctly in combat (damage, lifesteal, or armor debuff),  
+> I want Warrior skills to perform correctly in combat (damage, lifesteal, or armor debuff),  
 > So that my pre-configured tactics produce the expected outcomes and I can verify the skill mechanics from the combat log.
 
 **Design Reference (from design doc)**
+
+- **Note**: **Sunder Armor** is a **fixed initial** skill (Example 12 / 13b). **Heroic Strike** and **Bloodthirst** remain in `warriorSkills.js` (legacy recruitment path; see 05-skills 8.1.7) — combat AC below still apply when those skills are present on a hero.
 
 - **Rage**: Warriors start combat at 0 Rage; fixed rage per attack (dealing or taking); crit doubles rage gain; dodge gives 0; max 100. Skills consume Rage; insufficient Rage prevents use. Rage resets to 0 after combat; does not recover during rest.
 - **Damage formula**: `baseRoll = random(1,4) + weaponRoll`; `rawDamage = round(baseRoll * physMultiplier) + physAtkBonus`; `physMultiplier = 1 + baseAttr * 0.2`; `finalDamage = max(1, rawDamage * SkillCoeff * [1.5 if crit] - targetArmor)`. Unarmed baseRoll 1–4; with weapon, weapon roll adds to range. AC tests with fixed RNG for deterministic verification.
@@ -694,10 +684,11 @@ Then [expected result/verifiable behavior].
 
 When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) section 8.2 for full skill design.
 
-- **Fixed trio Mage**: Has Frostbolt + Fireball (no selection). Frostbolt: **9 MP** base (**+1 MP per enhancement**, up to 13 at 4 enhancements), 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced, up to 30%). Fireball: **13 MP** base (**+1 MP per enhancement**, up to 17 at 4 enhancements), 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x, **11 MP**, 2-round CD; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
+- **Fixed trio Mage**: Has Frostbolt + Fireball (both fixed; no selection). Frostbolt: **9 MP** base (**+1 MP per enhancement**, up to 13 at 4 enhancements), 0.8x damage + 10% chance to Freeze (target skips next action; chance increases when enhanced, up to 30%). Fireball: **13 MP** base (**+1 MP per enhancement**, up to 17 at 4 enhancements), 1.3x damage + +12% spell crit on that cast (no Burn DoT). At Lv 3, enhance Frostbolt or Fireball. At Lv 10, learn one of: Arcane Missiles, Frost Nova (AOE 0.5x, **11 MP**, 2-round CD; **per-enemy** 25% chance Freeze 1 action, independent rolls), Flamestrike.
+- **All Mage heroes**: Same **2 fixed** initial skills as fixed trio (no recruitment pick).
 - **Mana**: Mages start combat at full MP; MP recovers per turn (Spirit * 0.8 + equipment bonus, floored; see 05-skills.md 8.2.1). Skills consume Mana; insufficient Mana prevents use.
 - **Damage formula** (hero; see [05-skills.md](design/05-skills.md) 2.2.3.2): `baseRoll = [has wand/staff range ? random(weaponMin, weaponMax) : 0]`; `effectiveSpellPower = round(baseRoll * spellMultiplier) + spellPowerBonus` (rings, **off-hand orb flat**, armor affixes, main-hand `spellWeaponFlat`, etc.); `rawDamage = round(effectiveSpellPower * SkillCoeff * (1 + spellDmg%))`; `finalDamage = max(1, rawAfterCrit - targetResistance)`. Monsters still use 1–4 unarmed scaling vs `spellPower` in `getEffectiveSpellPower`. **Battle log**: magic skill entries may append `weaponMechanicLines` text such as `法术强度：武器段 W + 额外 F = …（技能结算前有效法术强度）` (breakdown of pre-coeff effective spell strength; implementation: `getEffectiveSpellPowerBreakdown`, `battleLogFormat.weaponMechanicLines`).
-- **Initial skills (Frost vs Fire identity — same skill ids as fixed trio; expansion Mage recruitment uses one spec)**:
+- **Initial skills (both fixed for all Mages)**:
 
   | Spec  | Skill     | English   | Cost      | Effect                                                                                                                      |
   | ----- | --------- | --------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -719,7 +710,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 **Design Reference (from design doc)**
 
-- **Scope**: Fixed initial trio Priest only. Expansion Priest recruitment uses the same skill pool (when Priest skill design is complete).
+- **Scope**: All Priest heroes (fixed trio and expansion). Same **2 fixed** skills; no recruitment pick.
 - **Flash Heal**: 12 MP, 0 CD. Heal = SpellPower × ~1.0. Threat = healAmount × 0.5 on each monster whose **attack intent** is the healed ally (or self), not on all monsters.
 - **Power Word: Shield**: 12 MP, 0 CD. Absorb = SpellPower × ~1.0. Lasts 3 rounds or until absorbed. Threat = absorbAmount × 0.25 (low) on each monster whose intent is the shielded ally; not on all monsters.
 - **Shield mechanics**: Damage to shielded target is absorbed first; excess goes to HP. Recasting refreshes absorb and duration. One shield per target.
@@ -1176,7 +1167,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Overlap**: Levels **30** and **60** are both multiples of 3 and 10 — the same modal may show both "Enhance existing" and "Learn new" sections; the player still picks one action (or skip) per modal instance as implemented.
 - **Levels that are only learn (10, 20, 40, 50)**: Not multiples of 3 — **only** "Learn new" is offered (no enhance on that level-up).
 - **Choice window**: Modal appears; player may skip; reopen via **继续技能选择** on hero detail **技能** tab for the **lowest** unresolved milestone.
-- **Enhancement rules**: Each skill at most **4** milestone enhancements (display level up to **5**). (Heroic Strike / Bloodthirst / Sunder Armor formulas per [05-skills.md](design/05-skills.md) 8.1.6.)
+- **Enhancement rules**: Each skill at most **4** milestone enhancements (display level up to **5**). Fixed initial skill formulas: Warrior Sunder/Taunt (05-skills 8.1.6); Mage Frostbolt/Fireball (8.2.6); etc.
 
 **Acceptance Criteria**
 
@@ -1204,7 +1195,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 
 > As a player,
 > I want to recruit a new hero when I defeat the first or second map boss,
-> So that I can expand my squad (from 3 to 4, then 4 to 5) with ready-to-fight heroes and customize their build through attribute allocation, initial skill, and level skill selection in one onboarding flow.
+> So that I can expand my squad (from 3 to 4, then 4 to 5) with ready-to-fight heroes and customize their build through attribute allocation and optional skill milestones in one onboarding flow.
 
 **Design Reference (from design doc)**
 
@@ -1212,10 +1203,10 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Trigger (5th hero)**: Player defeats the zone boss on the second map (e.g., VanCleef in Westfall). Squad expands from 4 to 5. Any available expansion class. Max squad size reached.
 - **Expansion hero level**: 4th and 5th heroes join at **minimum level in current squad** (e.g., squad min Lv7 → join at Lv7 with `3 × 6 = 18` attribute points).
 - **Recruitment flow (4th hero, Druid)**: (1) Auto-start Malfurion (no hero grid); (2) Allocate **catch-up** attribute points (`3 × (joinLevel - 1)`, e.g. 18 at squad min Lv7); (3) **No** skill pick — fixed **Rejuvenation + Maul**; (4) **Optional** skill milestones (skippable). Lv 10 learn pool: Bear Form / Regrowth / Rake (see [05-skills.md](design/05-skills.md) 8.4.5).
-- **Recruitment flow (5th hero)**: (1) Select hero; (2) Allocate catch-up attribute points; (3) Initial skill if Warrior/Mage; (4) **Optional** skill milestones (skippable).
+- **Recruitment flow (5th hero)**: (1) Select hero; (2) Allocate catch-up attribute points; (3) **No** initial skill pick — **2 fixed skills** for that class (same as fixed trio / druid rule); (4) **Optional** skill milestones (skippable).
 - **After joining the squad**: Same as fixed trio — **+3 unassigned attribute points per level-up** (player allocates in hero detail); skill milestones at 3/6/9/10/… (player chooses enhance/learn or skip; skipped milestones remain available via Skills tab). See 02-levels-monsters.md 1.2.1.1.
 - **Boss victory UI (map 1–2)**: After victory summary, show **Recruit squad expansion** modal when a seat opens; **Recruit now** → `/character-select`; **Later** → dismiss (player may recruit anytime via **+ Recruit**). Map 3–5 boss: no modal, no "squad full" copy.
-- **Initial skill**: Same rules as Example 12 (e.g., Warrior: Heroic Strike, Bloodthirst, Sunder Armor — pick 1).
+- **Fixed initial skills**: Per class (Example 12 Warrior: Sunder + Taunt; Mage: Frostbolt + Fireball; Druid: Rejuvenation + Maul; etc. — see 05-skills 8.x). Specialization at **Lv 10** learn-new pool (Example 26).
 - **Level skill steps**: Same rules as Example 26 — at each milestone, enhance or (at 10/20/…) learn from the pool.
 - **Reference**: See design doc 02-levels-monsters.md 1.2.1.
 
@@ -1228,22 +1219,23 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC1b | Player dismisses the recruit modal with **Later** after map 1 boss defeat                                   | Auto-combat resumes                   | The modal is closed; **+ Recruit** remains available on the squad panel until the 4th hero joins                                                                                                         |
 | AC2  | Player triggers squad expansion after first map boss defeat                                                | Player enters the recruitment flow    | The new hero joins at **squad min level**; catch-up points `3 × (joinLevel - 1)` must be allocated in onboarding; `unassignedPoints` starts at **0** until the next level-up |
 | AC3  | Player is on the attribute allocation step for the expansion hero                                          | Player allocates the attribute points | Player assigns points to Strength, Agility, Intellect, Stamina, or Spirit; all points must be assigned before proceeding; assignment is saved when confirmed     |
-| AC4  | Player has completed attribute allocation (5th hero, Warrior) | Player proceeds | Initial skill selection is shown for Warrior/Mage; other classes skip to confirm or milestones |
+| AC4  | Player has completed attribute allocation (5th hero, any class) | Player proceeds | **No** initial skill selection step; confirm step shows **2 fixed skills** for that class, or optional skill milestones if join level has unresolved milestones |
 | AC4d | Player triggers 4th-hero (Druid) recruitment after map 1 boss | Player enters recruitment | Hero-select grid is skipped; attribute allocation starts for Malfurion; subtitle states fixed skills and min-squad-level join |
-| AC5  | Player has selected the initial skill (Warrior/Mage, 5th hero) | Player proceeds | **Optional** skill milestone UI may appear (Example 26); player may enhance/learn or **skip** (skip does not consume the milestone) |
+| AC5  | Player completes attribute allocation (5th hero) | Player proceeds | **Optional** skill milestone UI may appear (Example 26); player may enhance/learn or **skip** (skip does not consume the milestone) |
 | AC5b | Player completes Druid attribute allocation (4th hero) | Player proceeds | Confirm step shows **fixed** Rejuvenation and Maul; no skill pick step |
+| AC5d | Player completes attribute allocation (5th hero, e.g. Mage) | Player proceeds to confirm | Confirm step shows **fixed** Frostbolt and Fireball (both); no skill pick step |
 | AC5c | Player skips a skill milestone during recruitment onboarding | Player confirms and hero joins | That milestone is **not** marked resolved; hero detail **Skills** tab still offers **Continue skill choice** for it |
 | AC6  | Player has completed all recruitment steps | Player confirms | Hero joins at designated level with assigned attributes and skills |
-| AC7  | Player views the squad after recruiting | Squad panel | 4th Druid and 5th expansion hero show **squad min level** at join (Druid has 2 fixed skills) |
+| AC7  | Player views the squad after recruiting | Squad panel | 4th Druid and 5th expansion hero show **squad min level** at join; each has **2 fixed initial skills** |
 | AC7d | Player completes expansion hero recruitment | Player inspects the new hero's equipment | Hero has normal (white) **MainHand** and **Armor** equipped (same starter rules as fixed trio; wand for spell classes) |
 | AC7b | An expansion hero (e.g., Druid at squad min level) gains XP and levels up after joining | Level-up occurs | Hero receives **+3 unassignedPoints**; player can allocate them in hero detail like the fixed trio |
 | AC7c | An expansion hero reaches a new skill milestone after joining (e.g., Lv5→6, later Lv6→… milestone 6 if unresolved) | Milestone triggers | Skill choice modal or Skills tab entry appears; player chooses enhance/learn or skips; same rules as Example 26 |
 | AC8  | Player has defeated the zone boss on the second map (Westfall) | Boss is defeated | Third map unlocked; recruit modal for **5th** seat (free class choice) when `squad.length === 4` |
 | AC8b | Player has defeated a zone boss on map 3, 4, or 5                                                          | Boss is defeated                      | The next map is unlocked; **no** recruit modal and **no** "squad full" message                                                                                                                            |
-| AC9  | Player has not completed attribute allocation                                                              | Player attempts to skip or proceed    | The flow does not complete; player must allocate all points before the initial skill step                                                                        |
-| AC10 | Player has not selected an initial skill                                                                   | Player attempts to proceed            | The flow does not complete; player must select 1 of the 3 initial skills before the level skill step                                                             |
-| AC11 | Expansion hero (e.g., Warrior) joins with Bloodthirst and chooses "Enhance existing" at milestone 3        | Recruitment completes                 | The Warrior has Bloodthirst enhanced once (e.g., +0.1 coefficient, +5% heal); no new skill is learned                                                            |
-| AC12 | Expansion hero (e.g., Warrior) joins at Lv 10 with Heroic Strike and completes Lv 10 learn — Cleave        | Recruitment completes                 | The Warrior has Heroic Strike and Cleave; both are available in combat                                                                                           |
+| AC9  | Player has not completed attribute allocation                                                              | Player attempts to skip or proceed    | The flow does not complete; player must allocate all points before confirm or optional milestones |
+| AC10 | Expansion hero joins at Lv 10+ with unresolved Lv 10 milestone during onboarding | Player skips milestone and confirms | Hero joins with **2 fixed skills** only; Lv 10 learn-new remains available via Skills tab (Example 26 AC7) |
+| AC11 | Expansion Warrior joins with Sunder + Taunt and chooses "Enhance existing" at milestone 3 during onboarding | Recruitment completes                 | Sunder or Taunt enhanced once per choice; no new skill learned until Lv 10 pool |
+| AC12 | Expansion Warrior joins at squad min Lv 10 with Sunder + Taunt and completes Lv 10 learn — Cleave        | Recruitment completes                 | Warrior has Sunder, Taunt, and Cleave; all available in combat                                                                                           |
 
 
 ---

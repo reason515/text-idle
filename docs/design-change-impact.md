@@ -10,7 +10,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 |-------|------------------|-------------------|
 | **Initial squad** | 3 heroes via `createFixedTrioSquad()`; 2 fixed skills each; starter `tactics` (see 10-tactics.md §9) | [02-levels-monsters.md](design/02-levels-monsters.md) 1.2.0, [05-skills.md](design/05-skills.md) 3.1, Example 3a/3b/4a |
 | **Game start routing** | Intro → team name → hero preview → main; **no** `/character-select` for first squad | Example 3, 3a; `IntroPage.vue`, `main.js` |
-| **Expansion recruitment** | `/character-select` after map 1 or 2 boss; max 5 heroes; **4th** = **Druid only** (no hero grid); **5th** = any hero; join level = `getSquadMinLevel(squad)` | Example 4, 27; `getRecruitLimit`, `isDruidOnlyExpansionSlot`, `getExpansionHeroLevel`, `CharacterSelectionPage.vue` |
+| **Expansion recruitment** | `/character-select` after map 1 or 2 boss; max 5 heroes; **4th** = **Druid only** (no hero grid); **5th** = any hero; join level = `getSquadMinLevel(squad)`; **all classes: 2 fixed initial skills**, no recruitment skill pick (Lv10 learn-new 3 pick 1) | Example 4, 12, 27; `CharacterSelectionPage.vue` (**legacy** Warrior/Mage pick UI pending removal) |
 | **Recruit limit** | `getRecruitLimit(progress)` = `clamp(2 + unlockedMapCount, 3, 5)` | Example 5; `combat.js` |
 
 ## 1. Flow and UI Continuity
@@ -38,7 +38,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 |-------|------|-------|
 | **Overview** | 01-overview.md | Core loop, assemble phase, hero seat counts (3 → 5, not 1 → 5) |
 | **Levels/Monsters** | 02-levels-monsters.md | Squad size, expansion triggers |
-| **Skills** | 05-skills.md | Fixed 2 skills vs expansion initial pick |
+| **Skills** | 05-skills.md | **All classes**: 2 fixed initial skills; Lv10+ learn-new 3 pick 1; no expansion recruitment pick |
 | **UI/UX** | 09-social-ui.md | Layout, hero cards (×3–5), recruitment button |
 | **Index** | docs/design/index.md | Quick nav, module summaries |
 

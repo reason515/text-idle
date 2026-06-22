@@ -11,91 +11,76 @@ Guides implementing new skills for Warrior or Mage classes in Text Idle.
 
 Read [docs/design/05-skills.md](../../docs/design/05-skills.md) for:
 - Skill source rules (WoW-inspired, turn-based only)
-- Initial skill selection (3 options, 1 per spec)
-- Level unlock (5, 10, 15...60; enhance or learn new)
-- Enhancement formulas (max 3 enhances per skill)
+- **All classes**: **2 fixed initial skills** at recruit/start; **no** recruitment pick
+- **Lv 10+**: learn-new pool **3 pick 1** (one per spec)
+- **Lv 3+**: enhance existing skills (max 4 enhances per skill)
+- Level unlock mapping (10 -> legacy tier 5 row, etc.)
 - Warrior Rage / Mage Mana mechanics
 
 ## File Mapping
 
 | Skill Type | Files to Modify |
 |------------|-----------------|
-| **Initial skill** (recruitment) | `warriorSkills.js` or `mageSkills.js` |
-| **Level-unlock skill** (5, 10, 15...) | `warriorLevelSkills.js` or `mageLevelSkills.js` |
+| **Fixed initial skill** (2 per class) | `warriorSkills.js`, `mageSkills.js`, `priestSkills.js`, `druidSkills.js`, etc. |
+| **Level-unlock skill** (Lv10, Lv20, ...) | `warriorLevelSkills.js`, `mageLevelSkills.js`, etc. |
 | **Skill choice logic** | `skillChoice.js` (auto-wired if class/level exist) |
 | **Combat execution** | `combat.js` (skill resolution) |
 
-## Initial Skill Structure (Warrior)
+## Fixed Initial Skills (Warrior example)
 
-Add to `WARRIOR_INITIAL_SKILLS` in [frontend/src/game/warriorSkills.js](../../frontend/src/game/warriorSkills.js):
+Warrior fixed initial: **Sunder Armor + Taunt** (not heroic/bloodthirst pick-1). See 05-skills 8.1.3.
 
-```javascript
-{
-  id: 'skill-id',           // kebab-case
-  name: 'Skill Name',
-  spec: 'Arms' | 'Fury' | 'Protection',
-  rageCost: 15,
-  coefficient: 1.2,         // damage multiplier
-  effectDesc: '1.2x physical damage to single target',
-  // Optional: debuffArmorReduction, debuffDuration, healPercent, etc.
-}
-```
+Level-unlock skills go in `*LevelSkills.js` tier rows (Lv10 = tier 5 pool).
 
-## Initial Skill Structure (Mage)
+## Initial Skill Structure (Warrior — legacy pool only)
 
-Add to `MAGE_INITIAL_SKILLS` in [frontend/src/game/mageSkills.js](../../frontend/src/game/mageSkills.js):
+`WARRIOR_INITIAL_SKILLS` (heroic/bloodthirst/sunder pick-1) is **deprecated** UI; do not add new skills there. Use fixed initial + level skills per 05-skills 3.1.
 
 ```javascript
 {
   id: 'skill-id',
   name: 'Skill Name',
-  spec: 'Arcane' | 'Fire' | 'Frost',
-  manaCost: 15,
+  spec: 'Arms' | 'Fury' | 'Protection',
+  rageCost: 15,
   coefficient: 1.2,
-  effectDesc: '1.2x magic damage to single target',
-  // Optional: burnCoeff, burnDuration, debuffResistReduction, etc.
+  effectDesc: '1.2x physical damage to single target',
 }
 ```
 
+## Initial Skill Structure (Mage)
+
+Mage fixed initial: **Frostbolt + Fireball** (both). See `MAGE_INITIAL_SKILLS` in [mageSkills.js](../../frontend/src/game/mageSkills.js).
+
 ## Level-Unlock Skill Structure
 
-Add to `WARRIOR_LEVEL_SKILLS` or `MAGE_LEVEL_SKILLS` in the corresponding `*LevelSkills.js`:
+Add to `WARRIOR_LEVEL_SKILLS` or `MAGE_LEVEL_SKILLS`:
 
 ```javascript
-5: [
+5: [  // Lv10 learn milestone maps here
   { id: 'cleave', name: 'Cleave', spec: 'Arms', rageCost: 20, cooldown: 0, coefficient: 0.7, targets: 2, effectDesc: '...' },
-  // One per spec (Arms, Fury, Protection or Arcane, Fire, Frost)
 ],
 ```
 
-- `targets: 2` = 2 targets; `targets: -1` = all enemies
-- `cooldown: 0` = no CD; `cooldown: 2` = 2 rounds CD
-
 ## Implementation Checklist
 
-1. **Design doc**: Confirm skill in 05-skills.md section 8.1 (Warrior) or 8.2 (Mage)
-2. **Add definition**: warriorSkills.js / mageSkills.js (initial) or warriorLevelSkills.js / mageLevelSkills.js (level)
-3. **Combat logic**: If new mechanic (debuff, heal, multi-target), add handling in combat.js
-4. **Enhancement**: If initial skill has enhancement, add formula in `getSkillWithEnhancements()` (warriorSkills.js) or equivalent
-5. **Unit tests**: Add to warriorSkills.spec.js, warriorLevelSkills.spec.js, mageSkills.spec.js, or skillChoice.spec.js
-6. **E2E tests**: If UI flow (skill selection, combat log), add to e2e/browser/warrior-skills.spec.js or mage-skills.spec.js
+1. **Design doc**: Confirm skill in 05-skills.md section 8.x
+2. **Add definition**: fixed initial in `*Skills.js` OR level row in `*LevelSkills.js`
+3. **Combat logic**: If new mechanic, add handling in combat.js
+4. **Enhancement**: Add formula in `getSkillWithEnhancements()` / class equivalent
+5. **Unit tests**: `*.spec.js` next to module
+6. **E2E**: If UI flow changed; else N/A if pure logic
 
-## Enhancement Formulas (Initial Skills Only)
+## Enhancement Formulas
 
-From 05-skills.md 8.1.6:
-- Heroic Strike: +0.2 coefficient per enhance (max 1.8)
-- Bloodthirst: +0.1 coefficient, +5% heal per enhance (max 1.5, 30%)
-- Sunder Armor: +1 max stack per enhance (max 4 layers)
-
-Implement in `getSkillWithEnhancements(warrior, skillId)`.
+From 05-skills.md 8.1.6 / 8.2.6: max **4** enhances (UI Lv.1-5). Implement in `getSkillWithEnhancements(hero, skillId)`.
 
 ## Turn-Based Only (game-design.mdc)
 
-- No seconds/minutes; use **rounds** (回合)
-- Cooldowns: "2 round CD", not "2 second CD"
+- No seconds/minutes; use **rounds** (turns)
+- Cooldowns: "2 round CD", not seconds
 - Resource recovery: "per turn", not "per second"
 
 ## Tests
 
-- Unit: `frontend/src/game/warriorSkills.spec.js`, `warriorLevelSkills.spec.js`, `mageSkills.spec.js`
-- E2E: `e2e/browser/warrior-skills.spec.js`, `e2e/browser/mage-skills.spec.js`, `e2e/browser/skill-choice-milestones.spec.js`
+- Unit: `frontend/src/game/*Skills.spec.js`, `*LevelSkills.spec.js`
+- E2E: `e2e/browser/skill-choice-milestones.spec.js`, `character-recruitment.spec.js` when recruitment flow changes
