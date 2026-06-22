@@ -446,8 +446,21 @@
                 </template>
               </div>
             </div>
-            <div v-else-if="entry.type === 'rest'" class="log-rest" :class="{ 'log-rest-done': entry.complete }">
-              <template v-if="entry.heroes">
+            <div
+              v-else-if="entry.type === 'rest'"
+              class="log-rest"
+              :class="{
+                'log-rest-done': entry.complete,
+                'log-rest-penalty': entry.isPenalty,
+              }"
+            >
+              <template v-if="entry.isPenalty">
+                <span class="log-rest-penalty-label">死亡惩罚</span>
+                <span class="log-rest-penalty-sep">：</span>
+                额外休息中
+                <span class="log-rest-penalty-remain">（剩余 {{ entry.penaltyRemaining }} 步）</span>
+              </template>
+              <template v-else-if="entry.heroes">
                 恢复中...
                 <template v-for="(h, i) in entry.heroes" :key="h.id">
                   <span v-if="i > 0" class="log-rest-sep"> | </span>
@@ -2761,6 +2774,7 @@ import {
   runAutoCombat,
   startRestPhase,
   applyRestStep,
+  isRestPenaltyStep,
   REST_EXTRA_STEPS_PER_DEATH,
 } from '../game/combat.js'
 import {
@@ -5299,13 +5313,29 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   }
 
   while (!rest.isComplete && isRunning.value) {
+    const isPenaltyStep = isRestPenaltyStep(rest)
     rest = applyRestStep(rest)
     syncRestState(rest)
-    addLogEntry({
-      type: 'rest',
-      heroes: rest.heroes.map((h) => ({ id: h.id, name: heroDisplayName(h.name), class: h.class, currentHP: h.currentHP, maxHP: h.maxHP })),
-      complete: false,
-    })
+    if (isPenaltyStep) {
+      addLogEntry({
+        type: 'rest',
+        isPenalty: true,
+        penaltyRemaining: rest.penaltyStepsRemaining,
+        complete: false,
+      })
+    } else {
+      addLogEntry({
+        type: 'rest',
+        heroes: rest.heroes.map((h) => ({
+          id: h.id,
+          name: heroDisplayName(h.name),
+          class: h.class,
+          currentHP: h.currentHP,
+          maxHP: h.maxHP,
+        })),
+        complete: false,
+      })
+    }
     await scrollLog()
     await sleepMsRespectingPause(applyCombatPacingDelayMs(getRestStepRevealMs()))
     if (!isRunning.value) break
@@ -8401,6 +8431,22 @@ onUnmounted(() => {
 .log-rest-done {
   color: var(--color-hp);
   font-style: normal;
+}
+.log-rest-penalty {
+  color: var(--text-muted);
+  font-style: normal;
+  border-color: var(--border-subtle);
+  background: var(--bg-darker);
+}
+.log-rest-penalty-label {
+  color: var(--color-defeat);
+  font-weight: bold;
+}
+.log-rest-penalty-sep {
+  color: var(--text-muted);
+}
+.log-rest-penalty-remain {
+  color: var(--color-defeat);
 }
 
 .log-entry {

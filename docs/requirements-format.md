@@ -384,6 +384,7 @@ Then [expected result/verifiable behavior].
 - **Rest gate**: After a victorious combat, squad enters rest phase; next combat can start only when **all** heroes have full HP and full MP (or equivalent resources).
 - **Recovery speed**: HP and MP recovery per turn/step = `Base + Spirit * k + equipment bonus`; Spirit and equipment affect speed.
 - **Death penalty**: If N heroes died in the last combat, after full HP/MP recovery the squad must take **N × 5** extra rest steps (`REST_EXTRA_STEPS_PER_DEATH`, configurable); extra steps count toward rest and exploration steps for leaderboard efficiency; per-step recovery rate is unchanged.
+- **Battle log**: Normal rest steps show per-hero HP recovery lines; death-penalty wait steps show a distinct line (**死亡惩罚**：额外休息中（剩余 X 步）) so players can tell recovery from penalty.
 - **Time unit**: Recovery uses turns/steps, not seconds or minutes (turn-based design).
 
 **Acceptance Criteria**
@@ -400,6 +401,7 @@ Then [expected result/verifiable behavior].
 | AC7 | Player views a hero's recovery rate                                                                    | Player inspects the hero or rest UI                                     | Recovery formula or effective rate is visible (Spirit, equipment, death penalty), supporting transparent optimization                             |
 | AC8 | Squad has not yet fully recovered                                                                      | Auto-combat loop runs                                                   | Rest phase and recovery proceed automatically; next combat starts automatically after rest completes; no player action is required                |
 | AC9 | Squad enters rest phase (after victory or defeat)                                                      | Player views the monster area                                           | Monster area is cleared; shows "No active encounter." instead of previous battle's monsters                                                       |
+| AC10 | Squad is in rest phase after at least one hero died in the prior combat; heroes are already fully recovered | Each death-penalty wait step is logged in the combat log | Log shows penalty lines distinct from recovery lines (death-penalty label and remaining step count), not the same "recovering HP" format |
 
 
 ---

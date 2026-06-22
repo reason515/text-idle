@@ -40,6 +40,7 @@ import {
   startRestPhase,
   applyRestStep,
   canStartNextCombat,
+  isRestPenaltyStep,
 } from './combat.js'
 import { mergeAiTacticsApply } from './aiTactics.js'
 import { pickTargetByRule } from './tactics.js'
@@ -2546,6 +2547,37 @@ describe('combat progression and systems', () => {
     expect(stepsTwoDeaths).toBe(stepsNoDeath + 10)
     expect(restOneDeath.penaltyStepsRemaining).toBe(0)
     expect(restTwoDeaths.penaltyStepsRemaining).toBe(0)
+  })
+
+  it('isRestPenaltyStep is true only after full recovery while penalty steps remain', () => {
+    const hero = {
+      ...sampleHero({ id: 'h-penalty-flag', class: 'Mage', spirit: 5 }),
+      maxHP: 100,
+      maxMP: 40,
+      currentHP: 50,
+      currentMP: 20,
+      equipmentRecoveryBonus: 0,
+    }
+    let rest = startRestPhase([{ ...hero }], { deathCount: 1, base: 4, spiritScale: 1 })
+    let sawRecovery = false
+    let sawPenalty = false
+    while (!rest.isComplete) {
+      const isPenalty = isRestPenaltyStep(rest)
+      if (isPenalty) {
+        sawPenalty = true
+        expect(rest.penaltyStepsRemaining).toBeGreaterThan(0)
+      } else {
+        sawRecovery = true
+        const needsRecovery = rest.heroes.some(
+          (h) => h.currentHP < h.maxHP || (h.class !== 'Warrior' && h.currentMP < h.maxMP)
+        )
+        expect(needsRecovery).toBe(true)
+      }
+      rest = applyRestStep(rest)
+    }
+    expect(sawRecovery).toBe(true)
+    expect(sawPenalty).toBe(true)
+    expect(isRestPenaltyStep(rest)).toBe(false)
   })
 
   it('Example29: tactics skillPriority Shield Slam before Sunder when target has sunder', () => {

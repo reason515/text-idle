@@ -3240,6 +3240,12 @@ function heroesFullyRecovered(heroes) {
   })
 }
 
+/** True when the next rest tick is a death-penalty wait (heroes already full, extra steps remain). */
+export function isRestPenaltyStep(restState) {
+  if (!restState || restState.isComplete) return false
+  return heroesFullyRecovered(restState.heroes) && (restState.penaltyStepsRemaining ?? 0) > 0
+}
+
 export function startRestPhase(
   heroes,
   { deathCount = 0, base = 3, spiritScale = 1, extraStepsPerDeath = REST_EXTRA_STEPS_PER_DEATH } = {}
