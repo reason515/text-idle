@@ -55,6 +55,18 @@ import {
   executeBearForm,
   DRUID_HOT_BUFF_TYPES,
 } from './druidSkills.js'
+import {
+  getAnyPaladinSkillById,
+  getPaladinSkillWithEnhancements,
+  executeSealOfRighteousness,
+  executeJudgement,
+  executeLayOnHands,
+  executeConsecration,
+  executeHammerOfJustice,
+  executeSealRider,
+  hasActiveSeal,
+  consumeStunTurn,
+} from './paladinSkills.js'
 import { getMonsterSkillById, applyMonsterSkillDebuff } from './monsterSkills.js'
 import { generateEquipmentDrop, getEquipmentBonuses } from './equipment.js'
 import { applyDamageWithWeaponAffixes, computeMagicDefenseAfterWeapon, computePhysicalDefenseAfterWeapon } from './weaponAffixDamage.js'
@@ -1162,7 +1174,7 @@ export function buildRoundOrder(heroes, monsters, rng, options = {}) {
   return orderUnitsByAgility(all, rng)
 }
 
-const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal', 'rejuvenation', 'regrowth']
+const ALLY_TARGET_SKILLS = ['flash-heal', 'power-word-shield', 'greater-heal', 'rejuvenation', 'regrowth', 'lay-on-hands']
 
 /**
  * True when every skill in tactics skillPriority costs more MP/rage than the actor currently has
@@ -1191,6 +1203,10 @@ export function heroAllPrioritySkillsUnaffordable(actor, priority) {
       if (skill && cost <= mp) return false
     } else if (cls === 'Druid') {
       const skill = getDruidSkillWithEnhancements(actor, skillId) ?? getAnyDruidSkillById(skillId)
+      const cost = skill?.manaCost ?? 999
+      if (skill && cost <= mp) return false
+    } else if (cls === 'Paladin') {
+      const skill = getPaladinSkillWithEnhancements(actor, skillId) ?? getAnyPaladinSkillById(skillId)
       const cost = skill?.manaCost ?? 999
       if (skill && cost <= mp) return false
     } else if (cls === 'Warrior') {
@@ -1484,6 +1500,43 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   let initialOrder = []
   /** One per living unit turn slot in round order (design: combat action step). */
   let combatActionSteps = 0
+
+  /**
+   * Log seal rider holy damage as a separate line when Seal of Righteousness is active.
+   * @param {Object} paladin
+   * @param {Object} target
+   */
+  function appendSealRiderLog(paladin, target) {
+    if (paladin.class !== 'Paladin' || !hasActiveSeal(paladin) || (target.currentHP ?? 0) <= 0) return
+    const rider = executeSealRider(paladin, target, { rng })
+    if (!rider || rider.finalDamage <= 0) return
+    addThreatFromDamage(threat, target.id, paladin.id, rider.finalDamage, 1, paladin)
+    log.push({
+      round,
+      actorId: paladin.id,
+      actorName: paladin.name,
+      actorAgility: paladin.agility ?? 0,
+      actorClass: paladin.class,
+      actorTier: null,
+      action: 'skill',
+      skillId: 'seal-of-righteousness-rider',
+      skillName: '\u5723\u5370\u9644\u52a0',
+      skillSpec: '\u795e\u5723',
+      targetId: target.id,
+      targetName: target.name,
+      targetClass: target.class || null,
+      targetTier: target.tier || null,
+      damageType: 'magic',
+      finalDamage: rider.finalDamage,
+      sealRiderCoeff: rider.riderCoeff,
+      targetDefense: rider.effectiveResistance,
+      targetHPBefore: rider.targetHPBefore,
+      targetHPAfter: rider.targetHPAfter,
+      targetMaxHP: target.maxHP,
+      threatAmount: rider.finalDamage,
+      threatTargetName: target.name,
+    })
+  }
 
   /**
    * Basic attack damage resolution after target is chosen (hero or monster).
@@ -1880,6 +1933,15 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     }
     if (pendingOtEntry) log.push(pendingOtEntry)
     log.push(logEntry)
+    if (
+      actor.side === 'hero' &&
+      actor.class === 'Paladin' &&
+      hitResult.isHit &&
+      reportedFinalDamage > 0 &&
+      target.side === 'monster'
+    ) {
+      appendSealRiderLog(actor, target)
+    }
 
     let tauntExpiredMonsterIdsAfterSwing = []
     if (actor.side === 'monster') {
@@ -1955,6 +2017,20 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         emitMonsterIntentChangesIfNeeded()
         continue
       }
+      if (consumeStunTurn(actor)) {
+        log.push({
+          round,
+          type: 'actionSkipped',
+          skipReason: 'stun',
+          actorId: actor.id,
+          actorName: actor.name,
+          actorClass: actor.class || null,
+          actorTier: actor.tier ?? null,
+          actorAgility: actor.agility ?? 0,
+        })
+        emitMonsterIntentChangesIfNeeded()
+        continue
+      }
       const defaultTarget = pickTarget(actor, heroUnits, monsterUnits, {
         rng,
         threat,
@@ -1979,6 +2055,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       let magePriorityNoCastThisTurn = false
       let priestPriorityNoCastThisTurn = false
       let druidPriorityNoCastThisTurn = false
+      let paladinPriorityNoCastThisTurn = false
       /** True after hero resolves basic-attack from tactics skillPriority (skip implicit fallback swing). */
       let heroConsumedExplicitPriorityBasicAttack = false
       const skillPriority = getSkillPriority(actor)
@@ -2967,6 +3044,274 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         druidPriorityNoCastThisTurn = true
       }
 
+      // Paladin skill path: seal/judgement, heals, AOE, hammer stun
+      const paladinSkillPriority = getSkillPriority(actor)
+      if (actor.side === 'hero' && actor.class === 'Paladin' && paladinSkillPriority.length > 0) {
+        let usedSkill = false
+        for (const skillId of paladinSkillPriority) {
+          if (skillId === 'basic-attack') {
+            const ba = tryHeroBasicAttackFromSkillPriority(actor, conditions, ctx)
+            if (!ba.ok) {
+              emitMonsterIntentChangesIfNeeded()
+              continue
+            }
+            emitMonsterIntentChangesIfNeeded({ tauntExpiredMonsterIds: ba.tauntExpiredMonsterIds })
+            usedSkill = true
+            heroConsumedExplicitPriorityBasicAttack = true
+            break
+          }
+          const skill = getPaladinSkillWithEnhancements(actor, skillId) ?? getAnyPaladinSkillById(skillId)
+          const manaCost = skill?.manaCost ?? 999
+          if (!skill || manaCost > (actor.currentMP || 0)) continue
+          const cooldown = skill.cooldown ?? 0
+          const lastUsed = actor.skillCooldowns?.[skillId] ?? 0
+          if (cooldown > 0 && lastUsed > 0 && round - lastUsed < cooldown) continue
+
+          const paladinCond = conditions.find((c) => c.skillId === skillId)
+          if (skillId === 'lay-on-hands') {
+            if (paladinCond && !checkAllyEmergencyHealSkillAllowed(paladinCond, actor, heroUnits, monsterUnits, ctx)) {
+              continue
+            }
+          } else if (
+            paladinCond &&
+            skillId !== 'seal-of-righteousness' &&
+            !tacticsConditionWhenRequiresPickedTarget(paladinCond) &&
+            !checkCondition(paladinCond, actor, null, heroUnits, monsterUnits, ctx)
+          ) {
+            continue
+          }
+
+          if (skillId === 'seal-of-righteousness') {
+            if (paladinCond && !checkCondition(paladinCond, actor, null, heroUnits, monsterUnits, ctx)) continue
+            const sr = executeSealOfRighteousness(actor, skill)
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: actor.id,
+              targetName: actor.name,
+              targetClass: actor.class || null,
+              targetTier: null,
+              sealApplied: sr.sealApplied,
+              sealRefreshed: sr.sealRefreshed,
+              sealRounds: sr.sealRounds,
+              sealRiderCoeff: sr.sealRiderCoeff,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            })
+            usedSkill = true
+            break
+          }
+
+          if (skillId === 'consecration') {
+            const aliveMonsters = alive(monsterUnits)
+            if (aliveMonsters.length === 0) continue
+            const skillRoll = rng()
+            const sampleTarget = aliveMonsters[0]
+            const hitResult = rollHitCheck(actor, sampleTarget, () => skillRoll)
+            const isCrit = hitResult.isHit ? skillRoll < (actor.spellCrit || 0) : false
+            const sr = executeConsecration(actor, aliveMonsters, skill, {
+              rng,
+              isCrit,
+              isHit: hitResult.isHit,
+            })
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            const threatMult = sr.threatMultiplier ?? 1.4
+            for (const hit of sr.hits) {
+              if (hit.finalDamage > 0) {
+                addThreatFromDamage(threat, hit.targetId, actor.id, hit.finalDamage, threatMult, actor)
+                const m = aliveMonsters.find((x) => x.id === hit.targetId)
+                if (m) appendSealRiderLog(actor, m)
+              }
+            }
+            const firstHit = sr.hits[0]
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: firstHit?.targetId ?? sampleTarget.id,
+              targetName: firstHit?.targetName ?? sampleTarget.name,
+              targetClass: firstHit?.targetClass ?? null,
+              targetTier: firstHit?.targetTier ?? null,
+              damageType: 'magic',
+              finalDamage: sr.totalDamage,
+              isCrit: sr.isCrit,
+              isMiss: !sr.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
+              consecrationHits: sr.hits,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              threatAmount: sr.totalDamage > 0 ? Math.round(sr.totalDamage * getEffectiveThreatMultiplierForHero(actor, threatMult)) : null,
+              threatTargetName: sr.totalDamage > 0 ? (firstHit?.targetName ?? sampleTarget.name) : null,
+            })
+            usedSkill = true
+            break
+          }
+
+          let paladinTarget = pickTarget(actor, heroUnits, monsterUnits, {
+            skillId,
+            conditions,
+            rng,
+            round,
+            threat,
+            tauntState,
+            designatedTank: designatedTankUnit,
+            monsterLastTarget,
+          })
+          if (!paladinTarget) continue
+          if (
+            paladinCond &&
+            tacticsConditionWhenRequiresPickedTarget(paladinCond) &&
+            !checkCondition(paladinCond, actor, paladinTarget, heroUnits, monsterUnits, ctx)
+          ) {
+            continue
+          }
+
+          if (skillId === 'lay-on-hands') {
+            const sr = executeLayOnHands(actor, paladinTarget, skill)
+            if (!actor.skillCooldowns) actor.skillCooldowns = {}
+            actor.skillCooldowns[skillId] = round
+            const preStableIntentIds = snapshotStableIntentIdsForMonsters(alive(monsterUnits))
+            const healThreatCount = addThreatFromHeal(
+              threat,
+              alive(monsterUnits),
+              alive(heroUnits),
+              tauntState,
+              paladinTarget.id,
+              actor.id,
+              sr.heal,
+              monsterLastTarget
+            )
+            log.push({
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              targetId: paladinTarget.id,
+              targetName: paladinTarget.name,
+              targetClass: paladinTarget.class || null,
+              targetTier: null,
+              heal: sr.heal,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+              threatHealAmount: healThreatCount > 0 ? Math.round(sr.heal * 0.5) : null,
+              threatBeneficiaryName: healThreatCount > 0 ? paladinTarget.name : undefined,
+              threatBeneficiaryClass: healThreatCount > 0 ? paladinTarget.class || null : undefined,
+            })
+            emitMonsterIntentChangesIfNeeded({ preStableIntentIds })
+            usedSkill = true
+            break
+          }
+
+          if (skillId === 'judgement' || skillId === 'hammer-of-justice') {
+            const skillRoll = rng()
+            const hitResult = rollHitCheck(actor, paladinTarget, () => skillRoll)
+            const isCrit =
+              skillId === 'hammer-of-justice'
+                ? hitResult.isHit && skillRoll < (actor.physCrit || 0)
+                : hitResult.isHit && skillRoll < (actor.spellCrit || 0)
+            const sr =
+              skillId === 'hammer-of-justice'
+                ? executeHammerOfJustice(actor, paladinTarget, skill, { rng, isCrit, isHit: hitResult.isHit })
+                : executeJudgement(actor, paladinTarget, skill, { rng, isCrit, isHit: hitResult.isHit })
+            if (skillId === 'hammer-of-justice' && cooldown > 0) {
+              if (!actor.skillCooldowns) actor.skillCooldowns = {}
+              actor.skillCooldowns[skillId] = round
+            }
+            if (sr.finalDamage > 0) {
+              addThreatFromDamage(threat, paladinTarget.id, actor.id, sr.finalDamage, 1, actor)
+            }
+            const entry = {
+              round,
+              actorId: actor.id,
+              actorName: actor.name,
+              actorAgility: actor.agility ?? 0,
+              actorClass: actor.class,
+              actorTier: null,
+              action: 'skill',
+              skillId: sr.skillId,
+              skillName: sr.skillName,
+              skillSpec: sr.skillSpec,
+              skillCoefficient: sr.skillCoefficient,
+              targetId: paladinTarget.id,
+              targetName: paladinTarget.name,
+              targetClass: paladinTarget.class || null,
+              targetTier: paladinTarget.tier || null,
+              damageType: skillId === 'judgement' ? 'magic' : 'physical',
+              rawDamage: sr.rawDamage,
+              isCrit: sr.isCrit,
+              isMiss: !sr.isHit,
+              finalHitChance: hitResult.finalHitChance,
+              missChance: hitResult.missChance,
+              attackerHit: hitResult.attackerHit,
+              defenderDodge: hitResult.defenderDodge,
+              levelAdjust: hitResult.levelAdjust,
+              finalDamage: sr.finalDamage,
+              targetHPBefore: sr.targetHPBefore,
+              targetHPAfter: sr.targetHPAfter,
+              targetMaxHP: sr.targetMaxHP,
+              manaConsumed: sr.manaConsumed,
+              manaAfter: actor.currentMP,
+            }
+            if (skillId === 'judgement') {
+              entry.targetDefense = sr.effectiveResistance
+              if (sr.sealBonusDamage > 0) entry.sealJudgementBonus = sr.sealBonusDamage
+              if (sr.sealRefreshed) entry.sealRefreshed = true
+            }
+            if (skillId === 'hammer-of-justice') {
+              entry.primaryFinalDamage = sr.primaryPhysDamage
+              entry.holyDamage = sr.holyDamage
+              entry.targetDefense = sr.effectiveArmor
+              entry.debuffApplied = sr.debuffApplied
+              entry.debuffRefreshed = sr.debuffRefreshed
+              entry.debuffType = sr.debuffType
+              entry.debuffSkipActions = sr.debuffSkipActions
+            }
+            if (sr.finalDamage > 0) {
+              entry.threatAmount = sr.finalDamage
+              entry.threatTargetName = paladinTarget.name
+              appendSealRiderLog(actor, paladinTarget)
+            }
+            log.push(entry)
+            usedSkill = true
+            break
+          }
+        }
+        if (usedSkill) {
+          continue
+        }
+        paladinPriorityNoCastThisTurn = true
+      }
+
       if (actor.side === 'hero' && heroConsumedExplicitPriorityBasicAttack) {
         emitMonsterIntentChangesIfNeeded()
         continue
@@ -2981,12 +3326,13 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
       const relaxBasicAttackTacticGates =
         actor.side === 'hero' &&
-        (actor.class === 'Mage' || actor.class === 'Priest' || actor.class === 'Druid') &&
+        (actor.class === 'Mage' || actor.class === 'Priest' || actor.class === 'Druid' || actor.class === 'Paladin') &&
         !basicAttackInPriority &&
         (heroAllPrioritySkillsUnaffordable(actor, priorityForResource) ||
           (actor.class === 'Mage' && magePriorityNoCastThisTurn) ||
           (actor.class === 'Priest' && priestPriorityNoCastThisTurn) ||
-          (actor.class === 'Druid' && druidPriorityNoCastThisTurn))
+          (actor.class === 'Druid' && druidPriorityNoCastThisTurn) ||
+          (actor.class === 'Paladin' && paladinPriorityNoCastThisTurn))
       const conditionsForBasicAttack =
         relaxBasicAttackTacticGates && actor.side === 'hero'
           ? relaxBasicAttackConditionsKeepingTargetRules(conditions || [])

@@ -6,9 +6,16 @@ import {
 } from './heroSkillDisplay.js'
 
 describe('heroSkillDisplay', () => {
-  it('heroClassHasSkillDetailPanel includes Druid', () => {
+  it('heroClassHasSkillDetailPanel includes Druid and Paladin', () => {
     expect(heroClassHasSkillDetailPanel('Druid')).toBe(true)
-    expect(heroClassHasSkillDetailPanel('Paladin')).toBe(false)
+    expect(heroClassHasSkillDetailPanel('Paladin')).toBe(true)
+  })
+
+  it('getHeroSkillDisplay resolves Paladin fixed and level skills', () => {
+    const paladin = { class: 'Paladin', skillEnhancements: {} }
+    expect(getHeroSkillDisplay('seal-of-righteousness', paladin).name).toBe('\u6b63\u4e49\u5723\u5370')
+    expect(getHeroSkillDisplay('judgement', paladin).manaCost).toBe(10)
+    expect(getHeroSkillDisplay('lay-on-hands', paladin).cooldown).toBe(4)
   })
 
   it('getHeroSkillDisplay resolves Druid fixed and level skills', () => {
@@ -33,5 +40,11 @@ describe('heroSkillDisplay', () => {
     expect(skillTargetsAlliesForHero('rejuvenation', druid)).toBe(true)
     expect(skillTargetsAlliesForHero('regrowth', druid)).toBe(true)
     expect(skillTargetsAlliesForHero('maul', druid)).toBe(false)
+  })
+
+  it('skillTargetsAlliesForHero marks Paladin lay-on-hands as ally-targeting', () => {
+    const paladin = { class: 'Paladin' }
+    expect(skillTargetsAlliesForHero('lay-on-hands', paladin)).toBe(true)
+    expect(skillTargetsAlliesForHero('judgement', paladin)).toBe(false)
   })
 })

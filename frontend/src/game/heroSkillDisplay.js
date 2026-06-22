@@ -6,10 +6,15 @@ import {
   getDruidSkillWithEnhancements,
   isDruidAllyTargetSkill,
 } from './druidSkills.js'
+import {
+  getAnyPaladinSkillById,
+  getPaladinSkillWithEnhancements,
+  isPaladinAllyTargetSkill,
+} from './paladinSkills.js'
 import { isPriestAllyTargetSkill } from './priestSkills.js'
 
 /** Classes with skill list + tactics tabs in hero detail modal. */
-export const HERO_CLASSES_WITH_SKILL_DETAIL = ['Warrior', 'Mage', 'Priest', 'Druid']
+export const HERO_CLASSES_WITH_SKILL_DETAIL = ['Warrior', 'Mage', 'Priest', 'Druid', 'Paladin']
 
 /**
  * @param {string} [heroClass]
@@ -53,11 +58,18 @@ export function getHeroSkillDisplay(skillId, hero = null) {
     const enhanced = hero ? getDruidSkillWithEnhancements(hero, skillId) : null
     return enhanced ?? base
   }
+  if (heroClass === 'Paladin') {
+    const base = getAnyPaladinSkillById(skillId)
+    if (!base) return { name: skillId, spec: '', effectDesc: '', manaCost: 0 }
+    const enhanced = hero ? getPaladinSkillWithEnhancements(hero, skillId) : null
+    return enhanced ?? base
+  }
   return (
     getAnyWarriorSkillById(skillId) ??
     getAnyMageSkillById(skillId) ??
     getAnyPriestSkillById(skillId) ??
-    getAnyDruidSkillById(skillId) ?? {
+    getAnyDruidSkillById(skillId) ??
+    getAnyPaladinSkillById(skillId) ?? {
       name: skillId,
       spec: '',
       effectDesc: '',
@@ -75,5 +87,6 @@ export function getHeroSkillDisplay(skillId, hero = null) {
 export function skillTargetsAlliesForHero(skillId, hero) {
   if (hero?.class === 'Priest' && isPriestAllyTargetSkill(skillId)) return true
   if (hero?.class === 'Druid' && isDruidAllyTargetSkill(skillId)) return true
+  if (hero?.class === 'Paladin' && isPaladinAllyTargetSkill(skillId)) return true
   return false
 }

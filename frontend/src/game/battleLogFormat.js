@@ -207,6 +207,17 @@ export function supportSkillEffectLine(entry) {
     }
     return `护盾最多可吸收 ${entry.absorbAmount} 点伤害`
   }
+  if (entry.sealApplied || entry.sealRefreshed) {
+    const rounds = entry.sealRounds ?? 3
+    const coeff = entry.sealRiderCoeff ?? 0.22
+    return entry.sealRefreshed
+      ? `\u5237\u65b0\u6b63\u4e49\u5723\u5370\uff1a\u6bcf\u6b21\u9020\u4f24\u989d\u5916\u795e\u5723 \u00d7 ${coeff}\uff0c\u6301\u7eed ${rounds} \u56de\u5408`
+      : `\u65bd\u52a0\u6b63\u4e49\u5723\u5370\uff1a\u6bcf\u6b21\u9020\u4f24\u989d\u5916\u795e\u5723 \u00d7 ${coeff}\uff0c\u6301\u7eed ${rounds} \u56de\u5408`
+  }
+  if (entry.skillId === 'seal-of-righteousness-rider' && entry.finalDamage != null) {
+    const coeff = entry.sealRiderCoeff ?? 0.22
+    return `\u5723\u5370\u9644\u52a0\u795e\u5723\u4f24\u5bb3 ${entry.finalDamage}\uff08\u7cfb\u6570 \u00d7 ${coeff}\uff09`
+  }
   if (entry.heal != null && entry.heal > 0) {
     if (entry.finalDamage != null) {
       if (entry.healFromSkill != null && entry.healFromSkill > 0) {

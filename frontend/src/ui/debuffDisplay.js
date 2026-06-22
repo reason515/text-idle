@@ -13,6 +13,7 @@ export const DEBUFF_DISPLAY = {
   splinter: { name: '破法', short: '破法', isDebuff: true },
   bleed: { name: '流血', short: '流血', isDebuff: true },
   freeze: { name: '冰冻', short: '冰冻', isDebuff: true },
+  stun: { name: '眩晕', short: '眩晕', isDebuff: true },
   burn: { name: '燃烧', short: '燃烧', isDebuff: true },
   'shadow-pain': { name: '暗言术：痛', short: '暗痛', isDebuff: true },
 }
@@ -23,6 +24,7 @@ export const BUFF_DISPLAY = {
   'rejuvenation-hot': { name: '回春术', short: '回春' },
   'regrowth-hot': { name: '愈合', short: '愈合' },
   'bear-form': { name: '熊形态', short: '熊形' },
+  'seal-of-righteousness': { name: '正义圣印', short: '圣印' },
 }
 
 /** Taunt status on monsters (not a debuff entry). */
@@ -50,6 +52,9 @@ export function getHeroBuffTip(buff) {
   }
   if (buff.type === 'bear-form') {
     return `减伤 ${buff.damageReductionPct ?? 0}%，剩余 ${rounds} 回合`
+  }
+  if (buff.type === 'seal-of-righteousness') {
+    return `附加神圣 × ${buff.riderCoeff ?? 0.22}，剩余 ${rounds} 回合`
   }
   return `${rounds} 回合`
 }
@@ -125,6 +130,10 @@ export function getDebuffTip(debuff) {
     return `每回合 ${debuff.damagePerRound ?? 0} 点伤害，持续 ${rounds} 回合`
   }
   if (debuff.type === 'freeze') {
+    const n = debuff.skipActions ?? 1
+    return `跳过 ${n} 次行动`
+  }
+  if (debuff.type === 'stun') {
     const n = debuff.skipActions ?? 1
     return `跳过 ${n} 次行动`
   }

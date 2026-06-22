@@ -381,7 +381,7 @@
               <span v-if="entry.actorAgility != null" class="log-agi tooltip-wrap has-tip">（敏捷 {{ entry.actorAgility }}）
                 <span class="tooltip-text">敏捷越高先出手</span>
               </span>
-              <span class="log-sep">{{ entry.skipReason === 'freeze' ? '因冰冻无法行动' : '无法行动' }}</span>
+              <span class="log-sep">{{ entry.skipReason === 'freeze' ? '因冰冻无法行动' : entry.skipReason === 'stun' ? '因眩晕无法行动' : '无法行动' }}</span>
             </div>
             <div v-else-if="entry.type === 'dot'" class="log-entry log-dot">
               <div class="log-detail-box">
@@ -612,7 +612,7 @@
                 <div v-if="entry.debuffApplied" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
                   <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType] ?? { name: entry.debuffType }).name }}</span>
-                  <template v-if="entry.debuffType === 'freeze'">：跳过 {{ entry.debuffFreezeActions ?? 1 }} 次行动</template>
+                  <template v-if="entry.debuffType === 'freeze' || entry.debuffType === 'stun'">：跳过 {{ entry.debuffSkipActions ?? entry.debuffFreezeActions ?? 1 }} 次行动</template>
                   <template v-else>
                     <span>:</span>
                     <template v-if="entry.debuffArmorReduction != null"> 护甲降低 {{ entry.debuffArmorReduction }}</template>
@@ -624,7 +624,7 @@
                 <div v-if="entry.debuffRefreshed" class="log-debuff">
                   <span :style="{ color: entry.targetClass ? classColor(entry.targetClass) : monsterTierColor(entry.targetTier) }">{{ entry.targetName }}</span>
                   <span class="log-debuff-name"> {{ (DEBUFF_DISPLAY[entry.debuffType ?? 'sunder'] ?? { name: '减益' }).name }}</span>
-                  <template v-if="entry.debuffType === 'freeze'"> 刷新（仍跳过 {{ entry.debuffFreezeActions ?? 1 }} 次行动）</template>
+                  <template v-if="entry.debuffType === 'freeze' || entry.debuffType === 'stun'"> 刷新（仍跳过 {{ entry.debuffSkipActions ?? entry.debuffFreezeActions ?? 1 }} 次行动）</template>
                   <template v-else> 刷新（{{ entry.debuffDuration }} 回合）</template>
                 </div>
                 <div v-if="entry.threatAmount != null && entry.threatTargetName" class="log-threat">
@@ -5187,6 +5187,15 @@ function applyOneCombatEntry(entry) {
       type: 'bear-form',
       remainingRounds: entry.bearFormRounds ?? 3,
       damageReductionPct: entry.bearFormPct ?? 12,
+    })
+    updated[ai] = { ...updated[ai], buffs }
+  }
+  if ((entry.sealApplied || entry.sealRefreshed) && ai >= 0) {
+    const buffs = [...(updated[ai].buffs || [])].filter((b) => b.type !== 'seal-of-righteousness')
+    buffs.push({
+      type: 'seal-of-righteousness',
+      remainingRounds: entry.sealRounds ?? 3,
+      riderCoeff: entry.sealRiderCoeff ?? 0.22,
     })
     updated[ai] = { ...updated[ai], buffs }
   }

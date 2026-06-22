@@ -72,13 +72,15 @@ describe('Druid fixed expansion skills', () => {
     expect(DRUID_FIXED_SKILL_IDS).toEqual(['rejuvenation', 'maul'])
   })
 
-  it('hasFixedExpansionSkills is true only for Druid', () => {
+  it('hasFixedExpansionSkills is true for Druid and Paladin', () => {
     expect(hasFixedExpansionSkills('Druid')).toBe(true)
+    expect(hasFixedExpansionSkills('Paladin')).toBe(true)
     expect(hasFixedExpansionSkills('Warrior')).toBe(false)
   })
 
-  it('getFixedExpansionSkillIds returns druid skill ids', () => {
+  it('getFixedExpansionSkillIds returns druid or paladin skill ids', () => {
     expect(getFixedExpansionSkillIds('Druid')).toEqual(['rejuvenation', 'maul'])
+    expect(getFixedExpansionSkillIds('Paladin')).toEqual(['seal-of-righteousness', 'judgement'])
     expect(getFixedExpansionSkillIds('Mage')).toEqual([])
   })
 

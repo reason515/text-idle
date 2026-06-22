@@ -1208,7 +1208,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 - **Recruitment flow (5th hero)**: (1) Select hero; (2) Allocate catch-up attribute points; (3) **No** initial skill pick — **2 fixed skills** for that class (same as fixed trio / druid rule); (4) **Optional** skill milestones (skippable).
 - **After joining the squad**: Same as fixed trio — **+3 unassigned attribute points per level-up** (player allocates in hero detail); skill milestones at 3/6/9/10/… (player chooses enhance/learn or skip; skipped milestones remain available via Skills tab). See 02-levels-monsters.md 1.2.1.1.
 - **Boss victory UI (map 1–2)**: After victory summary, show **Recruit squad expansion** modal when a seat opens; **Recruit now** → `/character-select`; **Later** → dismiss (player may recruit anytime via **+ Recruit**). Map 3–5 boss: no modal, no "squad full" copy.
-- **Fixed initial skills**: Per class (Example 12 Warrior: Sunder + Taunt; Mage: Frostbolt + Fireball; Druid: Rejuvenation + Maul; etc. — see 05-skills 8.x). Specialization at **Lv 10** learn-new pool (Example 26).
+- **Fixed initial skills**: Per class (Example 12 Warrior: Sunder + Taunt; Mage: Frostbolt + Fireball; Druid: Rejuvenation + Maul; **Paladin: Seal of Righteousness + Judgement**; etc. — see 05-skills 8.x). Specialization at **Lv 10** learn-new pool (Example 26).
 - **Level skill steps**: Same rules as Example 26 — at each milestone, enhance or (at 10/20/…) learn from the pool.
 - **Reference**: See design doc 02-levels-monsters.md 1.2.1.
 

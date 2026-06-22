@@ -151,10 +151,10 @@
             </div>
             <p class="chosen-skill-desc">{{ getSkillDisplay(selectedSkillId, selectedHero.class).effectDesc }}</p>
           </div>
-          <!-- Fixed expansion skills (Druid) -->
+          <!-- Fixed expansion skills (Druid / Paladin) -->
           <div v-else-if="hasFixedExpansionSkills(selectedHero.class)" class="info-section skill-section">
             <span class="section-label">固定初始技能</span>
-            <div v-for="skill in DRUID_FIXED_INITIAL_SKILLS" :key="skill.id" class="chosen-skill fixed-skill-row">
+            <div v-for="skill in fixedInitialSkillsForHero" :key="skill.id" class="chosen-skill fixed-skill-row">
               <span class="chosen-skill-name">{{ skill.name }}</span>
               <span class="chosen-skill-spec spec-badge">{{ skill.spec }}</span>
               <p class="chosen-skill-desc">{{ skill.effectDesc }}</p>
@@ -245,6 +245,7 @@ import {
   hasFixedExpansionSkills,
   DRUID_FIXED_INITIAL_SKILLS,
 } from '../game/druidSkills.js'
+import { PALADIN_FIXED_INITIAL_SKILLS } from '../game/paladinSkills.js'
 import {
   getFirstUnresolvedSkillChoiceLevel,
   applyEnhanceSkill,
@@ -307,6 +308,10 @@ function getSkillDisplay(skillId, heroClass) {
   if (heroClass === 'Warrior') return getWarriorSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
   if (heroClass === 'Mage') return getMageSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
   if (heroClass === 'Druid') return getDruidSkillById(skillId) ?? { name: skillId, spec: '', effectDesc: '' }
+  if (heroClass === 'Paladin') {
+    const skill = PALADIN_FIXED_INITIAL_SKILLS.find((s) => s.id === skillId)
+    return skill ?? { name: skillId, spec: '', effectDesc: '' }
+  }
   return { name: skillId, spec: '', effectDesc: '' }
 }
 
@@ -339,6 +344,13 @@ const isExpansion = computed(() => squadSize.value > 0 && recruitLimit.value > 1
 const isDruidExpansionSlot = computed(() => isDruidOnlyExpansionSlot(progress.value, squadSize.value))
 const expansionLevel = computed(() => getExpansionHeroLevel(progress.value, getSquad()))
 const expansionAttrPoints = computed(() => getExpansionHeroAttributePoints(expansionLevel.value))
+
+const fixedInitialSkillsForHero = computed(() => {
+  if (!selectedHero.value) return []
+  if (selectedHero.value.class === 'Druid') return DRUID_FIXED_INITIAL_SKILLS
+  if (selectedHero.value.class === 'Paladin') return PALADIN_FIXED_INITIAL_SKILLS
+  return []
+})
 
 const availableHeroes = computed(() => {
   let heroes = HEROES.filter((h) => !squadIds.value.has(h.id))

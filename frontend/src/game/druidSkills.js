@@ -5,6 +5,7 @@
 
 import { getEffectivePhysAtk, getEffectiveSpellPower } from './damageUtils.js'
 import { getDruidLevelSkillById } from './druidLevelSkills.js'
+import { PALADIN_FIXED_SKILL_IDS } from './paladinSkills.js'
 import { MAX_SKILL_ENHANCE_COUNT } from './skillEnhancementLimits.js'
 import { computePhysicalDefenseAfterWeapon, applyDamageWithWeaponAffixes } from './weaponAffixDamage.js'
 
@@ -51,11 +52,12 @@ export function isDruidSelfTargetSkill(skillId) {
 }
 
 export function hasFixedExpansionSkills(heroClass) {
-  return heroClass === 'Druid'
+  return heroClass === 'Druid' || heroClass === 'Paladin'
 }
 
 export function getFixedExpansionSkillIds(heroClass) {
   if (heroClass === 'Druid') return [...DRUID_FIXED_SKILL_IDS]
+  if (heroClass === 'Paladin') return [...PALADIN_FIXED_SKILL_IDS]
   return []
 }
 
