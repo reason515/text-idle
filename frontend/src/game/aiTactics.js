@@ -17,6 +17,9 @@ let apiKey = ''
 try { apiKey = localStorage.getItem('siliconflow_api_key') || '' } catch { /* SSR / test env */ }
 
 export function getApiKey() {
+  try {
+    apiKey = localStorage.getItem('siliconflow_api_key') || ''
+  } catch { /* SSR / test env */ }
   return apiKey
 }
 

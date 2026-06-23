@@ -2970,6 +2970,7 @@ import {
   setLeaderboardTrackData,
   setPlayerStatsData,
   clearPlayerSaveCache,
+  flushPlayerSave,
 } from '../game/playerSave.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
@@ -4670,6 +4671,7 @@ function saveTacticsToSquad(hero, updater) {
   if (!sh.tactics) sh.tactics = {}
   updater(sh.tactics)
   saveSquad(squad.value)
+  flushPlayerSave().catch(() => {})
   syncDisplayHeroesFromSquad()
   selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }

@@ -288,12 +288,16 @@ function schedulePersist() {
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => {
     persistTimer = null
-    flushPlayerSave().catch(() => {})
+    flushPlayerSave().catch((err) => {
+      if (typeof console !== 'undefined' && console.error) {
+        console.error('[playerSave] failed to persist save', err)
+      }
+    })
   }, 400)
 }
 
-/** Immediately persist in-memory save to server. */
-export async function flushPlayerSave() {
+/** @param {{ keepalive?: boolean }} [options] */
+export async function flushPlayerSave(options = {}) {
   if (memoryOnly) return
   if (persistTimer) {
     clearTimeout(persistTimer)
@@ -302,11 +306,14 @@ export async function flushPlayerSave() {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
   const body = JSON.stringify(getCache())
-  const res = await fetch(`${apiBase()}/save`, {
+  /** @type {RequestInit} */
+  const init = {
     method: 'PUT',
     headers: authHeaders(),
     body,
-  })
+  }
+  if (options.keepalive) init.keepalive = true
+  const res = await fetch(`${apiBase()}/save`, init)
   if (res.status === 401) {
     localStorage.removeItem('token')
     throw new Error('unauthorized')
@@ -330,7 +337,16 @@ export async function flushPlayerSave() {
   }
 }
 
+function flushPlayerSaveOnPageHide() {
+  if (memoryOnly || !persistTimer) return
+  flushPlayerSave({ keepalive: true }).catch(() => {})
+}
+
 if (typeof window !== 'undefined') {
   window.__reloadPlayerSave = () => ensurePlayerSaveLoaded(true)
   window.__flushPlayerSave = () => flushPlayerSave()
+  window.addEventListener('pagehide', flushPlayerSaveOnPageHide)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPlayerSaveOnPageHide()
+  })
 }
