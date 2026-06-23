@@ -1399,6 +1399,37 @@ function parsePctFromUserText(text, patterns) {
   return null
 }
 
+function upsertWhenAllClause(whenAll, clause) {
+  const arr = Array.isArray(whenAll) ? whenAll.map((w) => (w ? { ...w } : w)).filter(Boolean) : []
+  const idx = arr.findIndex((w) => w.when === clause.when)
+  if (idx >= 0) {
+    arr[idx] = { when: clause.when, value: clause.value }
+  } else {
+    arr.push({ ...clause })
+  }
+  return arr
+}
+
+/** Smallest enemy execute % from user text (avoid confusing ally heal % as finisher cutoff). */
+function parsePriestEnemyExecuteCutoffFromUserText(text) {
+  const patterns = [
+    /(?:存在|有)[^%\n]{0,20}HP(?:低于|小于)(\d+)\s*%[^%\n]{0,20}(?:的)?(?:敌人|敌方)/,
+    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,28}(?:敌人|敌方)/,
+    /(?:敌人|敌方)[^%\n]{0,28}HP(?:低于|小于)(\d+)\s*%/,
+    /HP最低[^%\n]{0,12}敌人[^%\n]{0,20}HP(?:低于|小于)(\d+)\s*%/,
+  ]
+  const values = []
+  for (const re of patterns) {
+    const m = text.match(re)
+    if (m?.[1]) {
+      const n = Number(m[1])
+      if (n >= 1 && n <= 99) values.push(n / 100)
+    }
+  }
+  if (values.length === 0) return null
+  return Math.min(...values)
+}
+
 /**
  * Detect priest party triage: solo attack, enemy execute, ally heal band, healthy shield, fallback attack.
  * @param {string|undefined} userInput
@@ -1416,14 +1447,10 @@ function parsePriestPartyHealShieldExecuteParams(userInput) {
   if (!hasHeal || !hasShield || !hasBasic) return null
 
   const healThreshold = parsePctFromUserText(t, [
-    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,48}(?:快速治疗|治疗)/,
-    /(?:我方|己方|自己|角色|英雄|成员)[^%\n]{0,56}?(?:低于|小于)(\d+)\s*%[^%\n]{0,32}(?:快速治疗|治疗)/,
+    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,24}(?:我方|己方|自己|角色|英雄|成员|队友)[^%\n]{0,32}(?:快速治疗|治疗)/,
+    /(?:我方|己方|自己|角色|英雄|成员|队友)[^%\n]{0,56}?(?:HP)?(?:低于|小于)(\d+)\s*%[^%\n]{0,32}(?:快速治疗|治疗)/,
   ])
-  const enemyCutoff = parsePctFromUserText(t, [
-    /HP最低[^%\n]{0,12}敌人[^%\n]{0,20}HP(?:低于|小于)(\d+)\s*%/,
-    /(?:敌人|敌方)[^%\n]{0,28}HP(?:低于|小于)(\d+)\s*%/,
-    /HP(?:低于|小于)(\d+)\s*%[^%\n]{0,28}(?:敌人|敌方)/,
-  ])
+  const enemyCutoff = parsePriestEnemyExecuteCutoffFromUserText(t)
   if (healThreshold == null || enemyCutoff == null) return null
 
   return {
@@ -1453,48 +1480,49 @@ function mergeSkillWhenAllGate(entry, gate) {
   return out
 }
 
+function setEnemyAllHpAboveOnTargetRuleStep(step, cutoff) {
+  const gate = { when: 'enemy-all-hp-above', value: cutoff }
+  const base =
+    step === 'lowest-hp-ally'
+      ? { rule: 'lowest-hp-ally' }
+      : typeof step === 'object' && step !== null && typeof step.rule === 'string'
+        ? { ...step }
+        : null
+  if (!base) return step
+  if (base.when === 'enemy-all-hp-above') {
+    return { rule: base.rule, when: gate.when, value: gate.value }
+  }
+  if (Array.isArray(base.whenAll) && base.whenAll.length > 0) {
+    return { rule: base.rule, whenAll: upsertWhenAllClause(base.whenAll, gate) }
+  }
+  if (base.when) {
+    return {
+      rule: base.rule,
+      whenAll: upsertWhenAllClause([{ when: base.when, value: base.value }], gate),
+    }
+  }
+  return { rule: base.rule, whenAll: [gate] }
+}
+
 function ensureEnemyAllHpAboveOnPriestHealShieldEntry(entry, cutoff, onStep) {
   const gate = { when: 'enemy-all-hp-above', value: cutoff }
   if (onStep && entry.targetRules?.length) {
     const tr = [...entry.targetRules]
-    const s0 = tr[0]
-    const base =
-      s0 === 'lowest-hp-ally'
-        ? { rule: 'lowest-hp-ally' }
-        : typeof s0 === 'object' && s0 !== null && typeof s0.rule === 'string'
-          ? { ...s0 }
-          : null
-    if (base) {
-      if (base.when === 'enemy-all-hp-above') return entry
-      if (Array.isArray(base.whenAll) && base.whenAll.some((w) => w?.when === 'enemy-all-hp-above')) return entry
-      const clauses = []
-      if (Array.isArray(base.whenAll) && base.whenAll.length > 0) {
-        clauses.push(...base.whenAll.filter((w) => w && w.when))
-      } else if (base.when) {
-        clauses.push({ when: base.when, value: base.value })
-      }
-      clauses.push(gate)
-      const outStep = { rule: base.rule }
-      if (clauses.length === 1) {
-        outStep.when = clauses[0].when
-        if (clauses[0].value !== undefined) outStep.value = clauses[0].value
-      } else {
-        outStep.whenAll = clauses
-      }
-      tr[0] = outStep
-      const next = { ...entry, targetRules: tr }
-      delete next.targetRule
-      return next
-    }
+    tr[0] = setEnemyAllHpAboveOnTargetRuleStep(tr[0], cutoff)
+    const next = { ...entry, targetRules: tr }
+    delete next.targetRule
+    return next
   }
   const out = { ...entry }
-  if (conditionHasEnemyAllHpAbove(out)) return out
+  if (out.when === 'enemy-all-hp-above') {
+    out.when = gate.when
+    out.value = gate.value
+    return out
+  }
   if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
-    if (!out.whenAll.some((w) => w?.when === 'enemy-all-hp-above')) {
-      out.whenAll = [...out.whenAll, gate]
-    }
+    out.whenAll = upsertWhenAllClause(out.whenAll, gate)
   } else if (out.when) {
-    out.whenAll = [{ when: out.when, value: out.value }, gate]
+    out.whenAll = upsertWhenAllClause([{ when: out.when, value: out.value }], gate)
     delete out.when
     delete out.value
   } else {
@@ -1505,11 +1533,6 @@ function ensureEnemyAllHpAboveOnPriestHealShieldEntry(entry, cutoff, onStep) {
 
 function ensureAllyHpBelowOnFlashHealFirstStep(entry, healThreshold, enemyCutoff) {
   const out = { ...entry }
-  const first = out.targetRules?.[0]
-  if (typeof first === 'object' && first !== null && first.rule === 'lowest-hp-ally') {
-    const hasAlly = first.when === 'ally-hp-below' || first.whenAll?.some((w) => w?.when === 'ally-hp-below')
-    if (hasAlly) return out
-  }
   const triageStep = {
     rule: 'lowest-hp-ally',
     whenAll: [
@@ -1517,7 +1540,8 @@ function ensureAllyHpBelowOnFlashHealFirstStep(entry, healThreshold, enemyCutoff
       { when: 'enemy-all-hp-above', value: enemyCutoff },
     ],
   }
-  out.targetRules = [triageStep]
+  const rest = Array.isArray(out.targetRules) ? out.targetRules.slice(1) : []
+  out.targetRules = [triageStep, ...rest]
   delete out.targetRule
   return out
 }
@@ -1525,12 +1549,14 @@ function ensureAllyHpBelowOnFlashHealFirstStep(entry, healThreshold, enemyCutoff
 function ensureEveryAllyHpGteOnPws(entry, threshold) {
   const out = { ...entry }
   const gate = { when: 'every-ally-hp-gte', value: threshold }
-  if (Array.isArray(out.whenAll) && out.whenAll.some((w) => w?.when === 'every-ally-hp-gte')) return out
-  if (out.when === 'every-ally-hp-gte') return out
   if (Array.isArray(out.whenAll) && out.whenAll.length > 0) {
-    out.whenAll = [...out.whenAll, gate]
+    out.whenAll = upsertWhenAllClause(out.whenAll, gate)
+  } else if (out.when === 'every-ally-hp-gte') {
+    out.whenAll = [gate]
+    delete out.when
+    delete out.value
   } else if (out.when) {
-    out.whenAll = [{ when: out.when, value: out.value }, gate]
+    out.whenAll = upsertWhenAllClause([{ when: out.when, value: out.value }], gate)
     delete out.when
     delete out.value
   } else {
@@ -1670,58 +1696,33 @@ function supplementPriestEnemyExecutePostponeHeals(userInput, conditions, warnin
       /(?:则|就)[^。\n]{0,20}(?:对其|对)[^。\n]{0,16}(?:使用|施放)?(?:普通攻击|普攻)/.test(compact))
   if (!mentionsEnemyHpPct || !mentionsBasicFirst) return
 
-  let cutoff = 0.05
-  const m1 = userInput.match(/(?:敌人|敌方)[^%\n]{0,28}?(\d+)\s*%/)
-  const m2 = userInput.match(/(?:低于|小于)[^%\n]{0,18}(\d+)\s*%[^。\n]{0,22}(?:敌人|敌方)/)
-  const rawPct = m1?.[1] || m2?.[1]
-  if (rawPct) {
-    const n = Number(rawPct)
-    if (n >= 1 && n <= 99) cutoff = n / 100
-  }
-
-  const gate = { when: 'enemy-all-hp-above', value: cutoff }
+  let cutoff = parsePriestEnemyExecuteCutoffFromUserText(compact) ?? 0.05
 
   function ensureGateOnStep(step) {
-    const base =
-      step === 'lowest-hp-ally'
-        ? { rule: 'lowest-hp-ally' }
-        : typeof step === 'object' && step !== null && typeof step.rule === 'string'
-          ? step
-          : null
-    if (!base) return step
-    if (base.when === 'enemy-all-hp-above') return typeof step === 'string' ? { ...base } : step
-    if (Array.isArray(base.whenAll) && base.whenAll.some((w) => w && w.when === 'enemy-all-hp-above')) {
-      return typeof step === 'string' ? { ...base } : step
-    }
-    const clauses = []
-    if (Array.isArray(base.whenAll) && base.whenAll.length > 0) {
-      clauses.push(...base.whenAll.filter((w) => w && w.when))
-    } else if (base.when) {
-      clauses.push({ when: base.when, value: base.value })
-    }
-    clauses.push(gate)
-    const out = { rule: base.rule }
-    if (clauses.length === 1) {
-      out.when = clauses[0].when
-      if (clauses[0].value !== undefined) out.value = clauses[0].value
-    } else {
-      out.whenAll = clauses
-    }
-    return out
+    return setEnemyAllHpAboveOnTargetRuleStep(step, cutoff)
   }
 
   let changed = false
   const fh = conditions.find((c) => c.skillId === 'flash-heal')
-  if (fh?.targetRules?.length && !conditionHasEnemyAllHpAbove(fh)) {
+  if (fh?.targetRules?.length) {
     const tr = [...fh.targetRules]
-    tr[0] = ensureGateOnStep(tr[0])
-    fh.targetRules = tr
-    if (fh.targetRules?.length) delete fh.targetRule
-    changed = true
+    const next0 = ensureGateOnStep(tr[0])
+    if (JSON.stringify(next0) !== JSON.stringify(tr[0])) {
+      tr[0] = next0
+      fh.targetRules = tr
+      if (fh.targetRules?.length) delete fh.targetRule
+      changed = true
+    } else if (!conditionHasEnemyAllHpAbove(fh)) {
+      tr[0] = next0
+      fh.targetRules = tr
+      if (fh.targetRules?.length) delete fh.targetRule
+      changed = true
+    }
   }
 
   const pw = conditions.find((c) => c.skillId === 'power-word-shield')
-  if (pw && !conditionHasEnemyAllHpAbove(pw)) {
+  if (pw) {
+    const pwBefore = JSON.stringify(pw)
     const tr0 = pw.targetRules?.[0]
     const stepHasGate =
       typeof tr0 === 'object' &&
@@ -1733,23 +1734,10 @@ function supplementPriestEnemyExecutePostponeHeals(userInput, conditions, warnin
       pw.targetRules = tr
       if (pw.targetRules?.length) delete pw.targetRule
     } else {
-      const clauses = []
-      if (Array.isArray(pw.whenAll) && pw.whenAll.length > 0) {
-        clauses.push(...pw.whenAll.filter((w) => w && w.when))
-      } else if (pw.when) {
-        clauses.push({ when: pw.when, value: pw.value })
-      }
-      clauses.push(gate)
-      delete pw.when
-      delete pw.value
-      if (clauses.length === 1) {
-        pw.when = clauses[0].when
-        if (clauses[0].value !== undefined) pw.value = clauses[0].value
-      } else {
-        pw.whenAll = clauses
-      }
+      const nextPw = ensureEnemyAllHpAboveOnPriestHealShieldEntry(pw, cutoff, false)
+      Object.assign(pw, nextPw)
     }
-    changed = true
+    if (JSON.stringify(pw) !== pwBefore) changed = true
   }
 
   if (changed) {

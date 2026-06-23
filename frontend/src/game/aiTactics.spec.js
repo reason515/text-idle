@@ -250,6 +250,58 @@ describe('validateAiTactics', () => {
     expect(result.warnings.some((w) => w.includes('已补全牧师队伍战术'))).toBe(true)
   })
 
+  it('fixes AI conflating 70% heal threshold with 10% enemy execute cutoff (user four-rule priest triage)', () => {
+    const user =
+      '1. 存在HP低于10%的敌人时，优先对其使用普通攻击；2. 对HP低于70%的我方角色使用快速治疗3. 若我方角色HP均高于70%，则对无真言术·盾的我方角色使用真言术·盾4. MP不足的情况下，对HP最低的敌人使用普通攻击'
+    const raw = {
+      skillPriority: ['basic-attack', 'flash-heal', 'power-word-shield'],
+      conditions: [
+        {
+          skillId: 'flash-heal',
+          targetRules: [
+            {
+              rule: 'lowest-hp-ally',
+              whenAll: [
+                { when: 'ally-hp-below', value: 0.7 },
+                { when: 'enemy-all-hp-above', value: 0.7 },
+              ],
+            },
+          ],
+          whenAll: [{ when: 'allies-alive-gte', value: 2 }],
+        },
+        {
+          skillId: 'power-word-shield',
+          targetRules: ['lowest-hp-ally'],
+          whenAll: [
+            { when: 'allies-alive-gte', value: 2 },
+            { when: 'every-ally-hp-gte', value: 0.7 },
+            { when: 'enemy-all-hp-above', value: 0.7 },
+          ],
+        },
+        { skillId: 'basic-attack', targetRule: 'lowest-hp' },
+      ],
+    }
+    const result = validateAiTactics(raw, priestSkills, 'Priest', user)
+    expect(result.tactics.skillPriority).toEqual(['flash-heal', 'power-word-shield'])
+
+    const fh = result.tactics.conditions.find((c) => c.skillId === 'flash-heal')
+    expect(fh.targetRules[0].whenAll).toEqual([
+      { when: 'ally-hp-below', value: 0.7 },
+      { when: 'enemy-all-hp-above', value: 0.1 },
+    ])
+
+    const pw = result.tactics.conditions.find((c) => c.skillId === 'power-word-shield')
+    expect(pw.whenAll).toEqual([
+      { when: 'allies-alive-gte', value: 2 },
+      { when: 'every-ally-hp-gte', value: 0.7 },
+      { when: 'enemy-all-hp-above', value: 0.1 },
+    ])
+
+    expect(priestExecuteFinisherPreviewNote(result.tactics)).toContain('10%')
+    expect(priestExecuteFinisherPreviewNote(result.tactics)).not.toContain('70%')
+    expect(result.warnings.some((w) => w.includes('已补全牧师队伍战术'))).toBe(true)
+  })
+
   it('strips misleading priest basic-attack target-hp-below when user describes finisher plus otherwise lowest enemy', () => {
     const user =
       '1.若存在HP低于5%的敌人，优先对其施放普通攻击 2.若存在HP低于70%的我方英雄，对其施放快速治疗 3.若我方所有英雄HP均大于等于70%，则对无真言术盾buff的我方英雄施放真言术盾 4.其它情况下对HP最低的敌人施放普通攻击'
