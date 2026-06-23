@@ -681,6 +681,22 @@ export const EXPLORATION_BASE_GAIN = {
   elite: 2,
 }
 
+/** Tier weight for per-monster EXP/gold (normal / elite / boss). */
+export const REWARD_TIER_WEIGHT = {
+  normal: 1,
+  elite: 2,
+  boss: 5,
+}
+
+/** Base EXP per tier-weight unit at monster level 1. */
+export const REWARD_BASE_EXP = 12
+
+/** Base gold per tier-weight unit at monster level 1. */
+export const REWARD_BASE_GOLD = 7
+
+/** +6% EXP/gold per monster level above 1 (linear). Lv10 ~= 1.54x; Lv20 ~= 2.14x. */
+export const REWARD_LEVEL_BONUS_PER_LEVEL = 0.06
+
 /** +8% monster combat stats per 25% map exploration band (0-24 -> 0 bands). */
 export const EXPLORATION_MONSTER_POWER_BAND_SIZE = 25
 export const EXPLORATION_MONSTER_POWER_PER_BAND = 0.08
@@ -730,6 +746,50 @@ export function computeExplorationKillGain(tier, monsterLevel, referenceLevel) {
   const level = Math.max(1, Math.floor(monsterLevel ?? 1))
   const ratio = Math.min(1, level / ref)
   return Math.max(0, Math.round(base * ratio))
+}
+
+/**
+ * Level multiplier for per-monster EXP/gold. Level 1 -> 1.0; each level above adds REWARD_LEVEL_BONUS_PER_LEVEL.
+ * @param {number} monsterLevel
+ */
+export function rewardLevelMultiplier(monsterLevel) {
+  const level = Math.max(1, Math.floor(monsterLevel ?? 1))
+  return 1 + (level - 1) * REWARD_LEVEL_BONUS_PER_LEVEL
+}
+
+/**
+ * EXP and gold contribution for one defeated monster before party goldFindPct.
+ * @param {'normal'|'elite'|'boss'} tier
+ * @param {number} monsterLevel
+ */
+export function computeMonsterRewardContribution(tier, monsterLevel) {
+  const weight = REWARD_TIER_WEIGHT[tier] ?? REWARD_TIER_WEIGHT.normal
+  const mult = rewardLevelMultiplier(monsterLevel)
+  return {
+    exp: Math.max(0, Math.round(REWARD_BASE_EXP * weight * mult)),
+    gold: Math.max(0, Math.round(REWARD_BASE_GOLD * weight * mult)),
+  }
+}
+
+/**
+ * Sum victory EXP/gold from defeated monsters; gold applies squad-average goldFindPct.
+ * @param {Object[]} monsters
+ * @param {{ goldFindPct?: number }} [dropModifiers]
+ */
+export function computeVictoryRewards(monsters, dropModifiers = {}) {
+  if (!monsters?.length) {
+    return { exp: 0, gold: 0 }
+  }
+  let exp = 0
+  let goldBeforeFind = 0
+  for (const m of monsters) {
+    const contrib = computeMonsterRewardContribution(m.tier ?? 'normal', m.level ?? 1)
+    exp += contrib.exp
+    goldBeforeFind += contrib.gold
+  }
+  const goldFindPct = Math.max(0, dropModifiers.goldFindPct ?? 0)
+  const gold = Math.max(0, Math.floor(goldBeforeFind * (1 + goldFindPct / 100)))
+  return { exp, gold }
 }
 
 export function monsterPenetrationForTier(tier, explorationProgress = 0) {
@@ -1405,13 +1465,11 @@ export function computePartyDropModifiers(heroes) {
 }
 
 function rewardForVictory(monsters, heroes, rng) {
-  const totalTierValue = monsters.reduce((sum, m) => sum + (m.tier === 'boss' ? 5 : m.tier === 'elite' ? 2 : 1), 0)
   const dropModifiers = computePartyDropModifiers(heroes)
   const equipment = generateEquipmentDrop(monsters, rng, dropModifiers)
-  const baseGold = 7 * totalTierValue
-  const gold = Math.max(0, Math.floor(baseGold * (1 + dropModifiers.goldFindPct / 100)))
+  const { exp, gold } = computeVictoryRewards(monsters, dropModifiers)
   return {
-    exp: 12 * totalTierValue,
+    exp,
     gold,
     equipment,
   }

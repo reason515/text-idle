@@ -3,19 +3,21 @@ const { registerAndGoToMain, uniqueTestEmail } = require('./testHelpers')
 require('./globalHooks')
 
 test.describe('Version info', () => {
-  test('opens modal with v0.1.5 release notes', async ({ page }) => {
+  test('opens modal with v0.1.6 release notes', async ({ page }) => {
     const email = uniqueTestEmail('version')
     await registerAndGoToMain(page, email)
 
     await page.getByTestId('version-info-open').click()
     await expect(page.getByTestId('version-info-modal')).toBeVisible()
-    await expect(page.getByTestId('version-info-modal')).toContainText('v0.1.5')
+    await expect(page.getByTestId('version-info-modal')).toContainText('v0.1.6')
+    await expect(page.getByTestId('version-release-0.1.6')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.5')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.4')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.3')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.2')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.1')).toBeVisible()
     await expect(page.getByTestId('version-release-0.1.0')).toBeVisible()
+    await expect(page.getByTestId('version-release-notes')).toContainText('赏随阶升')
     await expect(page.getByTestId('version-release-notes')).toContainText('步进明晰')
     await expect(page.getByTestId('version-release-notes')).toContainText('轻装上阵')
     await expect(page.getByTestId('version-release-notes')).toContainText('阵亡休憩')

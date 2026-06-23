@@ -19,6 +19,12 @@ import {
   settleDefeatExploration,
   DEFEAT_EXPLORATION_DEDUCTION,
   computeExplorationKillGain,
+  computeMonsterRewardContribution,
+  computeVictoryRewards,
+  rewardLevelMultiplier,
+  REWARD_BASE_EXP,
+  REWARD_BASE_GOLD,
+  REWARD_TIER_WEIGHT,
   explorationMonsterPowerMultiplier,
   monsterPenetrationForTier,
   EXPLORATION_BASE_GAIN,
@@ -403,6 +409,39 @@ describe('combat progression and systems', () => {
     })
     expect(exploration).toEqual({ mode: 'gain', delta: 1 })
     expect(next.currentProgress).toBe(1)
+  })
+
+  it('computeMonsterRewardContribution scales by tier and level', () => {
+    expect(computeMonsterRewardContribution('normal', 1)).toEqual({ exp: 12, gold: 7 })
+    expect(computeMonsterRewardContribution('elite', 1)).toEqual({ exp: 24, gold: 14 })
+    expect(computeMonsterRewardContribution('boss', 1)).toEqual({ exp: 60, gold: 35 })
+
+    const level10Normal = computeMonsterRewardContribution('normal', 10)
+    expect(level10Normal.exp).toBeGreaterThan(12)
+    expect(level10Normal.gold).toBeGreaterThan(7)
+    expect(level10Normal.exp).toBe(Math.round(REWARD_BASE_EXP * REWARD_TIER_WEIGHT.normal * rewardLevelMultiplier(10)))
+
+    const level10Elite = computeMonsterRewardContribution('elite', 10)
+    expect(level10Elite.exp).toBeGreaterThan(level10Normal.exp)
+    expect(level10Elite.gold).toBeGreaterThan(level10Normal.gold)
+  })
+
+  it('computeVictoryRewards sums per-monster contributions and applies goldFindPct', () => {
+    const monsters = [
+      { tier: 'normal', level: 1 },
+      { tier: 'normal', level: 1 },
+      { tier: 'normal', level: 1 },
+    ]
+    expect(computeVictoryRewards(monsters)).toEqual({ exp: 36, gold: 21 })
+
+    const mixed = [
+      { tier: 'normal', level: 5 },
+      { tier: 'elite', level: 5 },
+    ]
+    const base = computeVictoryRewards(mixed)
+    expect(base.exp).toBeGreaterThan(36)
+    const withGoldFind = computeVictoryRewards(mixed, { goldFindPct: 100 })
+    expect(withGoldFind.gold).toBe(base.gold * 2)
   })
 
   it('Example5: reaching 100 progress spawns map boss', () => {

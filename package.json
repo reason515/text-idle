@@ -1,6 +1,6 @@
 {
   "name": "text-idle",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "scripts": {
     "dev": "concurrently -k -s first -n backend,frontend \"go run ./cmd/server\" \"cd frontend && npm run dev\"",

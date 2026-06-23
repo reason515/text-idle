@@ -3,27 +3,27 @@ import { APP_VERSION, APP_VERSION_LABEL } from './version.js'
 import { getCurrentReleaseNotes, getAllReleaseNotes, parseReleaseNotesMarkdown, parseReleaseNoteInlineSegments } from './releaseNotesMarkdown.js'
 
 describe('version', () => {
-  it('exposes v0.1.5 label', () => {
-    expect(APP_VERSION).toBe('0.1.5')
-    expect(APP_VERSION_LABEL).toBe('v0.1.5')
+  it('exposes v0.1.6 label', () => {
+    expect(APP_VERSION).toBe('0.1.6')
+    expect(APP_VERSION_LABEL).toBe('v0.1.6')
   })
 })
 
 describe('releaseNotesMarkdown', () => {
-  it('parses docs/releases/v0.1.5.md sections', () => {
+  it('parses docs/releases/v0.1.6.md sections', () => {
     const release = getCurrentReleaseNotes()
-    expect(release.version).toBe('0.1.5')
-    expect(release.date).toBe('2026-06-22')
-    expect(release.sections.some((s) => s.title === '数据统计')).toBe(true)
-    expect(release.sections.find((s) => s.title === '数据统计')?.items).toContain(
-      '主界面**战斗趋势图**横轴由「每场战斗回合数」改为**战斗行动步**，与玩家统计系统的步数口径一致',
+    expect(release.version).toBe('0.1.6')
+    expect(release.date).toBe('2026-06-23')
+    expect(release.sections.some((s) => s.title === '战斗奖励')).toBe(true)
+    expect(release.sections.find((s) => s.title === '战斗奖励')?.items).toContain(
+      '每只被击败怪物单独计算后求和；**tier 权重**：普通 1、精英 2、首领 5',
     )
   })
 
   it('getAllReleaseNotes returns newest first and includes past versions', () => {
     const all = getAllReleaseNotes()
-    expect(all.map((r) => r.version)).toEqual(['0.1.5', '0.1.4', '0.1.3', '0.1.2', '0.1.1', '0.1.0'])
-    expect(all[5].sections.some((s) => s.title === '账号与存档')).toBe(true)
+    expect(all.map((r) => r.version)).toEqual(['0.1.6', '0.1.5', '0.1.4', '0.1.3', '0.1.2', '0.1.1', '0.1.0'])
+    expect(all[6].sections.some((s) => s.title === '账号与存档')).toBe(true)
   })
 
   it('parseReleaseNoteInlineSegments renders **bold** as segments', () => {
