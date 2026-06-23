@@ -335,6 +335,27 @@ body {
   line-height: 1.35;
 }
 
+/* Modal / dialog footer actions: compact, not full-width form buttons */
+.modal-box > .btn,
+.modal-footer .btn,
+.item-detail-actions .btn,
+.item-detail-sell-confirm .btn,
+.skill-choice-actions .btn {
+  width: auto;
+  margin-top: 0;
+  font-size: var(--font-sm);
+  padding: 0.28rem 0.7rem;
+  border-width: 1px;
+  line-height: 1.35;
+  min-height: 0;
+}
+
+.modal-box > .btn {
+  display: block;
+  margin-left: auto;
+  margin-top: 0.75rem;
+}
+
 /* Scrollable panels: never rely on native OS scrollbars in game UI */
 .game-scroll {
   scrollbar-width: thin;

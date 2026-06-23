@@ -105,7 +105,7 @@ const allReleases = computed(() => getAllReleaseNotes())
 }
 
 .modal-title {
-  font-size: var(--font-lg);
+  font-size: var(--font-md);
   color: var(--text);
   margin-bottom: 0.9rem;
   padding-bottom: 0.4rem;
@@ -244,5 +244,10 @@ const allReleases = computed(() => getAllReleaseNotes())
 .version-info-footer .btn {
   width: auto;
   margin-top: 0;
+  font-size: var(--font-sm);
+  padding: 0.28rem 0.7rem;
+  border-width: 1px;
+  line-height: 1.35;
+  min-height: 0;
 }
 </style>

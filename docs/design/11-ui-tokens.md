@@ -224,6 +224,7 @@ font-family: 'Ark Pixel', monospace;
 
 - 主按钮：`var(--font-lg)`，`var(--border)` 边框，hover 时 `var(--accent)`；全局 `.btn` 默认 **`width: 100%`**（表单场景）。
 - 小按钮 / 行内操作：使用 **`btn btn-sm`**（`style.css` 已设 `width: auto`、`margin-top: 0`）。模态框底部操作放在 footer 行（右对齐），勿在窄面板内误用全宽主按钮。
+- **模态框内** `.modal-box > .btn`、`.item-detail-actions .btn`、`.skill-choice-actions .btn` 等由 `style.css` 统一为 **`var(--font-sm)`** 紧凑尺寸（关闭、确认、取消等），勿单独放大。
 - 参考：`shop-buy-btn`、`player-stats-compact-btn`、`audio-settings-footer`。
 
 ### 5.1.1 可滚动区域

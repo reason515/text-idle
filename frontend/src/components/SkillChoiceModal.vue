@@ -244,7 +244,7 @@ watch(() => [props.hero, props.level], () => {
 }
 
 .skill-option-name {
-  font-size: 1rem;
+  font-size: var(--font-md);
   font-weight: bold;
   color: var(--text-value);
 }

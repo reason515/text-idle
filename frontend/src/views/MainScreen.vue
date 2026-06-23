@@ -8789,10 +8789,10 @@ onUnmounted(() => {
   max-width: 36rem;
 }
 .modal-title {
-  font-size: var(--font-lg);
+  font-size: var(--font-md);
   color: var(--text);
-  margin-bottom: 0.9rem;
-  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: baseline;
@@ -8851,8 +8851,8 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border);
 }
 .detail-tab {
-  padding: 0.35rem 0.75rem;
-  font-size: var(--font-base);
+  padding: 0.3rem 0.65rem;
+  font-size: var(--font-sm);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -8941,7 +8941,7 @@ onUnmounted(() => {
 }
 .tactics-skill-name {
   flex: 1;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
 }
 .tactics-skill-name-basic {
   color: var(--color-log-basic);
@@ -8967,7 +8967,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   padding-left: 1.5rem;
-  font-size: var(--font-base-sm);
+  font-size: var(--font-sm);
 }
 .tactics-target-fallback-row + .tactics-target-fallback-row {
   margin-top: 0.2rem;
@@ -8999,7 +8999,7 @@ onUnmounted(() => {
 input.tactics-condition-value {
   padding: 0.25rem 0.5rem;
   font-family: inherit;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -9021,7 +9021,7 @@ input.tactics-condition-value[type="number"] {
 }
 .tactics-select {
   padding: 0.25rem 0.5rem;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -9050,7 +9050,7 @@ input.tactics-condition-value[type="number"] {
   padding: 0.6rem 0.75rem;
 }
 .ai-tactics-key-guide-title {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--text-value);
   font-weight: 600;
   margin-bottom: 0.35rem;
@@ -9181,7 +9181,7 @@ input.tactics-condition-value[type="number"] {
   min-height: 7rem;
   padding: 0.55rem 0.6rem;
   font-family: inherit;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   line-height: 1.55;
   background: var(--bg-dark);
   border: 1px solid var(--border);
@@ -9245,7 +9245,7 @@ input.tactics-condition-value[type="number"] {
   gap: 0.15rem;
 }
 .ai-tactics-loading-title {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--text-value);
   font-weight: 600;
 }
@@ -9269,7 +9269,7 @@ input.tactics-condition-value[type="number"] {
   gap: 0.4rem;
 }
 .ai-tactics-explanation {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--text-value);
   line-height: 1.4;
 }
@@ -9410,7 +9410,7 @@ input.tactics-condition-value[type="number"] {
   grid-template-columns: 6rem minmax(0, 1fr);
   gap: 0.25rem 0.6rem;
   align-items: start;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   line-height: 1.5;
 }
 .ai-tactics-current-label {
@@ -9470,7 +9470,7 @@ input.tactics-condition-value[type="number"] {
 }
 .detail-empty-hint {
   color: var(--text-muted);
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   padding: 1.5rem 0;
   text-align: center;
 }
@@ -9485,7 +9485,7 @@ input.tactics-condition-value[type="number"] {
   gap: 0 0.75rem;
   align-items: baseline;
   padding: 0.15rem 0;
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
 }
 .detail-label {
   color: var(--text-label);
