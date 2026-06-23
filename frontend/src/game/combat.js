@@ -1568,6 +1568,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     if (paladin.class !== 'Paladin' || !hasActiveSeal(paladin) || (target.currentHP ?? 0) <= 0) return
     const rider = executeSealRider(paladin, target, { rng })
     if (!rider || rider.finalDamage <= 0) return
+    const riderThreatMult = getEffectiveThreatMultiplierForHero(paladin, 1)
     addThreatFromDamage(threat, target.id, paladin.id, rider.finalDamage, 1, paladin)
     log.push({
       round,
@@ -1591,7 +1592,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       targetHPBefore: rider.targetHPBefore,
       targetHPAfter: rider.targetHPAfter,
       targetMaxHP: target.maxHP,
-      threatAmount: rider.finalDamage,
+      threatAmount: Math.round(rider.finalDamage * riderThreatMult),
       threatTargetName: target.name,
     })
   }
@@ -3305,8 +3306,17 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               if (!actor.skillCooldowns) actor.skillCooldowns = {}
               actor.skillCooldowns[skillId] = round
             }
+            const judgementThreatMult =
+              skillId === 'judgement' ? (skill.threatMultiplier ?? 1.25) : 1
             if (sr.finalDamage > 0) {
-              addThreatFromDamage(threat, paladinTarget.id, actor.id, sr.finalDamage, 1, actor)
+              addThreatFromDamage(
+                threat,
+                paladinTarget.id,
+                actor.id,
+                sr.finalDamage,
+                judgementThreatMult,
+                actor
+              )
             }
             const entry = {
               round,
@@ -3355,7 +3365,10 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.debuffSkipActions = sr.debuffSkipActions
             }
             if (sr.finalDamage > 0) {
-              entry.threatAmount = sr.finalDamage
+              const baseThreatMult = skillId === 'judgement' ? judgementThreatMult : 1
+              entry.threatAmount = Math.round(
+                sr.finalDamage * getEffectiveThreatMultiplierForHero(actor, baseThreatMult)
+              )
               entry.threatTargetName = paladinTarget.name
               appendSealRiderLog(actor, paladinTarget)
             }

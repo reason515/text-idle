@@ -15,6 +15,7 @@ import {
   isAllyOT,
   getThreatMultiplier,
   getEffectiveThreatMultiplierForHero,
+  getSealOfRighteousnessThreatBonus,
   computeSkillDamageThreat,
   addThreatFromSkillDamage,
   hasNonZeroThreatOnMonster,
@@ -266,6 +267,20 @@ describe('threat', () => {
     it('returns 1.5 for maul', () => {
       expect(getThreatMultiplier('maul')).toBe(1.5)
     })
+    it('returns 1.25 for judgement', () => {
+      expect(getThreatMultiplier('judgement')).toBe(1.25)
+    })
+  })
+
+  describe('getSealOfRighteousnessThreatBonus', () => {
+    it('returns 0.15 when seal buff is active', () => {
+      const hero = { buffs: [{ type: 'seal-of-righteousness', remainingRounds: 2, riderCoeff: 0.22 }] }
+      expect(getSealOfRighteousnessThreatBonus(hero)).toBe(0.15)
+    })
+    it('returns 0 when seal expired or absent', () => {
+      expect(getSealOfRighteousnessThreatBonus({ buffs: [{ type: 'seal-of-righteousness', remainingRounds: 0 }] })).toBe(0)
+      expect(getSealOfRighteousnessThreatBonus({})).toBe(0)
+    })
   })
 
   describe('getEffectiveThreatMultiplierForHero', () => {
@@ -274,7 +289,21 @@ describe('threat', () => {
       expect(getEffectiveThreatMultiplierForHero(hero, 1.5)).toBe(1.75)
       expect(getEffectiveThreatMultiplierForHero(hero, 1.0)).toBe(1.25)
     })
-    it('returns base when no bear form', () => {
+    it('adds 0.15 when seal of righteousness is active', () => {
+      const hero = { buffs: [{ type: 'seal-of-righteousness', remainingRounds: 3, riderCoeff: 0.22 }] }
+      expect(getEffectiveThreatMultiplierForHero(hero, 1.25)).toBe(1.4)
+      expect(getEffectiveThreatMultiplierForHero(hero, 1.0)).toBe(1.15)
+    })
+    it('stacks bear form and seal bonuses', () => {
+      const hero = {
+        buffs: [
+          { type: 'bear-form', remainingRounds: 2, damageReductionPct: 12 },
+          { type: 'seal-of-righteousness', remainingRounds: 3, riderCoeff: 0.22 },
+        ],
+      }
+      expect(getEffectiveThreatMultiplierForHero(hero, 1.0)).toBe(1.4)
+    })
+    it('returns base when no threat buffs', () => {
       expect(getEffectiveThreatMultiplierForHero({}, 1.5)).toBe(1.5)
     })
   })

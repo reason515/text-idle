@@ -15,9 +15,12 @@ const SKILL_THREAT_MULTIPLIERS = {
   'shield-slam': 1.3,
   'taunt': 1.5,
   'maul': 1.5,
+  'judgement': 1.25,
 }
 
 const BEAR_FORM_THREAT_BONUS = 0.25
+const SEAL_OF_RIGHTEOUSNESS_THREAT_BONUS = 0.15
+const SEAL_OF_RIGHTEOUSNESS_BUFF_TYPE = 'seal-of-righteousness'
 
 /**
  * Create empty threat tables: threat[monsterId][heroId] = value.
@@ -76,13 +79,30 @@ export function getBearFormThreatBonus(hero) {
 }
 
 /**
- * effectiveThreatMultiplier = (baseMultiplier ?? 1.0) + bearFormBonus
+ * Seal of Righteousness adds +0.15 to threat multiplier while active (Paladin).
+ * @param {Object|null|undefined} hero
+ * @returns {number}
+ */
+export function getSealOfRighteousnessThreatBonus(hero) {
+  if (!hero?.buffs) return 0
+  const buff = hero.buffs.find(
+    (b) => b.type === SEAL_OF_RIGHTEOUSNESS_BUFF_TYPE && (b.remainingRounds ?? 0) > 0
+  )
+  return buff ? SEAL_OF_RIGHTEOUSNESS_THREAT_BONUS : 0
+}
+
+/**
+ * effectiveThreatMultiplier = (baseMultiplier ?? 1.0) + bearFormBonus + sealBonus
  * @param {Object|null|undefined} hero
  * @param {number} [baseMultiplier]
  * @returns {number}
  */
 export function getEffectiveThreatMultiplierForHero(hero, baseMultiplier = 1.0) {
-  return baseMultiplier + getBearFormThreatBonus(hero)
+  return (
+    baseMultiplier +
+    getBearFormThreatBonus(hero) +
+    getSealOfRighteousnessThreatBonus(hero)
+  )
 }
 
 /**

@@ -20,7 +20,7 @@ export const PALADIN_FIXED_INITIAL_SKILLS = [
     sealDuration: 3,
     sealRiderCoeff: 0.22,
     effectDesc:
-      '\u81ea\u8eab\u589e\u76ca 3 \u56de\u5408\uff1a\u6bcf\u6b21\u9020\u6210\u4f24\u5bb3\u7684\u884c\u52a8\u989d\u5916\u795e\u5723 \u00d7 0.22',
+      '\u81ea\u8eab\u589e\u76ca 3 \u56de\u5408\uff1a\u6bcf\u6b21\u9020\u6210\u4f24\u5bb3\u7684\u884c\u52a8\u989d\u5916\u795e\u5723 \u00d7 0.22\uff1b\u671f\u95f4\u6240\u6709\u4ea7\u4ec7\u884c\u52a8 +0.15 \u4ec7\u6068\u500d\u7387',
   },
   {
     id: 'judgement',
@@ -29,8 +29,9 @@ export const PALADIN_FIXED_INITIAL_SKILLS = [
     manaCost: 10,
     holyCoeff: 0.85,
     sealBonusCoeff: 0.35,
+    threatMultiplier: 1.25,
     effectDesc:
-      '\u5355\u4f53\u795e\u5723 \u00d7 0.85\uff1b\u82e5\u5723\u5370\u751f\u6548\uff1a\u989d\u5916 +0.35\u00d7\u5e76\u5237\u65b0\u5723\u5370\u81f3 3 \u56de\u5408',
+      '\u5355\u4f53\u795e\u5723 \u00d7 0.85\uff1b\u82e5\u5723\u5370\u751f\u6548\uff1a\u989d\u5916 +0.35\u00d7\u5e76\u5237\u65b0\u5723\u5370\u81f3 3 \u56de\u5408\uff1b\u4ec7\u6068\u500d\u7387 1.25',
   },
 ]
 
@@ -118,12 +119,12 @@ export function getPaladinSkillWithEnhancements(paladin, skillId) {
   if (skillId === 'seal-of-righteousness') {
     out.sealRiderCoeff = 0.22 + enhanceCount * 0.04
     out.manaCost = 7 + enhanceCount
-    out.effectDesc = `\u81ea\u8eab\u589e\u76ca 3 \u56de\u5408\uff1a\u6bcf\u6b21\u9020\u6210\u4f24\u5bb3\u7684\u884c\u52a8\u989d\u5916\u795e\u5723 \u00d7 ${out.sealRiderCoeff}`
+    out.effectDesc = `\u81ea\u8eab\u589e\u76ca 3 \u56de\u5408\uff1a\u6bcf\u6b21\u9020\u6210\u4f24\u5bb3\u7684\u884c\u52a8\u989d\u5916\u795e\u5723 \u00d7 ${out.sealRiderCoeff}\uff1b\u671f\u95f4\u6240\u6709\u4ea7\u4ec7\u884c\u52a8 +0.15 \u4ec7\u6068\u500d\u7387`
   } else if (skillId === 'judgement') {
     out.holyCoeff = 0.85 + enhanceCount * 0.07
     out.sealBonusCoeff = 0.35 + enhanceCount * 0.03
     out.manaCost = 10 + enhanceCount
-    out.effectDesc = `\u5355\u4f53\u795e\u5723 \u00d7 ${out.holyCoeff}\uff1b\u82e5\u5723\u5370\u751f\u6548\uff1a\u989d\u5916 +${out.sealBonusCoeff}\u00d7\u5e76\u5237\u65b0\u5723\u5370\u81f3 3 \u56de\u5408`
+    out.effectDesc = `\u5355\u4f53\u795e\u5723 \u00d7 ${out.holyCoeff}\uff1b\u82e5\u5723\u5370\u751f\u6548\uff1a\u989d\u5916 +${out.sealBonusCoeff}\u00d7\u5e76\u5237\u65b0\u5723\u5370\u81f3 3 \u56de\u5408\uff1b\u4ec7\u6068\u500d\u7387 1.25`
   } else if (skillId === 'lay-on-hands') {
     out.maxHealHpRatio = 0.4 + enhanceCount * 0.05
     out.manaCost = 15 + enhanceCount

@@ -71,6 +71,7 @@ describe('Paladin fixed initial skills', () => {
   it('defines exactly 2 fixed skills: seal and judgement', () => {
     expect(PALADIN_FIXED_INITIAL_SKILLS).toHaveLength(2)
     expect(PALADIN_FIXED_SKILL_IDS).toEqual(['seal-of-righteousness', 'judgement'])
+    expect(getPaladinSkillById('judgement')?.threatMultiplier).toBe(1.25)
   })
 
   it('Lv10 learn pool has 3 skills', () => {
