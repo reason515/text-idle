@@ -1568,7 +1568,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | Player changes mute or master volume                                  | Player confirms or the control commits                                    | Values persist in `localStorage` under the documented keys in [14-audio.md](design/14-audio.md) |
 | AC3 | Player is on the main screen in production (not E2E fast mode)       | Combat resolves a hit that deals HP damage (same condition as floating damage numbers) | A short hit sound may play in sync with that combat log line; **physical / magic / mixed** and related events use distinct timbres per [14-audio.md](design/14-audio.md) (browser autoplay may require a prior user gesture; **mute** disables output) |
 | AC4 | Automated E2E tests run with `e2eFastCombat` / `?e2e=1`              | Combat log advances                                                       | **No** audio output is produced from the game's audio bus (suppressed with fast combat pacing) |
-| AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again |
+| AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again; combat **rewards and exploration progress** continue at logic speed (UI pacing delays skipped via `isHiddenTabFastCombat()`, same instant playback as E2E) |
 
 ---
 

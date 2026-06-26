@@ -62,12 +62,37 @@ export function isE2eFastMode() {
 }
 
 /**
- * Map production delay to actual wait: 0 in E2E fast mode, otherwise normalMs.
+ * True when the browser tab is hidden. Combat skips UI pacing so idle rewards keep
+ * accruing at logic speed (no audio — see 14-audio.md).
+ *
+ * @returns {boolean}
+ */
+export function isHiddenTabFastCombat() {
+  try {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return true
+  } catch {
+    /* document may be unavailable */
+  }
+  return false
+}
+
+/**
+ * Instant combat log playback: E2E fast mode or background tab.
+ *
+ * @returns {boolean}
+ */
+export function isCombatPlaybackInstant() {
+  return isE2eFastMode() || isHiddenTabFastCombat()
+}
+
+/**
+ * Map production delay to actual wait: 0 in E2E fast mode or hidden tab, otherwise normalMs.
  * @param {number} normalMs
  * @returns {number}
  */
 export function applyCombatPacingDelayMs(normalMs) {
-  return isE2eFastMode() ? 0 : normalMs
+  if (isE2eFastMode() || isHiddenTabFastCombat()) return 0
+  return normalMs
 }
 
 /**
@@ -80,6 +105,7 @@ export function applyCombatPacingDelayMs(normalMs) {
  */
 export function getDefeatBeforeRestPauseMs() {
   if (isE2eFastMode()) return 520
+  if (isHiddenTabFastCombat()) return 0
   return COMBAT_PACING_MS.defeatBeforeRest
 }
 

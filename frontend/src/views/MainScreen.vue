@@ -2930,6 +2930,7 @@ import {
   getCombatLogStepDelayMs,
   getDefeatBeforeRestPauseMs,
   getRestStepRevealMs,
+  isCombatPlaybackInstant,
   isE2eFastMode,
 } from '../game/combatPacing.js'
 import {
@@ -5265,7 +5266,7 @@ async function animateCombatLog(result) {
   currentActorId.value = null
   currentTargetId.value = null
 
-  if (isE2eFastMode()) {
+  if (isCombatPlaybackInstant()) {
     for (let i = 0; i < result.log.length; i++) {
       if (!isRunning.value) return
       const entry = result.log[i]

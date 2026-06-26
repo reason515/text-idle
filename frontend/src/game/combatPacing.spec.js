@@ -6,7 +6,9 @@ import {
   getCombatLogStepDelayMs,
   getDefeatBeforeRestPauseMs,
   getRestStepRevealMs,
+  isCombatPlaybackInstant,
   isE2eFastMode,
+  isHiddenTabFastCombat,
 } from './combatPacing.js'
 
 function createMemoryLocalStorage() {
@@ -86,6 +88,19 @@ describe('combatPacing', () => {
       expect(isE2eFastMode()).toBe(true)
       expect(applyCombatPacingDelayMs(300)).toBe(0)
     })
+
+    it('hidden tab skips UI pacing for idle progression', () => {
+      vi.stubGlobal('document', { visibilityState: 'hidden' })
+      expect(isHiddenTabFastCombat()).toBe(true)
+      expect(isCombatPlaybackInstant()).toBe(true)
+      expect(applyCombatPacingDelayMs(3000)).toBe(0)
+    })
+
+    it('visible tab keeps production pacing', () => {
+      vi.stubGlobal('document', { visibilityState: 'visible' })
+      expect(isHiddenTabFastCombat()).toBe(false)
+      expect(applyCombatPacingDelayMs(3000)).toBe(3000)
+    })
   })
 
   describe('getDefeatBeforeRestPauseMs', () => {
@@ -105,6 +120,11 @@ describe('combatPacing', () => {
       localStorage.setItem('e2eFastCombat', '1')
       expect(isE2eFastMode()).toBe(true)
       expect(getDefeatBeforeRestPauseMs()).toBe(520)
+    })
+
+    it('no pause when tab is hidden', () => {
+      vi.stubGlobal('document', { visibilityState: 'hidden' })
+      expect(getDefeatBeforeRestPauseMs()).toBe(0)
     })
   })
 })
