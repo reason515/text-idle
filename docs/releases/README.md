@@ -4,7 +4,8 @@ Player-facing release notes for the in-game **版本** modal.
 
 | Version | File | Status |
 |---------|------|--------|
-| v0.1.6 | [v0.1.6.md](./v0.1.6.md) | Current — tier and level scaled battle rewards |
+| v0.1.7 | [v0.1.7.md](./v0.1.7.md) | Current — inline skill growth, paladin threat, background tab pacing |
+| v0.1.6 | [v0.1.6.md](./v0.1.6.md) | Tier and level scaled battle rewards |
 | v0.1.5 | [v0.1.5.md](./v0.1.5.md) | Step-based stats and deploy fix |
 | v0.1.4 | [v0.1.4.md](./v0.1.4.md) | Production load performance |
 | v0.1.3 | [v0.1.3.md](./v0.1.3.md) | Death rest penalty and equip fixes |

@@ -6,6 +6,7 @@ import releaseNotesV013 from '../../../docs/releases/v0.1.3.md?raw'
 import releaseNotesV014 from '../../../docs/releases/v0.1.4.md?raw'
 import releaseNotesV015 from '../../../docs/releases/v0.1.5.md?raw'
 import releaseNotesV016 from '../../../docs/releases/v0.1.6.md?raw'
+import releaseNotesV017 from '../../../docs/releases/v0.1.7.md?raw'
 
 /** @type {Record<string, string>} */
 const RELEASE_NOTES_RAW_BY_VERSION = {
@@ -16,6 +17,7 @@ const RELEASE_NOTES_RAW_BY_VERSION = {
   '0.1.4': releaseNotesV014,
   '0.1.5': releaseNotesV015,
   '0.1.6': releaseNotesV016,
+  '0.1.7': releaseNotesV017,
 }
 
 /**
