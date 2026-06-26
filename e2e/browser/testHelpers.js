@@ -206,7 +206,7 @@ async function pauseCombat(page) {
   await expect(page.getByRole('button', { name: '继续' })).toBeVisible({ timeout: 3000 }).catch(() => {})
 }
 
-/** Victory XP is split across the squad; skip any queued skill milestone modals so main UI is usable. */
+/** Victory XP is split across the squad; main screen uses inline skill choice (no modal queue). */
 async function dismissQueuedSkillChoiceModals(page, { maxSkips = 8 } = {}) {
   const modal = page.locator('[data-testid="skill-choice-modal"]')
   for (let i = 0; i < maxSkips; i++) {
@@ -215,6 +215,24 @@ async function dismissQueuedSkillChoiceModals(page, { maxSkips = 8 } = {}) {
     await modal.getByRole('button', { name: '\u8df3\u8fc7' }).click()
   }
   await expect(modal).not.toBeVisible({ timeout: 15000 })
+}
+
+/** Open hero detail Skills tab and wait for inline skill choice panel. */
+async function openHeroSkillChoicePanel(page, { heroCardIndex = 0 } = {}) {
+  await page.locator('.hero-card').nth(heroCardIndex).click({ force: true })
+  await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
+  await clickHeroDetailSkillsTab(page)
+  await expect(page.getByTestId('skill-choice-panel')).toBeVisible({ timeout: 10000 })
+  return page.getByTestId('skill-choice-panel')
+}
+
+/** After level-up, wait for battle log skill milestone hint (no modal). */
+async function waitForSkillMilestoneHint(page, levelText) {
+  await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
+  const hint = page.locator('[data-testid="log-skill-milestone-hint"]').first()
+  await expect(hint).toBeVisible({ timeout: 30000 })
+  if (levelText) await expect(hint).toContainText(levelText)
+  return hint
 }
 
 /** Clicks the Skills tab in the open hero detail modal (DOM click; avoids Playwright hit-testing vs overlays). */
@@ -300,6 +318,8 @@ module.exports = {
   recruitWarrior,
   pauseCombat,
   dismissQueuedSkillChoiceModals,
+  openHeroSkillChoicePanel,
+  waitForSkillMilestoneHint,
   clickHeroDetailSkillsTab,
   updateStoredState,
   mutatePlayerSave,

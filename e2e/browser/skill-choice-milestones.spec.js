@@ -1,6 +1,6 @@
 /**
  * E2E: Skill milestones (every 3 = enhance; every 10 = learn new pool).
- * - First modal at Lv 3 (enhance only)
+ * - Battle log hint at Lv 3 (enhance only); inline panel on hero detail Skills tab
  * - Learn new (e.g. Cleave) at Lv 10 from first learn pool
  */
 
@@ -13,6 +13,8 @@ const {
   pauseCombat,
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
+  openHeroSkillChoicePanel,
+  waitForSkillMilestoneHint,
   getPlayerSave,
   flushPlayerSaveOnPage,
 } = require('./testHelpers')
@@ -44,38 +46,33 @@ async function prepareWarriorFirstMilestone(page, { level = 2, xp = 173, baseSki
   }, { level, xp, baseSkill }, { pauseFirst: true })
 }
 
-async function waitForSkillChoiceModal(page, levelText) {
-  const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-  await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
-  await expect(skillModal).toBeVisible({ timeout: 30000 })
-  if (levelText) await expect(skillModal).toContainText(levelText)
-  return skillModal
-}
-
 test.describe('Skill choice milestones', () => {
-  test('AC1: skill choice modal appears when hero levels to 3', async ({ page }) => {
+  test('AC1: battle log hints skill milestone when hero levels to 3', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac1')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorFirstMilestone(page)
-    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
-    await expect(skillModal).toContainText('3 \u7ea7')
-    await expect(skillModal).toContainText('\u6280\u80fd\u9009\u62e9')
+    await waitForSkillMilestoneHint(page, '3 \u7ea7')
+    await expect(page.locator('[data-testid="skill-choice-modal"]')).not.toBeVisible()
+    await expect(page.getByTestId('hero-pending-dot').first()).toBeVisible()
   })
 
-  test('AC2: at Lv3 modal shows enhance only (no learn-new row for tier skills)', async ({ page }) => {
+  test('AC2: at Lv3 inline panel shows enhance only (no learn-new row for tier skills)', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac2')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorFirstMilestone(page)
-    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
+    await waitForSkillMilestoneHint(page, '3 \u7ea7')
+    await pauseCombat(page)
 
-    await expect(skillModal.filter({ hasText: '\u5f3a\u5316\u5df2\u6709\u6280\u80fd' })).toBeVisible()
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' })).toHaveCount(0)
+    const panel = await openHeroSkillChoicePanel(page)
+    await expect(panel).toContainText('3 \u7ea7')
+    await expect(panel.filter({ hasText: '\u5f3a\u5316\u5df2\u6709\u6280\u80fd' })).toBeVisible()
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' })).toHaveCount(0)
   })
 
   test('AC4: learn Cleave at Lv10 adds skill to hero', async ({ page }) => {
@@ -105,19 +102,15 @@ test.describe('Skill choice milestones', () => {
       }))
     }, undefined, { pauseFirst: true })
 
-    const skillModal = await waitForSkillChoiceModal(page, '10 \u7ea7')
-    await expect(skillModal).toContainText('10 \u7ea7')
-
-    await skillModal.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' }).click()
-    await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
-
+    await waitForSkillMilestoneHint(page, '10 \u7ea7')
     await pauseCombat(page)
+    const panel = await openHeroSkillChoicePanel(page)
+    await expect(panel).toContainText('10 \u7ea7')
+
+    await panel.locator('.skill-option').filter({ hasText: '\u987a\u5288\u65a9' }).click()
+    await panel.getByRole('button', { name: '\u786e\u8ba4' }).click()
+
     await dismissQueuedSkillChoiceModals(page)
-    await page.locator('.hero-card').first().click({ force: true })
-    await expect(page.locator('.detail-modal')).toBeVisible()
-    await dismissQueuedSkillChoiceModals(page)
-    await clickHeroDetailSkillsTab(page)
-    await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
     await expect(page.locator('.detail-section').filter({ hasText: '\u987a\u5288\u65a9' })).toBeVisible()
   })
 
@@ -149,17 +142,11 @@ test.describe('Skill choice milestones', () => {
       }))
     }, undefined, { pauseFirst: true })
 
-    await page.locator('.hero-card').filter({ hasText: '\u5b89\u5ea6\u56e0' }).first().click()
-    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    await clickHeroDetailSkillsTab(page)
-    await page.getByTestId('skill-choice-from-detail-btn').click()
-
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 10000 })
-    await expect(skillModal).toContainText('10 \u7ea7')
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u5f3a\u6548\u6cbb\u7597' })).toBeVisible()
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u5fc3\u7075\u9041\u5f71' })).toBeVisible()
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u6697\u8a00\u672f\uff1a\u75db' })).toBeVisible()
+    const panel = await openHeroSkillChoicePanel(page, { heroCardIndex: 1 })
+    await expect(panel).toContainText('10 \u7ea7')
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u5f3a\u6548\u6cbb\u7597' })).toBeVisible()
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u5fc3\u7075\u9041\u5f71' })).toBeVisible()
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u6697\u8a00\u672f\uff1a\u75db' })).toBeVisible()
   })
 
   test('AC3: enhance Sunder Armor applies enhancement (fixed trio Warrior)', async ({ page }) => {
@@ -169,26 +156,21 @@ test.describe('Skill choice milestones', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await prepareWarriorFirstMilestone(page)
-    const skillModal = await waitForSkillChoiceModal(page, '3 \u7ea7')
+    await waitForSkillMilestoneHint(page, '3 \u7ea7')
+    await pauseCombat(page)
 
-    const sunderOption = skillModal.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first()
+    const panel = await openHeroSkillChoicePanel(page)
+    const sunderOption = panel.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first()
     await expect(sunderOption.locator('.skill-option-desc')).toContainText('1 -> 2')
 
     await sunderOption.click()
-    await skillModal.getByRole('button', { name: '\u786e\u8ba4' }).click()
+    await panel.getByRole('button', { name: '\u786e\u8ba4' }).click()
 
-    await expect(skillModal).not.toBeVisible()
     await flushPlayerSaveOnPage(page)
     const save = await getPlayerSave(page)
     const warrior = save.squad.find((h) => h.class === 'Warrior')
     expect(warrior?.skillEnhancements?.['sunder-armor']?.enhanceCount).toBe(1)
 
-    await pauseCombat(page)
-    await dismissQueuedSkillChoiceModals(page)
-    await page.locator('.hero-card').first().click({ force: true })
-    await expect(page.locator('.detail-modal')).toBeVisible()
-    await dismissQueuedSkillChoiceModals(page)
-    await clickHeroDetailSkillsTab(page)
     await expect(page.locator('.skill-enhance-badge').filter({ hasText: 'Lv.2/5' })).toBeVisible()
   })
 
@@ -198,7 +180,6 @@ test.describe('Skill choice milestones', () => {
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // L10 pool complete + all known skills max-enhanced => first unresolved milestone is 20 (cannot rely on 19->20 XP in one fight).
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const warrior = squad.find((h) => h.class === 'Warrior')
@@ -224,19 +205,13 @@ test.describe('Skill choice milestones', () => {
       }))
     }, undefined, { pauseFirst: true })
 
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    await clickHeroDetailSkillsTab(page)
-    await page.getByTestId('skill-choice-from-detail-btn').click()
-
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 10000 })
-    await expect(skillModal).toContainText('20 \u7ea7')
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u96f7\u9706\u4e00\u51fb' })).toBeVisible()
-    await expect(skillModal.locator('.skill-option').filter({ hasText: '\u76fe\u724c\u731b\u51fb' })).toHaveCount(0)
+    const panel = await openHeroSkillChoicePanel(page)
+    await expect(panel).toContainText('20 \u7ea7')
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u96f7\u9706\u4e00\u51fb' })).toBeVisible()
+    await expect(panel.locator('.skill-option').filter({ hasText: '\u76fe\u724c\u731b\u51fb' })).toHaveCount(0)
   })
 
-  test('AC8: skip closes modal and game continues', async ({ page }) => {
+  test('AC8: after milestone hint battle continues without modal', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac8')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
@@ -262,15 +237,13 @@ test.describe('Skill choice milestones', () => {
       }))
     }, undefined, { pauseFirst: true })
     await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
+    await waitForSkillMilestoneHint(page, '3 \u7ea7')
 
-    await page.locator('.skill-choice-modal button').filter({ hasText: '\u8df3\u8fc7' }).click()
-
-    await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
+    await expect(page.locator('[data-testid="skill-choice-modal"]')).not.toBeVisible()
     await expect(page.locator('.hero-card').first()).toBeVisible()
   })
 
-  test('AC11: after skip, reopen skill choice from hero detail Skills tab', async ({ page }) => {
+  test('AC11: unresolved milestone shows inline panel on hero detail Skills tab', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('skill-choice-ac11')
     await registerToCharacterSelect(page, email, { teamName: 'Skill Squad' })
@@ -280,12 +253,13 @@ test.describe('Skill choice milestones', () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       const warrior = squad.find((h) => h.class === 'Warrior')
       if (warrior) {
-        warrior.level = 2
-        warrior.xp = 173
+        warrior.level = 3
+        warrior.xp = 0
         warrior.strength = 100
         warrior.stamina = 80
         if (!warrior.skills) warrior.skills = ['sunder-armor', 'taunt']
         delete warrior.skill
+        warrior.skillMilestonesResolved = []
         localStorage.setItem('squad', JSON.stringify(squad))
       }
       localStorage.setItem('combatProgress', JSON.stringify({
@@ -295,20 +269,8 @@ test.describe('Skill choice milestones', () => {
         bossAvailable: false,
       }))
     }, undefined, { pauseFirst: true })
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 90000 })
-    await expect(page.locator('.skill-choice-modal')).toBeVisible({ timeout: 15000 })
 
-    await page.locator('.skill-choice-modal button').filter({ hasText: '\u8df3\u8fc7' }).click()
-    await expect(page.locator('.skill-choice-modal')).not.toBeVisible()
-
-    await page.locator('.hero-card').first().click({ force: true })
-    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    await dismissQueuedSkillChoiceModals(page)
-    await clickHeroDetailSkillsTab(page)
-    await page.getByTestId('skill-choice-from-detail-btn').click()
-
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 10000 })
-    await expect(skillModal).toContainText('3 \u7ea7')
+    const panel = await openHeroSkillChoicePanel(page)
+    await expect(panel).toContainText('3 \u7ea7')
   })
 })

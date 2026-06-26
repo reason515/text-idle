@@ -43,6 +43,12 @@
             :style="{ borderColor: classColor(hero.class) }"
             @click="selectedHero = hero"
           >
+            <span
+              v-if="heroHasPendingUpgrade(hero)"
+              class="pending-dot"
+              aria-label="Has unspent attribute or skill points"
+              data-testid="hero-pending-dot"
+            ></span>
             <div
               v-for="fn in getFloatingNumbers(hero.id)"
               :key="fn.id"
@@ -316,6 +322,15 @@
                 <span class="log-levelup-lvl log-levelup-lvl-new">{{ entry.newLevel }} 级！</span>
               </span>
               <span class="log-levelup-bonus">+{{ entry.pointsGained }} 属性点</span>
+            </div>
+            <div v-else-if="entry.type === 'skillMilestoneHint'" class="log-skill-milestone-hint" data-testid="log-skill-milestone-hint">
+              <span class="log-skill-milestone-icon">&#9733;</span>
+              <span :style="{ color: classColor(entry.heroClass) }">{{ entry.heroName }}</span>
+              <span class="log-skill-milestone-text">
+                达到 {{ entry.level }} 级技能里程碑 — 请打开角色详情
+                <span class="log-skill-milestone-tab">「技能」</span>
+                页进行选择
+              </span>
             </div>
             <div v-else-if="entry.type === 'summary'" class="log-summary" :class="entry.outcome + '-text'">
               <template v-if="entry.outcome === 'victory'">
@@ -2087,13 +2102,19 @@
               class="detail-tab"
               :class="{ active: heroDetailTab === 'attrs' }"
               @click="heroDetailTab = 'attrs'"
-            >属性</button>
+            >
+              属性
+              <span v-if="heroHasUnassignedAttrPoints(selectedHero)" class="pending-dot-inline" aria-hidden="true"></span>
+            </button>
             <button
               type="button"
               class="detail-tab"
               :class="{ active: heroDetailTab === 'skills' }"
               @click="heroDetailTab = 'skills'"
-            >技能</button>
+            >
+              技能
+              <span v-if="heroHasUnresolvedSkillChoice(selectedHero)" class="pending-dot-inline" aria-hidden="true"></span>
+            </button>
             <button
               v-if="heroClassHasSkillDetailPanel(selectedHero.class) && heroSkillIds(selectedHero).length > 0"
               type="button"
@@ -2246,24 +2267,14 @@
           </div>
           </div>
           <div v-show="heroDetailTab === 'skills'" class="detail-tab-pane">
-            <div
-              v-if="selectedHeroUnresolvedSkillLevel != null"
-              class="detail-skill-choice-banner"
-              data-testid="skill-choice-from-detail-banner"
-            >
-              <button
-                type="button"
-                class="btn btn-sm"
-                data-testid="skill-choice-from-detail-btn"
-                @click="queueSkillChoiceFromDetail(selectedHero)"
-              >
-                继续技能选择（{{ selectedHeroUnresolvedSkillLevel }} 级）
-              </button>
-              <span class="detail-skill-choice-banner-hint tooltip-wrap has-tip">
-                若曾跳过升级时的技能窗口，可在此完成选择
-                <span class="tooltip-text tooltip-below">战士、法师、牧师与德鲁伊在 3、6、10 级等里程碑可强化或学习新技能；关闭或跳过弹窗后仍可在此继续。</span>
-              </span>
-            </div>
+            <SkillChoicePanel
+              v-if="selectedHeroUnresolvedSkillLevel != null && selectedHeroLive"
+              :hero="selectedHeroLive"
+              :level="selectedHeroUnresolvedSkillLevel"
+              :show-skip="false"
+              @enhance="resolveSkillChoiceEnhance"
+              @learn="resolveSkillChoiceLearn"
+            />
             <template v-if="heroClassHasSkillDetailPanel(selectedHero.class) && heroSkillIds(selectedHero).length > 0">
               <div v-for="skillId in heroSkillIds(selectedHero)" :key="skillId" class="detail-section skill-card">
                 <div class="detail-row">
@@ -2282,6 +2293,18 @@
                 <div class="detail-row">
                   <span class="detail-label">{{ selectedHero.class === 'Warrior' ? '怒气消耗' : '法力消耗' }}</span>
                   <span class="detail-value" :class="selectedHero.class === 'Warrior' ? 'skill-rage-cost' : 'skill-mana-cost'">{{ getHeroSkillDisplay(skillId, selectedHero).rageCost ?? getHeroSkillDisplay(skillId, selectedHero).manaCost ?? 0 }}</span>
+                </div>
+                <div v-if="getSkillEnhancementLadder(selectedHero, skillId).length > 0" class="skill-enhance-ladder">
+                  <div class="detail-sep-line detail-sep-secondary">强化成长</div>
+                  <div
+                    v-for="step in getSkillEnhancementLadder(selectedHero, skillId)"
+                    :key="step.toLevel"
+                    class="skill-ladder-step"
+                    :class="'skill-ladder-' + step.status"
+                  >
+                    <span class="skill-ladder-level">Lv.{{ step.fromLevel }} → Lv.{{ step.toLevel }}</span>
+                    <span class="skill-ladder-effect">{{ step.effectDesc }}</span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -2743,16 +2766,6 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <SkillChoiceModal
-        v-if="currentSkillChoice"
-        :hero="currentSkillChoice.hero"
-        :level="currentSkillChoice.level"
-        @skip="onSkillChoiceSkip"
-        @enhance="onSkillChoiceEnhance"
-        @learn="onSkillChoiceLearn"
-      />
-    </Teleport>
   </div>
 </template>
 
@@ -2826,7 +2839,8 @@ import {
   markSkillMilestoneResolved,
 } from '../game/skillChoice.js'
 import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillEnhancementLimits.js'
-import SkillChoiceModal from '../components/SkillChoiceModal.vue'
+import { getSkillEnhancementLadder } from '../game/skillEnhancementLadder.js'
+import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
@@ -3185,7 +3199,6 @@ function formatLogActionName(entry) {
 
 const router = useRouter()
 const squadDisplayName = computed(() => getTeamName()?.trim() || '小队')
-const currentSkillChoice = computed(() => pendingSkillChoices.value[0] ?? null)
 const squad = ref([])
 const displayHeroes = ref([])
 /** True after encounter display is initialized until rest phase clears monsters. Used to merge live HP/MP when rebuilding from squad mid-fight. */
@@ -3319,26 +3332,38 @@ const REGEN_HERO_STAGGER_MS = 200
 const REGEN_BAR_SETTLE_MS = 280
 const toastMessages = ref([])
 let toastId = 0
-const pendingSkillChoices = ref([])
+
+function getSquadHeroById(heroId) {
+  if (!heroId) return null
+  return squad.value.find((h) => h.id === heroId) ?? null
+}
+
+function heroHasUnassignedAttrPoints(hero) {
+  const live = hero?.id ? getSquadHeroById(hero.id) : hero
+  return (live?.unassignedPoints ?? 0) > 0
+}
+
+function heroHasUnresolvedSkillChoice(hero) {
+  const live = hero?.id ? getSquadHeroById(hero.id) : hero
+  return live ? getFirstUnresolvedSkillChoiceLevel(live) != null : false
+}
+
+function heroHasPendingUpgrade(hero) {
+  return heroHasUnassignedAttrPoints(hero) || heroHasUnresolvedSkillChoice(hero)
+}
+
+/** Live squad hero for detail modal (attrs / skill choice). */
+const selectedHeroLive = computed(() => {
+  const id = selectedHero.value?.id
+  if (!id) return null
+  return getSquadHeroById(id) ?? selectedHero.value
+})
 
 /** Milestone level with an unfinished skill choice; uses live squad hero. */
 const selectedHeroUnresolvedSkillLevel = computed(() => {
-  const id = selectedHero.value?.id
-  if (!id) return null
-  const live = squad.value.find((h) => h.id === id)
+  const live = selectedHeroLive.value
   return live ? getFirstUnresolvedSkillChoiceLevel(live) : null
 })
-
-function queueSkillChoiceFromDetail(hero) {
-  if (!hero?.id) return
-  const idx = squad.value.findIndex((h) => h.id === hero.id)
-  if (idx < 0) return
-  const live = squad.value[idx]
-  const level = getFirstUnresolvedSkillChoiceLevel(live)
-  if (level == null) return
-  const dedup = pendingSkillChoices.value.filter((c) => !(c.heroIndex === idx && c.level === level))
-  pendingSkillChoices.value = [{ heroIndex: idx, hero: live, level }, ...dedup]
-}
 
 function tauntCasterDisplayName(monster) {
   if (!monster?.taunt?.casterId) return ''
@@ -4355,28 +4380,29 @@ function selectMap(mapId) {
   saveProgress()
   showMapModal.value = false
 }
-function onSkillChoiceSkip() {
-  pendingSkillChoices.value.shift()
-}
 
-function onSkillChoiceEnhance(skillId) {
-  const choice = pendingSkillChoices.value[0]
-  if (!choice) return
-  if (!applyEnhanceSkill(choice.hero, skillId)) return
-  markSkillMilestoneResolved(choice.hero, choice.level)
+function resolveSkillChoiceEnhance(skillId) {
+  const sh = getSquadHeroById(selectedHero.value?.id)
+  if (!sh) return
+  const level = getFirstUnresolvedSkillChoiceLevel(sh)
+  if (level == null) return
+  if (!applyEnhanceSkill(sh, skillId)) return
+  markSkillMilestoneResolved(sh, level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
-  pendingSkillChoices.value.shift()
+  selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }
 
-function onSkillChoiceLearn(skillId) {
-  const choice = pendingSkillChoices.value[0]
-  if (!choice) return
-  if (!applyLearnNewSkill(choice.hero, skillId, choice.level)) return
-  markSkillMilestoneResolved(choice.hero, choice.level)
+function resolveSkillChoiceLearn(skillId) {
+  const sh = getSquadHeroById(selectedHero.value?.id)
+  if (!sh) return
+  const level = getFirstUnresolvedSkillChoiceLevel(sh)
+  if (level == null) return
+  if (!applyLearnNewSkill(sh, skillId, level)) return
+  markSkillMilestoneResolved(sh, level)
   saveSquad(squad.value)
   syncDisplayHeroesFromSquad()
-  pendingSkillChoices.value.shift()
+  selectedHero.value = displayHeroes.value.find((h) => h.id === sh.id)
 }
 
 function assignPoint(attr) {
@@ -4971,7 +4997,7 @@ async function revealUnitDefeatedStep(defeatEntry, stepDelayMs) {
   await scrollLog()
 }
 
-async function revealLevelUpStep(entry, { isFirst = false } = {}) {
+async function revealLevelUpStep(entry, { isFirst = false, skillMilestoneLevels = [] } = {}) {
   const delayMs = isFirst
     ? COMBAT_PACING_MS.afterVictoryBeforeLevelUp
     : COMBAT_PACING_MS.betweenLevelUpReveals
@@ -4983,6 +5009,17 @@ async function revealLevelUpStep(entry, { isFirst = false } = {}) {
     triggerLevelUpPulse(entry.heroId)
   }
   await scrollLog()
+  for (const level of skillMilestoneLevels) {
+    if (!isRunning.value) break
+    addLogEntry({
+      type: 'skillMilestoneHint',
+      heroId: entry.heroId,
+      heroName: entry.heroName,
+      heroClass: entry.heroClass,
+      level,
+    })
+    await scrollLog()
+  }
 }
 
 function applyRegenBatchInstant(entry) {
@@ -5498,6 +5535,12 @@ async function runCombatLoop() {
         if (r?.leveledUp && r.levelsGained > 0) {
           const hero = squad.value[i]
           const oldLevel = (hero.level ?? 1) - r.levelsGained
+          const skillMilestoneLevels = []
+          for (let l = oldLevel + 1; l <= hero.level; l += 1) {
+            if (hasSkillChoiceAtLevel(hero, l)) {
+              skillMilestoneLevels.push(l)
+            }
+          }
           levelUpEntries.push({
             type: 'levelUp',
             heroId: hero.id,
@@ -5506,19 +5549,16 @@ async function runCombatLoop() {
             oldLevel,
             newLevel: hero.level,
             pointsGained: r.levelsGained * POINTS_PER_LEVEL,
+            skillMilestoneLevels,
           })
-          for (let l = oldLevel + 1; l <= hero.level; l += 1) {
-            if (hasSkillChoiceAtLevel(hero, l)) {
-              pendingSkillChoices.value.push({ heroIndex: i, hero: squad.value[i], level: l })
-            }
-          }
         }
       }
 
       if (levelUpEntries.length > 0) {
         let isFirstLevelUp = true
         for (const entry of levelUpEntries) {
-          await revealLevelUpStep(entry, { isFirst: isFirstLevelUp })
+          const { skillMilestoneLevels, ...levelEntry } = entry
+          await revealLevelUpStep(levelEntry, { isFirst: isFirstLevelUp, skillMilestoneLevels })
           isFirstLevelUp = false
           if (!isRunning.value) break
         }
@@ -7983,6 +8023,7 @@ onUnmounted(() => {
   border-radius: 3px;
 }
 .hero-card {
+  position: relative;
   border: 1px solid;
   padding: 0.5rem 0.55rem;
   background: var(--bg-elevated);
@@ -8388,6 +8429,51 @@ onUnmounted(() => {
   color: var(--color-exp);
   font-size: var(--font-sm);
   font-weight: normal;
+}
+.log-skill-milestone-hint {
+  font-size: var(--font-sm);
+  padding: 0.5rem 0.7rem;
+  margin: 0.15rem 0;
+  background: var(--bg-darker);
+  border: 1px solid var(--border-dark);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+}
+.log-skill-milestone-icon {
+  color: var(--color-skill);
+  font-size: var(--font-sm);
+}
+.log-skill-milestone-text {
+  color: var(--text-muted);
+  font-weight: normal;
+}
+.log-skill-milestone-tab {
+  color: var(--color-skill);
+}
+.pending-dot {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--error);
+  border: 1px solid var(--bg-dark);
+  z-index: 2;
+  pointer-events: none;
+}
+.pending-dot-inline {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: var(--error);
+  border: 1px solid var(--bg-dark);
+  vertical-align: middle;
+  transform: translateY(-1px);
 }
 .hero-card.hero-card-levelup-pulse {
   animation: hero-levelup-glow 0.85s ease-out;
@@ -9624,6 +9710,46 @@ input.tactics-condition-value[type="number"] {
 .skill-desc-text {
   font-size: var(--font-s);
   color: var(--text-muted);
+}
+.skill-enhance-ladder {
+  margin-top: 0.5rem;
+}
+.skill-ladder-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.45rem;
+  margin-bottom: 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-dark);
+  font-size: var(--font-sm);
+}
+.skill-ladder-step:last-child {
+  margin-bottom: 0;
+}
+.skill-ladder-level {
+  color: var(--color-skill);
+  font-weight: bold;
+}
+.skill-ladder-effect {
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.skill-ladder-completed .skill-ladder-level,
+.skill-ladder-completed .skill-ladder-effect {
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+.skill-ladder-current {
+  border-color: var(--accent);
+  background: var(--bg-panel);
+}
+.skill-ladder-current .skill-ladder-level {
+  color: var(--accent);
+}
+.skill-ladder-future {
+  opacity: 0.85;
 }
 
 /* Warrior skill log entries */
