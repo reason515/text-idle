@@ -3,27 +3,27 @@ import { APP_VERSION, APP_VERSION_LABEL } from './version.js'
 import { getCurrentReleaseNotes, getAllReleaseNotes, parseReleaseNotesMarkdown, parseReleaseNoteInlineSegments } from './releaseNotesMarkdown.js'
 
 describe('version', () => {
-  it('exposes v0.1.7 label', () => {
-    expect(APP_VERSION).toBe('0.1.7')
-    expect(APP_VERSION_LABEL).toBe('v0.1.7')
+  it('exposes v0.2.0 label', () => {
+    expect(APP_VERSION).toBe('0.2.0')
+    expect(APP_VERSION_LABEL).toBe('v0.2.0')
   })
 })
 
 describe('releaseNotesMarkdown', () => {
-  it('parses docs/releases/v0.1.7.md sections', () => {
+  it('parses docs/releases/v0.2.0.md sections', () => {
     const release = getCurrentReleaseNotes()
-    expect(release.version).toBe('0.1.7')
-    expect(release.date).toBe('2026-06-27')
-    expect(release.sections.some((s) => s.title === '技能成长')).toBe(true)
-    expect(release.sections.find((s) => s.title === '技能成长')?.items).toContain(
-      '达到 **Lv10 / Lv20 / Lv30** 等里程碑时，在英雄详情 **技能** 页内直接选择新技能或强化，无需关闭主界面',
+    expect(release.version).toBe('0.2.0')
+    expect(release.date).toBe('2026-06-28')
+    expect(release.sections.some((s) => s.title === '挂机推进')).toBe(true)
+    expect(release.sections.find((s) => s.title === '挂机推进')?.items).toContain(
+      '战斗回合、结算与休息在服务端执行，不再依赖浏览器前台运行',
     )
   })
 
   it('getAllReleaseNotes returns newest first and includes past versions', () => {
     const all = getAllReleaseNotes()
-    expect(all.map((r) => r.version)).toEqual(['0.1.7', '0.1.6', '0.1.5', '0.1.4', '0.1.3', '0.1.2', '0.1.1', '0.1.0'])
-    expect(all[7].sections.some((s) => s.title === '账号与存档')).toBe(true)
+    expect(all.map((r) => r.version)).toEqual(['0.2.0', '0.1.7', '0.1.6', '0.1.5', '0.1.4', '0.1.3', '0.1.2', '0.1.1', '0.1.0'])
+    expect(all[8].sections.some((s) => s.title === '账号与存档')).toBe(true)
   })
 
   it('parseReleaseNoteInlineSegments renders **bold** as segments', () => {
