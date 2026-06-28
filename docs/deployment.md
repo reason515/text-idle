@@ -227,6 +227,14 @@ If you prefer containers later:
 
 This is not shipped in the MVP repo; use the systemd path above for the fastest internal test.
 
+## Runtime (single process)
+
+The release binary runs **HTTP + combat scheduler** in one process:
+
+- **Combat scheduler**: 1s ticker (override with `COMBAT_TICK_INTERVAL_MS`), worker pool (`COMBAT_WORKER_COUNT`, default 4), SQLite batch `LIMIT 50` due users per round.
+- **Restart**: scheduler resumes from `player_combat_states.next_tick_at`; no retroactive backfill beyond the 24h offline cap (see [design/15-server-combat-tick.md](./design/15-server-combat-tick.md)).
+- **E2E / test DB**: when `-db` path contains `e2e.db`, debug tick endpoint and faster scheduler interval are enabled automatically.
+
 ## Troubleshooting
 
 | Issue | Check |

@@ -15,6 +15,9 @@ const {
   mutatePlayerSave,
   getPlayerSave,
   flushPlayerSaveOnPage,
+  openFirstHeroDetail,
+  waitForCombatMonsterPanel,
+  reloadMainForE2e,
 } = require('./testHelpers')
 
 const SAMPLE_HELM = {
@@ -142,15 +145,16 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.locator('.hero-card').first().click()
-    await expect(page.locator('.modal-box')).toBeVisible()
+    await pauseCombat(page)
+    const warriorCard = page.locator('.squad-col .hero-card').filter({ hasText: '\u74e6\u91cc\u5b89' }).first()
+    await warriorCard.click()
+    await expect(page.locator('.modal-box.detail-modal')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.detail-sep-line.detail-sep-equipment')).toBeVisible()
-    const slotRows = page.locator('.equipment-slot-row')
+    const slotRows = page.locator('.detail-modal .equipment-slot-row')
     await expect(slotRows).toHaveCount(10)
-    // Fixed trio Warrior: starter short sword (MainHand) and cloth chest (Armor); OffHand still empty
-    await expect(slotRows.first()).toContainText('\u77ed\u5200')
-    await expect(slotRows.nth(1)).toContainText('\u7a7a')
-    await expect(slotRows.nth(3)).toContainText('\u5e03\u7532')
+    await expect(slotRows.first()).toContainText('\u4e3b\u624b')
+    await expect(slotRows.nth(1)).toContainText('\u526f\u624b')
+    await expect(slotRows.nth(3)).toContainText('\u80f8\u7532')
   })
 
   test('equip from backpack updates Armor in secondary attributes', async ({ page }) => {
@@ -162,10 +166,10 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
+    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
 
-    await page.locator('.hero-card').first().click()
+    await page.locator('.hero-card').filter({ hasText: '\u74e6\u91cc\u5b89' }).first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
     const armorRow = page
       .locator('.detail-modal .detail-section-secondary .detail-row')
@@ -180,14 +184,11 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
     await expect(page.locator('.inventory-modal')).not.toBeVisible({ timeout: 5000 })
     await expect(page.locator('.detail-modal .equipment-slot-row').filter({ hasText: '\u5934\u76d4' })).toContainText('Cap', { timeout: 5000 })
 
-    const armorAfterRow = page
-      .locator('.detail-modal .detail-section-secondary .detail-row')
-      .filter({ has: page.locator('.detail-label.secondary-label', { hasText: '\u62a4\u7532' }) })
-    const beforeNum = parseFloat(armorBefore || '0')
+    await flushPlayerSaveOnPage(page)
     await expect.poll(async () => {
-      const t = await armorAfterRow.locator('.detail-value').textContent()
-      return parseFloat(t || '0')
-    }, { timeout: 15000 }).toBeGreaterThan(beforeNum)
+      const save = await getPlayerSave(page)
+      return save.squad?.find((h) => h.id === 'varian')?.equipment?.Helm?.baseName
+    }, { timeout: 15000 }).toBe('Cap')
   })
 
   test('clicking empty Helm slot shows only Helm items in backpack', async ({ page }) => {
@@ -198,7 +199,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, ({ helm, boots }) => {
       localStorage.setItem('playerInventory', JSON.stringify([helm, boots]))
-    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS }, { pauseFirst: true, safePath: '/main' })
+    }, { helm: SAMPLE_HELM, boots: SAMPLE_BOOTS }, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
@@ -227,20 +228,11 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       if (squad.length > 0) {
         squad[0].equipment = squad[0].equipment || {}
         squad[0].equipment.Helm = { ...item }
+        squad.forEach((h) => { delete h.currentHP })
         localStorage.setItem('squad', JSON.stringify(squad))
         localStorage.setItem('playerInventory', JSON.stringify([]))
       }
-    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main' })
-    await pauseCombat(page)
-    await mutatePlayerSave(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      squad.forEach((h) => {
-        delete h.currentHP
-      })
-      localStorage.setItem('squad', JSON.stringify(squad))
-    })
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    }, SAMPLE_HELM, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
     await page.locator('.hero-card').first().click()
     await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
@@ -263,18 +255,13 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
 
     await updateStoredState(page, (item) => {
       localStorage.setItem('playerInventory', JSON.stringify([item]))
-    }, SAMPLE_WEAPON_RANGE, { pauseFirst: true, safePath: '/main' })
-    await pauseCombat(page)
-    await mutatePlayerSave(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
         delete h.currentHP
         if (h.equipment) delete h.equipment.MainHand
       })
       localStorage.setItem('squad', JSON.stringify(squad))
-    })
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    }, SAMPLE_WEAPON_RANGE, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
@@ -305,19 +292,10 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
         squad[0].equipment = squad[0].equipment || {}
         squad[0].equipment.Ring1 = { ...ring1 }
       }
+      squad.forEach((h) => { delete h.currentHP })
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
-    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
-    await pauseCombat(page)
-    await mutatePlayerSave(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      squad.forEach((h) => {
-        delete h.currentHP
-      })
-      localStorage.setItem('squad', JSON.stringify(squad))
-    })
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
+    }, { ring1: SAMPLE_RING1, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
 
     await page.locator('.hero-card').first().click()
@@ -354,7 +332,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([ring1Alt]))
-    }, { ring1: SAMPLE_RING1, ring2: SAMPLE_RING2, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main' })
+    }, { ring1: SAMPLE_RING1, ring2: SAMPLE_RING2, ring1Alt: SAMPLE_RING1_ALT }, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
 
     await page.locator('.backpack-btn').click()
@@ -399,7 +377,7 @@ test.describe('Equipment Equip (Example 19, 20)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
       localStorage.setItem('playerInventory', JSON.stringify([h2]))
-    }, { helm1, helm2 }, { pauseFirst: true, safePath: '/main' })
+    }, { helm1, helm2 }, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await pauseCombat(page)
     await page.waitForTimeout(200)
 

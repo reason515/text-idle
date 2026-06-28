@@ -10,14 +10,16 @@ const {
   uniqueTestEmail,
   getPlayerSave,
   mutatePlayerSave,
+  pauseCombat,
 } = require('./testHelpers')
 
 test.describe('Server player save', () => {
   test('progress survives full page reload while token remains', async ({ page }) => {
-    const teamName = 'Persist Squad'
+    const teamName = `Persist-${uniqueTestEmail('p').slice(0, 12)}`
     const email = uniqueTestEmail('save-reload')
     await registerAndGoToMain(page, email, { teamName })
 
+    await pauseCombat(page)
     await mutatePlayerSave(page, () => {
       localStorage.setItem('playerGold', '777')
     })
@@ -38,11 +40,12 @@ test.describe('Server player save', () => {
   })
 
   test('re-login loads server save without localStorage game keys', async ({ page }) => {
-    const teamName = 'Login Restore'
+    const teamName = `Login-${uniqueTestEmail('l').slice(0, 12)}`
     const email = uniqueTestEmail('save-relogin')
     const password = 'password123'
     await registerAndGoToMain(page, email, { teamName })
 
+    await pauseCombat(page)
     await mutatePlayerSave(page, () => {
       localStorage.setItem('playerGold', '321')
     })

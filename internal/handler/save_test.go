@@ -35,7 +35,7 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
-	saveHandler := NewSaveHandler(saveService)
+	saveHandler := NewSaveHandler(saveService, nil)
 	authMw := middleware.AuthRequired(userRepo)
 
 	r := gin.New()

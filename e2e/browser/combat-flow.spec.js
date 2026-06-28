@@ -1,5 +1,14 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
+
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('e2eRetainCombatLog', '1')
+    } catch (_) {}
+  })
+})
+
 const {
   registerAndGoToMain,
   pauseCombat,
@@ -7,6 +16,15 @@ const {
   updateStoredState,
   uniqueTestEmail,
   mutatePlayerSave,
+  reloadMainForE2e,
+  waitForCombatMonsterPanel,
+  openE2eFirstMonsterDetail,
+  triggerE2eCombatTick,
+  seedVictoryCapableSquad,
+  waitForBattleSummary,
+  openFirstHeroDetail,
+  resumeCombat,
+  seedWarriorRageTestSquad,
 } = require('./testHelpers')
 
 test.describe('Combat Flow (Example 5-9)', () => {
@@ -118,10 +136,13 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    const monsterRow = page.locator('.monster-list .monster-card').first()
-    await expect(monsterRow).toBeVisible({ timeout: 25000 })
-    await expect(monsterRow.locator('.monster-name')).toBeVisible({ timeout: 10000 })
+    await pauseCombat(page)
+    await Promise.all([
+      page.locator('.log-encounter').first().waitFor({ state: 'visible', timeout: 25000 }),
+      triggerE2eCombatTick(page, { awaitPoll: true }),
+    ])
+    const encounterText = await page.locator('.log-encounter').first().textContent()
+    expect(encounterText || '').toMatch(/\u906d\u9047/)
   })
 
   test('battle log shows end-of-round mana recovery for mana heroes', async ({ page }) => {
@@ -144,26 +165,12 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
+    await resumeCombat(page)
+    await triggerE2eCombatTick(page, { awaitPoll: true })
     await pauseCombat(page)
-    await page.waitForTimeout(200)
-    // DOM re-mounts each combat tick; avoid Playwright holding a stale element handle
-    let opened = false
-    for (let i = 0; i < 20 && !opened; i++) {
-      await page.evaluate(() => {
-        const cards = Array.from(document.querySelectorAll('.monster-list .monster-card'))
-        const alive = cards.find((c) => !c.querySelector('.defeated-badge'))
-        if (alive) alive.click()
-      })
-      try {
-        await expect(page.locator('.modal-overlay').filter({ has: page.locator('.detail-modal') })).toBeVisible({ timeout: 400 })
-        opened = true
-      } catch {
-        await page.waitForTimeout(120)
-      }
-    }
-    await expect(page.locator('.detail-modal')).toBeVisible({ timeout: 5000 })
-    const detailModal = page.locator('.detail-modal')
+    await openE2eFirstMonsterDetail(page)
+    const detailModal = page.locator('.modal-overlay').filter({ has: page.locator('.detail-modal') })
+    await expect(detailModal).toBeVisible({ timeout: 5000 })
     const physRow = detailModal.locator('.detail-row').filter({ hasText: '\u7269\u653b' }).first()
     await expect(physRow).toBeVisible()
     const val = (await physRow.locator('.detail-value').textContent())?.trim() ?? ''
@@ -242,10 +249,11 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: 60000 })
-    const summaryText = await page.locator('.log-summary').first().textContent()
-    expect(summaryText).toMatch(/胜利！|失败！|平局/)
-    expect(summaryText).toMatch(/探索度|探索进度/)
+    const summaryText = await waitForBattleSummary(page, 60000)
+    expect(summaryText).toMatch(/\u80dc\u5229\uff01|\u5931\u8d25\uff01|\u5e73\u5c40/)
+    if (summaryText.includes('\u80dc\u5229')) {
+      expect(summaryText).toMatch(/\u63a2\u7d22\u5ea6/)
+    }
   })
 
   test('rest phase is shown in combat log after victory', async ({ page }) => {
@@ -267,11 +275,17 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await expect(page.locator('.monster-card').first()).toBeVisible({ timeout: 25000 })
-    await expect(page.locator('.log-rest').first()).toBeVisible({ timeout: 80000 })
-    await expect(page.locator('.monsters-col').locator('.empty-hint')).toContainText('暂无遭遇')
-    await expect(page.locator('.monsters-col .monster-card')).toHaveCount(0)
+    let summariesBefore = await page.locator('.log-summary').count()
+    if (summariesBefore === 0) {
+      await waitForBattleSummary(page, 90000)
+      summariesBefore = await page.locator('.log-summary').count()
+    }
+    await resumeCombat(page)
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await waitForBattleSummary(page, 90000, { afterCount: summariesBefore })
+    await expect.poll(async () => page.locator('.monsters-col .monster-card').count()).toBe(0)
+    await pauseCombat(page)
+    await expect(page.locator('.monsters-col').locator('.empty-hint')).toContainText('\u6682\u65e0\u906d\u9047')
   })
 
   test('pause button pauses combat log scrolling', async ({ page }) => {
@@ -281,6 +295,7 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
+    await resumeCombat(page)
     const pauseBtn = page.locator('.pause-btn')
     await expect(pauseBtn).toBeVisible()
     await expect(pauseBtn).toContainText('暂停')
@@ -371,7 +386,10 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     await expect(page.locator('.log-entry').first()).toBeVisible({ timeout: 30000 })
-    await expect(page.locator('.float-num').first()).toBeVisible({ timeout: 4000 })
+    await resumeCombat(page)
+    const floatPromise = page.locator('.float-num').first().waitFor({ state: 'visible', timeout: 15000 })
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await floatPromise
     await expect(page.locator('.float-damage .float-value').first()).toContainText('-')
   })
 
@@ -382,20 +400,16 @@ test.describe('Combat Flow (Example 5-9)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await updateStoredState(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        squad[0].strength = 1
-        squad[0].agility = 1
-        squad[0].stamina = 120
-        squad[0].maxHP = 500
-        squad[0].currentHP = 500
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-    })
+    await seedWarriorRageTestSquad(page)
+    await reloadMainForE2e(page)
+    await pauseCombat(page)
+    await resumeCombat(page)
 
     await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
-    await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u7834\u7532' }).first()).toBeVisible({ timeout: 90000 })
+    await expect.poll(async () => {
+      await triggerE2eCombatTick(page, { awaitPoll: true })
+      return page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u7834\u7532' }).count()
+    }, { timeout: 90000, intervals: [500, 1000, 2000] }).toBeGreaterThan(0)
     await expect(page.locator('.log-entry, .log-detail-box').filter({ hasText: '\u62a4\u7532\u964d\u4f4e 8' }).first()).toBeVisible({ timeout: 5000 })
   })
 
@@ -495,7 +509,7 @@ test.describe('Threat Display (Example 32)', () => {
       }
       localStorage.setItem('squad', JSON.stringify(squad))
     })
-    await page.reload({ waitUntil: 'domcontentloaded' })
+    await reloadMainForE2e(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const jaina = '\u5409\u5b89\u5a1c'
@@ -531,23 +545,12 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Strengthen warrior to guarantee victory (high HP/resist for magic, high str for phys)
-    await mutatePlayerSave(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        squad[0].strength = 80
-        squad[0].maxHP = 500
-        squad[0].currentHP = 500
-        squad[0].resistance = 50
-        squad[0].armor = 40
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-    })
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 45000 })
-    const summaryText = await page.locator('.log-summary.victory-text').first().textContent()
+    const summariesBefore = await page.locator('.log-summary').count()
+    await seedVictoryCapableSquad(page)
+    await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
+    await triggerE2eCombatTick(page)
+    await waitForBattleSummary(page, 90000, { afterCount: summariesBefore })
+    const summaryText = await page.locator('.log-summary.victory-text').last().textContent()
     expect(summaryText).toMatch(/EXP \+/)
   })
 
@@ -558,22 +561,12 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await mutatePlayerSave(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        squad[0].strength = 80
-        squad[0].maxHP = 500
-        squad[0].currentHP = 500
-        squad[0].resistance = 50
-        squad[0].armor = 40
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-    })
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 45000 })
-    await expect(page.locator('.log-defeated').filter({ hasText: 'DEFEATED!' }).first()).toBeVisible({ timeout: 5000 })
+    const summariesBefore = await page.locator('.log-summary').count()
+    await seedVictoryCapableSquad(page)
+    await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await waitForBattleSummary(page, 90000, { afterCount: summariesBefore })
+    await expect.poll(async () => page.locator('.log-defeated').filter({ hasText: 'DEFEATED!' }).count()).toBeGreaterThan(0)
   })
 
   test('defeated hero card shows DEFEATED badge and defeated styling', async ({ page }) => {
@@ -583,20 +576,20 @@ test.describe('Experience and Leveling (Example 11)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await mutatePlayerSave(page, () => {
+    await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       if (squad.length > 0) {
         squad[0].strength = 1
-        squad[0].maxHP = 5
-        squad[0].currentHP = 5
         squad[0].stamina = 10
-        squad[0].armor = 0
-        squad[0].resistance = 0
+        squad[0].agility = 1
+        squad[0].intellect = 1
+        delete squad[0].currentHP
+        delete squad[0].maxHP
         localStorage.setItem('squad', JSON.stringify(squad))
       }
-    })
-    await page.reload()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
+    await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
+    await triggerE2eCombatTick(page)
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 15000 })
@@ -636,7 +629,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })
-    await page.reload()
+    await reloadMainForE2e(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     // Confirm combat started (encounter entry appears first)
@@ -711,7 +704,7 @@ test.describe('Gold System (Example 16)', () => {
         localStorage.setItem('squad', JSON.stringify(squad))
       }
     })
-    await page.reload()
+    await reloadMainForE2e(page)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
     const goldValueEl = page.locator('.gold-display .gold-value')

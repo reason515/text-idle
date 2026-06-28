@@ -17,6 +17,10 @@ if (-not (Test-Path $webDir)) { New-Item -ItemType Directory -Path $webDir -Forc
 Remove-Item "$webDir\*" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item "frontend\dist\*" -Destination $webDir -Recurse -Force
 
+Write-Host "Building combat bundle for server engine..." -ForegroundColor Cyan
+node scripts/build-combat-bundle.mjs
+if ($LASTEXITCODE -ne 0) { exit 1 }
+
 Write-Host "Building Go binary (release)..." -ForegroundColor Cyan
 $outDir = "dist"
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }

@@ -236,7 +236,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { HEROES, CLASS_COLORS, CLASS_DISPLAY_NAMES, CLASS_INFO, getSquad, addHeroToSquadWithSkill, addExpansionHeroToSquad, getInitialAttributes, computeSecondaryAttributes, getResourceDisplay } from '../data/heroes.js'
 import { createInitialProgress, getRecruitLimit, getExpansionHeroLevel, getExpansionHeroAttributePoints, isDruidOnlyExpansionSlot } from '../game/combat.js'
-import { getCombatProgressData } from '../game/playerSave.js'
+import { getCombatProgressData, flushPlayerSave } from '../game/playerSave.js'
 import { WARRIOR_INITIAL_SKILLS, getWarriorSkillById } from '../game/warriorSkills.js'
 import { MAGE_INITIAL_SKILLS, getMageSkillById } from '../game/mageSkills.js'
 import {
@@ -551,7 +551,7 @@ function confirmSkillSelection() {
   }
 }
 
-function confirmSelection() {
+async function confirmSelection() {
   if (!selectedHero.value) return
   if (squadSize.value >= recruitLimit.value) {
     resetRecruitState()
@@ -594,6 +594,7 @@ function confirmSelection() {
     const ok = addExpansionHeroToSquad(selectedHero.value, opts)
     if (ok) {
       resetRecruitState()
+      await flushPlayerSave()
       router.push('/main')
     }
   } else {
@@ -601,6 +602,7 @@ function confirmSelection() {
     const ok = addHeroToSquadWithSkill(selectedHero.value, skillId)
     if (ok) {
       resetRecruitState()
+      await flushPlayerSave()
       router.push('/main')
     }
   }

@@ -1106,6 +1106,8 @@ function heroCombatStats(hero) {
     side: 'hero',
     class: hero.class,
     level: hero.level ?? 1,
+    xp: hero.xp ?? 0,
+    unassignedPoints: hero.unassignedPoints ?? 0,
     agility: hero.agility,
     armor: computeHeroArmor(hero),
     resistance: computeHeroResistance(hero),

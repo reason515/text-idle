@@ -1,0 +1,11 @@
+{
+  "description": "Fixed trio vs kobold, rng=0.2",
+  "expected": {
+    "outcome": "victory",
+    "combatActionSteps": 11,
+    "rounds": 3,
+    "exp": 12,
+    "gold": 7,
+    "logLength": 15
+  }
+}

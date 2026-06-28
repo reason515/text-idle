@@ -1,9 +1,11 @@
 const { test, expect } = require('@playwright/test')
 const crypto = require('crypto')
 require('./globalHooks')
-const { setupNewRun,
+const {
+  setupNewRun,
   uniqueTestEmail,
   registerAndGoToMain,
+  completeIntroSteps,
 } = require('./testHelpers')
 
 function uniqueTeamName(prefix) {
@@ -92,18 +94,15 @@ test.describe('Opening Introduction E2E', () => {
     await page.getByRole('button', { name: '\u6ce8\u518c' }).click()
 
     await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-    await page.getByRole('button', { name: '下一步' }).click()
-    await page.getByLabel('队伍名称').fill(uniqueTeamName('Hero'))
-    await page.getByRole('button', { name: '下一步' }).click()
-    await page.getByRole('button', { name: '开始冒险' }).click()
-    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await completeIntroSteps(page, uniqueTeamName('Hero'))
 
-    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.goto('/login?e2e=1', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await page.getByLabel('\u90ae\u7bb1').fill(email)
     await page.getByLabel('\u5bc6\u7801').fill('password123')
-    await page.getByRole('button', { name: '\u767b\u5f55' }).click()
-
-    await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
+    await Promise.all([
+      page.waitForURL(/\/main/, { timeout: 60000 }),
+      page.getByRole('button', { name: '\u767b\u5f55' }).click(),
+    ])
     await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('.col-header').first()).toBeVisible()
   })

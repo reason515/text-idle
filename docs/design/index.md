@@ -22,6 +22,7 @@
 | **仇恨系统** | [12-threat.md](./12-threat.md) | 仇恨表、怪物目标选择、仇恨生成、战斗日志/UI 仇恨展示 (6.2) |
 | **玩家数据统计** | [13-player-statistics.md](./13-player-statistics.md) | 唯一步数口径、探索步数、展示倍率、战斗与休息**日志步间毫秒一致**（7.5）、详情 Modal Tab（概览 / 场次趋势 / **伤害统计** / **受伤统计**）、按技能拆分、实际暴击/命中/闪避、图表与表 |
 | **音效（表现层）** | [14-audio.md](./14-audio.md) | Freesound CC0 HQ 预览 + Web Audio 合成回退；按事件区分；E2E 快速模式与后台标签页静音 |
+| **服务端挂机** | [15-server-combat-tick.md](./15-server-combat-tick.md) | 路径 B：Scheduler + Go 战斗引擎；24h 离线 cap；WS 事件；招募 pending 不阻塞 tick |
 
 ## 快速导航
 

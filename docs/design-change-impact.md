@@ -114,6 +114,19 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 36 | `e2e/browser/audio-settings.spec.js` |
 | **Unit tests** | `frontend/src/audio/audioBus.spec.js`, `frontend/src/audio/skillSfxMap.spec.js`, `frontend/src/game/combatLogDefeat.spec.js` | Preferences + suppression + hero/monster death + skill category paths |
 
+## 10. Server idle combat (Path B)
+
+| Check | Affected areas | Notes |
+|-------|----------------|-------|
+| **Scheduler / combat state** | [15-server-combat-tick.md](design/15-server-combat-tick.md), `internal/model/player_combat_state.go`, `internal/service/combat_scheduler.go` | Central ticker; `next_tick_at`; 24h cap; no client authority |
+| **Go combat engine** | `internal/combat/`, `testdata/combat/` | Parity with Vitest fixtures; `combat_version` bump on formula change |
+| **Save authority** | `internal/service/save_service.go`, `PATCH /save/player`, [playerSave.js](../frontend/src/game/playerSave.js) | Client cannot PATCH gold/stats; server writes on tick |
+| **WebSocket / events** | `internal/handler/combat_ws.go`, `frontend/src/game/combatStream.js` | `combat.cycle_complete`, `combat.pending_expansion` |
+| **Recruit non-blocking** | MainScreen squad UI, `pendingExpansionRecruit`, Example 39 | Red dot; no modal await on combat loop; `/character-select` when ready |
+| **Client combat loop removed** | [MainScreen.vue](../frontend/src/views/MainScreen.vue) | No `runCombatLoop` authority; pacing display-only |
+| **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 39, `e2e/browser/server-combat-tick.spec.js` | Tick progress while tab hidden; pending recruit does not pause |
+| **Deployment** | [deployment.md](../deployment.md) | Single process includes scheduler; restart-safe |
+
 ## Usage
 
 Before committing design changes:

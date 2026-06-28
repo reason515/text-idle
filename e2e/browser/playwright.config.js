@@ -8,7 +8,8 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // Parallel spec files; each file still runs tests in order (fullyParallel: false).
-  workers: 4,
+  // Override locally: E2E_WORKERS=4 npm run e2e
+  workers: Number(process.env.E2E_WORKERS) || 2,
   timeout: 120000,
   reporter: 'list',
   use: {

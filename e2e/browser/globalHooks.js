@@ -8,6 +8,9 @@ const { test } = require('@playwright/test')
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
-    try { localStorage.setItem('e2eFastCombat', '1') } catch (_) {}
+    try {
+      localStorage.setItem('e2eFastCombat', '1')
+      localStorage.setItem('e2eRetainCombatLog', '1')
+    } catch (_) {}
   })
 })

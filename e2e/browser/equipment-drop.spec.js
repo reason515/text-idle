@@ -9,6 +9,9 @@ const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 const { registerAndGoToMain, updateStoredState,
   uniqueTestEmail,
+  seedVictoryCapableSquad,
+  triggerE2eCombatTick,
+  waitForBattleSummary,
 } = require('./testHelpers')
 
 test.describe('Equipment Drop (Example 17, 21, 23)', () => {
@@ -19,8 +22,12 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await expect(page.locator('.log-summary.victory-text').first()).toBeVisible({ timeout: 85000 })
-    const summary = page.locator('.log-summary.victory-text').first()
+    const summariesBefore = await page.locator('.log-summary').count()
+    await seedVictoryCapableSquad(page)
+    await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await waitForBattleSummary(page, 90000, { afterCount: summariesBefore })
+    const summary = page.locator('.log-summary.victory-text').last()
     await expect(summary).toContainText('胜利！')
     await expect(summary).toContainText('EXP +')
     await expect(summary).toContainText('金币 +')
@@ -44,7 +51,7 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
         h.currentHP = 20
       })
       if (squad.length > 0) localStorage.setItem('squad', JSON.stringify(squad))
-    }, undefined, { safePath: '/main' })
+    }, undefined, { pauseFirst: true, safePath: '/main' })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     const defeatSummary = page.locator('.log-summary.defeat-text').first()
@@ -76,10 +83,17 @@ test.describe('Equipment Drop (Example 17, 21, 23)', () => {
       progress.currentProgress = 100
       progress.bossAvailable = true
       localStorage.setItem('combatProgress', JSON.stringify(progress))
-    }, undefined, { pauseFirst: true, safePath: '/main' })
-    await page.waitForTimeout(150)
+    }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
 
-    await expect(page.locator('.log-summary.victory-text .log-item-drop').first()).toBeVisible({ timeout: 90000 })
+    await seedVictoryCapableSquad(page)
+    await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
+    const summariesBefore = await page.locator('.log-summary').count()
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await waitForBattleSummary(page, 120000, { afterCount: summariesBefore })
+
+    const victorySummary = page.locator('.log-summary.victory-text').last()
+    await expect(victorySummary).toBeVisible({ timeout: 5000 })
+    await expect(victorySummary.locator('.log-item-drop').first()).toBeVisible({ timeout: 15000 })
     const summary = page.locator('.log-summary.victory-text').filter({ has: page.locator('.log-item-drop') }).last()
     const dropCount = await summary.locator('.log-item-drop').count()
     expect(dropCount).toBeGreaterThanOrEqual(1)

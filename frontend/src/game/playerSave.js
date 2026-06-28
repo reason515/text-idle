@@ -70,6 +70,12 @@ export function normalizePlayerSave(raw) {
       base.playerStats,
     )
   }
+  if (o.pendingExpansionRecruit && typeof o.pendingExpansionRecruit === 'object') {
+    base.pendingExpansionRecruit = o.pendingExpansionRecruit
+  }
+  if (o.combatState && typeof o.combatState === 'object') {
+    base.combatState = o.combatState
+  }
   return base
 }
 
@@ -207,6 +213,42 @@ export function getLeaderboardTrackData() {
   return getCache().leaderboardTrack || createEmptyLeaderboardTrack()
 }
 
+export function getPendingExpansionRecruit() {
+  return getCache().pendingExpansionRecruit ?? null
+}
+
+/** @param {object|null} pending */
+export function setPendingExpansionRecruit(pending) {
+  if (pending) {
+    getCache().pendingExpansionRecruit = pending
+  } else {
+    delete getCache().pendingExpansionRecruit
+  }
+  schedulePersist()
+}
+
+export function getCombatStateSummary() {
+  return getCache().combatState ?? null
+}
+
+function buildPlayerPatchPayload() {
+  const cache = getCache()
+  /** @type {Record<string, unknown>} */
+  const patch = {
+    teamName: cache.teamName,
+    squad: cache.squad,
+    inventory: cache.inventory ?? [],
+    combatProgress: { currentMapId: cache.combatProgress?.currentMapId },
+    playerStats: { displayScaleN: cache.playerStats?.displayScaleN ?? 100 },
+  }
+  if (cache.pendingExpansionRecruit) {
+    patch.pendingExpansionRecruit = cache.pendingExpansionRecruit
+  } else {
+    patch.pendingExpansionRecruit = null
+  }
+  return patch
+}
+
 /** @param {import('./leaderboardTrack.js').LeaderboardTrack} track */
 export function setLeaderboardTrackData(track) {
   getCache().leaderboardTrack = normalizeLeaderboardTrack(track)
@@ -283,11 +325,16 @@ export async function resetPlayerSaveOnServer() {
   await flushPlayerSave()
 }
 
+function isSavePersistBlocked() {
+  return typeof window !== 'undefined' && window.__tiBlockSavePersist === true
+}
+
 function schedulePersist() {
-  if (memoryOnly) return
+  if (memoryOnly || isSavePersistBlocked()) return
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => {
     persistTimer = null
+    if (isSavePersistBlocked()) return
     flushPlayerSave().catch((err) => {
       if (typeof console !== 'undefined' && console.error) {
         console.error('[playerSave] failed to persist save', err)
@@ -298,22 +345,23 @@ function schedulePersist() {
 
 /** @param {{ keepalive?: boolean }} [options] */
 export async function flushPlayerSave(options = {}) {
-  if (memoryOnly) return
+  if (memoryOnly || isSavePersistBlocked()) return
   if (persistTimer) {
     clearTimeout(persistTimer)
     persistTimer = null
   }
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
-  const body = JSON.stringify(getCache())
+  const empty = isSaveEmpty(getCache())
   /** @type {RequestInit} */
   const init = {
-    method: 'PUT',
+    method: empty ? 'PUT' : 'PATCH',
     headers: authHeaders(),
-    body,
+    body: JSON.stringify(empty ? getCache() : buildPlayerPatchPayload()),
   }
   if (options.keepalive) init.keepalive = true
-  const res = await fetch(`${apiBase()}/save`, init)
+  const url = empty ? `${apiBase()}/save` : `${apiBase()}/save/player`
+  const res = await fetch(url, init)
   if (res.status === 401) {
     localStorage.removeItem('token')
     throw new Error('unauthorized')
@@ -338,13 +386,19 @@ export async function flushPlayerSave(options = {}) {
 }
 
 function flushPlayerSaveOnPageHide() {
-  if (memoryOnly || !persistTimer) return
+  if (memoryOnly || isSavePersistBlocked() || !persistTimer) return
   flushPlayerSave({ keepalive: true }).catch(() => {})
 }
 
 if (typeof window !== 'undefined') {
   window.__reloadPlayerSave = () => ensurePlayerSaveLoaded(true)
   window.__flushPlayerSave = () => flushPlayerSave()
+  window.__tiCancelSavePersist = () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer)
+      persistTimer = null
+    }
+  }
   window.addEventListener('pagehide', flushPlayerSaveOnPageHide)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushPlayerSaveOnPageHide()

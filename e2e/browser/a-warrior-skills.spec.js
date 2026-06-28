@@ -3,30 +3,35 @@ require('./globalHooks')
 
 const { registerAndGoToMain,
   uniqueTestEmail,
-  mutatePlayerSave,
+  reloadMainForE2e,
+  resumeCombat,
+  pauseCombat,
+  unblockSavePersist,
+  seedWarriorRageTestSquad,
+  triggerE2eCombatTick,
 } = require('./testHelpers')
 
 test.describe('Warrior Initial Skills in Combat (Example 13)', () => {
+  test.beforeEach(async ({ page }) => {
+    await unblockSavePersist(page)
+  })
+
   test('AC8 & AC10: Warrior skill appears in combat log after accumulating enough Rage', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('ws13-log')
     await registerAndGoToMain(page, email)
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    // Fixed trio Warrior has Sunder Armor and Taunt. Reduce strength so Rage accumulates faster from taking hits.
-    await mutatePlayerSave(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      if (squad.length > 0) {
-        squad[0].strength = 2
-        squad[0].armor = 2
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-    })
-    await page.reload()
-    await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
+    await seedWarriorRageTestSquad(page)
+    await reloadMainForE2e(page)
+    await pauseCombat(page)
+    await resumeCombat(page)
 
-    // Wait for a Warrior skill (Sunder Armor or Taunt) in the log
-    await expect(page.locator('.log-action').filter({ hasText: /破甲|嘲讽/ }).first()).toBeVisible({ timeout: 90000 })
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+    await expect.poll(async () => {
+      await triggerE2eCombatTick(page, { awaitPoll: true })
+      return page.locator('.log-entry, .log-detail-box').filter({ hasText: /\u7834\u7532|\u5632\u8bbd/ }).count()
+    }, { timeout: 90000, intervals: [500, 1000, 2000] }).toBeGreaterThan(0)
   })
 
   test('Warrior hero detail shows Skills section with Rage Cost', async ({ page }) => {

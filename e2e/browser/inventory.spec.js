@@ -8,7 +8,7 @@
 const { test, expect } = require('@playwright/test')
 require('./globalHooks')
 const { registerAndGoToMain, updateStoredState,
-  uniqueTestEmail, getPlayerSave, flushPlayerSaveOnPage } = require('./testHelpers')
+  uniqueTestEmail, getPlayerSave, flushPlayerSaveOnPage, unblockSavePersist } = require('./testHelpers')
 
 const SAMPLE_ITEM = {
   id: 'test-item-helm-1',
@@ -130,10 +130,8 @@ test.describe('Inventory (Example 22)', () => {
     await page.locator('.item-detail-modal').getByRole('button', { name: '\u786e\u8ba4' }).click()
 
     await expect(page.locator('.item-detail-modal')).not.toBeVisible()
-    await flushPlayerSaveOnPage(page)
-    const save = await getPlayerSave(page)
-    expect(save.inventory.some((item) => item.id === 'test-item-helm-1')).toBe(false)
+    await expect(page.locator('.inventory-slot').filter({ hasText: 'Cap' })).toHaveCount(0, { timeout: 15000 })
     const goldAfter = parseInt(await page.locator('.gold-display .gold-value').textContent(), 10) || 0
-    expect(goldAfter).toBeGreaterThanOrEqual(goldBefore)
+    expect(goldAfter).toBeGreaterThan(goldBefore)
   })
 })

@@ -8,6 +8,8 @@
  * for one intentional exception between defeat summary and rest.
  */
 
+import { shouldEmitUnitDefeated } from './combatLogDefeat.js'
+
 /** Default ms between each combat log step (before each line and after round tick). */
 export const DEFAULT_COMBAT_LOG_STEP_DELAY_MS = 3000
 
@@ -33,6 +35,11 @@ export const COMBAT_PACING_MS = {
   /** Between consecutive level-up log reveals when multiple heroes level. */
   betweenLevelUpReveals: 700,
 }
+
+/** Regen batch float stagger (MainScreen revealRegenBatchStep). */
+export const REGEN_HERO_STAGGER_MS = 200
+/** Regen batch bar settle after float (MainScreen revealRegenBatchStep). */
+export const REGEN_BAR_SETTLE_MS = 280
 
 const LS_KEY = 'textIdleCombatLogStepDelayMs'
 const VITE_KEY = 'VITE_COMBAT_LOG_STEP_DELAY_MS'
@@ -146,4 +153,95 @@ export function getCombatLogStepDelayMs() {
  */
 export function getRestStepRevealMs() {
   return getCombatLogStepDelayMs()
+}
+
+/**
+ * Extra reveal ms inside a regen batch log step (float stagger + bar settle).
+ * @param {object | null | undefined} entry
+ * @returns {number}
+ */
+export function estimateRegenBatchRevealMs(entry) {
+  if (entry?.type !== 'manaRegenBatch' && entry?.type !== 'hpRegenBatch') return 0
+  const updates = Array.isArray(entry.updates) ? entry.updates : []
+  let floatIdx = 0
+  let ms = 0
+  const isMana = entry.type === 'manaRegenBatch'
+  for (const u of updates) {
+    const gained = isMana ? u.manaGained : u.hpGained
+    if (!u?.actorId || (gained ?? 0) <= 0) continue
+    if (floatIdx > 0) ms += REGEN_HERO_STAGGER_MS
+    floatIdx += 1
+    ms += REGEN_BAR_SETTLE_MS
+  }
+  return ms
+}
+
+/**
+ * Visible-playback ms for one battle cycle (prefix gaps + log reveals + rest + tail).
+ * Used for background wall-clock pacing only — does not affect combatActionSteps stats.
+ *
+ * @param {{ log?: object[] }} result
+ * @param {{
+ *   restSteps?: number,
+ *   levelUpCount?: number,
+ *   outcome?: string,
+ *   hadBetweenBattleSeparator?: boolean,
+ *   hadMapDescription?: boolean,
+ * }} [options]
+ * @returns {number}
+ */
+export function estimateVisibleBattleCycleMs(result, options = {}) {
+  const stepMs = getCombatLogStepDelayMs()
+  const restSteps = Math.max(0, Math.floor(Number(options.restSteps) || 0))
+  const levelUpCount = Math.max(0, Math.floor(Number(options.levelUpCount) || 0))
+  const outcome = options.outcome ?? 'victory'
+
+  let ms = COMBAT_PACING_MS.afterEncounterMessage
+  if (options.hadBetweenBattleSeparator) ms += COMBAT_PACING_MS.betweenBattleSeparator
+  if (options.hadMapDescription) ms += COMBAT_PACING_MS.mapDescriptionRead
+
+  const log = Array.isArray(result?.log) ? result.log : []
+  for (let i = 0; i < log.length; i += 1) {
+    const entry = log[i]
+    ms += stepMs
+    if (entry?.type === 'manaRegenBatch' || entry?.type === 'hpRegenBatch') {
+      ms += estimateRegenBatchRevealMs(entry)
+    }
+    if (shouldEmitUnitDefeated(entry)) ms += stepMs
+    const nextEntry = log[i + 1]
+    if (!nextEntry || nextEntry.round !== entry.round) ms += stepMs
+  }
+
+  if (levelUpCount > 0) {
+    ms += COMBAT_PACING_MS.afterVictoryBeforeLevelUp
+    ms += Math.max(0, levelUpCount - 1) * COMBAT_PACING_MS.betweenLevelUpReveals
+  }
+  if (outcome !== 'victory') ms += COMBAT_PACING_MS.defeatBeforeRest
+
+  ms += restSteps * stepMs
+  ms += COMBAT_PACING_MS.postBattleGap
+  return ms
+}
+
+/**
+ * Wait until wall-clock deadline elapses. Uses Date.now() so progress tracks real
+ * time even when background tabs throttle setTimeout.
+ *
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+export function waitWallClockMs(ms) {
+  if (!(ms > 0)) return Promise.resolve()
+  const deadline = typeof Date !== 'undefined' ? Date.now() + ms : ms
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (typeof Date === 'undefined' || Date.now() >= deadline) {
+        resolve()
+        return
+      }
+      const remaining = deadline - Date.now()
+      setTimeout(tick, Math.min(1000, Math.max(1, remaining)))
+    }
+    tick()
+  })
 }

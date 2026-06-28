@@ -1,0 +1,385 @@
+{
+  "description": "Full server cycle on fixed trio",
+  "save": {
+    "teamName": "Fixture Squad",
+    "squad": [
+      {
+        "id": "varian",
+        "name": "瓦里安·乌瑞恩",
+        "class": "Warrior",
+        "bio": "暴风城之王，传奇战士。曾以角斗士洛戈什之名征战，重归后以无匹之剑与勇气统领联盟。",
+        "level": 1,
+        "xp": 0,
+        "unassignedPoints": 0,
+        "equipment": {
+          "MainHand": {
+            "id": "starter-trio-warrior-mh",
+            "slot": "MainHand",
+            "baseName": "短刀",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 0,
+            "resistance": 0,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 0,
+            "_resBase": 0,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0,
+            "physAtkMin": 3,
+            "physAtkMax": 5
+          },
+          "Armor": {
+            "id": "starter-trio-warrior-armor",
+            "slot": "Armor",
+            "baseName": "布甲",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 2,
+            "resistance": 2,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 2,
+            "_resBase": 2,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0
+          }
+        },
+        "strength": 10,
+        "agility": 4,
+        "intellect": 2,
+        "stamina": 9,
+        "spirit": 3,
+        "skills": [
+          "sunder-armor",
+          "taunt"
+        ],
+        "isTank": true,
+        "tactics": {
+          "skillPriority": [
+            "taunt",
+            "sunder-armor",
+            "basic-attack"
+          ],
+          "targetRule": "threat-not-tank-lowest-hp",
+          "conditions": [
+            {
+              "skillId": "taunt",
+              "targetRules": [
+                "threat-not-tank-lowest-hp"
+              ]
+            },
+            {
+              "skillId": "sunder-armor",
+              "targetRules": [
+                "threat-not-tank-lowest-hp",
+                "lowest-hp"
+              ]
+            },
+            {
+              "skillId": "basic-attack",
+              "targetRules": [
+                "default",
+                "lowest-hp"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "jaina",
+        "name": "吉安娜·普罗德摩尔",
+        "class": "Mage",
+        "bio": "大法师，前肯瑞托领袖。安东尼达斯学徒，塞拉摩与达拉然统治者，冰霜与奥术的掌控者。",
+        "level": 1,
+        "xp": 0,
+        "unassignedPoints": 0,
+        "equipment": {
+          "MainHand": {
+            "id": "starter-trio-mage-mh",
+            "slot": "MainHand",
+            "baseName": "权杖",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 0,
+            "resistance": 0,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 0,
+            "_resBase": 0,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0,
+            "spellPowerMin": 3,
+            "spellPowerMax": 5
+          },
+          "Armor": {
+            "id": "starter-trio-mage-armor",
+            "slot": "Armor",
+            "baseName": "布甲",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 2,
+            "resistance": 2,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 2,
+            "_resBase": 2,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0
+          }
+        },
+        "strength": 2,
+        "agility": 4,
+        "intellect": 11,
+        "stamina": 4,
+        "spirit": 5,
+        "skills": [
+          "frostbolt",
+          "fireball"
+        ],
+        "tactics": {
+          "skillPriority": [
+            "frostbolt",
+            "fireball"
+          ],
+          "targetRule": "lowest-hp",
+          "conditions": [
+            {
+              "skillId": "frostbolt",
+              "targetRule": "lowest-hp",
+              "when": "target-hp-above",
+              "value": 0.5
+            },
+            {
+              "skillId": "fireball",
+              "targetRule": "lowest-hp",
+              "whenAll": [
+                {
+                  "when": "target-hp-above",
+                  "value": 0.05
+                },
+                {
+                  "when": "target-hp-below",
+                  "value": 0.5
+                }
+              ]
+            },
+            {
+              "skillId": "basic-attack",
+              "targetRule": "lowest-hp",
+              "when": "target-hp-below",
+              "value": 0.05
+            }
+          ]
+        }
+      },
+      {
+        "id": "anduin",
+        "name": "安度因·乌瑞恩",
+        "class": "Priest",
+        "bio": "联盟至高王，瓦里安之子。信奉和平与外交的圣光牧师。",
+        "level": 1,
+        "xp": 0,
+        "unassignedPoints": 0,
+        "equipment": {
+          "MainHand": {
+            "id": "starter-trio-priest-mh",
+            "slot": "MainHand",
+            "baseName": "权杖",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 0,
+            "resistance": 0,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 0,
+            "_resBase": 0,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0,
+            "spellPowerMin": 3,
+            "spellPowerMax": 5
+          },
+          "Armor": {
+            "id": "starter-trio-priest-armor",
+            "slot": "Armor",
+            "baseName": "布甲",
+            "itemTier": "normal",
+            "quality": "normal",
+            "levelReq": 1,
+            "strReq": 0,
+            "agiReq": 0,
+            "intReq": 0,
+            "spiReq": 0,
+            "armor": 2,
+            "resistance": 2,
+            "physAtk": 0,
+            "spellPower": 0,
+            "prefixes": [],
+            "suffixes": [],
+            "epithet": null,
+            "_armorBase": 2,
+            "_resBase": 2,
+            "_armorFlatAffix": 0,
+            "_resFlatAffix": 0
+          }
+        },
+        "strength": 2,
+        "agility": 3,
+        "intellect": 10,
+        "stamina": 5,
+        "spirit": 9,
+        "skills": [
+          "flash-heal",
+          "power-word-shield"
+        ],
+        "tactics": {
+          "skillPriority": [
+            "flash-heal",
+            "power-word-shield"
+          ],
+          "targetRule": "lowest-hp",
+          "conditions": [
+            {
+              "skillId": "flash-heal",
+              "targetRules": [
+                {
+                  "rule": "lowest-hp-ally",
+                  "when": "ally-hp-below",
+                  "value": 0.7
+                },
+                {
+                  "rule": "self-if-enemy-targeting",
+                  "whenAll": [
+                    {
+                      "when": "self-hp-below",
+                      "value": 0.6
+                    }
+                  ]
+                },
+                {
+                  "rule": "tank",
+                  "whenAll": [
+                    {
+                      "when": "tank-hp-below",
+                      "value": 0.7
+                    },
+                    {
+                      "when": "enemy-not-targeting-self"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "skillId": "power-word-shield",
+              "targetRules": [
+                {
+                  "rule": "self-if-enemy-targeting",
+                  "whenAll": [
+                    {
+                      "when": "self-no-shield"
+                    }
+                  ]
+                },
+                {
+                  "rule": "tank",
+                  "whenAll": [
+                    {
+                      "when": "tank-hp-above",
+                      "value": 0.7
+                    },
+                    {
+                      "when": "tank-no-shield"
+                    },
+                    {
+                      "when": "enemy-not-targeting-self"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "skillId": "basic-attack",
+              "targetRule": "lowest-hp"
+            }
+          ]
+        }
+      }
+    ],
+    "combatProgress": {
+      "unlockedMapCount": 1,
+      "currentMapId": "elwynn-forest",
+      "currentProgress": 0,
+      "bossAvailable": false
+    },
+    "gold": 0,
+    "inventory": [],
+    "playerStats": {
+      "combatActionSteps": 0,
+      "restSteps": 0,
+      "cumulativeGold": 0,
+      "cumulativeXp": 0,
+      "displayScaleN": 100,
+      "battleCount": 0,
+      "victoryCount": 0,
+      "battleTimeline": [],
+      "damageByHero": {},
+      "injuryByHero": {}
+    },
+    "leaderboardTrack": {
+      "lifetimeSteps": 0,
+      "segments": []
+    }
+  },
+  "input": {
+    "rngSeed": 1001
+  },
+  "expected": {
+    "skipped": false,
+    "outcome": "victory",
+    "nextCycleDelayMs": 134300,
+    "gold": 21,
+    "combatActionSteps": 25,
+    "eventCount": 1
+  }
+}

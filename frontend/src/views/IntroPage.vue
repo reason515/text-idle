@@ -316,8 +316,13 @@ async function startAdventure() {
   if (squad.length > 0) {
     saveSquad(squad)
   }
-  await flushPlayerSave()
-  router.push('/main')
+  try {
+    await flushPlayerSave()
+  } catch {
+    error.value = '\u4fdd\u5b58\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5'
+    return
+  }
+  await router.push('/main')
 }
 </script>
 

@@ -1,0 +1,77 @@
+package service
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+	"time"
+
+	"github.com/glebarez/sqlite"
+	"github.com/text-idle/text-idle/internal/model"
+	"github.com/text-idle/text-idle/internal/repository"
+	"gorm.io/gorm"
+)
+
+func loadFixtureSave(t *testing.T) json.RawMessage {
+	t.Helper()
+	_, file, _, _ := runtime.Caller(0)
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	raw, err := os.ReadFile(filepath.Join(root, "testdata", "combat", "server_cycle_fixed_trio.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fix map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fix); err != nil {
+		t.Fatal(err)
+	}
+	return fix["save"]
+}
+
+func TestCombatLoopService_TickUser_updatesGold(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.PlayerCombatState{}, &model.CombatEvent{}); err != nil {
+		t.Fatal(err)
+	}
+	user := model.User{Email: "tick@test.com", Password: "x", Token: "tok1"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	save := loadFixtureSave(t)
+	saveRepo := repository.NewPlayerSaveRepository(db)
+	if err := saveRepo.Upsert(user.ID, string(save)); err != nil {
+		t.Fatal(err)
+	}
+	combatStateRepo := repository.NewPlayerCombatStateRepository(db)
+	combatEventRepo := repository.NewCombatEventRepository(db)
+	saveService := NewSaveService(saveRepo, nil, nil)
+	hub := NewCombatHub()
+	loop := NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, hub)
+	now := time.Now()
+	if err := loop.EnsureCombatState(user.ID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := combatStateRepo.GetByUserID(user.ID)
+	state.NextTickAt = now.Add(-time.Second)
+	if err := combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := loop.TickUser(user.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	after, err := saveService.GetSave(user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]interface{}
+	json.Unmarshal(after, &m)
+	stats, _ := m["playerStats"].(map[string]interface{})
+	steps, _ := stats["combatActionSteps"].(float64)
+	if steps <= 0 {
+		t.Errorf("expected combat progress after tick, steps=%v gold=%v", steps, m["gold"])
+	}
+}

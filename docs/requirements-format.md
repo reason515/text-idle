@@ -1568,7 +1568,7 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | Player changes mute or master volume                                  | Player confirms or the control commits                                    | Values persist in `localStorage` under the documented keys in [14-audio.md](design/14-audio.md) |
 | AC3 | Player is on the main screen in production (not E2E fast mode)       | Combat resolves a hit that deals HP damage (same condition as floating damage numbers) | A short hit sound may play in sync with that combat log line; **physical / magic / mixed** and related events use distinct timbres per [14-audio.md](design/14-audio.md) (browser autoplay may require a prior user gesture; **mute** disables output) |
 | AC4 | Automated E2E tests run with `e2eFastCombat` / `?e2e=1`              | Combat log advances                                                       | **No** audio output is produced from the game's audio bus (suppressed with fast combat pacing) |
-| AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again; combat **rewards and exploration progress** continue at logic speed (UI pacing delays skipped via `isHiddenTabFastCombat()`, same instant playback as E2E) |
+| AC5 | Game runs in a background browser tab (`visibilityState` not `visible`) | Combat log advances or the player uses preview elsewhere                 | **No** audio is emitted from the game's audio bus (including preview) until the tab is visible again; when server combat (Example 39) is enabled, rewards accrue on server ticks instead of client pacing |
 
 ---
 
@@ -1623,6 +1623,32 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | Player has a team name in save         | Player posts non-empty message text       | Message appears with squad name, local timestamp, and content       |
 | AC3 | Player posted a message                | Player reloads and reopens message board  | Same message is still listed (permanent retention)                  |
 | AC4 | Player submits whitespace-only text    | Send is attempted                         | Message is rejected; user sees an error                             |
+
+---
+
+## Example 39: Server idle combat (Path B)
+
+**User Story**
+
+> As a player with an active squad,  
+> I want combat and rewards to progress on the server while my browser tab is hidden or closed,  
+> So that idle play matches the design cap without client timer hacks and without blocking prompts stopping progress.
+
+**Design Reference**
+
+- [15-server-combat-tick.md](design/15-server-combat-tick.md) (scheduler, 24h cap, save authority)
+- [01-overview.md](design/01-overview.md) (offline engage, max accumulation)
+- [13-player-statistics.md](design/13-player-statistics.md) (stats written per tick)
+
+**Acceptance Criteria**
+
+| #   | Given                                                                 | When                                                                      | Then                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Player has a non-empty squad and server combat `status=running`       | Player closes the tab or switches away for several minutes (within 24h cap) | Gold, XP, and `playerStats` exploration steps increase on next `GET /save` without client `runCombatLoop` |
+| AC2 | Player defeats a map boss that unlocks expansion recruit              | Server tick completes victory settlement                                  | `pendingExpansionRecruit` is set; **combat ticks continue**; squad area shows a **red-dot** recruit hint; **no** modal blocks the server scheduler |
+| AC3 | Player has pending expansion recruit                                  | Player ignores recruit and keeps playing                                  | Server ticks continue; pending remains until player completes recruit at `/character-select` or dismisses via UI |
+| AC4 | Player has been offline more than 24 hours                            | Player logs in and server runs scheduler                                  | Progress reflects at most **24h** of idle cap; no unbounded retroactive burst |
+| AC5 | Player edits tactics or equipment via `PATCH /save/player`            | Server runs the next combat tick                                          | Changes apply to that tick's battle (or documented next-tick rule in 15-server-combat-tick.md) |
 
 ---
 

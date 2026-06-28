@@ -37,7 +37,7 @@ func setupMessageBoardTestRouter(t *testing.T) (*gin.Engine, string) {
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
 	messageBoardService := service.NewMessageBoardService(messageBoardRepo, saveService)
-	saveHandler := NewSaveHandler(saveService)
+	saveHandler := NewSaveHandler(saveService, nil)
 	messageBoardHandler := NewMessageBoardHandler(messageBoardService)
 	authMw := middleware.AuthRequired(userRepo)
 

@@ -14,9 +14,34 @@ alwaysApply: false
 
 ## Running
 
-- Playwright uses **4 workers** (parallel spec files; tests within a file stay ordered).
+- Playwright workers default to **2** (parallel spec files; tests within a file stay ordered). Override: `E2E_WORKERS=4 npm run e2e` or `npm run e2e:fast`.
 - From repo root: `npm run e2e` (runs port release; resets `text-idle.e2e.db` only; dev `text-idle.db` is preserved).
 - If ports 8080 / 5173 are in use or running manually: `powershell -ExecutionPolicy Bypass -File scripts/release-e2e-ports.ps1` first (see `workflow.mdc`).
+
+## Speed tuning (E2E-only)
+
+| Layer | Flag / setting | Effect |
+|-------|----------------|--------|
+| Frontend pacing | `localStorage e2eFastCombat=1` + URL `?e2e=1` (auto via `globalHooks.js`) | Combat log/rest UI delays → **0ms**; instant log replay |
+| Frontend rest | `isCombatPlaybackInstant()` in MainScreen | Skips per-step rest animation; start + complete log only |
+| Server tick | `TEXT_IDLE_E2E=1` (auto when using `text-idle.e2e.db` in `cmd/server`) | Cycle gap **200ms**; `POST /debug/combat/tick`; scheduler off |
+| Event poll | `combatStream.js` | **250ms** poll when `e2eFastCombat` (vs 5s prod) |
+| Playwright | `E2E_WORKERS` env | Parallel spec files (default 2; `e2e:fast` uses 4) |
+| Helpers | `triggerE2eCombatTick` | Fire-and-forget tick after save mutations (non-blocking) |
+
+**Do not** disable `e2eFastCombat` in specs unless testing production pacing (Example 36 AC4). Use **unique team names** (`registerAndGoToMain` UUID default) when raising `E2E_WORKERS`.
+
+Run a subset (PowerShell):
+
+```powershell
+# Simple pattern
+npm run e2e:fast -- --grep "monsters panel"
+
+# Pattern with | (pipe) — set env to avoid PowerShell/npm splitting
+$env:E2E_PLAYWRIGHT_GREP = "monsters panel|server-combat-tick"
+npm run e2e:fast
+Remove-Item Env:E2E_PLAYWRIGHT_GREP -ErrorAction SilentlyContinue
+```
 
 ## Combat pacing vs production
 

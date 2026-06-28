@@ -5,27 +5,17 @@ const {
   pauseCombat,
   dismissQueuedSkillChoiceModals,
   clickHeroDetailSkillsTab,
+  clickHeroCardStable,
   uniqueTestEmail,
   simulateRecruitPromptModal,
+  registerAndGoToMain,
+  prepareWarriorFirstMilestone,
+  waitForSkillMilestoneHint,
+  openHeroSkillChoicePanel,
+  unblockSavePersist,
+  flushPlayerSaveOnPage,
+  waitForBattleSummary,
 } = require('./testHelpers')
-
-async function registerAndCompleteIntro(page, email) {
-  await page.goto('/register?e2e=1')
-  await page.evaluate(() => {
-    localStorage.clear()
-    localStorage.setItem('e2eFastCombat', '1')
-  })
-  await page.getByLabel('邮箱').fill(email)
-  await page.getByLabel('密码（至少 8 位）').fill('password123')
-  await page.getByLabel('确认密码').fill('password123')
-  await page.getByRole('button', { name: '注册' }).click()
-  await expect(page).toHaveURL(/\/intro/, { timeout: 5000 })
-  await page.getByRole('button', { name: '下一步' }).click()
-  await page.getByLabel('队伍名称').fill('Adventure Squad')
-  await page.getByRole('button', { name: '下一步' }).click()
-  await page.getByRole('button', { name: '开始冒险' }).click()
-  await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-}
 
 /** Recruit a Warrior through skill selection + confirmation (initial hero, Lv1). */
 async function recruitWarrior(page, heroName = '\u74e6\u91cc\u5b89', skillId = null) {
@@ -162,7 +152,7 @@ async function recruitExpansionMage(page, heroName = '\u5409\u5b89\u5a1c', attrP
 test.describe('Character Recruitment (Example 4)', () => {
   test('AC1: Start Adventure lands on main with fixed trio (Warrior, Mage, Priest)', async ({ page }) => {
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page.locator('.battle-screen')).toBeVisible()
     await expect(page.getByText('瓦里安').first()).toBeVisible()
@@ -172,7 +162,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
   test('AC1b: hero cards show resources (HP/MP/Rage) distinct from primary attributes', async ({ page }) => {
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page.locator('.hero-card')).toHaveCount(3)
     await expect(page.getByText('HP').first()).toBeVisible()
@@ -187,7 +177,7 @@ test.describe('Character Recruitment (Example 4)', () => {
 
   test('AC2: fixed trio starts adventure on main with 3 heroes', async ({ page }) => {
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await expect(page.getByText('瓦里安').first()).toBeVisible()
@@ -200,9 +190,10 @@ test.describe('Character Recruitment (Example 4)', () => {
 
   test('AC3: squad panel displays name, class, level, and initial attributes via detail modal', async ({ page }) => {
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await pauseCombat(page)
     const card = page.locator('.hero-card').filter({ hasText: '吉安娜' }).first()
     await expect(card).toBeVisible()
     await expect(card.locator('.hero-name')).toContainText('\u5409\u5b89\u5a1c')
@@ -217,15 +208,17 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.locator('.detail-row').filter({ hasText: '\u667a\u529b' }).first()).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: '\u8010\u529b' }).first()).toBeVisible()
     await expect(page.locator('.detail-row').filter({ hasText: '\u7cbe\u795e' }).first()).toBeVisible()
-    await expect(page.locator('.detail-row').filter({ hasText: '智力' }).first()).toContainText('11')
-    await expect(page.locator('.detail-row').filter({ hasText: '力量' }).first()).toContainText('2')
+    const intellectRow = page.locator('.detail-section-primary .detail-row').filter({ hasText: '\u667a\u529b' }).first()
+    await expect(intellectRow.locator('.attr-val')).toContainText('11')
+    const strengthRow = page.locator('.detail-section-primary .detail-row').filter({ hasText: '\u529b\u91cf' }).first()
+    await expect(strengthRow.locator('.attr-val')).toContainText('2')
     await page.getByRole('button', { name: '关闭' }).click()
   })
 
   test('AC4: player with fixed trio can recruit 4th hero when squad < limit', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await updateStoredState(page, (level) => {
@@ -241,7 +234,7 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
       localStorage.setItem('e2eFastCombat', '1')
-    }, 5, { pauseFirst: true, safePath: '/main' })
+    }, 5, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
     await page.waitForTimeout(300)
     await pauseCombat(page)
@@ -258,14 +251,18 @@ test.describe('Character Recruitment (Example 4)', () => {
     const confirmBtn = page.locator('[data-testid="confirm-recruit-btn"]')
     await confirmBtn.click()
     await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
+    await flushPlayerSaveOnPage(page)
+    await pauseCombat(page)
     await expect(page.locator('.hero-card')).toHaveCount(4, { timeout: 10000 })
-    await expect(page.locator('.squad-col').getByText('\u739b\u6cd5\u91cc\u5965')).toBeVisible({ timeout: 5000 })
+    await expect(
+      page.locator('.hero-card').filter({ hasText: /\u739b\u6cd5\u91cc\u5965|\u5fb7\u9c81\u4f0a/ })
+    ).toHaveCount(1, { timeout: 10000 })
   })
 
   test('AC5a: expansion recruit confirmation shows secondary attributes and formulas', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('recruit-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
     await updateStoredState(page, (level) => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h) => {
@@ -279,7 +276,7 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
       localStorage.setItem('e2eFastCombat', '1')
-    }, 5, { pauseFirst: true, safePath: '/main' })
+    }, 5, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 5000 })
     await pauseCombat(page)
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
@@ -296,7 +293,7 @@ test.describe('Character Recruitment (Example 4)', () => {
   test('AC5b: Druid-only 4th seat skips hero grid and uses squad min level', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('recruit-druid-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
     await updateStoredState(page, () => {
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
       squad.forEach((h, i) => {
@@ -310,7 +307,7 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
       localStorage.setItem('e2eFastCombat', '1')
-    }, undefined, { pauseFirst: true, safePath: '/main' })
+    }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 5000 })
     await pauseCombat(page)
     await page.goto('/character-select', { waitUntil: 'domcontentloaded', timeout: 30000 })
@@ -328,7 +325,7 @@ test.describe('Character Recruitment (Example 4)', () => {
   test('Example27 AC2/AC7: expansion hero joins at squad min level with allocated attrs', async ({ page }) => {
     test.setTimeout(120000)
     const email = uniqueTestEmail('expand-e2e')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await updateStoredState(page, (level) => {
@@ -344,7 +341,7 @@ test.describe('Character Recruitment (Example 4)', () => {
         bossAvailable: false,
       }))
       localStorage.setItem('e2eFastCombat', '1')
-    }, 5, { pauseFirst: true, safePath: '/main' })
+    }, 5, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
     await page.waitForTimeout(200)
     await pauseCombat(page)
@@ -360,9 +357,12 @@ test.describe('Character Recruitment (Example 4)', () => {
     await page.locator('[data-testid="confirm-recruit-btn"]').click()
 
     await expect(page).toHaveURL(/\/main/, { timeout: 60000 })
-    const druidCard = page.locator('.hero-card').filter({ hasText: '\u739b\u6cd5\u91cc\u5965' })
-    await expect(druidCard).toContainText(/Lv\.?\s*5/)
-    await druidCard.click()
+    await flushPlayerSaveOnPage(page)
+    await pauseCombat(page)
+    const druidCard = page.locator('.hero-card').filter({ hasText: /\u739b\u6cd5\u91cc\u5965|\u5fb7\u9c81\u4f0a/ })
+    await expect(druidCard).toHaveCount(1, { timeout: 10000 })
+    await expect(druidCard.first()).toContainText(/Lv\.?\s*5/)
+    await clickHeroCardStable(page, '\u739b\u6cd5\u91cc\u5965')
     await expect(page.locator('.detail-modal')).toBeVisible()
     await clickHeroDetailSkillsTab(page)
     await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
@@ -372,49 +372,31 @@ test.describe('Character Recruitment (Example 4)', () => {
   })
 
   test('Example27 AC10: fixed trio Warrior enhance at level 3 shows enhanced skill in detail', async ({ page }) => {
-    test.setTimeout(90000)
+    test.setTimeout(120000)
     const email = uniqueTestEmail('expand-enhance-e2e')
-    await registerAndCompleteIntro(page, email)
-    await updateStoredState(page, () => {
-      const squad = JSON.parse(localStorage.getItem('squad') || '[]')
-      const warrior = squad.find((h) => h.class === 'Warrior')
-      if (warrior) {
-        warrior.level = 2
-        warrior.xp = 173
-        warrior.strength = 150
-        warrior.stamina = 120
-        warrior.agility = 80
-        warrior.intellect = 20
-        warrior.spirit = 20
-        warrior.maxHP = 500
-        warrior.currentHP = 500
-        if (!warrior.skills) warrior.skills = [warrior.skill || 'sunder-armor', 'taunt']
-        delete warrior.skill
-        localStorage.setItem('squad', JSON.stringify(squad))
-      }
-      localStorage.setItem('combatProgress', JSON.stringify({
-        unlockedMapCount: 1,
-        currentMapId: 'elwynn-forest',
-        currentProgress: 0,
-        bossAvailable: false,
-      }))
-    }, undefined, { pauseFirst: true })
-    await expect(page.locator('.log-levelup').first()).toBeVisible({ timeout: 90000 })
-    const skillModal = page.locator('[data-testid="skill-choice-modal"]')
-    await expect(skillModal).toBeVisible({ timeout: 30000 })
-    await expect(skillModal).toContainText('3 \u7ea7')
-    await skillModal.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first().click()
-    await skillModal.getByRole('button', { name: '确认' }).click()
-    await expect(skillModal).not.toBeVisible()
-    await pauseCombat(page)
-    await dismissQueuedSkillChoiceModals(page)
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
 
-    await page.locator('.hero-card').filter({ hasText: '瓦里安' }).click()
-    await expect(page.locator('.detail-modal')).toBeVisible()
-    await dismissQueuedSkillChoiceModals(page)
-    await clickHeroDetailSkillsTab(page)
-    await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
-    await expect(page.locator('.detail-modal').getByText('\u7834\u7532').first()).toBeVisible()
+    try {
+      const summariesBefore = await page.locator('.log-summary').count()
+      await prepareWarriorFirstMilestone(page)
+      await waitForBattleSummary(page, 90000, { afterCount: summariesBefore })
+      await waitForSkillMilestoneHint(page, '3 \u7ea7')
+      await pauseCombat(page)
+
+      const panel = await openHeroSkillChoicePanel(page)
+      await expect(panel).toContainText('3 \u7ea7')
+      await panel.locator('.skill-option').filter({ hasText: '\u7834\u7532' }).first().click()
+      await panel.getByRole('button', { name: '\u786e\u8ba4' }).click()
+
+      await clickHeroCardStable(page, '\u74e6\u91cc\u5b89')
+      await expect(page.locator('.detail-modal')).toBeVisible()
+      await clickHeroDetailSkillsTab(page)
+      await expect(page.locator('.detail-modal .detail-tab.active')).toHaveText('\u6280\u80fd')
+      await expect(page.locator('.detail-modal').getByText('\u7834\u7532').first()).toBeVisible()
+    } finally {
+      await unblockSavePersist(page)
+    }
   })
 
   test('AC5: squad full at 5, no further recruitment', async ({ page }) => {
@@ -422,7 +404,7 @@ test.describe('Character Recruitment (Example 4)', () => {
     const email = uniqueTestEmail('recruit-e2e')
     await page.goto('/register')
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem('e2eFastCombat', '1') })
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
     await updateStoredState(page, () => {
       const INIT = { Warrior: { strength: 10, agility: 4, intellect: 2, stamina: 9, spirit: 3 }, Mage: { strength: 2, agility: 4, intellect: 11, stamina: 4, spirit: 5 }, Hunter: { strength: 5, agility: 10, intellect: 4, stamina: 7, spirit: 4 }, Paladin: { strength: 8, agility: 3, intellect: 8, stamina: 8, spirit: 6 }, Priest: { strength: 2, agility: 3, intellect: 10, stamina: 5, spirit: 9 } }
       const squad = JSON.parse(localStorage.getItem('squad') || '[]')
@@ -433,7 +415,7 @@ test.describe('Character Recruitment (Example 4)', () => {
       const p = JSON.parse(localStorage.getItem('combatProgress') || '{}')
       p.unlockedMapCount = 5
       localStorage.setItem('combatProgress', JSON.stringify(p))
-    }, undefined, { pauseFirst: false, safePath: '/character-select', returnPath: '/main' })
+    }, undefined, { pauseFirst: false, safePath: '/character-select', returnPath: '/main', keepPaused: true })
 
     await expect(page).toHaveURL(/\/main/, { timeout: 10000 })
     await expect(page.locator('.squad-col')).toBeVisible({ timeout: 10000 })
@@ -441,10 +423,10 @@ test.describe('Character Recruitment (Example 4)', () => {
     await expect(page.locator('.squad-col').getByRole('button', { name: '+ \u62db\u52df' })).toHaveCount(0)
   })
 
-  test('Example27 AC1b: recruit modal Later dismisses and + Recruit stays available', async ({ page }) => {
+  test('Example27 AC1b: pending recruit dot shows and + Recruit stays available', async ({ page }) => {
     test.setTimeout(60000)
     const email = uniqueTestEmail('recruit-modal-later')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
     await updateStoredState(page, () => {
       localStorage.setItem('combatProgress', JSON.stringify({
         unlockedMapCount: 2,
@@ -452,18 +434,17 @@ test.describe('Character Recruitment (Example 4)', () => {
         currentProgress: 0,
         bossAvailable: false,
       }))
-    }, undefined, { pauseFirst: true, safePath: '/main' })
+    }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await simulateRecruitPromptModal(page, 5)
-    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).toBeVisible({ timeout: 5000 })
-    await page.locator('[data-testid="recruit-prompt-later-btn"]').click()
-    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).not.toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="recruit-pending-dot"]')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).not.toBeVisible()
     await expect(page.locator('[data-testid="recruit-btn"]')).toBeVisible({ timeout: 5000 })
   })
 
-  test('Example27: recruit modal Recruit now navigates to character-select', async ({ page }) => {
+  test('Example27: + Recruit navigates to character-select when expansion pending', async ({ page }) => {
     test.setTimeout(60000)
     const email = uniqueTestEmail('recruit-modal-now')
-    await registerAndCompleteIntro(page, email)
+    await registerAndGoToMain(page, email)
     await updateStoredState(page, () => {
       localStorage.setItem('combatProgress', JSON.stringify({
         unlockedMapCount: 2,
@@ -471,10 +452,10 @@ test.describe('Character Recruitment (Example 4)', () => {
         currentProgress: 0,
         bossAvailable: false,
       }))
-    }, undefined, { pauseFirst: true, safePath: '/main' })
+    }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await simulateRecruitPromptModal(page, 5)
-    await expect(page.locator('[data-testid="recruit-prompt-modal"]')).toBeVisible({ timeout: 5000 })
-    await page.locator('[data-testid="recruit-prompt-recruit-now-btn"]').click()
+    await expect(page.locator('[data-testid="recruit-pending-dot"]')).toBeVisible({ timeout: 5000 })
+    await page.locator('[data-testid="recruit-btn"]').click()
     await expect(page).toHaveURL(/\/character-select/, { timeout: 10000 })
   })
 })

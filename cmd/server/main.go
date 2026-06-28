@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/fs"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"github.com/text-idle/text-idle/internal/model"
@@ -20,11 +22,16 @@ func main() {
 	addrFlag := flag.String("addr", "", "listen address (overrides PORT/LISTEN_ADDR env)")
 	flag.Parse()
 
+	if strings.Contains(*dbPath, "e2e.db") {
+		_ = os.Setenv("TEXT_IDLE_E2E", "1")
+		_ = os.Setenv("COMBAT_TICK_INTERVAL_MS", "500")
+	}
+
 	db, err := gorm.Open(sqlite.Open(*dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}, &model.MessageBoardEntry{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}, &model.MessageBoardEntry{}, &model.PlayerCombatState{}, &model.CombatEvent{}); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 
@@ -49,11 +56,14 @@ func main() {
 	if f := static.GetFS(); f != nil {
 		staticFS = *f
 	}
-	r := server.NewRouter(db, staticFS, includeTest)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	app := server.NewApp(db, staticFS, includeTest)
+	app.StartScheduler(ctx)
 
 	addr := resolveListenAddr(*addrFlag)
 	log.Printf("server starting on %s (db=%s)", addr, *dbPath)
-	if err := r.Run(addr); err != nil {
+	if err := app.Router.Run(addr); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }

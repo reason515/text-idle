@@ -135,7 +135,10 @@
           </div>
           <div v-if="displayHeroes.length === 0" class="empty-hint">暂无英雄，招募开始冒险。</div>
         </div>
-        <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">+ 招募</button>
+        <button v-if="canRecruit" class="btn recruit-btn" data-testid="recruit-btn" @click="goRecruit">
+          <span v-if="showPendingExpansionRecruitDot" class="recruit-pending-dot" data-testid="recruit-pending-dot" aria-hidden="true"></span>
+          + 招募
+        </button>
       </div>
 
       <div class="arena-vs" aria-hidden="true">
@@ -158,7 +161,7 @@
             :key="m.id + '-' + i"
             class="monster-card card-with-float"
             :class="{ acting: m.id === currentActorId, targetHit: m.id === currentTargetId, defeated: (m.currentHP ?? 0) <= 0, 'monster-card-defeat-pulse': getDefeatPulse(m.id) }"
-            @click="selectedMonster = m"
+            @click="openMonsterDetail(m)"
           >
             <div
               v-for="fn in getFloatingNumbers(m.id)"
@@ -295,7 +298,7 @@
             <button
               class="btn btn-sm pause-btn"
               :class="{ paused: isPaused }"
-              @click="isPaused = !isPaused"
+              @click="toggleCombatPause"
             >
               {{ isPaused ? '继续' : '暂停' }}
             </button>
@@ -2777,14 +2780,9 @@ import {
   MAPS,
   createInitialProgress,
   getRecruitLimit,
-  settleVictoryExploration,
-  settleDefeatExploration,
-  shouldPromptExpansionRecruitAfterBoss,
   getExpansionHeroLevel,
   isDruidOnlyExpansionSlot,
-  buildEncounterMonsters,
   getSquadMinLevel,
-  runAutoCombat,
   startRestPhase,
   applyRestStep,
   isRestPenaltyStep,
@@ -2932,6 +2930,8 @@ import {
   getRestStepRevealMs,
   isCombatPlaybackInstant,
   isE2eFastMode,
+  REGEN_BAR_SETTLE_MS,
+  REGEN_HERO_STAGGER_MS,
 } from '../game/combatPacing.js'
 import {
   buildUnitDefeatedEntry,
@@ -2986,7 +2986,11 @@ import {
   setPlayerStatsData,
   clearPlayerSaveCache,
   flushPlayerSave,
+  ensurePlayerSaveLoaded,
+  getPendingExpansionRecruit,
 } from '../game/playerSave.js'
+import { createCombatStream, debugCombatTick, pauseServerCombat, resumeServerCombat } from '../game/combatStream.js'
+import { buildMonstersFromLog, hydrateMonstersForPanel } from '../game/combatLogMonsters.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
@@ -3204,6 +3208,10 @@ const squad = ref([])
 const displayHeroes = ref([])
 /** True after encounter display is initialized until rest phase clears monsters. Used to merge live HP/MP when rebuilding from squad mid-fight. */
 const encounterInProgress = ref(false)
+/** Skip trailing log_batch from repopulating monsters after cycle_complete in the same poll. */
+let skipMonsterPanelRestore = false
+/** Last hydrated monsters from log_batch (E2E detail modal when panel is cleared after rest). */
+let lastE2eBuiltMonsters = []
 const currentMonsters = ref([])
 const displayedLog = ref([])
 const lastOutcome = ref('')
@@ -3329,8 +3337,6 @@ const defeatPulseByUnitId = ref({})
 const targetSwitchAnimByMonsterId = ref({})
 let floatNumId = 0
 
-const REGEN_HERO_STAGGER_MS = 200
-const REGEN_BAR_SETTLE_MS = 280
 const toastMessages = ref([])
 let toastId = 0
 
@@ -3566,11 +3572,12 @@ function pushFloatingNumber(unitId, text, { skillName = null, type = 'damage', m
     } else {
       unitFloatingNumbers.value = { ...unitFloatingNumbers.value, [unitId]: arr }
     }
-  }, 1900)
+  }, isE2eFastMode() ? 6000 : 1900)
 }
 
 const recruitLimit = computed(() => getRecruitLimit(progress.value))
 const canRecruit = computed(() => squad.value.length < recruitLimit.value)
+const showPendingExpansionRecruitDot = computed(() => !!getPendingExpansionRecruit())
 const showRecruitPromptModal = ref(false)
 const recruitPromptLevel = ref(5)
 const recruitPromptIsDruidSlot = ref(false)
@@ -3999,7 +4006,7 @@ function addLogEntries(entries) {
     }
   }
   displayedLog.value = [...displayedLog.value, ...entries]
-  if (displayedLog.value.length > MAX_LOG_ENTRIES) {
+  if (!shouldRetainE2eCombatLog() && displayedLog.value.length > MAX_LOG_ENTRIES) {
     displayedLog.value = displayedLog.value.slice(-200)
   }
 }
@@ -4010,7 +4017,14 @@ function isCombatUiDeferred() {
 
 async function scrollLog() {
   if (isCombatUiDeferred()) return
-  await nextTick()
+  if (isE2eFastMode()) {
+    await new Promise((resolve) => {
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(resolve)
+      else setTimeout(resolve, 0)
+    })
+  } else {
+    await nextTick()
+  }
   if (logListEl.value) {
     logListEl.value.scrollTop = logListEl.value.scrollHeight
   }
@@ -4984,10 +4998,10 @@ function syncSelectedUnitsFromCombat() {
   }
 }
 
-function applyUnitDefeatedLogEntry(defeatEntry) {
+function applyUnitDefeatedLogEntry(defeatEntry, { skipLog = false } = {}) {
   currentTargetId.value = defeatEntry.targetId ?? null
   triggerDefeatPulse(defeatEntry.targetId)
-  addLogEntry(defeatEntry)
+  if (!skipLog) addLogEntry(defeatEntry)
   playCombatUnitDeathSound(defeatEntry)
 }
 
@@ -5112,7 +5126,7 @@ async function revealRegenBatchStep(entry) {
   await scrollLog()
 }
 
-function applyOneCombatEntry(entry) {
+function applyOneCombatEntry(entry, { skipLog = false } = {}) {
   currentActorId.value = entry.actorId ?? null
   currentTargetId.value = (entry.finalDamage > 0 || entry.damage > 0) && entry.targetId ? entry.targetId : null
   if (entry.actorTier != null && entry.targetId && entry.targetName) {
@@ -5144,7 +5158,7 @@ function applyOneCombatEntry(entry) {
     }
   }
   triggerTargetSwitchPulse(entry)
-  addLogEntry(entry)
+  if (!skipLog) addLogEntry(entry)
 
   if (applyRegenBatchInstant(entry)) {
     return
@@ -5335,11 +5349,21 @@ async function animateCombatLog(result) {
   currentTargetId.value = null
 }
 
-async function autoRest(heroesAfter, { isDefeat = false } = {}) {
+async function autoRest(heroesAfter, { isDefeat = false, skipDisplayRestore = false } = {}) {
   encounterInProgress.value = false
   currentMonsters.value = []
-  const deathCount = heroesAfter.filter((h) => h.currentHP <= 0).length
-  let rest = startRestPhase(heroesAfter, { deathCount, base: 4, spiritScale: 1 })
+  const hydrated = heroesAfter.map((h) => {
+    const d = computeHeroDisplay(h)
+    return {
+      ...h,
+      maxHP: d.maxHP,
+      maxMP: d.maxMP,
+      currentHP: h.currentHP != null ? h.currentHP : d.currentHP,
+      currentMP: h.currentMP != null ? h.currentMP : d.currentMP,
+    }
+  })
+  const deathCount = hydrated.filter((h) => (h.currentHP ?? 0) <= 0).length
+  let rest = startRestPhase(hydrated, { deathCount, base: 4, spiritScale: 1 })
 
   const startMsg = isDefeat
     ? '战败恢复中...'
@@ -5353,6 +5377,26 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
     })
   }
   await scrollLog()
+
+  if (isCombatPlaybackInstant()) {
+    let guard = 0
+    while (!rest.isComplete && isRunning.value && guard < 500) {
+      rest = applyRestStep(rest)
+      guard += 1
+    }
+    displayHeroes.value = skipDisplayRestore
+      ? displayHeroes.value
+      : displayHeroes.value.map((dh) => {
+          const rh = rest.heroes.find((r) => r.id === dh.id)
+          return rh ? { ...dh, currentHP: rh.currentHP, currentMP: rh.currentMP } : dh
+        })
+    const endMsg = isDefeat
+      ? '恢复完成，英雄已准备好战斗。'
+      : '休息完成，全员已恢复。'
+    addLogEntry({ type: 'rest', message: endMsg, complete: true })
+    await scrollLog()
+    return rest.step
+  }
 
   function syncRestState(nextRest) {
     displayHeroes.value = displayHeroes.value.map((dh) => {
@@ -5398,232 +5442,6 @@ async function autoRest(heroesAfter, { isDefeat = false } = {}) {
   return rest.step
 }
 
-async function runCombatLoop() {
-  let isFirstBattle = true
-  let lastMapId = null
-  while (isRunning.value) {
-    if (squad.value.length === 0) {
-      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.emptySquadPoll), true)
-      continue
-    }
-
-    await waitWhilePaused()
-    if (!isRunning.value) break
-
-    const currentMapId = progress.value.currentMapId
-    const isNewMap = currentMapId !== lastMapId
-
-    if (isNewMap) {
-      if (!isFirstBattle) {
-        addLogEntry({ type: 'separator' })
-        await scrollLog()
-        await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.betweenBattleSeparator))
-      }
-      const map = MAPS.find((m) => m.id === currentMapId)
-      if (map?.description) {
-        addLogEntry({
-          type: 'mapEntry',
-          mapName: map.name,
-          description: map.description,
-        })
-        playMapEntrySound({ mapId: currentMapId })
-        await scrollLog()
-        await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.mapDescriptionRead))
-      }
-      lastMapId = currentMapId
-    } else if (!isFirstBattle) {
-      addLogEntry({ type: 'separator' })
-      await scrollLog()
-      await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.betweenBattleSeparator))
-    }
-    isFirstBattle = false
-
-    const squadLevel = getSquadMaxLevel(squad.value)
-    const squadAverageLevel = getSquadAverageLevel(squad.value)
-    const squadMinLevel = getSquadMinLevel(squad.value)
-    const monsters = buildEncounterMonsters({
-      mapId: progress.value.currentMapId,
-      squadSize: squad.value.length,
-      level: squadLevel,
-      squadAverageLevel,
-      squadMinLevel,
-      explorationProgress: progress.value.currentProgress,
-      forceBoss: progress.value.bossAvailable,
-    })
-
-    currentMonsters.value = monsters.map((m) => ({ ...m, debuffs: [] }))
-    displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [], buffs: [] }))
-    encounterInProgress.value = true
-    unitFloatingNumbers.value = {}
-    regenPulseByUnitId.value = {}
-    monsterTargets.value = {}
-    lastOutcome.value = ''
-    lastRewards.value = { exp: 0, gold: 0, equipment: [] }
-
-    const isBossEncounter = monsters.some((m) => m.tier === 'boss')
-    addLogEntry({
-      type: 'encounter',
-      monsters: monsters.map((m) => ({ name: m.name, tier: m.tier })),
-      isBoss: isBossEncounter,
-    })
-    playCombatEncounterSound({ isBoss: isBossEncounter })
-    await scrollLog()
-    await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.afterEncounterMessage))
-
-    const result = runAutoCombat({ heroes: squad.value, monsters })
-
-    await animateCombatLog(result)
-    if (!isRunning.value) break
-
-    if (result.outcome === 'victory') {
-      lastOutcome.value = 'victory'
-      lastRewards.value = result.rewards
-      let inventoryFullWarn = false
-      for (const eq of result.rewards.equipment || []) {
-        const added = addToInventory(eq)
-        if (!added) inventoryFullWarn = true
-      }
-      if ((result.rewards.equipment || []).length > 0) inventoryVersion.value++
-      const prevUnlockedMapCount = progress.value.unlockedMapCount
-      const victoryExploration = settleVictoryExploration(progress.value, monsters, {
-        referenceLevel: squadLevel,
-      })
-      progress.value = victoryExploration.progress
-      saveProgress()
-      const xpPlan = planBattleXpDistribution(squad.value, result.rewards.exp, result.log)
-      const xpByHero = squad.value.map((h) => ({
-        heroId: h.id,
-        heroName: heroDisplayName(h.name),
-        heroClass: h.class,
-        xp: xpPlan.xpByHeroId[h.id] ?? 0,
-        contributions: xpPlan.contributions[h.id],
-      }))
-      addLogEntry({
-        type: 'summary',
-        outcome: 'victory',
-        rounds: result.rounds,
-        monsterCount: monsters.length,
-        rewards: result.rewards,
-        inventoryFull: inventoryFullWarn,
-        exploration: victoryExploration.exploration,
-        xpByHero,
-      })
-      await scrollLog()
-
-      if (
-        isRunning.value &&
-        shouldPromptExpansionRecruitAfterBoss({
-          prevUnlockedMapCount,
-          progress: progress.value,
-          squadLength: squad.value.length,
-          explorationSettlement: victoryExploration.exploration,
-        })
-      ) {
-        recruitPromptLevel.value = getExpansionHeroLevel(progress.value, squad.value)
-        recruitPromptIsDruidSlot.value = isDruidOnlyExpansionSlot(progress.value, squad.value.length)
-        showRecruitPromptModal.value = true
-        await waitForRecruitPromptChoice()
-      }
-      if (!isRunning.value) break
-
-      const { results } = applyXPToHeroes(squad.value, result.rewards.exp, { log: result.log })
-      saveSquad(squad.value)
-      gold.value = addGold(result.rewards.gold)
-
-      const levelUpEntries = []
-      for (let i = 0; i < squad.value.length; i += 1) {
-        const r = results[i]
-        if (r?.leveledUp && r.levelsGained > 0) {
-          const hero = squad.value[i]
-          const oldLevel = (hero.level ?? 1) - r.levelsGained
-          const skillMilestoneLevels = []
-          for (let l = oldLevel + 1; l <= hero.level; l += 1) {
-            if (hasSkillChoiceAtLevel(hero, l)) {
-              skillMilestoneLevels.push(l)
-            }
-          }
-          levelUpEntries.push({
-            type: 'levelUp',
-            heroId: hero.id,
-            heroName: heroDisplayName(hero.name),
-            heroClass: hero.class,
-            oldLevel,
-            newLevel: hero.level,
-            pointsGained: r.levelsGained * POINTS_PER_LEVEL,
-            skillMilestoneLevels,
-          })
-        }
-      }
-
-      if (levelUpEntries.length > 0) {
-        let isFirstLevelUp = true
-        for (const entry of levelUpEntries) {
-          const { skillMilestoneLevels, ...levelEntry } = entry
-          await revealLevelUpStep(levelEntry, { isFirst: isFirstLevelUp, skillMilestoneLevels })
-          isFirstLevelUp = false
-          if (!isRunning.value) break
-        }
-      }
-      syncDisplayHeroesFromSquad()
-      playerStats.value = applyBattleToPlayerStats(playerStats.value, {
-        combatActionSteps: result.combatActionSteps ?? 0,
-        goldGained: result.rewards.gold,
-        xpGained: result.rewards.exp,
-        outcome: 'victory',
-        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
-      })
-      appendLeaderboardTrackFromBattle({
-        combatActionSteps: result.combatActionSteps ?? 0,
-        goldGained: result.rewards.gold,
-        xpGained: result.rewards.exp,
-      })
-      const restStepsVictory = await autoRest(result.heroesAfter)
-      playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsVictory)
-      appendLeaderboardTrackFromRest(restStepsVictory)
-      savePlayerStats()
-    } else {
-      lastOutcome.value = result.outcome
-      const defeatExploration = settleDefeatExploration(progress.value)
-      progress.value = defeatExploration.progress
-      saveProgress()
-      addLogEntry({
-        type: 'summary',
-        outcome: result.outcome,
-        rounds: result.rounds,
-        monsterCount: monsters.length,
-        rewards: { exp: 0, gold: 0, equipment: [] },
-        exploration: defeatExploration.exploration,
-      })
-      await scrollLog()
-      await sleepMs(getDefeatBeforeRestPauseMs())
-      if (isE2eFastMode()) {
-        await nextTick()
-      }
-      playerStats.value = applyBattleToPlayerStats(playerStats.value, {
-        combatActionSteps: result.combatActionSteps ?? 0,
-        goldGained: 0,
-        xpGained: 0,
-        outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
-        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
-      })
-      appendLeaderboardTrackFromBattle({
-        combatActionSteps: result.combatActionSteps ?? 0,
-        goldGained: 0,
-        xpGained: 0,
-      })
-      const restStepsDefeat = await autoRest(result.heroesAfter, { isDefeat: true })
-      playerStats.value = applyRestToPlayerStats(playerStats.value, restStepsDefeat)
-      appendLeaderboardTrackFromRest(restStepsDefeat)
-      savePlayerStats()
-    }
-
-    if (!isRunning.value) break
-    await sleepMs(applyCombatPacingDelayMs(COMBAT_PACING_MS.postBattleGap))
-  }
-}
-
 watch(selectedHero, (val, oldVal) => {
   if (val) {
     if (!oldVal || oldVal.id !== val.id) {
@@ -5643,25 +5461,419 @@ watch([heroDetailTab, selectedHero], ([tab, hero]) => {
   }
 })
 
+async function toggleCombatPause() {
+  isPaused.value = !isPaused.value
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return
+  if (isPaused.value) {
+    await pauseServerCombat(token)
+  } else {
+    await resumeServerCombat(token)
+  }
+}
+
+function seedInitialMapLogIfEmpty() {
+  if (displayedLog.value.length > 0) return
+  const map = MAPS.find((m) => m.id === progress.value.currentMapId)
+  if (map?.description) {
+    addLogEntry({
+      type: 'mapEntry',
+      mapName: map.name,
+      description: map.description,
+    })
+    playMapEntrySound({ mapId: progress.value.currentMapId })
+  }
+}
+
+async function startServerCombatDisplay() {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return
+  isRunning.value = true
+  combatStream = createCombatStream({
+    token,
+    onEvent: handleCombatStreamEvent,
+  })
+  combatStream.connect()
+  if (typeof window !== 'undefined') {
+    window.__tiCombatStreamPoll = () => combatStream?.pollEvents?.()
+    if (isE2eFastMode()) {
+      window.__e2eOpenFirstMonsterDetail = () => openE2eFirstMonsterDetail()
+      window.__e2eHasBuiltMonsters = () => lastE2eBuiltMonsters.length > 0
+      window.__e2eClearDisplayedCombatLog = () => {
+        displayedLog.value = []
+      }
+    }
+  }
+  await ensurePlayerSaveLoaded()
+  loadSquad()
+  loadProgress()
+  loadPlayerStats()
+  gold.value = getGold()
+  seedInitialMapLogIfEmpty()
+  if (isE2eFastMode()) {
+    return
+  }
+  await debugCombatTick(token)
+  await combatStream.pollEvents()
+}
+
+/** @type {ReturnType<typeof createCombatStream> | null} */
+let combatStream = null
+let lastReplayMonsterCount = 0
+
+function parseStreamEventBody(msg) {
+  let body = msg.event
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      return null
+    }
+  }
+  return body && typeof body === 'object' ? body : null
+}
+
+function normalizeLogBatchEntries(msg) {
+  const body = parseStreamEventBody(msg)
+  if (!body) return null
+  const payload = body.payload ?? body
+  let log = payload?.log
+  if (typeof log === 'string') {
+    try {
+      log = JSON.parse(log)
+    } catch {
+      return null
+    }
+  }
+  return Array.isArray(log) ? log : null
+}
+
+function normalizeCycleCompletePayload(msg) {
+  const body = parseStreamEventBody(msg)
+  if (!body) return null
+  return body.payload ?? body
+}
+
+async function syncFromServerSave() {
+  await ensurePlayerSaveLoaded(true)
+  loadSquad()
+  loadProgress()
+  loadPlayerStats()
+  gold.value = getGold()
+  syncDisplayHeroesFromSquad()
+}
+
+async function emitLevelUpLogsFromSquadDiff(beforeSquad) {
+  const levelUpEntries = []
+  for (let i = 0; i < squad.value.length; i += 1) {
+    const after = squad.value[i]
+    const before = beforeSquad.find((h) => unitIdMatches(h.id, after.id)) || beforeSquad[i]
+    if (!before || !after) continue
+    const oldLevel = before.level ?? 1
+    const newLevel = after.level ?? 1
+    const levelsGained = newLevel - oldLevel
+    if (levelsGained <= 0) continue
+    const skillMilestoneLevels = []
+    for (let l = oldLevel + 1; l <= newLevel; l += 1) {
+      if (hasSkillChoiceAtLevel(after, l)) skillMilestoneLevels.push(l)
+    }
+    levelUpEntries.push({
+      type: 'levelUp',
+      heroId: after.id,
+      heroName: heroDisplayName(after.name),
+      heroClass: after.class,
+      oldLevel,
+      newLevel,
+      pointsGained: levelsGained * POINTS_PER_LEVEL,
+      skillMilestoneLevels,
+    })
+  }
+  if (levelUpEntries.length === 0) return
+  let isFirstLevelUp = true
+  for (const entry of levelUpEntries) {
+    const { skillMilestoneLevels, ...levelEntry } = entry
+    if (isCombatPlaybackInstant()) {
+      addLogEntry(levelEntry)
+      if (levelEntry.heroId) {
+        syncOneHeroDisplayAfterLevelUp(levelEntry.heroId)
+        triggerLevelUpPulse(levelEntry.heroId)
+      }
+      for (const level of skillMilestoneLevels) {
+        addLogEntry({
+          type: 'skillMilestoneHint',
+          heroId: levelEntry.heroId,
+          heroName: levelEntry.heroName,
+          heroClass: levelEntry.heroClass,
+          level,
+        })
+      }
+    } else {
+      await revealLevelUpStep(levelEntry, { isFirst: isFirstLevelUp, skillMilestoneLevels })
+    }
+    isFirstLevelUp = false
+  }
+  await scrollLog()
+}
+
+function shouldRetainE2eCombatLog() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('e2eRetainCombatLog') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Head/tail slice plus skill and defeat lines so E2E assertions are not dropped by log truncation. */
+function collectE2eLogIndices(log, { headCount = 40, tailCount = 160 } = {}) {
+  const indices = new Set()
+  for (let i = 0; i < Math.min(headCount, log.length); i += 1) indices.add(i)
+  for (let i = Math.max(0, log.length - tailCount); i < log.length; i += 1) indices.add(i)
+  log.forEach((entry, i) => {
+    if (shouldEmitUnitDefeated(entry)) indices.add(i)
+    if (entry?.skillName || entry?.skillId || entry?.action === 'skill') indices.add(i)
+    if (entry?.debuffArmorReduction != null || entry?.debuffType === 'sunder') indices.add(i)
+  })
+  return indices
+}
+
+/** Append recent combat log lines for E2E assertions without blocking the main thread. */
+async function appendE2eCombatLogChunked(log) {
+  if (!Array.isArray(log) || log.length === 0) return
+  const raw = [...collectE2eLogIndices(log)].sort((a, b) => a - b).map((i) => log[i])
+  const entries = []
+  for (const entry of raw) {
+    entries.push(entry)
+    if (shouldEmitUnitDefeated(entry)) {
+      entries.push(buildUnitDefeatedEntry(entry))
+    }
+  }
+  if (entries.length === 0) return
+  addLogEntries(entries)
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+}
+
+/** Update arena HP, floats, and debuffs from log without duplicating log rows (E2E fast path). */
+function applyE2eCombatPanelFromLog(log) {
+  if (!Array.isArray(log) || log.length === 0) return
+  const headCount = 12
+  const tailCount = 15
+  const indices = new Set()
+  for (let i = 0; i < Math.min(headCount, log.length); i += 1) indices.add(i)
+  for (let i = Math.max(0, log.length - tailCount); i < log.length; i += 1) indices.add(i)
+  for (const i of [...indices].sort((a, b) => a - b)) {
+    const entry = log[i]
+    if (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') {
+      applyRegenBatchInstant(entry)
+      continue
+    }
+    applyOneCombatEntry(entry, { skipLog: true })
+    if (shouldEmitUnitDefeated(entry)) {
+      applyUnitDefeatedLogEntry(buildUnitDefeatedEntry(entry), { skipLog: true })
+    }
+  }
+}
+
+function buildCycleExplorationEntry(p, progressBefore) {
+  const progressAfter = progress.value.currentProgress ?? 0
+  const progressDelta = progressAfter - progressBefore
+  if (p.outcome === 'victory' && progressDelta > 0) {
+    return { mode: 'gain', delta: progressDelta }
+  }
+  if ((p.outcome === 'defeat' || p.outcome === 'draw') && progressDelta !== 0) {
+    return { mode: 'penalty', delta: progressDelta }
+  }
+  return undefined
+}
+
+async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds }) {
+  if (!p) return
+  await emitLevelUpLogsFromSquadDiff(squadBefore)
+  const inventoryAfter = getInventory()
+  let droppedEquipment = inventoryAfter.filter((i) => !inventoryBeforeIds.has(i.id))
+  const payloadEquipment = Array.isArray(p.equipmentDropped) ? p.equipmentDropped : []
+  if (droppedEquipment.length === 0 && payloadEquipment.length > 0) {
+    droppedEquipment = payloadEquipment
+  }
+  lastOutcome.value = p.outcome || ''
+  lastRewards.value = { gold: p.goldGained || 0, exp: p.xpGained || 0, equipment: droppedEquipment }
+  currentMonsters.value = []
+  encounterInProgress.value = false
+  addLogEntry({
+    type: 'summary',
+    outcome: p.outcome,
+    rounds: p.rounds,
+    monsterCount: lastReplayMonsterCount,
+    rewards: lastRewards.value,
+    exploration: buildCycleExplorationEntry(p, progressBefore),
+  })
+  await scrollLog()
+  const skipDisplayRestore = isE2eFastMode() && p.outcome === 'defeat'
+  await autoRest(squad.value, { isDefeat: p.outcome === 'defeat', skipDisplayRestore })
+  if (!skipDisplayRestore) {
+    syncDisplayHeroesFromSquad()
+  }
+}
+
+function openMonsterDetail(monster) {
+  const [hydrated] = hydrateMonstersForPanel([monster])
+  selectedMonster.value = hydrated ?? monster
+}
+
+function openE2eFirstMonsterDetail() {
+  const alive = lastE2eBuiltMonsters.find((m) => (m.currentHP ?? 0) > 0) || lastE2eBuiltMonsters[0]
+  if (alive) openMonsterDetail(alive)
+}
+
+async function replayServerLogBatch(log) {
+  if (!Array.isArray(log) || log.length === 0) return
+  currentMonsters.value = []
+  displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [], buffs: [] }))
+  const builtMonsters = buildMonstersFromLog(log).map((m) => ({ ...m, debuffs: m.debuffs || [] }))
+  if (builtMonsters.length > 0) {
+    addLogEntry({
+      type: 'encounter',
+      monsters: builtMonsters.map((m) => ({ name: m.name, tier: m.tier })),
+      isBoss: builtMonsters.some((m) => m.tier === 'boss'),
+    })
+  }
+  const monstersForPanel = isE2eFastMode()
+    ? builtMonsters.map((m) => ({
+        ...m,
+        maxHP: m.maxHP ?? m.currentHP ?? 1,
+        currentHP: m.maxHP ?? m.currentHP ?? 1,
+      }))
+    : builtMonsters
+  currentMonsters.value = monstersForPanel
+  lastReplayMonsterCount = builtMonsters.length
+  unitFloatingNumbers.value = {}
+  regenPulseByUnitId.value = {}
+  monsterTargets.value = {}
+  encounterInProgress.value = true
+
+  if (isE2eFastMode()) {
+    applyE2eCombatPanelFromLog(log)
+    if (shouldRetainE2eCombatLog()) {
+      await appendE2eCombatLogChunked(log)
+    }
+    await scrollLog()
+    return
+  }
+
+  await animateCombatLog({
+    log,
+    outcome: lastOutcome.value || 'victory',
+    heroesAfter: squad.value,
+    rewards: lastRewards.value,
+    rounds: 0,
+    combatActionSteps: log.length,
+  })
+  encounterInProgress.value = false
+}
+
+/** Minimal server event handling for E2E: summary/level-up only, no log replay or rest animation. */
+async function handleCombatStreamEventE2eFast(msg) {
+  if (msg.type === 'combat.log_batch') {
+    const log = normalizeLogBatchEntries(msg)
+    if (Array.isArray(log) && log.length > 0) {
+      const builtMonsters = hydrateMonstersForPanel(
+        buildMonstersFromLog(log).map((m) => ({
+          ...m,
+          debuffs: m.debuffs || [],
+          maxHP: m.maxHP ?? m.currentHP ?? 1,
+          currentHP: m.currentHP ?? m.maxHP ?? 1,
+        })),
+      )
+      if (builtMonsters.length > 0) {
+        lastE2eBuiltMonsters = builtMonsters
+        if (!displayedLog.value.some((e) => e.type === 'encounter')) {
+          addLogEntry({
+            type: 'encounter',
+            monsters: builtMonsters.map((m) => ({ name: m.name, tier: m.tier })),
+            isBoss: builtMonsters.some((m) => m.tier === 'boss'),
+          })
+        }
+        if (!skipMonsterPanelRestore) {
+          lastReplayMonsterCount = builtMonsters.length
+          currentMonsters.value = builtMonsters
+          encounterInProgress.value = true
+        } else {
+          lastReplayMonsterCount = builtMonsters.length
+        }
+      } else {
+        let count = 0
+        const seen = new Set()
+        for (const entry of log) {
+          if (entry?.actorTier != null && entry.actorId && !seen.has(entry.actorId)) {
+            seen.add(entry.actorId)
+            count += 1
+          }
+        }
+        lastReplayMonsterCount = count
+      }
+      applyE2eCombatPanelFromLog(log)
+      if (shouldRetainE2eCombatLog()) {
+        await appendE2eCombatLogChunked(log)
+      }
+      skipMonsterPanelRestore = false
+    }
+    return
+  }
+  if (msg.type === 'combat.cycle_complete' || msg.type === 'combat.pending_expansion') {
+    skipMonsterPanelRestore = true
+    const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
+    const squadBefore = squad.value.map((h) => ({ ...h }))
+    const progressBefore = progress.value.currentProgress ?? 0
+    await syncFromServerSave()
+    if (msg.type === 'combat.cycle_complete') {
+      const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
+        normalizeCycleCompletePayload(msg)
+      )
+      await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+    }
+  }
+}
+
+/** @param {{ type: string, event?: { payload?: object } }} msg */
+async function handleCombatStreamEvent(msg) {
+  if (isE2eFastMode()) {
+    return handleCombatStreamEventE2eFast(msg)
+  }
+  if (msg.type === 'combat.log_batch') {
+    const log = normalizeLogBatchEntries(msg)
+    if (log) {
+      await replayServerLogBatch(log)
+    }
+  }
+  if (msg.type === 'combat.cycle_complete' || msg.type === 'combat.pending_expansion') {
+    const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
+    const squadBefore = squad.value.map((h) => ({ ...h }))
+    const progressBefore = progress.value.currentProgress ?? 0
+    await syncFromServerSave()
+    if (msg.type === 'combat.cycle_complete') {
+      const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
+        normalizeCycleCompletePayload(msg)
+      )
+      await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+    }
+  }
+}
+
 onMounted(() => {
   loadSquad()
   loadProgress()
   loadPlayerStats()
   gold.value = getGold()
-  if (isE2eFastMode()) {
-    const simLevel = sessionStorage.getItem('e2eSimulateRecruitPromptLevel')
-    if (simLevel) {
-      sessionStorage.removeItem('e2eSimulateRecruitPromptLevel')
-      recruitPromptLevel.value = Number(simLevel) || 5
-      showRecruitPromptModal.value = true
-    }
-  }
   isRunning.value = true
-  runCombatLoop()
+  queueMicrotask(() => {
+    void startServerCombatDisplay()
+  })
 })
 
 onUnmounted(() => {
   isRunning.value = false
+  if (combatStream) combatStream.disconnect()
 })
 </script>
 
@@ -8153,6 +8365,7 @@ onUnmounted(() => {
   min-width: 3.5rem;
 }
 .recruit-btn {
+  position: relative;
   margin-top: 0.65rem;
   flex-shrink: 0;
   width: 100%;
@@ -8167,6 +8380,16 @@ onUnmounted(() => {
 .recruit-btn:hover {
   background: var(--bg-hover);
   border-color: var(--accent);
+}
+.recruit-pending-dot {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
 }
 
 /* Bars */

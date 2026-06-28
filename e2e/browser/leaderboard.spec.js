@@ -11,27 +11,20 @@ const {
 test.describe('Efficiency leaderboard (Feed tab)', () => {
   test('eligible save appears on gold TOP 10 after opening leaderboard tab', async ({ page }) => {
     const email = uniqueTestEmail('leaderboard')
-    await registerAndGoToMain(page, email, { teamName: 'Rank Test Squad' })
+    const teamName = `Rank-${uniqueTestEmail('s').slice(0, 12)}`
+    await registerAndGoToMain(page, email, { teamName })
     await pauseCombat(page)
 
-    await mutatePlayerSave(page, () => {
-      localStorage.setItem('teamName', 'Rank Test Squad')
+    await mutatePlayerSave(page, (name) => {
+      localStorage.setItem('teamName', name)
       localStorage.setItem(
-        'textIdlePlayerStats',
+        'leaderboardTrack',
         JSON.stringify({
-          combatActionSteps: 1000,
-          restSteps: 0,
-          cumulativeGold: 5000,
-          cumulativeXp: 2000,
-          displayScaleN: 100,
-          battleCount: 1,
-          victoryCount: 1,
-          battleTimeline: [],
-          damageByHero: {},
-          injuryByHero: {},
+          lifetimeSteps: 1000,
+          segments: [{ steps: 1000, gold: 5000, xp: 2000 }],
         }),
       )
-    })
+    }, teamName)
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
     await pauseCombat(page)
@@ -39,7 +32,7 @@ test.describe('Efficiency leaderboard (Feed tab)', () => {
 
     await page.getByTestId('feed-tab-leaderboard').click()
     await expect(page.getByTestId('leaderboard-gold-list')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByTestId('leaderboard-gold-list')).toContainText('Rank Test Squad')
+    await expect(page.getByTestId('leaderboard-gold-list')).toContainText(teamName)
     await expect(page.getByTestId('leaderboard-xp-list')).toBeVisible()
     await expect(page.getByText('\u4f60\u7684\u6392\u540d')).toBeVisible()
     await expect(page.getByText('\u91d1\u5e01 #1')).toBeVisible()

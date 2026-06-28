@@ -3,12 +3,17 @@ import {
   applyCombatPacingDelayMs,
   COMBAT_PACING_MS,
   DEFAULT_COMBAT_LOG_STEP_DELAY_MS,
+  estimateRegenBatchRevealMs,
+  estimateVisibleBattleCycleMs,
   getCombatLogStepDelayMs,
   getDefeatBeforeRestPauseMs,
   getRestStepRevealMs,
   isCombatPlaybackInstant,
   isE2eFastMode,
   isHiddenTabFastCombat,
+  REGEN_BAR_SETTLE_MS,
+  REGEN_HERO_STAGGER_MS,
+  waitWallClockMs,
 } from './combatPacing.js'
 
 function createMemoryLocalStorage() {
@@ -125,6 +130,75 @@ describe('combatPacing', () => {
     it('no pause when tab is hidden', () => {
       vi.stubGlobal('document', { visibilityState: 'hidden' })
       expect(getDefeatBeforeRestPauseMs()).toBe(0)
+    })
+  })
+
+  describe('estimateVisibleBattleCycleMs and waitWallClockMs', () => {
+    it('counts log pauses from actual battle log length', () => {
+      const stepMs = DEFAULT_COMBAT_LOG_STEP_DELAY_MS
+      const log = [{ round: 1 }, { round: 1 }, { round: 2 }]
+      const ms = estimateVisibleBattleCycleMs(
+        { log },
+        { restSteps: 2, levelUpCount: 0, outcome: 'victory' },
+      )
+      // afterEncounter + 3 log lines (before each) + 2 round-end pauses + 2 rest + postBattleGap
+      const expected =
+        COMBAT_PACING_MS.afterEncounterMessage +
+        3 * stepMs +
+        2 * stepMs +
+        2 * stepMs +
+        COMBAT_PACING_MS.postBattleGap
+      expect(ms).toBe(expected)
+    })
+
+    it('includes defeat pause and map prefix gaps', () => {
+      const stepMs = DEFAULT_COMBAT_LOG_STEP_DELAY_MS
+      const ms = estimateVisibleBattleCycleMs(
+        { log: [{ round: 1 }] },
+        { restSteps: 1, levelUpCount: 0, outcome: 'defeat', hadBetweenBattleSeparator: true },
+      )
+      const expected =
+        COMBAT_PACING_MS.afterEncounterMessage +
+        COMBAT_PACING_MS.betweenBattleSeparator +
+        stepMs +
+        stepMs +
+        COMBAT_PACING_MS.defeatBeforeRest +
+        stepMs +
+        COMBAT_PACING_MS.postBattleGap
+      expect(ms).toBe(expected)
+    })
+
+    it('includes level-up reveal gaps on victory', () => {
+      const stepMs = DEFAULT_COMBAT_LOG_STEP_DELAY_MS
+      const ms = estimateVisibleBattleCycleMs(
+        { log: [] },
+        { restSteps: 0, levelUpCount: 2, outcome: 'victory' },
+      )
+      const expected =
+        COMBAT_PACING_MS.afterEncounterMessage +
+        COMBAT_PACING_MS.afterVictoryBeforeLevelUp +
+        COMBAT_PACING_MS.betweenLevelUpReveals +
+        COMBAT_PACING_MS.postBattleGap
+      expect(ms).toBe(expected)
+    })
+
+    it('estimateRegenBatchRevealMs counts stagger per hero', () => {
+      const ms = estimateRegenBatchRevealMs({
+        type: 'hpRegenBatch',
+        updates: [
+          { actorId: 'a', hpGained: 5 },
+          { actorId: 'b', hpGained: 3 },
+        ],
+      })
+      expect(ms).toBe(REGEN_HERO_STAGGER_MS + REGEN_BAR_SETTLE_MS + REGEN_BAR_SETTLE_MS)
+    })
+
+    it('waitWallClockMs resolves after wall-clock delay', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const p = waitWallClockMs(250)
+      await vi.advanceTimersByTimeAsync(250)
+      await expect(p).resolves.toBeUndefined()
+      vi.useRealTimers()
     })
   })
 })
