@@ -42,7 +42,7 @@ func (h *CombatHandler) Status(c *gin.Context) {
 	userID := c.GetUint(middleware.UserIDKey)
 	now := time.Now()
 	save, _ := h.saveService.GetSave(userID)
-	_ = h.loopService.EnsureCombatState(userID, save, now)
+	_ = h.loopService.SyncCombatStateFromSave(userID, save, now)
 	state, err := h.loopService.GetStatus(userID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"status": "running", "nextTickAt": now.UTC().Format(time.RFC3339)})

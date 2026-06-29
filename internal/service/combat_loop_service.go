@@ -36,29 +36,57 @@ func NewCombatLoopService(
 	}
 }
 
+// EnsureCombatState creates or updates combat scheduler state from the current save.
 func (s *CombatLoopService) EnsureCombatState(userID uint, save json.RawMessage, now time.Time) error {
-	_, err := s.combatStateRepo.GetByUserID(userID)
-	if err == nil {
-		return nil
+	return s.SyncCombatStateFromSave(userID, save, now)
+}
+
+// SyncCombatStateFromSave creates combat state when missing and transitions empty_squad
+// to running when the player later fills their squad (intro / recruitment).
+func (s *CombatLoopService) SyncCombatStateFromSave(userID uint, save json.RawMessage, now time.Time) error {
+	state, err := s.combatStateRepo.GetByUserID(userID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		status := model.CombatStatusRunning
+		if squadEmpty(save) {
+			status = model.CombatStatusEmptySquad
+		}
+		row := &model.PlayerCombatState{
+			UserID:        userID,
+			Status:        status,
+			NextTickAt:    now,
+			LastTickAt:    now,
+			RngSeed:       uint64(userID)*2654435761 + 1,
+			CombatVersion: 1,
+			EventSeq:      0,
+			UpdatedAt:     now,
+		}
+		return s.combatStateRepo.Upsert(row)
 	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return err
 	}
-	status := model.CombatStatusRunning
+	return s.syncCombatStatusFromSave(state, save, now)
+}
+
+func (s *CombatLoopService) syncCombatStatusFromSave(state *model.PlayerCombatState, save json.RawMessage, now time.Time) error {
+	if state.Status == model.CombatStatusPaused {
+		return nil
+	}
 	if squadEmpty(save) {
-		status = model.CombatStatusEmptySquad
+		if state.Status != model.CombatStatusEmptySquad {
+			state.Status = model.CombatStatusEmptySquad
+			state.UpdatedAt = now
+			return s.combatStateRepo.Upsert(state)
+		}
+		return nil
 	}
-	row := &model.PlayerCombatState{
-		UserID:        userID,
-		Status:        status,
-		NextTickAt:    now,
-		LastTickAt:    now,
-		RngSeed:       uint64(userID)*2654435761 + 1,
-		CombatVersion: 1,
-		EventSeq:      0,
-		UpdatedAt:     now,
+	if state.Status == model.CombatStatusEmptySquad {
+		state.Status = model.CombatStatusRunning
+		state.NextTickAt = now
+		state.UpdatedAt = now
+		return s.combatStateRepo.Upsert(state)
 	}
-	return s.combatStateRepo.Upsert(row)
+	return nil
 }
 
 func squadEmpty(save json.RawMessage) bool {
@@ -154,6 +182,31 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 	state.RngSeed = result.NextRngSeed
 	state.UpdatedAt = now
 
+	// Emit log batch before cycle_complete so clients show monsters before summary/rest.
+	if len(result.Log) > 0 {
+		logBatch, err := json.Marshal(map[string]interface{}{
+			"type": "combat.log_batch",
+			"payload": map[string]interface{}{
+				"log": json.RawMessage(result.Log),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		state.EventSeq++
+		if err := s.combatEventRepo.Append(userID, state.EventSeq, "combat.log_batch", string(logBatch)); err != nil {
+			return err
+		}
+		if s.hub != nil {
+			wsPayload, _ := json.Marshal(WSMessage{
+				Seq:   state.EventSeq,
+				Type:  "combat.log_batch",
+				Event: logBatch,
+			})
+			s.hub.Broadcast(userID, wsPayload)
+		}
+	}
+
 	for _, rawEvent := range result.Events {
 		var evt map[string]interface{}
 		if err := json.Unmarshal(rawEvent, &evt); err != nil {
@@ -170,25 +223,6 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 			Event: rawEvent,
 		})
 		if s.hub != nil {
-			s.hub.Broadcast(userID, wsPayload)
-		}
-	}
-
-	if len(result.Log) > 0 {
-		logBatch, _ := json.Marshal(map[string]interface{}{
-			"type": "combat.log_batch",
-			"payload": map[string]interface{}{
-				"log": json.RawMessage(result.Log),
-			},
-		})
-		state.EventSeq++
-		_ = s.combatEventRepo.Append(userID, state.EventSeq, "combat.log_batch", string(logBatch))
-		if s.hub != nil {
-			wsPayload, _ := json.Marshal(WSMessage{
-				Seq:   state.EventSeq,
-				Type:  "combat.log_batch",
-				Event: logBatch,
-			})
 			s.hub.Broadcast(userID, wsPayload)
 		}
 	}

@@ -36,7 +36,7 @@ func (h *SaveHandler) Get(c *gin.Context) {
 	}
 	now := time.Now()
 	if h.combatLoop != nil {
-		_ = h.combatLoop.EnsureCombatState(uid, data, now)
+		_ = h.combatLoop.SyncCombatStateFromSave(uid, data, now)
 	}
 	var save map[string]interface{}
 	if err := json.Unmarshal(data, &save); err != nil {
@@ -72,7 +72,8 @@ func (h *SaveHandler) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
-	if err := h.saveService.PutSave(userID.(uint), json.RawMessage(body)); err != nil {
+	uid := userID.(uint)
+	if err := h.saveService.PutSave(uid, json.RawMessage(body)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrTeamNameTaken):
 			c.JSON(http.StatusConflict, gin.H{"error": "team name already taken"})
@@ -85,6 +86,7 @@ func (h *SaveHandler) Put(c *gin.Context) {
 		}
 		return
 	}
+	h.syncCombatAfterSaveWrite(uid)
 	c.Status(http.StatusNoContent)
 }
 
@@ -103,7 +105,8 @@ func (h *SaveHandler) Patch(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
-	if err := h.saveService.PatchPlayerSave(userID.(uint), json.RawMessage(body)); err != nil {
+	uid := userID.(uint)
+	if err := h.saveService.PatchPlayerSave(uid, json.RawMessage(body)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrTeamNameTaken):
 			c.JSON(http.StatusConflict, gin.H{"error": "team name already taken"})
@@ -116,6 +119,7 @@ func (h *SaveHandler) Patch(c *gin.Context) {
 		}
 		return
 	}
+	h.syncCombatAfterSaveWrite(uid)
 	c.Status(http.StatusNoContent)
 }
 
@@ -138,7 +142,8 @@ func (h *SaveHandler) DebugPut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
-	if err := h.saveService.PutSaveUnrestricted(userID.(uint), json.RawMessage(body)); err != nil {
+	uid := userID.(uint)
+	if err := h.saveService.PutSaveUnrestricted(uid, json.RawMessage(body)); err != nil {
 		switch {
 		case errors.Is(err, service.ErrTeamNameTaken):
 			c.JSON(http.StatusConflict, gin.H{"error": "team name already taken"})
@@ -149,5 +154,17 @@ func (h *SaveHandler) DebugPut(c *gin.Context) {
 		}
 		return
 	}
+	h.syncCombatAfterSaveWrite(uid)
 	c.Status(http.StatusNoContent)
+}
+
+func (h *SaveHandler) syncCombatAfterSaveWrite(userID uint) {
+	if h.combatLoop == nil {
+		return
+	}
+	data, err := h.saveService.GetSave(userID)
+	if err != nil {
+		return
+	}
+	_ = h.combatLoop.SyncCombatStateFromSave(userID, data, time.Now())
 }

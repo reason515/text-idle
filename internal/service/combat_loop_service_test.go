@@ -29,6 +29,67 @@ func loadFixtureSave(t *testing.T) json.RawMessage {
 	return fix["save"]
 }
 
+func TestCombatLoopService_SyncActivatesEmptySquadAfterRecruit(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.PlayerCombatState{}, &model.CombatEvent{}); err != nil {
+		t.Fatal(err)
+	}
+	user := model.User{Email: "sync@test.com", Password: "x", Token: "tok2"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	emptySave := json.RawMessage(`{"teamName":"","squad":[],"combatProgress":{"currentMapId":"elwynn-forest"},"gold":0,"inventory":[],"playerStats":{}}`)
+	saveRepo := repository.NewPlayerSaveRepository(db)
+	if err := saveRepo.Upsert(user.ID, string(emptySave)); err != nil {
+		t.Fatal(err)
+	}
+	combatStateRepo := repository.NewPlayerCombatStateRepository(db)
+	combatEventRepo := repository.NewCombatEventRepository(db)
+	saveService := NewSaveService(saveRepo, nil, nil)
+	hub := NewCombatHub()
+	loop := NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, hub)
+	now := time.Now()
+	if err := loop.SyncCombatStateFromSave(user.ID, emptySave, now); err != nil {
+		t.Fatal(err)
+	}
+	state, err := combatStateRepo.GetByUserID(user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != model.CombatStatusEmptySquad {
+		t.Fatalf("expected empty_squad after intro-less create, got %q", state.Status)
+	}
+
+	filledSave := loadFixtureSave(t)
+	if err := saveRepo.Upsert(user.ID, string(filledSave)); err != nil {
+		t.Fatal(err)
+	}
+	if err := loop.SyncCombatStateFromSave(user.ID, filledSave, now); err != nil {
+		t.Fatal(err)
+	}
+	state, err = combatStateRepo.GetByUserID(user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != model.CombatStatusRunning {
+		t.Fatalf("expected running after squad filled, got %q", state.Status)
+	}
+	if state.NextTickAt.After(now.Add(2 * time.Second)) {
+		t.Fatalf("expected next_tick_at near now after activation, got %v", state.NextTickAt)
+	}
+
+	due, err := combatStateRepo.ListDue(now.Add(time.Second), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(due) != 1 || due[0].UserID != user.ID {
+		t.Fatalf("expected scheduler to pick up user after activation, due=%+v", due)
+	}
+}
+
 func TestCombatLoopService_TickUser_updatesGold(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {

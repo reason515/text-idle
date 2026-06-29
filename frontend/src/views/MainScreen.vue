@@ -1101,6 +1101,14 @@
     </Teleport>
 
     <Teleport to="body">
+      <OfflineCombatSummaryModal
+        :open="showOfflineSummaryModal"
+        :summary="offlineSummary"
+        @close="dismissOfflineSummaryModal"
+      />
+    </Teleport>
+
+    <Teleport to="body">
       <div
         v-if="showAudioSettingsModal"
         class="modal-overlay"
@@ -2840,6 +2848,14 @@ import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillE
 import { getSkillEnhancementLadder } from '../game/skillEnhancementLadder.js'
 import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
+import OfflineCombatSummaryModal from '../components/OfflineCombatSummaryModal.vue'
+import {
+  computeOfflineSummary,
+  readSessionSnapshot,
+  persistSessionSnapshot,
+  installSessionLeaveTracking,
+  uninstallSessionLeaveTracking,
+} from '../game/offlineSession.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
   DEBUFF_DISPLAY,
@@ -2980,6 +2996,8 @@ import {
   getTeamName,
   getCombatProgressData,
   setCombatProgressData,
+  getGoldAmount,
+  getInventoryData,
   getPlayerStatsData,
   getLeaderboardTrackData,
   setLeaderboardTrackData,
@@ -2989,7 +3007,7 @@ import {
   ensurePlayerSaveLoaded,
   getPendingExpansionRecruit,
 } from '../game/playerSave.js'
-import { createCombatStream, debugCombatTick, pauseServerCombat, resumeServerCombat } from '../game/combatStream.js'
+import { createCombatStream, pauseServerCombat, resumeServerCombat } from '../game/combatStream.js'
 import { buildMonstersFromLog, hydrateMonstersForPanel } from '../game/combatLogMonsters.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
@@ -3230,6 +3248,9 @@ const compPieHover = ref(null)
 const showMapModal = ref(false)
 const showAudioSettingsModal = ref(false)
 const showVersionInfoModal = ref(false)
+const showOfflineSummaryModal = ref(false)
+/** @type {import('vue').Ref<import('../game/offlineSession.js').OfflineSummary | null>} */
+const offlineSummary = ref(null)
 const logoutConfirming = ref(false)
 const sfxPreviewGroups = SFX_PREVIEW_GROUPS
 const audioSettingsMuted = ref(false)
@@ -5485,6 +5506,27 @@ function seedInitialMapLogIfEmpty() {
   }
 }
 
+function dismissOfflineSummaryModal() {
+  showOfflineSummaryModal.value = false
+  persistSessionSnapshot()
+}
+
+function maybeShowOfflineSummary() {
+  const snapshot = readSessionSnapshot()
+  const summary = computeOfflineSummary(snapshot, {
+    gold: getGoldAmount(),
+    inventory: getInventoryData(),
+    playerStats: getPlayerStatsData(),
+    nowMs: Date.now(),
+    formatEquipmentName: formatItemDisplayName,
+  })
+  if (summary.show) {
+    offlineSummary.value = summary
+    showOfflineSummaryModal.value = true
+  }
+  persistSessionSnapshot()
+}
+
 async function startServerCombatDisplay() {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
@@ -5505,6 +5547,7 @@ async function startServerCombatDisplay() {
     }
   }
   await ensurePlayerSaveLoaded()
+  maybeShowOfflineSummary()
   loadSquad()
   loadProgress()
   loadPlayerStats()
@@ -5513,7 +5556,6 @@ async function startServerCombatDisplay() {
   if (isE2eFastMode()) {
     return
   }
-  await debugCombatTick(token)
   await combatStream.pollEvents()
 }
 
@@ -5861,6 +5903,7 @@ async function handleCombatStreamEvent(msg) {
 }
 
 onMounted(() => {
+  installSessionLeaveTracking()
   loadSquad()
   loadProgress()
   loadPlayerStats()
@@ -5872,6 +5915,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  persistSessionLeaveSnapshot()
+  uninstallSessionLeaveTracking()
   isRunning.value = false
   if (combatStream) combatStream.disconnect()
 })

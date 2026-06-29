@@ -56,8 +56,8 @@ Recent events for `GET /combat/events?since=` and WS recovery. Trim to last N pe
 
 | Type | Purpose |
 |------|---------|
+| `combat.log_batch` | Combat log slice for online UI (**emitted before** `combat.cycle_complete` on each tick) |
 | `combat.cycle_complete` | Outcome, rewards, rest steps, exploration delta |
-| `combat.log_batch` | Optional log slice for online UI |
 | `combat.pending_expansion` | Expansion recruit available (non-blocking) |
 
 ### 3.3 Save JSON extensions
@@ -70,6 +70,8 @@ In `PlayerSave.SaveData`:
 **Server-only fields** (client PATCH must not change): `gold`, `inventory` (except validated equip flows), `playerStats.cumulativeGold`, `playerStats.cumulativeXp`, `playerStats.combatActionSteps`, `playerStats.restSteps`, `playerStats.battleTimeline`, `playerStats.battleCount`, `playerStats.victoryCount`, `playerStats.damageByHero`, `playerStats.injuryByHero`, `leaderboardTrack`.
 
 **Client PATCH allowed:** `teamName`, `squad` (tactics, attrs, skills, equipment slots), `combatProgress.currentMapId`, `playerStats.displayScaleN`.
+
+**Combat state sync:** `SyncCombatStateFromSave` runs on `GET /save`, `PUT /save`, and `PATCH /save/player`. If the player had `status=empty_squad` (created before intro/recruitment) and the save later has a non-empty squad, status becomes `running` and `next_tick_at=now` so the scheduler picks up combat without manual intervention.
 
 ---
 
@@ -121,6 +123,23 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 - Remove `runCombatLoop` as authority; subscribe to WS + poll events.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
+
+### 7.1 Offline combat summary (return visit)
+
+When the player returns to `/main` after being away for at least **1 minute**, the client compares a **local session snapshot** (`localStorage` key `tiOfflineSession`) with the authoritative save from `GET /save`:
+
+| Field | Snapshot source | Delta vs current save |
+|-------|-----------------|------------------------|
+| Offline duration | `leftAtMs` | `now - leftAtMs`, display capped at **24h** |
+| Gold / XP | `playerStats.cumulativeGold` / `cumulativeXp` | Positive delta only |
+| Battles | `playerStats.battleCount` / `victoryCount` | Positive delta; defeats = battles − victories |
+| Equipment | `inventoryIds` | Items in current inventory whose `id` was not in the snapshot |
+
+The snapshot is written on `pagehide`, tab `visibilitychange` → `hidden`, and when leaving `/main`. After the summary modal is dismissed (or when no summary is shown), the snapshot is refreshed to the current save so a quick refresh does not re-open the modal.
+
+If there is no snapshot (new browser / cleared storage) or offline time is under 1 minute, **no** modal is shown. If away time exceeds 1 minute but there was no combat progress (empty squad), **no** modal is shown.
+
+UI: `OfflineCombatSummaryModal` on the main battle screen (`data-testid="offline-summary-modal"`).
 
 ---
 

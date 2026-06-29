@@ -1649,6 +1649,30 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC3 | Player has pending expansion recruit                                  | Player ignores recruit and keeps playing                                  | Server ticks continue; pending remains until player completes recruit at `/character-select` or dismisses via UI |
 | AC4 | Player has been offline more than 24 hours                            | Player logs in and server runs scheduler                                  | Progress reflects at most **24h** of idle cap; no unbounded retroactive burst |
 | AC5 | Player edits tactics or equipment via `PATCH /save/player`            | Server runs the next combat tick                                          | Changes apply to that tick's battle (or documented next-tick rule in 15-server-combat-tick.md) |
+| AC6 | Player completed intro/recruitment after an earlier empty-squad save    | Player opens `/main` (`GET /save`) or saves squad via PUT/PATCH           | Combat state becomes `running` with `next_tick_at` near now; monsters appear after the next server tick and log replay |
+
+---
+
+## Example 40: Offline combat summary on return
+
+**User Story**
+
+> As a returning player,  
+> I want a summary of what my squad earned while I was offline,  
+> So that I can see idle progress at a glance without replaying every battle log line.
+
+**Design Reference**
+
+- [15-server-combat-tick.md](design/15-server-combat-tick.md) section 7.1 (snapshot, deltas, 24h display cap)
+
+**Acceptance Criteria**
+
+| #   | Given                                                                 | When                                                                      | Then                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Player has a non-empty squad and was away at least **1 minute**       | Player opens `/main` and save shows new combat progress since last snapshot | An **offline combat summary** modal shows offline duration, gold gained, XP gained, battle count (victory/defeat), and new equipment |
+| AC2 | Player was away less than 1 minute                                    | Player refreshes `/main`                                                  | **No** offline summary modal is shown                                |
+| AC3 | Player was away more than 24 hours with progress                      | Summary modal opens                                                       | Duration display is capped at **24 hours** and copy notes the offline cap |
+| AC4 | Player dismisses the offline summary modal                            | Player continues on `/main`                                               | Modal closes; snapshot refreshes so the same progress is not shown again on immediate refresh |
 
 ---
 
