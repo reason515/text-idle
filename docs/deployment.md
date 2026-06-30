@@ -79,6 +79,8 @@ ssh -i "D:\docs\tencent cloud key\reason515.pem" root@119.45.224.68 "bash /opt/t
 
 The script builds the Linux binary, uploads via `scp`, installs the `systemd` service, and runs a `/health` check.
 
+**Account data:** Player accounts live in `/var/lib/text-idle/text-idle.db`. Normal redeploy **does not** delete this file. If login fails for all old accounts but new registration works, check whether `reset-prod-data` was run or the DB file was removed manually. Emails are stored and matched **case-insensitively** (since v0.2.x); use the same email spelling as at registration, ignoring upper/lower case.
+
 ### Reset production data (wipe all players)
 
 Use when you need a **fresh internal test** on the live VPS. This removes the SQLite file at `/var/lib/text-idle/text-idle.db` (accounts, saves, leaderboard, message board, team-name claims). The game binary and systemd service are **not** removed.

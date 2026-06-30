@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { MAP_MONSTER_POOLS, createMonster } from './combat.js'
-import { buildMonstersFromLog, hydrateMonstersForPanel } from './combatLogMonsters.js'
+import { buildMonstersFromLog, hydrateMonstersForPanel, prepareMonstersForLogReplay } from './combatLogMonsters.js'
 
 function findTemplateById(id) {
   for (const pool of Object.values(MAP_MONSTER_POOLS)) {
@@ -59,6 +59,16 @@ describe('buildMonstersFromLog', () => {
   it('returns empty array for empty log', () => {
     expect(buildMonstersFromLog([])).toEqual([])
     expect(buildMonstersFromLog(null)).toEqual([])
+  })
+})
+
+describe('prepareMonstersForLogReplay', () => {
+  it('resets current HP to max HP for log replay start', () => {
+    const monsters = prepareMonstersForLogReplay([
+      { id: 'wolf-normal-2-1001', name: 'Wolf', tier: 'normal', maxHP: 50, currentHP: 0 },
+    ])
+    expect(monsters[0].currentHP).toBe(50)
+    expect(monsters[0].maxHP).toBe(50)
   })
 })
 

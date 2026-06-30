@@ -16,6 +16,32 @@ function wsBase() {
 }
 
 /**
+ * Within a server tick, replay log_batch before cycle_complete even when legacy
+ * event rows used the opposite seq order.
+ * @param {Array<{ seq: number, type: string }>} events
+ */
+export function sortCombatStreamEvents(events) {
+  return [...events].sort((a, b) => {
+    const aSeq = Number(a.seq) || 0
+    const bSeq = Number(b.seq) || 0
+    const aIsLog = a.type === 'combat.log_batch'
+    const bIsLog = b.type === 'combat.log_batch'
+    const aIsComplete = a.type === 'combat.cycle_complete'
+    const bIsComplete = b.type === 'combat.cycle_complete'
+
+    if (Math.abs(aSeq - bSeq) === 1 && aIsLog && bIsComplete && aSeq > bSeq) {
+      return -1
+    }
+    if (Math.abs(aSeq - bSeq) === 1 && aIsComplete && bIsLog && aSeq < bSeq) {
+      return 1
+    }
+    if (aSeq !== bSeq) return aSeq - bSeq
+    const rank = (type) => (type === 'combat.log_batch' ? 0 : type === 'combat.cycle_complete' ? 1 : 2)
+    return rank(a.type) - rank(b.type)
+  })
+}
+
+/**
  * @param {{
  *   token: string,
  *   onEvent: (msg: { seq: number, type: string, event?: object }) => void | Promise<void>,
@@ -45,7 +71,7 @@ export function createCombatStream(opts) {
       })
       if (!res.ok) return
       const data = await res.json()
-      const events = Array.isArray(data.events) ? data.events : []
+      const events = sortCombatStreamEvents(Array.isArray(data.events) ? data.events : [])
       for (const row of events) {
         if (row.seq > lastSeq) lastSeq = row.seq
         let eventBody = null

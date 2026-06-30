@@ -3006,9 +3006,10 @@ import {
   flushPlayerSave,
   ensurePlayerSaveLoaded,
   getPendingExpansionRecruit,
+  getCombatStateSummary,
 } from '../game/playerSave.js'
 import { createCombatStream, pauseServerCombat, resumeServerCombat } from '../game/combatStream.js'
-import { buildMonstersFromLog, hydrateMonstersForPanel } from '../game/combatLogMonsters.js'
+import { buildMonstersFromLog, hydrateMonstersForPanel, prepareMonstersForLogReplay } from '../game/combatLogMonsters.js'
 import { rollupHeroDamageFromBattleLog } from '../game/playerStatsDamageRollup.js'
 import { rollupHeroInjuryFromBattleLog } from '../game/playerStatsInjuryRollup.js'
 import { buildHeroDamagePieSegments } from '../game/playerStatsHeroDamagePie.js'
@@ -5531,10 +5532,22 @@ async function startServerCombatDisplay() {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
   isRunning.value = true
+
+  await ensurePlayerSaveLoaded()
+  maybeShowOfflineSummary()
+  loadSquad()
+  loadProgress()
+  loadPlayerStats()
+  gold.value = getGold()
+  seedInitialMapLogIfEmpty()
+
   combatStream = createCombatStream({
     token,
     onEvent: handleCombatStreamEvent,
   })
+  const combatState = getCombatStateSummary()
+  const savedEventSeq = Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0))
+  combatStream.setLastSeq(savedEventSeq)
   combatStream.connect()
   if (typeof window !== 'undefined') {
     window.__tiCombatStreamPoll = () => combatStream?.pollEvents?.()
@@ -5546,15 +5559,11 @@ async function startServerCombatDisplay() {
       }
     }
   }
-  await ensurePlayerSaveLoaded()
-  maybeShowOfflineSummary()
-  loadSquad()
-  loadProgress()
-  loadPlayerStats()
-  gold.value = getGold()
-  seedInitialMapLogIfEmpty()
   if (isE2eFastMode()) {
     return
+  }
+  if (!isPaused.value) {
+    await resumeServerCombat(token)
   }
   await combatStream.pollEvents()
 }
@@ -5562,6 +5571,46 @@ async function startServerCombatDisplay() {
 /** @type {ReturnType<typeof createCombatStream> | null} */
 let combatStream = null
 let lastReplayMonsterCount = 0
+/** @type {{ type: string, event?: object, seq?: number } | null} */
+let pendingServerCycleComplete = null
+let serverLogReplayedThisCycle = false
+
+async function scheduleNextServerCombatPoll() {
+  if (isE2eFastMode() || isPaused.value || !combatStream) return
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return
+  try {
+    await resumeServerCombat(token)
+    await combatStream.pollEvents()
+  } catch {
+    // Next poll interval will retry.
+  }
+}
+
+async function processServerCycleCompleteEvent(msg) {
+  if (msg.type === 'combat.pending_expansion') {
+    await syncFromServerSave()
+    return
+  }
+  if (msg.type !== 'combat.cycle_complete') return
+  const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
+  const squadBefore = squad.value.map((h) => ({ ...h }))
+  const progressBefore = progress.value.currentProgress ?? 0
+  await syncFromServerSave()
+  const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
+    normalizeCycleCompletePayload(msg)
+  )
+  await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+  await scheduleNextServerCombatPoll()
+}
+
+async function flushPendingServerCycleComplete() {
+  if (!pendingServerCycleComplete) return
+  const msg = pendingServerCycleComplete
+  pendingServerCycleComplete = null
+  serverLogReplayedThisCycle = false
+  await processServerCycleCompleteEvent(msg)
+}
 
 function parseStreamEventBody(msg) {
   let body = msg.event
@@ -5758,6 +5807,13 @@ async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, i
   }
 }
 
+function buildMonstersForLogReplay(log) {
+  const built = prepareMonstersForLogReplay(
+    buildMonstersFromLog(log).map((m) => ({ ...m, debuffs: m.debuffs || [] })),
+  )
+  return hydrateMonstersForPanel(built)
+}
+
 function openMonsterDetail(monster) {
   const [hydrated] = hydrateMonstersForPanel([monster])
   selectedMonster.value = hydrated ?? monster
@@ -5772,7 +5828,7 @@ async function replayServerLogBatch(log) {
   if (!Array.isArray(log) || log.length === 0) return
   currentMonsters.value = []
   displayHeroes.value = squad.value.map((h) => ({ ...computeHeroDisplay(h), debuffs: [], buffs: [] }))
-  const builtMonsters = buildMonstersFromLog(log).map((m) => ({ ...m, debuffs: m.debuffs || [] }))
+  const builtMonsters = buildMonstersForLogReplay(log)
   if (builtMonsters.length > 0) {
     addLogEntry({
       type: 'encounter',
@@ -5780,19 +5836,13 @@ async function replayServerLogBatch(log) {
       isBoss: builtMonsters.some((m) => m.tier === 'boss'),
     })
   }
-  const monstersForPanel = isE2eFastMode()
-    ? builtMonsters.map((m) => ({
-        ...m,
-        maxHP: m.maxHP ?? m.currentHP ?? 1,
-        currentHP: m.maxHP ?? m.currentHP ?? 1,
-      }))
-    : builtMonsters
-  currentMonsters.value = monstersForPanel
+  currentMonsters.value = builtMonsters
   lastReplayMonsterCount = builtMonsters.length
   unitFloatingNumbers.value = {}
   regenPulseByUnitId.value = {}
   monsterTargets.value = {}
   encounterInProgress.value = true
+  serverLogReplayedThisCycle = true
 
   if (isE2eFastMode()) {
     applyE2eCombatPanelFromLog(log)
@@ -5884,21 +5934,23 @@ async function handleCombatStreamEvent(msg) {
   }
   if (msg.type === 'combat.log_batch') {
     const log = normalizeLogBatchEntries(msg)
-    if (log) {
+    if (log && log.length > 0) {
       await replayServerLogBatch(log)
     }
+    await flushPendingServerCycleComplete()
+    return
   }
-  if (msg.type === 'combat.cycle_complete' || msg.type === 'combat.pending_expansion') {
-    const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
-    const squadBefore = squad.value.map((h) => ({ ...h }))
-    const progressBefore = progress.value.currentProgress ?? 0
-    await syncFromServerSave()
-    if (msg.type === 'combat.cycle_complete') {
-      const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
-        normalizeCycleCompletePayload(msg)
-      )
-      await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+  if (msg.type === 'combat.cycle_complete') {
+    if (serverLogReplayedThisCycle) {
+      serverLogReplayedThisCycle = false
+      await processServerCycleCompleteEvent(msg)
+    } else {
+      pendingServerCycleComplete = msg
     }
+    return
+  }
+  if (msg.type === 'combat.pending_expansion') {
+    await processServerCycleCompleteEvent(msg)
   }
 }
 
@@ -5917,6 +5969,8 @@ onMounted(() => {
 onUnmounted(() => {
   persistSessionLeaveSnapshot()
   uninstallSessionLeaveTracking()
+  pendingServerCycleComplete = null
+  serverLogReplayedThisCycle = false
   isRunning.value = false
   if (combatStream) combatStream.disconnect()
 })

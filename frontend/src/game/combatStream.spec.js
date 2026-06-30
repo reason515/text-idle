@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createCombatStream } from './combatStream.js'
+import { createCombatStream, sortCombatStreamEvents } from './combatStream.js'
 
 describe('combatStream', () => {
   beforeEach(() => {
@@ -60,5 +60,21 @@ describe('combatStream', () => {
     stream.connect()
     expect(wsSpy).not.toHaveBeenCalled()
     stream.disconnect()
+  })
+
+  it('sortCombatStreamEvents replays log before cycle_complete for legacy seq order', () => {
+    const events = sortCombatStreamEvents([
+      { seq: 5, type: 'combat.cycle_complete' },
+      { seq: 6, type: 'combat.log_batch' },
+    ])
+    expect(events.map((e) => e.type)).toEqual(['combat.log_batch', 'combat.cycle_complete'])
+  })
+
+  it('sortCombatStreamEvents keeps log before cycle_complete for current seq order', () => {
+    const events = sortCombatStreamEvents([
+      { seq: 5, type: 'combat.log_batch' },
+      { seq: 6, type: 'combat.cycle_complete' },
+    ])
+    expect(events.map((e) => e.type)).toEqual(['combat.log_batch', 'combat.cycle_complete'])
   })
 })

@@ -146,6 +146,11 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 	}
 	if state.Status == model.CombatStatusEmptySquad {
 		state.Status = model.CombatStatusRunning
+		state.NextTickAt = now
+		state.UpdatedAt = now
+		if err := s.combatStateRepo.Upsert(state); err != nil {
+			return err
+		}
 	}
 
 	capStart := now.Add(-offlineCapHours * time.Hour)
@@ -274,4 +279,20 @@ func (s *CombatLoopService) ensureState(userID uint, now time.Time) (*model.Play
 		return nil, err
 	}
 	return s.combatStateRepo.GetByUserID(userID)
+}
+
+// BackfillStuckCombatStates re-syncs combat status for every save (e.g. after deploy).
+func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error) {
+	rows, err := s.saveService.ListAllSaves()
+	if err != nil {
+		return 0, err
+	}
+	synced := 0
+	for _, row := range rows {
+		if err := s.SyncCombatStateFromSave(row.UserID, json.RawMessage(row.SaveData), now); err != nil {
+			return synced, err
+		}
+		synced++
+	}
+	return synced, nil
 }

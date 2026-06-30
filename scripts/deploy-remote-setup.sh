@@ -42,6 +42,14 @@ fi
 install -m 755 /tmp/text-idle "${INSTALL_DIR}/text-idle"
 install -m 755 /tmp/backup-db.sh "${INSTALL_DIR}/backup-db.sh"
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "$DATA_DIR"
+if [[ -f "$DB_PATH" ]]; then
+  chown "${SERVICE_USER}:${SERVICE_USER}" "$DB_PATH" 2>/dev/null || true
+  for suffix in -wal -shm -journal; do
+    if [[ -f "${DB_PATH}${suffix}" ]]; then
+      chown "${SERVICE_USER}:${SERVICE_USER}" "${DB_PATH}${suffix}" 2>/dev/null || true
+    fi
+  done
+fi
 
 cat > /etc/systemd/system/text-idle.service <<EOF
 [Unit]

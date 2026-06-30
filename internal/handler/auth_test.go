@@ -228,3 +228,26 @@ func TestLogin_AC2_WrongEmailOrPassword_ReturnsUnauthorized(t *testing.T) {
 		})
 	}
 }
+
+func TestLogin_AC3_CaseInsensitiveEmail_ReturnsToken(t *testing.T) {
+	r, _ := setupTestRouter(t)
+
+	regBody, _ := json.Marshal(map[string]string{"email": "MixedCase@Example.com", "password": "password123"})
+	regReq := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(regBody))
+	regReq.Header.Set("Content-Type", "application/json")
+	regW := httptest.NewRecorder()
+	r.ServeHTTP(regW, regReq)
+	if regW.Code != http.StatusCreated {
+		t.Fatalf("setup: register failed with %d, body: %s", regW.Code, regW.Body.String())
+	}
+
+	loginBody, _ := json.Marshal(map[string]string{"email": "mixedcase@example.com", "password": "password123"})
+	loginReq := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(loginBody))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginW := httptest.NewRecorder()
+	r.ServeHTTP(loginW, loginReq)
+
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d, body: %s", loginW.Code, loginW.Body.String())
+	}
+}

@@ -134,3 +134,22 @@ export function buildMonstersFromLog(log) {
     debuffs: m.debuffs || [],
   }))
 }
+
+/**
+ * Reset panel monsters to encounter start HP before replaying a server log batch.
+ * buildMonstersFromLog returns end-of-battle HP (0 on defeat); replay animates from full.
+ * @param {object[]} monsters
+ * @returns {object[]}
+ */
+export function prepareMonstersForLogReplay(monsters) {
+  if (!Array.isArray(monsters)) return []
+  return monsters.map((m) => {
+    const maxHP = Math.max(1, Math.floor(Number(m.maxHP ?? m.currentHP) || 1))
+    return {
+      ...m,
+      maxHP,
+      currentHP: maxHP,
+      debuffs: m.debuffs || [],
+    }
+  })
+}

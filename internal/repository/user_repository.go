@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/text-idle/text-idle/internal/model"
 	"gorm.io/gorm"
 )
@@ -28,7 +30,8 @@ func (r *UserRepository) FindByID(userID uint) (*model.User, error) {
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	var user model.User
-	err := r.db.Where("email = ?", email).First(&user).Error
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	err := r.db.Where("LOWER(TRIM(email)) = ?", normalized).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +40,8 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 
 func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
 	var count int64
-	err := r.db.Model(&model.User{}).Where("email = ?", email).Count(&count).Error
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	err := r.db.Model(&model.User{}).Where("LOWER(TRIM(email)) = ?", normalized).Count(&count).Error
 	if err != nil {
 		return false, err
 	}

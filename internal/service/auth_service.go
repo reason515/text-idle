@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 
 	"github.com/text-idle/text-idle/internal/model"
 	"github.com/text-idle/text-idle/internal/repository"
@@ -11,8 +12,8 @@ import (
 )
 
 var (
-	ErrEmailExists         = errors.New("email already exists")
-	ErrInvalidCredentials  = errors.New("invalid email or password")
+	ErrEmailExists        = errors.New("email already exists")
+	ErrInvalidCredentials = errors.New("invalid email or password")
 )
 
 type AuthService struct {
@@ -23,7 +24,13 @@ func NewAuthService(userRepo *repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
+// NormalizeEmail lowercases and trims email for stable login across clients.
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
 func (s *AuthService) Register(email, password string) (string, error) {
+	email = NormalizeEmail(email)
 	exists, err := s.userRepo.ExistsByEmail(email)
 	if err != nil {
 		return "", err
@@ -50,6 +57,7 @@ func (s *AuthService) Register(email, password string) (string, error) {
 }
 
 func (s *AuthService) Login(email, password string) (string, error) {
+	email = NormalizeEmail(email)
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil || user == nil {
 		return "", ErrInvalidCredentials

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/text-idle/text-idle/internal/model"
 	"github.com/text-idle/text-idle/internal/repository"
 	"gorm.io/gorm"
 )
@@ -87,6 +88,10 @@ func (s *SaveService) PutSaveUnrestricted(userID uint, data json.RawMessage) err
 		return errors.New("invalid json")
 	}
 	return s.storeSave(userID, data)
+}
+
+func (s *SaveService) ListAllSaves() ([]model.PlayerSave, error) {
+	return s.saveRepo.ListAll()
 }
 
 func (s *SaveService) storeSave(userID uint, data json.RawMessage) error {

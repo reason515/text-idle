@@ -78,7 +78,7 @@ async function submit() {
     const res = await fetch(`${base}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value, password: password.value }),
+      body: JSON.stringify({ email: email.value.trim(), password: password.value }),
     })
 
     const data = await res.json().catch(() => ({}))

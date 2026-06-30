@@ -54,6 +54,11 @@ func (s *CombatScheduler) Start(ctx context.Context) {
 	sem := make(chan struct{}, s.workers)
 	var wg sync.WaitGroup
 	log.Printf("combat scheduler started (interval=%s workers=%d)", s.interval, s.workers)
+	if synced, err := s.loopService.BackfillStuckCombatStates(time.Now()); err != nil {
+		log.Printf("combat backfill warning: %v", err)
+	} else if synced > 0 {
+		log.Printf("combat backfill synced %d player saves", synced)
+	}
 	for {
 		select {
 		case <-ctx.Done():
