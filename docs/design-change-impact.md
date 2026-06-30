@@ -124,7 +124,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **WebSocket / events** | `internal/handler/combat_ws.go`, `frontend/src/game/combatStream.js` | `combat.cycle_complete`, `combat.pending_expansion` |
 | **Recruit non-blocking** | MainScreen squad UI, `pendingExpansionRecruit`, Example 39 | Red dot; no modal await on combat loop; `/character-select` when ready |
 | **Client combat loop removed** | [MainScreen.vue](../frontend/src/views/MainScreen.vue) | No `runCombatLoop` authority; pacing display-only |
-| **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 39, `e2e/browser/server-combat-tick.spec.js` | Tick progress while tab hidden; pending recruit does not pause |
+| **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 39, `e2e/browser/server-combat-tick.spec.js` | Example 39 AC1-AC6 + pause reload; pending recruit does not pause |
 | **Deployment** | [deployment.md](../deployment.md) | Single process includes scheduler; restart-safe |
 
 ## Usage

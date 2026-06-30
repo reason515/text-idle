@@ -153,6 +153,13 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 		}
 	}
 
+	schedulableUntil := state.LastTickAt.Add(offlineCapHours * time.Hour)
+	if respectSchedule && now.After(schedulableUntil) && state.NextTickAt.After(schedulableUntil) {
+		state.LastTickAt = now
+		state.NextTickAt = now
+		state.UpdatedAt = now
+		return s.combatStateRepo.Upsert(state)
+	}
 	capStart := now.Add(-offlineCapHours * time.Hour)
 	if state.LastTickAt.Before(capStart) {
 		state.LastTickAt = capStart
@@ -256,7 +263,15 @@ func (s *CombatLoopService) Resume(userID uint, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	state.Status = model.CombatStatusRunning
+	save, err := s.saveService.GetSave(userID)
+	if err != nil {
+		return err
+	}
+	if squadEmpty(save) {
+		state.Status = model.CombatStatusEmptySquad
+	} else {
+		state.Status = model.CombatStatusRunning
+	}
 	state.PausedAt = nil
 	state.NextTickAt = now
 	state.UpdatedAt = now

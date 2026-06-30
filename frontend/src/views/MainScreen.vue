@@ -5534,6 +5534,8 @@ async function startServerCombatDisplay() {
   isRunning.value = true
 
   await ensurePlayerSaveLoaded()
+  const combatStateOnLoad = getCombatStateSummary()
+  isPaused.value = combatStateOnLoad?.status === 'paused'
   maybeShowOfflineSummary()
   loadSquad()
   loadProgress()

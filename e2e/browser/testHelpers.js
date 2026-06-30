@@ -354,11 +354,33 @@ async function recruitWarrior(page, heroName = '\u74e6\u91cc\u5b89', skillId = n
 }
 
 async function pauseCombat(page) {
-  await page.getByRole('button', { name: '暂停' }).click({ timeout: 2000 }).catch(() => {})
-  await expect(page.getByRole('button', { name: '继续' })).toBeVisible({ timeout: 3000 }).catch(() => {})
+  await page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    await fetch(`${apiBase}/combat/pause`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  })
+  const btn = page.locator('.pause-btn')
+  const label = ((await btn.textContent().catch(() => '')) || '').trim()
+  if (label.includes('\u6682\u505c')) {
+    await btn.click({ timeout: 2000 }).catch(() => {})
+  }
+  await expect(page.getByRole('button', { name: '\u7ee7\u7eed' })).toBeVisible({ timeout: 3000 }).catch(() => {})
 }
 
 async function resumeCombat(page) {
+  await page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    await fetch(`${apiBase}/combat/resume`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  })
   const btn = page.locator('.pause-btn')
   const label = ((await btn.textContent()) || '').trim()
   if (label.includes('\u7ee7\u7eed')) {
@@ -784,11 +806,13 @@ async function reloadMainForE2e(page) {
   })
 }
 
-async function triggerE2eCombatTick(page, { awaitPoll = false } = {}) {
+async function triggerE2eCombatTick(page, { awaitPoll = false, skipResume = false } = {}) {
   const token = await page.evaluate(() => localStorage.getItem('token'))
   if (!token) return
   const headers = { Authorization: `Bearer ${token}` }
-  await page.request.post('/api/combat/resume', { headers }).catch(() => {})
+  if (!skipResume) {
+    await page.request.post('/api/combat/resume', { headers }).catch(() => {})
+  }
   await page.request.post('/api/debug/combat/tick', { headers }).catch(() => {})
   const pollPromise = page.evaluate(async () => {
     if (typeof window.__tiCombatStreamPoll === 'function') {
@@ -931,6 +955,7 @@ module.exports = {
   simulateRecruitPromptModal,
   triggerE2eCombatTick,
   reloadMainForE2e,
+  waitForMainCombatIdle,
   completeIntroSteps,
   openFirstHeroDetail,
   waitForCombatMonsterPanel,

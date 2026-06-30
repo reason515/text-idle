@@ -589,7 +589,7 @@ test.describe('Experience and Leveling (Example 11)', () => {
       }
     }, undefined, { pauseFirst: true, safePath: '/main', keepPaused: true })
     await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
-    await triggerE2eCombatTick(page)
+    await triggerE2eCombatTick(page, { awaitPoll: true })
 
     await expect(page.locator('.log-summary.defeat-text').first()).toBeVisible({ timeout: 90000 })
     await expect(page.locator('.hero-card.defeated').first()).toBeVisible({ timeout: 15000 })

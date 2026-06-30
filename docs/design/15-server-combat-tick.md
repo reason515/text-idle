@@ -81,8 +81,11 @@ On each tick, if `now - last_tick_at` exceeds 24h (e.g. server downtime or long 
 
 ```text
 schedulable_until = last_tick_at + 24h
-if now > schedulable_until:
-  only run ticks with next_tick_at <= schedulable_until, then clamp next_tick_at to now
+if now > schedulable_until and next_tick_at > schedulable_until:
+  advance last_tick_at and next_tick_at to now without running combat (no retroactive burst)
+cap_start = now - 24h
+if last_tick_at < cap_start:
+  last_tick_at = cap_start
 ```
 
 No retroactive burst beyond one cap window on first login after long absence (migration sets `last_tick_at = now`).
@@ -121,6 +124,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 ## 7. Client role
 
 - Remove `runCombatLoop` as authority; subscribe to WS + poll events.
+- On `/main` load, restore pause UI from embedded `combatState.status`; call `POST /combat/resume` only when the client is not paused.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
 

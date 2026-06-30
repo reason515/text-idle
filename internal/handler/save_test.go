@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +24,7 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.LeaderboardEntry{}, &model.TeamNameClaim{}, &model.PlayerCombatState{}, &model.CombatEvent{}); err != nil {
 		t.Fatalf("failed to migrate: %v", err)
 	}
 
@@ -35,7 +37,11 @@ func setupSaveTestRouter(t *testing.T) (*gin.Engine, string) {
 	leaderboardService := service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
 	teamNameService := service.NewTeamNameService(teamNameRepo, saveRepo)
 	saveService := service.NewSaveService(saveRepo, leaderboardService, teamNameService)
-	saveHandler := NewSaveHandler(saveService, nil)
+	combatStateRepo := repository.NewPlayerCombatStateRepository(db)
+	combatEventRepo := repository.NewCombatEventRepository(db)
+	combatHub := service.NewCombatHub()
+	combatLoop := service.NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, combatHub)
+	saveHandler := NewSaveHandler(saveService, combatLoop)
 	authMw := middleware.AuthRequired(userRepo)
 
 	r := gin.New()
@@ -81,6 +87,56 @@ func TestSave_GetWithToken_ReturnsDefaultSave(t *testing.T) {
 	}
 	if save["gold"].(float64) != 0 {
 		t.Errorf("expected gold 0, got %v", save["gold"])
+	}
+	combatState, ok := save["combatState"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected combatState on GET /save")
+	}
+	if combatState["status"] != model.CombatStatusEmptySquad {
+		t.Errorf("expected empty_squad for default save, got %v", combatState["status"])
+	}
+}
+
+func TestSave_GetWithFilledSquad_embedsRunningCombatState(t *testing.T) {
+	r, token := setupSaveTestRouter(t)
+	fixPath := filepath.Join("..", "..", "testdata", "combat", "server_cycle_fixed_trio.json")
+	raw, err := os.ReadFile(fixPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fix map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fix); err != nil {
+		t.Fatal(err)
+	}
+	putReq := httptest.NewRequest(http.MethodPut, "/save", bytes.NewReader(fix["save"]))
+	putReq.Header.Set("Content-Type", "application/json")
+	putReq.Header.Set("Authorization", "Bearer "+token)
+	putW := httptest.NewRecorder()
+	r.ServeHTTP(putW, putReq)
+	if putW.Code != http.StatusNoContent {
+		t.Fatalf("put expected 204, got %d body=%s", putW.Code, putW.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/save", nil)
+	getReq.Header.Set("Authorization", "Bearer "+token)
+	getW := httptest.NewRecorder()
+	r.ServeHTTP(getW, getReq)
+	if getW.Code != http.StatusOK {
+		t.Fatalf("get expected 200, got %d", getW.Code)
+	}
+	var save map[string]interface{}
+	if err := json.Unmarshal(getW.Body.Bytes(), &save); err != nil {
+		t.Fatal(err)
+	}
+	combatState, ok := save["combatState"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected combatState on GET /save")
+	}
+	if combatState["status"] != model.CombatStatusRunning {
+		t.Errorf("expected running after filled squad, got %v", combatState["status"])
+	}
+	if combatState["eventSeq"] == nil {
+		t.Error("expected eventSeq in combatState")
 	}
 }
 
