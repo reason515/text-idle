@@ -94,11 +94,12 @@ describe('combatPacing', () => {
       expect(applyCombatPacingDelayMs(300)).toBe(0)
     })
 
-    it('hidden tab skips UI pacing for idle progression', () => {
+    it('hidden tab keeps production log pacing (no instant playback)', () => {
       vi.stubGlobal('document', { visibilityState: 'hidden' })
       expect(isHiddenTabFastCombat()).toBe(true)
-      expect(isCombatPlaybackInstant()).toBe(true)
-      expect(applyCombatPacingDelayMs(3000)).toBe(0)
+      expect(isCombatPlaybackInstant()).toBe(false)
+      expect(applyCombatPacingDelayMs(3000)).toBe(3000)
+      expect(getDefeatBeforeRestPauseMs()).toBe(COMBAT_PACING_MS.defeatBeforeRest)
     })
 
     it('visible tab keeps production pacing', () => {
@@ -127,9 +128,9 @@ describe('combatPacing', () => {
       expect(getDefeatBeforeRestPauseMs()).toBe(520)
     })
 
-    it('no pause when tab is hidden', () => {
+    it('defeat pause unchanged when tab is hidden', () => {
       vi.stubGlobal('document', { visibilityState: 'hidden' })
-      expect(getDefeatBeforeRestPauseMs()).toBe(0)
+      expect(getDefeatBeforeRestPauseMs()).toBe(COMBAT_PACING_MS.defeatBeforeRest)
     })
   })
 

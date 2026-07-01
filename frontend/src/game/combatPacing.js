@@ -69,8 +69,8 @@ export function isE2eFastMode() {
 }
 
 /**
- * True when the browser tab is hidden. Combat skips UI pacing so idle rewards keep
- * accruing at logic speed (no audio — see 14-audio.md).
+ * True when the browser tab is hidden. Used for audio muting and deferring non-essential
+ * UI (scroll, float animations). Does not change combat log step pacing — see 03-combat.md.
  *
  * @returns {boolean}
  */
@@ -84,21 +84,21 @@ export function isHiddenTabFastCombat() {
 }
 
 /**
- * Instant combat log playback: E2E fast mode or background tab.
+ * Instant combat log playback: E2E fast mode only.
  *
  * @returns {boolean}
  */
 export function isCombatPlaybackInstant() {
-  return isE2eFastMode() || isHiddenTabFastCombat()
+  return isE2eFastMode()
 }
 
 /**
- * Map production delay to actual wait: 0 in E2E fast mode or hidden tab, otherwise normalMs.
+ * Map production delay to actual wait: 0 in E2E fast mode, otherwise normalMs.
  * @param {number} normalMs
  * @returns {number}
  */
 export function applyCombatPacingDelayMs(normalMs) {
-  if (isE2eFastMode() || isHiddenTabFastCombat()) return 0
+  if (isE2eFastMode()) return 0
   return normalMs
 }
 
@@ -112,7 +112,6 @@ export function applyCombatPacingDelayMs(normalMs) {
  */
 export function getDefeatBeforeRestPauseMs() {
   if (isE2eFastMode()) return 520
-  if (isHiddenTabFastCombat()) return 0
   return COMBAT_PACING_MS.defeatBeforeRest
 }
 
@@ -178,7 +177,7 @@ export function estimateRegenBatchRevealMs(entry) {
 
 /**
  * Visible-playback ms for one battle cycle (prefix gaps + log reveals + rest + tail).
- * Used for background wall-clock pacing only — does not affect combatActionSteps stats.
+ * Used by the server for next-tick scheduling only — does not affect combatActionSteps stats.
  *
  * @param {{ log?: object[] }} result
  * @param {{

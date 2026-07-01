@@ -127,6 +127,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 - On `/main` load, restore pause UI from embedded `combatState.status`; call `POST /combat/resume` only when the client is not paused.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
+- **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/resume` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client polls and resumes if not paused. Background tabs use the same log-step pacing as foreground (no client-side instant replay); server ticks continue independently.
 
 ### 7.1 Offline combat summary (return visit)
 
