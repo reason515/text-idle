@@ -2945,6 +2945,8 @@ import {
   getRestStepRevealMs,
   isCombatPlaybackInstant,
   isE2eFastMode,
+  isE2eClientAdvanceMode,
+  shouldSkipClientAdvanceGate,
   shouldPauseCombatLogWhenHidden,
   REGEN_BAR_SETTLE_MS,
   REGEN_HERO_STAGGER_MS,
@@ -3009,6 +3011,7 @@ import {
   getCombatStateSummary,
 } from '../game/playerSave.js'
 import { createCombatStream, pauseServerCombat, resumeServerCombat, advanceServerCombat } from '../game/combatStream.js'
+import { createCombatAdvanceController } from '../game/combatAdvanceController.js'
 import {
   createServerCombatEventCoordinator,
   normalizeCycleCompletePayload,
@@ -5424,6 +5427,7 @@ async function toggleCombatPause() {
     await pauseServerCombat(token)
   } else {
     await resumeServerCombat(token)
+    await getCombatAdvanceController().onCombatUnpaused()
   }
 }
 
@@ -5487,6 +5491,18 @@ async function startServerCombatDisplay() {
   combatStream.connect()
   if (typeof window !== 'undefined') {
     window.__tiCombatStreamPoll = () => combatStream?.pollEvents?.()
+    if (isE2eClientAdvanceMode()) {
+      window.__e2eRunScheduleNext = () => getCombatAdvanceController().scheduleNextServerCombatPoll()
+      window.__e2eBootstrapIdle = () => getCombatAdvanceController().bootstrapNextBattleIfIdle()
+      window.__e2eGetAdvanceState = () => getCombatAdvanceController().getDebugState()
+      window.__e2eGetBuiltMonsters = () =>
+        currentMonsters.value.map((m) => ({
+          id: m.id,
+          name: m.name,
+          currentHP: m.currentHP,
+          maxHP: m.maxHP,
+        }))
+    }
     if (isE2eFastMode()) {
       window.__e2eOpenFirstMonsterDetail = () => openE2eFirstMonsterDetail()
       window.__e2eHasBuiltMonsters = () => lastE2eBuiltMonsters.length > 0
@@ -5502,7 +5518,7 @@ async function startServerCombatDisplay() {
       }
     }
   }
-  if (isE2eFastMode()) {
+  if (shouldSkipClientAdvanceGate()) {
     return
   }
   if (!isPaused.value) {
@@ -5519,42 +5535,45 @@ const serverCombatEvents = createServerCombatEventCoordinator()
 /** @type {(() => void) | null} */
 let onCombatVisibilityChange = null
 let serverDisplayCycleBusy = false
-let pendingCombatAdvanceRetry = false
+/** @type {ReturnType<typeof createCombatAdvanceController> | null} */
+let combatAdvanceController = null
+
+function getCombatAdvanceController() {
+  if (!combatAdvanceController) {
+    combatAdvanceController = createCombatAdvanceController({
+      isE2eFastMode,
+      isE2eClientAdvanceMode,
+      isPaused: () => isPaused.value,
+      hasCombatStream: () => !!combatStream,
+      isServerDisplayCycleBusy: () => serverDisplayCycleBusy,
+      isEncounterInProgress: () => encounterInProgress.value,
+      getCurrentMonsterCount: () => currentMonsters.value.length,
+      getToken: getCombatAuthToken,
+      advanceServerCombat,
+      pollEvents: () => combatStream?.pollEvents?.() ?? Promise.resolve(),
+    })
+  }
+  return combatAdvanceController
+}
 
 function getCombatAuthToken() {
   return typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
 }
 
 async function tryAdvanceServerCombat() {
-  if (isE2eFastMode() || isPaused.value || !combatStream || serverDisplayCycleBusy) return false
-  const token = getCombatAuthToken()
-  if (!token) return false
-  try {
-    await advanceServerCombat(token)
-    pendingCombatAdvanceRetry = false
-    await combatStream.pollEvents()
-    return true
-  } catch {
-    pendingCombatAdvanceRetry = true
-    return false
-  }
+  return getCombatAdvanceController().tryAdvanceServerCombat()
 }
 
 async function scheduleNextServerCombatPoll() {
-  await tryAdvanceServerCombat()
+  return getCombatAdvanceController().scheduleNextServerCombatPoll()
 }
 
 async function bootstrapNextBattleIfIdle() {
-  if (serverDisplayCycleBusy || encounterInProgress.value || isPaused.value || isE2eFastMode()) return
-  if (currentMonsters.value.length > 0) return
-  await tryAdvanceServerCombat()
+  return getCombatAdvanceController().bootstrapNextBattleIfIdle()
 }
 
 async function retryPendingCombatAdvanceAfterPoll() {
-  if (!pendingCombatAdvanceRetry || serverDisplayCycleBusy || encounterInProgress.value || isPaused.value) {
-    return
-  }
-  await tryAdvanceServerCombat()
+  return getCombatAdvanceController().retryPendingCombatAdvanceAfterPoll()
 }
 
 async function processServerCycleCompleteEvent(msg) {
@@ -5856,15 +5875,18 @@ async function handleCombatStreamEventE2eFast(msg) {
 
 /** @param {{ type: string, event?: { payload?: object } }} msg */
 async function handleCombatStreamEvent(msg) {
-  if (isE2eFastMode()) {
+  if (shouldSkipClientAdvanceGate()) {
     return handleCombatStreamEventE2eFast(msg)
   }
   if (msg.type === 'combat.log_batch') {
-    await serverCombatEvents.handleLogBatch(
+    const batchResult = await serverCombatEvents.handleLogBatch(
       msg,
       replayServerLogBatch,
       processServerCycleCompleteEvent,
     )
+    if (batchResult?.hadLog && !batchResult.replayed) {
+      getCombatAdvanceController().onLogBatchReplayResult(batchResult)
+    }
     return
   }
   if (msg.type === 'combat.cycle_complete') {
@@ -5909,8 +5931,9 @@ onUnmounted(() => {
   uninstallSessionLeaveTracking()
   uninstallCombatVisibilityRecovery()
   serverCombatEvents.reset()
+  combatAdvanceController?.reset()
+  combatAdvanceController = null
   serverDisplayCycleBusy = false
-  pendingCombatAdvanceRetry = false
   isRunning.value = false
   if (combatStream) combatStream.disconnect()
 })

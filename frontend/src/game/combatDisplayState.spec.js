@@ -210,4 +210,23 @@ describe('combatDisplayState', () => {
     }
     expect(found).toBe(true)
   })
+
+  it('normalizeLogBatchPayload parses string encounter and steps JSON', () => {
+    const encounter = {
+      monsters: [{ id: 'm1', name: 'Goblin', maxHP: 20, currentHP: 20, debuffs: [] }],
+      heroes: [{ id: 'h1', name: 'Hero', maxHP: 100, currentHP: 100, maxMP: 50, currentMP: 50, debuffs: [], buffs: [] }],
+    }
+    const steps = [{ monsters: [{ id: 'm1', maxHP: 20, currentHP: 18, debuffs: [] }], heroes: [] }]
+    const parsed = normalizeLogBatchPayload({
+      event: {
+        payload: {
+          log: [{ round: 1, action: 'basic' }],
+          encounter: JSON.stringify(encounter),
+          steps: JSON.stringify(steps),
+        },
+      },
+    })
+    expect(parsed.encounter?.monsters?.[0]?.name).toBe('Goblin')
+    expect(parsed.steps?.[0]?.monsters?.[0]?.currentHP).toBe(18)
+  })
 })

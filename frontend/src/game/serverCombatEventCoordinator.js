@@ -57,18 +57,20 @@ export function createServerCombatEventCoordinator() {
   return {
     async handleLogBatch(msg, replayLog, processComplete) {
       const payload = normalizeLogBatchPayload(msg)
-      if (
+      const canReplay =
         payload.log &&
         payload.log.length > 0 &&
         payload.encounter &&
         payload.steps &&
         payload.steps.length === payload.log.length
-      ) {
+      if (canReplay) {
         await replayLog(payload)
+        logReplayedThisCycle = true
+      } else if (!payload.log?.length) {
+        logReplayedThisCycle = true
       }
-      logReplayedThisCycle = true
       await flushPendingCycleComplete(processComplete)
-      logReplayedThisCycle = true
+      return { replayed: !!canReplay, hadLog: !!(payload.log && payload.log.length > 0) }
     },
 
     async handleCycleComplete(msg, processComplete) {

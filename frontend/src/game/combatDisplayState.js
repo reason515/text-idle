@@ -280,7 +280,14 @@ export function normalizeLogBatchPayload(msg) {
       log = null
     }
   }
-  const encounter = payload?.encounter ?? null
+  let encounter = payload?.encounter ?? null
+  if (typeof encounter === 'string') {
+    try {
+      encounter = JSON.parse(encounter)
+    } catch {
+      encounter = null
+    }
+  }
   let steps = payload?.steps
   if (typeof steps === 'string') {
     try {

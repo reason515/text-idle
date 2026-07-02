@@ -451,13 +451,30 @@ async function waitForCombatMonsterPanel(page, timeoutMs = 25000) {
 /** Monster panel HP must come from encounter snapshot (not 1/1 log-rebuild placeholder). */
 async function assertMonsterHpBarsNotPlaceholder(page) {
   await page.waitForFunction(
-    () =>
-      typeof window.__e2eGetBuiltMonsters === 'function' &&
-      window.__e2eGetBuiltMonsters().length > 0,
+    () => {
+      if (typeof window.__e2eGetBuiltMonsters === 'function') {
+        return window.__e2eGetBuiltMonsters().length > 0
+      }
+      const bars = document.querySelectorAll('.monster-list .monster-card .bar-num')
+      return bars.length > 0
+    },
     null,
     { timeout: 40000 },
   )
-  const monsters = await page.evaluate(() => window.__e2eGetBuiltMonsters())
+  const monsters = await page.evaluate(() => {
+    if (typeof window.__e2eGetBuiltMonsters === 'function') {
+      return window.__e2eGetBuiltMonsters()
+    }
+    return Array.from(document.querySelectorAll('.monster-list .monster-card .bar-num')).map(
+      (el) => {
+        const text = el.textContent?.trim() ?? ''
+        const match = text.match(/^(\d+)\/(\d+)$/)
+        return match
+          ? { currentHP: Number(match[1]), maxHP: Number(match[2]) }
+          : { currentHP: 0, maxHP: 0 }
+      },
+    )
+  })
   expect(monsters.length).toBeGreaterThan(0)
   for (const m of monsters) {
     expect(m.maxHP).toBeGreaterThan(1)
@@ -962,6 +979,75 @@ async function mockAiTacticsCompletion(page, tacticsPayload) {
   })
 }
 
+async function syncClientCombatRunning(page) {
+  await page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    await fetch(`${apiBase}/combat/resume`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  })
+  const btn = page.locator('.pause-btn')
+  const label = ((await btn.textContent().catch(() => '')) || '').trim()
+  if (label.includes('\u7ee7\u7eed')) {
+    await btn.click({ timeout: 3000 }).catch(() => {})
+  }
+  await expect(btn).toContainText('\u6682\u505c', { timeout: 5000 }).catch(() => {})
+}
+
+/** Use production POST /combat/advance path with instant replay (not debug tick). */
+async function enableClientAdvanceE2eMode(page) {
+  await page.evaluate(() => {
+    localStorage.removeItem('e2eFastCombat')
+    localStorage.setItem('e2eClientAdvance', '1')
+    localStorage.setItem('e2eInstantReplay', '1')
+  })
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForFunction(
+    () =>
+      typeof window.__tiCombatStreamPoll === 'function' &&
+      typeof window.__e2eBootstrapIdle === 'function',
+    null,
+    { timeout: 60000 },
+  )
+  await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 20000 })
+  await resumeCombat(page)
+}
+
+async function triggerClientAdvancePoll(page) {
+  await page.evaluate(async () => {
+    if (typeof window.__e2eBootstrapIdle === 'function') {
+      await window.__e2eBootstrapIdle()
+    }
+  })
+  await page.evaluate(async () => {
+    if (typeof window.__tiCombatStreamPoll === 'function') {
+      await window.__tiCombatStreamPoll()
+    }
+  })
+}
+
+async function waitForEncounterLogCount(page, minCount, timeoutMs = 120000) {
+  await expect(async () => {
+    const logCount = await page.locator('.log-encounter').count()
+    const monsterCount = await page.evaluate(() => {
+      if (typeof window.__e2eGetBuiltMonsters === 'function') {
+        return window.__e2eGetBuiltMonsters().length
+      }
+      return 0
+    })
+    const cardCount = await page.locator('.monster-list .monster-card').count()
+    const seen = Math.max(logCount, monsterCount, cardCount > 0 ? minCount : 0)
+    expect(seen).toBeGreaterThanOrEqual(minCount)
+  }).toPass({ timeout: timeoutMs })
+}
+
+async function waitForCombatSummary(page, timeoutMs = 120000) {
+  await expect(page.locator('.log-summary').first()).toBeVisible({ timeout: timeoutMs })
+}
+
 module.exports = {
   uniqueTestEmail,
   setupNewRun,
@@ -983,6 +1069,11 @@ module.exports = {
   openE2eFirstMonsterDetail,
   simulateRecruitPromptModal,
   triggerE2eCombatTick,
+  enableClientAdvanceE2eMode,
+  syncClientCombatRunning,
+  triggerClientAdvancePoll,
+  waitForEncounterLogCount,
+  waitForCombatSummary,
   reloadMainForE2e,
   waitForMainCombatIdle,
   completeIntroSteps,

@@ -69,6 +69,47 @@ export function isE2eFastMode() {
 }
 
 /**
+ * E2E-only: exercise production client advance (POST /combat/advance) with instant replay.
+ * Clears e2eFastCombat side effects while keeping tests fast.
+ *
+ * @returns {boolean}
+ */
+export function isE2eClientAdvanceMode() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('e2eClientAdvance') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** E2E-only: instant log replay without skipping the client advance gate. */
+export function isE2eInstantReplayMode() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('e2eInstantReplay') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** True when E2E fast combat should bypass POST /combat/advance scheduling. */
+export function shouldSkipClientAdvanceGate() {
+  return isE2eFastMode() && !isE2eClientAdvanceMode()
+}
+
+/** True when E2E tests should poll /combat/events instead of opening WebSocket. */
+export function isE2ePollOnlyMode() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (localStorage.getItem('e2eFastCombat') === '1') return true
+      if (localStorage.getItem('e2eClientAdvance') === '1') return true
+    }
+  } catch {
+    /* localStorage may be unavailable */
+  }
+  return false
+}
+
+/**
  * True when the browser tab is hidden. Used for audio muting, deferring non-essential
  * UI (scroll, float animations), and pausing combat log replay — see 03-combat.md.
  *
@@ -88,7 +129,7 @@ export function isHiddenTabFastCombat() {
  * @returns {boolean}
  */
 export function shouldPauseCombatLogWhenHidden() {
-  return isHiddenTabFastCombat() && !isE2eFastMode()
+  return isHiddenTabFastCombat() && !isE2eFastMode() && !isE2eInstantReplayMode()
 }
 
 /**
@@ -97,7 +138,7 @@ export function shouldPauseCombatLogWhenHidden() {
  * @returns {boolean}
  */
 export function isCombatPlaybackInstant() {
-  return isE2eFastMode()
+  return isE2eFastMode() || isE2eInstantReplayMode()
 }
 
 /**

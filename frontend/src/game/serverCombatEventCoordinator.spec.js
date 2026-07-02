@@ -89,6 +89,11 @@ describe('serverCombatEventCoordinator', () => {
       seq: 6,
       event: { payload: { outcome: 'victory', rounds: 3 } },
     }
+    const nextLogMsg = {
+      type: 'combat.log_batch',
+      seq: 7,
+      event: { payload: sampleBatchPayload() },
+    }
 
     await coordinator.handleCycleComplete(staleComplete, processComplete)
     await coordinator.handleLogBatch(logMsg, replayLog, processComplete)
@@ -96,6 +101,10 @@ describe('serverCombatEventCoordinator', () => {
     expect(processComplete).toHaveBeenCalledWith(staleComplete)
 
     await coordinator.handleCycleComplete(currentComplete, processComplete)
+    expect(processComplete).toHaveBeenCalledTimes(1)
+    expect(coordinator.getDebugState().pendingCycleComplete).toBe(currentComplete)
+
+    await coordinator.handleLogBatch(nextLogMsg, replayLog, processComplete)
     expect(processComplete).toHaveBeenCalledTimes(2)
     expect(processComplete).toHaveBeenCalledWith(currentComplete)
   })
@@ -120,7 +129,7 @@ describe('serverCombatEventCoordinator', () => {
     expect(processComplete).toHaveBeenCalledWith(completeMsg)
   })
 
-  it('does not replay when log_batch lacks encounter or steps', async () => {
+  it('defers cycle_complete when log_batch lacks encounter or steps', async () => {
     const coordinator = createServerCombatEventCoordinator()
     const replayLog = vi.fn(async () => {})
     const processComplete = vi.fn(async () => {})
@@ -133,12 +142,14 @@ describe('serverCombatEventCoordinator', () => {
       event: { payload: { outcome: 'victory' } },
     }
 
-    await coordinator.handleLogBatch(logOnlyMsg, replayLog, processComplete)
+    const result = await coordinator.handleLogBatch(logOnlyMsg, replayLog, processComplete)
     expect(replayLog).not.toHaveBeenCalled()
-    expect(coordinator.getDebugState().logReplayedThisCycle).toBe(true)
+    expect(result).toEqual({ replayed: false, hadLog: true })
+    expect(coordinator.getDebugState().logReplayedThisCycle).toBe(false)
 
     await coordinator.handleCycleComplete(completeMsg, processComplete)
-    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+    expect(processComplete).not.toHaveBeenCalled()
+    expect(coordinator.getDebugState().pendingCycleComplete).toBe(completeMsg)
   })
 
   it('does not replay when steps length mismatches log', async () => {

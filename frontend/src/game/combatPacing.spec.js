@@ -10,6 +10,10 @@ import {
   getRestStepRevealMs,
   isCombatPlaybackInstant,
   isE2eFastMode,
+  isE2eClientAdvanceMode,
+  isE2eInstantReplayMode,
+  shouldSkipClientAdvanceGate,
+  isE2ePollOnlyMode,
   isHiddenTabFastCombat,
   shouldPauseCombatLogWhenHidden,
   REGEN_BAR_SETTLE_MS,
@@ -108,6 +112,29 @@ describe('combatPacing', () => {
       localStorage.setItem('e2eFastCombat', '1')
       vi.stubGlobal('document', { visibilityState: 'hidden' })
       expect(shouldPauseCombatLogWhenHidden()).toBe(false)
+    })
+
+    it('E2E client advance mode enables instant replay without e2eFastCombat', () => {
+      localStorage.setItem('e2eClientAdvance', '1')
+      localStorage.setItem('e2eInstantReplay', '1')
+      expect(isE2eFastMode()).toBe(false)
+      expect(isE2eClientAdvanceMode()).toBe(true)
+      expect(isE2eInstantReplayMode()).toBe(true)
+      expect(shouldSkipClientAdvanceGate()).toBe(false)
+      expect(isCombatPlaybackInstant()).toBe(true)
+      expect(applyCombatPacingDelayMs(3000)).toBe(3000)
+    })
+
+    it('shouldSkipClientAdvanceGate stays true for legacy e2eFastCombat only', () => {
+      localStorage.setItem('e2eFastCombat', '1')
+      expect(shouldSkipClientAdvanceGate()).toBe(true)
+      localStorage.setItem('e2eClientAdvance', '1')
+      expect(shouldSkipClientAdvanceGate()).toBe(false)
+    })
+
+    it('isE2ePollOnlyMode is true for client advance E2E mode', () => {
+      localStorage.setItem('e2eClientAdvance', '1')
+      expect(isE2ePollOnlyMode()).toBe(true)
     })
 
     it('visible tab keeps production pacing', () => {

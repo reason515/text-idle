@@ -2,6 +2,8 @@
  * Server combat WebSocket client and event polling (Path B).
  */
 
+import { isE2ePollOnlyMode } from './combatPacing.js'
+
 function apiBase() {
   return import.meta.env.DEV ? '/api' : ''
 }
@@ -59,10 +61,7 @@ export function createCombatStream(opts) {
   /** @type {Promise<void>} */
   let pollChain = Promise.resolve()
   let lastProcessedSeq = 0
-  const pollMs =
-    typeof localStorage !== 'undefined' && localStorage.getItem('e2eFastCombat') === '1'
-      ? 250
-      : 5000
+  const pollMs = isE2ePollOnlyMode() ? 250 : 5000
 
   async function deliverEvent(msg) {
     const seq = Number(msg?.seq) || 0
@@ -109,8 +108,7 @@ export function createCombatStream(opts) {
 
   function connect() {
     closed = false
-    const e2ePollOnly =
-      typeof localStorage !== 'undefined' && localStorage.getItem('e2eFastCombat') === '1'
+    const e2ePollOnly = isE2ePollOnlyMode()
     if (e2ePollOnly) {
       pollTimer = setInterval(pollEvents, pollMs)
       pollEvents()
