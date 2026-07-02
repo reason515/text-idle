@@ -30,7 +30,7 @@ TickUser:
   WebSocket broadcast (if connected)
 ```
 
-**Wall-clock between cycles:** `next_tick_at += EstimateVisibleCycleMs(cycle result)` — mirrors visible log pacing in [combatPacing.js](../../frontend/src/game/combatPacing.js) for **timing only**; `combatActionSteps` and rest steps come from the combat engine, not the estimate.
+**Wall-clock between cycles (online):** After each tick the scheduler sets `next_tick_at` to a client-resume gate; the **next** cycle runs only when the browser calls `POST /combat/advance` after finishing log replay. The 1s scheduler still picks up brand-new accounts (`next_tick_at=now`) and E2E (`TEXT_IDLE_E2E=1` keeps short delays). Offline catch-up runs inside `POST /combat/resume` when wall time since `last_tick_at` exceeds `last_cycle_delay_ms`.
 
 ---
 
@@ -112,7 +112,8 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 | PATCH | `/save/player` | Whitelist player edits |
 | PUT | `/save` | Rejected if authoritative fields change (legacy clients) |
 | POST | `/combat/pause` | `status=paused` |
-| POST | `/combat/resume` | `status=running`, `next_tick_at=now` |
+| POST | `/combat/resume` | `status=running`; offline catch-up while client-gated; does **not** arm scheduler |
+| POST | `/combat/advance` | Run next combat cycle after client log replay completes |
 | GET | `/combat/status` | Lightweight combat state |
 | GET | `/combat/events?since=` | Event replay |
 | GET | `/combat/ws` | WebSocket stream (JWT) |
@@ -127,7 +128,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 - On `/main` load, restore pause UI from embedded `combatState.status`; call `POST /combat/resume` only when the client is not paused.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
-- **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/resume` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client polls and resumes if not paused. Background tabs use the same log-step pacing as foreground (no client-side instant replay); server ticks continue independently.
+- **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/advance` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client **polls only** (no advance/resume). Background tabs **pause** log replay until visible again.
 
 ### 7.1 Offline combat summary (return visit)
 

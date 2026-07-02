@@ -174,3 +174,12 @@ export async function resumeServerCombat(token) {
   })
   return res.ok || res.status === 204
 }
+
+/** Run the next server combat cycle after client log replay completes. */
+export async function advanceServerCombat(token) {
+  const res = await fetch(`${apiBase()}/combat/advance`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.ok || res.status === 204
+}

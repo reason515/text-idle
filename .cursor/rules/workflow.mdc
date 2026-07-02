@@ -61,7 +61,8 @@ Skip an artifact only if it **truly does not apply**, and state **`N/A: <one-lin
 
 1. Which rows in **Path → artifact triggers** applied to this task?
 2. For each applicable row: updated artifact, or **N/A** with reason?
-3. Ran `npm run test` in `frontend/` when `frontend/src` changed? Ran `go test ./...` when Go changed? Ran `npm run e2e` when E2E was required (not N/A)?
+3. Completed **test-coverage-gate.mdc** decision (unit / E2E / N/A) and ran required commands until pass?
+4. Ran `npm run test` in `frontend/` when `frontend/src` changed? Ran `go test ./...` when Go changed? Ran `npm run e2e` when E2E was required (not N/A)?
 
 ### Final response to the user (required)
 

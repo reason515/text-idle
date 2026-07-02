@@ -2946,6 +2946,7 @@ import {
   getRestStepRevealMs,
   isCombatPlaybackInstant,
   isE2eFastMode,
+  shouldPauseCombatLogWhenHidden,
   REGEN_BAR_SETTLE_MS,
   REGEN_HERO_STAGGER_MS,
 } from '../game/combatPacing.js'
@@ -3008,7 +3009,7 @@ import {
   getPendingExpansionRecruit,
   getCombatStateSummary,
 } from '../game/playerSave.js'
-import { createCombatStream, pauseServerCombat, resumeServerCombat } from '../game/combatStream.js'
+import { createCombatStream, pauseServerCombat, resumeServerCombat, advanceServerCombat } from '../game/combatStream.js'
 import {
   createServerCombatEventCoordinator,
   normalizeCycleCompletePayload,
@@ -4986,18 +4987,22 @@ async function waitWhilePaused() {
   }
 }
 
+async function waitWhileTabHidden() {
+  while (isRunning.value && shouldPauseCombatLogWhenHidden()) {
+    await sleepMs(200, true)
+  }
+}
+
 async function sleepMsRespectingPause(ms) {
   let remaining = ms
   while (remaining > 0 && isRunning.value) {
+    await waitWhileTabHidden()
     if (isPaused.value) {
       await sleepMs(200, true)
       continue
     }
     const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    // Hidden tabs throttle short timers; use one full wait and subtract real elapsed
-    // time so pacing tracks wall clock without flooding the microtask queue.
-    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
-    const chunk = isHidden ? remaining : Math.min(200, remaining)
+    const chunk = Math.min(200, remaining)
     await sleepMs(chunk)
     const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
     remaining -= Math.max(1, endedAt - startedAt)
@@ -5587,7 +5592,7 @@ async function scheduleNextServerCombatPoll() {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
   if (!token) return
   try {
-    await resumeServerCombat(token)
+    await advanceServerCombat(token)
     await combatStream.pollEvents()
   } catch {
     // Next poll interval will retry.
@@ -5918,7 +5923,7 @@ function installCombatVisibilityRecovery() {
   if (typeof document === 'undefined' || onCombatVisibilityChange) return
   onCombatVisibilityChange = () => {
     if (document.visibilityState !== 'visible' || isPaused.value || !combatStream) return
-    void scheduleNextServerCombatPoll()
+    void combatStream.pollEvents()
   }
   document.addEventListener('visibilitychange', onCombatVisibilityChange)
 }

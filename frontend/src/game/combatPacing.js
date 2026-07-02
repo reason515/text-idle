@@ -69,8 +69,8 @@ export function isE2eFastMode() {
 }
 
 /**
- * True when the browser tab is hidden. Used for audio muting and deferring non-essential
- * UI (scroll, float animations). Does not change combat log step pacing — see 03-combat.md.
+ * True when the browser tab is hidden. Used for audio muting, deferring non-essential
+ * UI (scroll, float animations), and pausing combat log replay — see 03-combat.md.
  *
  * @returns {boolean}
  */
@@ -81,6 +81,14 @@ export function isHiddenTabFastCombat() {
     /* document may be unavailable */
   }
   return false
+}
+
+/**
+ * Pause combat log / rest replay while the tab is in the background (not E2E fast mode).
+ * @returns {boolean}
+ */
+export function shouldPauseCombatLogWhenHidden() {
+  return isHiddenTabFastCombat() && !isE2eFastMode()
 }
 
 /**

@@ -14,6 +14,16 @@ import (
 
 const offlineCapHours = 24
 
+// clientResumeGateDuration blocks scheduler auto-ticks until the client calls Advance
+// after finishing log replay (online display-synced pacing).
+const clientResumeGateDuration = 100 * 365 * 24 * time.Hour
+
+const maxOfflineCatchUpTicks = 100
+
+func isAwaitingClientResume(nextTickAt, now time.Time) bool {
+	return nextTickAt.Sub(now) > 7*24*time.Hour
+}
+
 // CombatLoopService runs one server combat tick for a user.
 type CombatLoopService struct {
 	saveService      *SaveService
@@ -190,7 +200,12 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 		delay = time.Second
 	}
 	state.LastTickAt = now
-	state.NextTickAt = now.Add(delay)
+	state.LastCycleDelayMs = int64(delay / time.Millisecond)
+	if os.Getenv("TEXT_IDLE_E2E") == "1" {
+		state.NextTickAt = now.Add(delay)
+	} else {
+		state.NextTickAt = now.Add(clientResumeGateDuration)
+	}
 	state.RngSeed = result.NextRngSeed
 	state.UpdatedAt = now
 
@@ -273,9 +288,46 @@ func (s *CombatLoopService) Resume(userID uint, now time.Time) error {
 		state.Status = model.CombatStatusRunning
 	}
 	state.PausedAt = nil
-	state.NextTickAt = now
 	state.UpdatedAt = now
-	return s.combatStateRepo.Upsert(state)
+	if err := s.combatStateRepo.Upsert(state); err != nil {
+		return err
+	}
+	return s.catchUpMissedTicks(userID, now)
+}
+
+// Advance runs the next combat cycle after the client finishes displaying the prior one.
+func (s *CombatLoopService) Advance(userID uint, now time.Time) error {
+	return s.tickUser(userID, now, true, false)
+}
+
+func (s *CombatLoopService) catchUpMissedTicks(userID uint, now time.Time) error {
+	for i := 0; i < maxOfflineCatchUpTicks; i++ {
+		state, err := s.combatStateRepo.GetByUserID(userID)
+		if err != nil {
+			return err
+		}
+		if state.Status == model.CombatStatusPaused || state.Status == model.CombatStatusEmptySquad {
+			return nil
+		}
+		if !isAwaitingClientResume(state.NextTickAt, now) {
+			return nil
+		}
+		delay := time.Duration(state.LastCycleDelayMs) * time.Millisecond
+		if delay < time.Second {
+			delay = time.Second
+		}
+		schedulableUntil := state.LastTickAt.Add(offlineCapHours * time.Hour)
+		if now.After(schedulableUntil) {
+			return nil
+		}
+		if now.Before(state.LastTickAt.Add(delay)) {
+			return nil
+		}
+		if err := s.tickUser(userID, now, true, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *CombatLoopService) ensureState(userID uint, now time.Time) (*model.PlayerCombatState, error) {

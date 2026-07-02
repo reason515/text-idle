@@ -8,7 +8,7 @@ alwaysApply: true
 **Before ANY implementation, you MUST:**
 
 1. [ ] Read `workflow.mdc` **Doc and Test Sync** and **Path → artifact triggers** for files you will touch
-2. [ ] Confirm: Unit tests for changed logic; E2E when triggers in `workflow.mdc` require it (or N/A with reason)
+2. [ ] Read `test-coverage-gate.mdc` — decide unit / E2E / N/A; add tests and run until pass when required
 3. [ ] Confirm: Will ALL code use ASCII only? (No Chinese in source)
 4. [ ] Confirm: Which **docs and Examples** must move? (`docs/design/`, `docs/requirements-format.md`, `design-change-impact.md` per triggers)
 5. [ ] Confirm: Final reply will include the **Sync summary** block (mandatory; see `workflow.mdc`)
@@ -38,6 +38,7 @@ A task is NOT complete until:
 ## TDD / Test Requirements
 
 - Prefer tests before implementation
+- **Gate:** follow `test-coverage-gate.mdc` on every change — decide, add if needed, run until pass
 - Unit tests: `frontend/src/**/*.spec.js` (Vitest)
 - E2E tests: `e2e/browser/*.spec.js` (Playwright)
-- Run: `npm run test` (frontend), `npm run e2e` (root)
+- Run: `npm run test` (frontend), `go test ./...` (Go), `npm run e2e` (root, when E2E required)

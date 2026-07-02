@@ -471,7 +471,43 @@ func TestCombatLoopService_SyncCombatStateFromSave_whilePaused_fillsSquad(t *tes
 	}
 }
 
-func TestCombatLoopService_Resume_setsNextTickAtNow(t *testing.T) {
+func TestCombatLoopService_Advance_runsNextTickWhenClientGated(t *testing.T) {
+	h := setupCombatLoopHarness(t, "advance@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(clientResumeGateDuration)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	goldBefore := saveGold(t, h.saveService, h.userID)
+	if err := h.loop.Advance(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	after, err := h.saveService.GetSave(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(after, &m); err != nil {
+		t.Fatal(err)
+	}
+	stats, _ := m["playerStats"].(map[string]interface{})
+	steps, _ := stats["combatActionSteps"].(float64)
+	if steps <= 0 {
+		t.Fatalf("expected progress after advance, steps=%v goldBefore=%v", steps, goldBefore)
+	}
+	state, _ = h.combatStateRepo.GetByUserID(h.userID)
+	if !isAwaitingClientResume(state.NextTickAt, now) {
+		t.Fatalf("expected client resume gate after advance tick, next_tick_at=%v", state.NextTickAt)
+	}
+}
+
+func TestCombatLoopService_Resume_doesNotArmSchedulerWhenClientGated(t *testing.T) {
 	h := setupCombatLoopHarness(t, "resume@test.com")
 	save := loadFixtureSave(t)
 	h.seedSave(t, save)
@@ -479,25 +515,25 @@ func TestCombatLoopService_Resume_setsNextTickAtNow(t *testing.T) {
 	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
 		t.Fatal(err)
 	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(clientResumeGateDuration)
+	state.LastCycleDelayMs = 60_000
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
 	if err := h.loop.Pause(h.userID, now); err != nil {
 		t.Fatal(err)
 	}
-	future := now.Add(2 * time.Hour)
-	if err := h.loop.Resume(h.userID, future); err != nil {
+	if err := h.loop.Resume(h.userID, now); err != nil {
 		t.Fatal(err)
 	}
-	due, err := h.combatStateRepo.ListDue(future.Add(time.Second), 10)
+	due, err := h.combatStateRepo.ListDue(now.Add(time.Second), 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := false
 	for _, row := range due {
 		if row.UserID == h.userID {
-			found = true
-			break
+			t.Fatalf("expected user not scheduler-due after unpause while client gated, due=%+v", due)
 		}
-	}
-	if !found {
-		t.Fatalf("expected user due after resume, due=%+v", due)
 	}
 }

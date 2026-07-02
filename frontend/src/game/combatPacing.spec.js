@@ -11,6 +11,7 @@ import {
   isCombatPlaybackInstant,
   isE2eFastMode,
   isHiddenTabFastCombat,
+  shouldPauseCombatLogWhenHidden,
   REGEN_BAR_SETTLE_MS,
   REGEN_HERO_STAGGER_MS,
   waitWallClockMs,
@@ -100,6 +101,13 @@ describe('combatPacing', () => {
       expect(isCombatPlaybackInstant()).toBe(false)
       expect(applyCombatPacingDelayMs(3000)).toBe(3000)
       expect(getDefeatBeforeRestPauseMs()).toBe(COMBAT_PACING_MS.defeatBeforeRest)
+      expect(shouldPauseCombatLogWhenHidden()).toBe(true)
+    })
+
+    it('E2E fast mode does not pause log replay when tab hidden', () => {
+      localStorage.setItem('e2eFastCombat', '1')
+      vi.stubGlobal('document', { visibilityState: 'hidden' })
+      expect(shouldPauseCombatLogWhenHidden()).toBe(false)
     })
 
     it('visible tab keeps production pacing', () => {

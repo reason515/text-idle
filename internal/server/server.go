@@ -67,6 +67,7 @@ func NewApp(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *Ap
 	r.GET("/combat/events", authMw, combatHandler.Events)
 	r.POST("/combat/pause", authMw, combatHandler.Pause)
 	r.POST("/combat/resume", authMw, combatHandler.Resume)
+	r.POST("/combat/advance", authMw, combatHandler.Advance)
 	r.GET("/combat/ws", wsAuthMw, combatHandler.WebSocket)
 	r.POST("/debug/combat/tick", authMw, combatHandler.DebugTick)
 

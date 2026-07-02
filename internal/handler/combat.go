@@ -85,6 +85,15 @@ func (h *CombatHandler) Resume(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *CombatHandler) Advance(c *gin.Context) {
+	userID := c.GetUint(middleware.UserIDKey)
+	if err := h.loopService.Advance(userID, time.Now()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *CombatHandler) WebSocket(c *gin.Context) {
 	userID := c.GetUint(middleware.UserIDKey)
 	conn, err := combatUpgrader.Upgrade(c.Writer, c.Request, nil)

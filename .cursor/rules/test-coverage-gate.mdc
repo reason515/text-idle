@@ -1,0 +1,56 @@
+---
+description: Mandatory unit/E2E test decision on every code change; add tests and run until pass
+alwaysApply: true
+---
+
+# Test Coverage Gate (MANDATORY)
+
+**Every implementation task** (bug fix, feature, refactor with behavior change) MUST include an explicit **test decision** before closing. Path-specific triggers live in `workflow.mdc`; this rule is the enforceable gate.
+
+## 1. Decide (required for every change)
+
+Answer these **in order** after editing code:
+
+| Question | If yes |
+|----------|--------|
+| Did behavior, formulas, API contracts, or edge cases change in `frontend/src/**` logic? | **Vitest** — add/extend `*.spec.js` next to the module or under the same package path |
+| Did behavior change in `**/*.go`? | **Go unit tests** — add/extend `*_test.go` in the touched package |
+| Did user-visible flow, routing, battle log text, or main-screen UI assertions change? | **E2E** — add/extend `e2e/browser/*.spec.js` (see `e2e-browser.mdc`) |
+| Docs-only, comment-only, dependency-only, or pure rename with zero behavior change? | **Tests N/A** — one-line reason in Sync summary |
+
+When unsure, **add a unit test** rather than skip. E2E N/A is acceptable when UI strings and flows are unchanged (state why).
+
+## 2. Implement tests in the same change set
+
+- **Frontend unit**: colocate `frontend/src/**/*.spec.js`; mirror patterns in existing specs
+- **Backend unit**: colocate `*_test.go`; table-driven where the package already does
+- **E2E**: follow `text-idle-add-e2e-test` skill / `e2e-browser.mdc`; reuse `testHelpers.js`
+
+Do not defer tests to a follow-up task.
+
+## 3. Run and fix until pass (hard gate)
+
+Run what applies; fix failures before marking the task done:
+
+| Changed | Command (from repo root unless noted) |
+|---------|----------------------------------------|
+| `frontend/src/**` | `cd frontend; npm run test` |
+| `**/*.go` | `go test ./...` or scoped package path |
+| E2E required (not N/A) | `npm run e2e` (releases ports via script) |
+
+If a test fails: fix product code or test expectations; **re-run** until green. Do not close with failing or unrun required tests.
+
+## 4. Report in Sync summary
+
+Always include in the final reply (see `workflow.mdc`):
+
+- **Unit tests**: files added/updated, or **N/A: reason**
+- **E2E**: files added/updated, or **N/A: reason**
+- **Commands run**: e.g. `npm run test PASS`; `go test ./internal/service/... PASS`; `npm run e2e` skipped — why
+
+## Prohibited
+
+- Shipping behavior changes with no test decision documented
+- Claiming N/A without a concrete one-line reason
+- Skipping test commands when the table in section 3 applies
+- Leaving red tests for the user to fix

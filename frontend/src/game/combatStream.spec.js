@@ -3,6 +3,7 @@ import {
   createCombatStream,
   sortCombatStreamEvents,
   debugCombatTick,
+  advanceServerCombat,
   pauseServerCombat,
   resumeServerCombat,
 } from './combatStream.js'
@@ -129,12 +130,14 @@ describe('combatStream', () => {
     )
   })
 
-  it('pauseServerCombat and resumeServerCombat hit combat endpoints', async () => {
+  it('pauseServerCombat, resumeServerCombat, and advanceServerCombat hit combat endpoints', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     expect(await pauseServerCombat('t1')).toBe(true)
     expect(await resumeServerCombat('t1')).toBe(true)
+    expect(await advanceServerCombat('t1')).toBe(true)
     expect(fetchMock.mock.calls[0][0]).toContain('/combat/pause')
     expect(fetchMock.mock.calls[1][0]).toContain('/combat/resume')
+    expect(fetchMock.mock.calls[2][0]).toContain('/combat/advance')
   })
 })

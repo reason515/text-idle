@@ -15,6 +15,7 @@ type PlayerCombatState struct {
 	Status           string     `gorm:"not null;default:running" json:"status"`
 	NextTickAt       time.Time  `gorm:"not null;index" json:"next_tick_at"`
 	LastTickAt       time.Time  `gorm:"not null" json:"last_tick_at"`
+	LastCycleDelayMs int64      `gorm:"not null;default:1000" json:"last_cycle_delay_ms"`
 	RngSeed          uint64     `gorm:"not null;default:0" json:"rng_seed"`
 	CombatVersion    int        `gorm:"not null;default:1" json:"combat_version"`
 	PausedAt         *time.Time `json:"paused_at,omitempty"`
