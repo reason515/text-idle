@@ -140,4 +140,59 @@ describe('combatStream', () => {
     expect(fetchMock.mock.calls[1][0]).toContain('/combat/resume')
     expect(fetchMock.mock.calls[2][0]).toContain('/combat/advance')
   })
+
+  it('advanceServerCombat throws when the server rejects the request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404 })))
+    await expect(advanceServerCombat('t1')).rejects.toThrow('combat advance failed: 404')
+  })
+
+  it('pollEvents skips duplicate seq on second delivery', async () => {
+    const seen = []
+    const fullBatchPayload = JSON.stringify({
+      payload: {
+        log: [{ round: 1, action: 'basic', actorClass: 'Warrior', targetTier: 'normal' }],
+        encounter: {
+          monsters: [{ id: 'm1', name: 'Goblin', maxHP: 20, currentHP: 20, debuffs: [] }],
+          heroes: [{ id: 'h1', name: 'Hero', maxHP: 100, currentHP: 100, maxMP: 50, currentMP: 50, debuffs: [], buffs: [] }],
+        },
+        steps: [
+          {
+            monsters: [{ id: 'm1', maxHP: 20, currentHP: 15, debuffs: [] }],
+            heroes: [{ id: 'h1', maxHP: 100, currentHP: 100, maxMP: 50, currentMP: 50, debuffs: [], buffs: [] }],
+          },
+        ],
+      },
+    })
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        events: [
+          { seq: 3, type: 'combat.log_batch', payload: fullBatchPayload },
+        ],
+      }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: async (msg) => {
+        seen.push(msg.seq)
+      },
+    })
+    await stream.pollEvents()
+    await stream.pollEvents()
+
+    expect(seen).toEqual([3])
+  })
+
+  it('pollEvents calls onAfterPoll after delivering events', async () => {
+    const afterPoll = vi.fn(async () => {})
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: () => {},
+      onAfterPoll: afterPoll,
+    })
+    await stream.pollEvents()
+    expect(afterPoll).toHaveBeenCalledTimes(1)
+  })
 })

@@ -45,7 +45,7 @@ TickUser:
 | `next_tick_at` | When the next full battle cycle may run |
 | `last_tick_at` | Last successful tick timestamp |
 | `rng_seed` | Persisted PRNG state |
-| `combat_version` | Formula/skill version for migrations |
+| `combat_version` | Formula/skill/payload version for migrations (**2** = authoritative `encounter` + `steps` on `log_batch`) |
 | `paused_at` | Set when user pauses |
 | `pending_expansion` | JSON blob for non-blocking recruit offer |
 | `event_seq` | Monotonic event counter per user |
@@ -56,9 +56,19 @@ Recent events for `GET /combat/events?since=` and WS recovery. Trim to last N pe
 
 | Type | Purpose |
 |------|---------|
-| `combat.log_batch` | Combat log slice for online UI (**emitted before** `combat.cycle_complete` on each tick) |
+| `combat.log_batch` | Combat log slice for online UI (**emitted before** `combat.cycle_complete` on each tick). Payload: `{ log, encounter, steps }` — see **3.2.1**. |
 | `combat.cycle_complete` | Outcome, rewards, rest steps, exploration delta |
 | `combat.pending_expansion` | Expansion recruit available (non-blocking) |
+
+#### 3.2.1 `combat.log_batch` payload (`combat_version` ≥ 2)
+
+| Field | Role |
+|-------|------|
+| `log` | Narrative combat log (text, SFX, floats); **not** the HP bar data source |
+| `encounter` | `{ monsters, heroes }` — full unit snapshot at battle start (static + opening HP/MP) |
+| `steps` | One panel snapshot per log line; `steps.length === log.length`. Dynamic fields only (HP, MP, debuffs, buffs, shield, taunt) merged by unit `id` |
+
+Silent typed rows (e.g. `roundMaintenance` at round end) advance `steps` but produce **no** battle-log line and **no** SFX; pacing treats them as **0ms** reveal. Old payloads without `encounter`/`steps` are not replayed.
 
 ### 3.3 Save JSON extensions
 

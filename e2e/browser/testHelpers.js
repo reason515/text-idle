@@ -448,6 +448,35 @@ async function waitForCombatMonsterPanel(page, timeoutMs = 25000) {
   return monster
 }
 
+/** Monster panel HP must come from encounter snapshot (not 1/1 log-rebuild placeholder). */
+async function assertMonsterHpBarsNotPlaceholder(page) {
+  await page.waitForFunction(
+    () =>
+      typeof window.__e2eGetBuiltMonsters === 'function' &&
+      window.__e2eGetBuiltMonsters().length > 0,
+    null,
+    { timeout: 40000 },
+  )
+  const monsters = await page.evaluate(() => window.__e2eGetBuiltMonsters())
+  expect(monsters.length).toBeGreaterThan(0)
+  for (const m of monsters) {
+    expect(m.maxHP).toBeGreaterThan(1)
+    expect(`${m.currentHP}/${m.maxHP}`).not.toBe('1/1')
+  }
+  const cardVisible = await page.locator('.monster-list .monster-card').first().isVisible().catch(() => false)
+  if (cardVisible) {
+    const bars = page.locator('.monster-list .monster-card .bar-num')
+    const texts = await bars.allTextContents()
+    for (const raw of texts) {
+      const text = raw.trim()
+      expect(text).not.toBe('1/1')
+      const match = text.match(/^(\d+)\/(\d+)$/)
+      expect(match).toBeTruthy()
+      expect(Number(match[2])).toBeGreaterThan(1)
+    }
+  }
+}
+
 async function ensureMonsterCardVisible(page, timeoutMs = 40000) {
   await pauseCombat(page).catch(() => {})
   const deadline = Date.now() + timeoutMs
@@ -959,6 +988,7 @@ module.exports = {
   completeIntroSteps,
   openFirstHeroDetail,
   waitForCombatMonsterPanel,
+  assertMonsterHpBarsNotPlaceholder,
   ensureMonsterCardVisible,
   seedVictoryCapableSquad,
   seedWarriorRageTestSquad,

@@ -150,12 +150,26 @@ describe('combatPacing', () => {
         { log },
         { restSteps: 2, levelUpCount: 0, outcome: 'victory' },
       )
-      // afterEncounter + 3 log lines (before each) + 2 round-end pauses + 2 rest + postBattleGap
       const expected =
         COMBAT_PACING_MS.afterEncounterMessage +
         3 * stepMs +
         2 * stepMs +
         2 * stepMs +
+        COMBAT_PACING_MS.postBattleGap
+      expect(ms).toBe(expected)
+    })
+
+    it('skips step delay for roundMaintenance except round separator', () => {
+      const stepMs = DEFAULT_COMBAT_LOG_STEP_DELAY_MS
+      const log = [
+        { round: 1, action: 'basic' },
+        { round: 1, type: 'roundMaintenance' },
+        { round: 2, action: 'basic' },
+      ]
+      const ms = estimateVisibleBattleCycleMs({ log }, { restSteps: 0, outcome: 'victory' })
+      const expected =
+        COMBAT_PACING_MS.afterEncounterMessage +
+        4 * stepMs +
         COMBAT_PACING_MS.postBattleGap
       expect(ms).toBe(expected)
     })

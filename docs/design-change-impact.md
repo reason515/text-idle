@@ -96,8 +96,8 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | Check | Affected areas | Notes |
 |-------|----------------|-------|
 | **New metrics or event sources** | [13-player-statistics.md](design/13-player-statistics.md) | 唯一步数分母、无按回合**比率**、战斗行动步与休息步、探索步数、展示倍率、清零、每场战斗/休息后更新；**概览 Tab**：`battleCount` / `victoryCount`、胜率饼图；**场次趋势 Tab**：每场战斗行动步数/本场金币/本场经验序列（归一化展示）、图内图例与悬停数值提示、`battleTimeline` 上限与清零；**伤害累计**：`damageByHero` 含 `skillById`（按技能 ID）与各角色构成饼图、悬停显示数值与占比；**受伤累计**：`injuryByHero`（含护盾吸收、敌方普攻物理/魔法与技能构成饼图，见 13 文档 7.6） |
-| **Combat/rest log pacing** | [03-combat.md](design/03-combat.md) 1.3, `combatPacing.js`, MainScreen loop | 战斗日志步间 ms 与 `restStepReveal` 一致（[13-player-statistics.md](design/13-player-statistics.md) 7.5）；战败小结至战后休息前另见 `getDefeatBeforeRestPauseMs`（E2E 快速模式下短真实停顿，与其它 `applyCombatPacingDelayMs` 归零并存）；**死亡惩罚额外休息步**在日志中以 `log-rest-penalty` 与恢复步区分 |
-| **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎事件一致；护盾吸收是否计入「受到的伤害」 |
+| **Combat/rest log pacing** | [03-combat.md](design/03-combat.md) 1.3–1.4, `combatPacing.js`, MainScreen loop | 战斗日志步间 ms 与 `restStepReveal` 一致（[13-player-statistics.md](design/13-player-statistics.md) 7.5）；`roundMaintenance` 不计可见步长；面板 HP 来自 `encounter`+`steps`，非日志反推 |
+| **Combat events** | `combat.js`, skill execution, shield absorb, hit/miss/crit | 统计分母/分子与引擎 `battleStats` 一致；`roundMaintenance` 不影响 `combatActionSteps`；护盾吸收计入「受到的伤害」 |
 | **UI** | [09-social-ui.md](design/09-social-ui.md) Analytics 小节 | 图表/表、入口、Tooltip |
 | **Leaderboard** | `leaderboard_service.go`, `leaderboardTrack`, MainScreen Feed Tab | Rolling last 1000 steps; lifetime ≥ 1000; stats reset does not clear track |
 | **Message board** | `message_board_service.go`, `GET/POST /message-board`, MainScreen Feed Tab | Permanent global messages; team name + timestamp; E2E `message-board.spec.js`; Example 38 |
@@ -108,7 +108,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 
 | Check | Affected areas | Notes |
 |-------|----------------|-------|
-| **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js`, `frontend/src/game/combatLogDefeat.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible**; bind SFX to combat log (encounter, damage, unitDefeated step, summary); **heroDeath** vs **monsterDeath** |
+| **Playback contract** | [14-audio.md](design/14-audio.md), `frontend/src/audio/audioBus.js`, `frontend/src/game/combatLogDefeat.js` | Suppress when `isE2eFastMode()` or user mute; **also suppress when tab not visible**; bind SFX to combat log (encounter, damage, unitDefeated step, summary); **`roundMaintenance` silent**; **heroDeath** vs **monsterDeath** |
 | **Samples & licensing** | `frontend/public/audio/sfx/`, [docs/audio-attributions.md](../audio-attributions.md), `scripts/download-freesound-sfx.ps1` | Freesound CC0 original WAV via OAuth download script; `fs_skill_taunt.mp3` from public HQ preview (not OAuth) |
 | **Preferences** | `audioPreferences.js`, MainScreen modal | `textIdleAudioMuted`, `textIdleAudioMasterVolume`; default master 0.85 |
 | **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 36 | `e2e/browser/audio-settings.spec.js` |
@@ -121,7 +121,7 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 | **Scheduler / combat state** | [15-server-combat-tick.md](design/15-server-combat-tick.md), `internal/model/player_combat_state.go`, `internal/service/combat_scheduler.go` | Central ticker; `next_tick_at`; 24h cap; no client authority |
 | **Go combat engine** | `internal/combat/`, `testdata/combat/` | Parity with Vitest fixtures; `combat_version` bump on formula change |
 | **Save authority** | `internal/service/save_service.go`, `PATCH /save/player`, [playerSave.js](../frontend/src/game/playerSave.js) | Client cannot PATCH gold/stats; server writes on tick |
-| **WebSocket / events** | `internal/handler/combat_ws.go`, `frontend/src/game/combatStream.js` | `combat.cycle_complete`, `combat.pending_expansion` |
+| **WebSocket / events** | `internal/handler/combat_ws.go`, `frontend/src/game/combatStream.js` | `combat.log_batch` carries `{ log, encounter, steps }`; `combat.cycle_complete`, `combat.pending_expansion` |
 | **Recruit non-blocking** | MainScreen squad UI, `pendingExpansionRecruit`, Example 39 | Red dot; no modal await on combat loop; `/character-select` when ready |
 | **Client combat loop removed** | [MainScreen.vue](../frontend/src/views/MainScreen.vue) | No `runCombatLoop` authority; pacing display-only |
 | **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 39, `e2e/browser/server-combat-tick.spec.js` | Example 39 AC1-AC6 + pause reload; pending recruit does not pause |

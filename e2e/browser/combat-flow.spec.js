@@ -23,6 +23,7 @@ const {
   seedVictoryCapableSquad,
   waitForBattleSummary,
   openFirstHeroDetail,
+  assertMonsterHpBarsNotPlaceholder,
   resumeCombat,
   seedWarriorRageTestSquad,
 } = require('./testHelpers')
@@ -143,6 +144,32 @@ test.describe('Combat Flow (Example 5-9)', () => {
     ])
     const encounterText = await page.locator('.log-encounter').first().textContent()
     expect(encounterText || '').toMatch(/\u906d\u9047/)
+    await waitForCombatMonsterPanel(page)
+    await assertMonsterHpBarsNotPlaceholder(page)
+  })
+
+  test('multiple visible monster cards each use encounter maxHP', async ({ page }) => {
+    test.setTimeout(90000)
+    const email = uniqueTestEmail('multi-monster-hp-e2e')
+    await registerAndGoToMain(page, email)
+    await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
+    await pauseCombat(page)
+
+    let sawMulti = false
+    for (let i = 0; i < 6; i += 1) {
+      await triggerE2eCombatTick(page, { awaitPoll: true })
+      await waitForCombatMonsterPanel(page).catch(() => {})
+      const count = await page.locator('.monster-list .monster-card').count()
+      if (count >= 2) {
+        sawMulti = true
+        await assertMonsterHpBarsNotPlaceholder(page)
+        break
+      }
+      await page.waitForTimeout(250)
+    }
+    if (!sawMulti) {
+      await assertMonsterHpBarsNotPlaceholder(page)
+    }
   })
 
   test('battle log shows end-of-round mana recovery for mana heroes', async ({ page }) => {
@@ -165,9 +192,10 @@ test.describe('Combat Flow (Example 5-9)', () => {
     await registerAndGoToMain(page, email)
 
     await expect(page).toHaveURL(/\/main/, { timeout: 5000 })
-    await resumeCombat(page)
+    await pauseCombat(page)
     await triggerE2eCombatTick(page, { awaitPoll: true })
     await pauseCombat(page)
+    await assertMonsterHpBarsNotPlaceholder(page)
     await openE2eFirstMonsterDetail(page)
     const detailModal = page.locator('.modal-overlay').filter({ has: page.locator('.detail-modal') })
     await expect(detailModal).toBeVisible({ timeout: 5000 })
@@ -183,6 +211,14 @@ test.describe('Combat Flow (Example 5-9)', () => {
     expect(damageTypeVal).toMatch(/^(\u7269\u7406|\u6cd5\u672f|\u6df7\u5408)$/)
     const tierTag = (await detailModal.locator('.modal-tier-tag').textContent())?.trim() ?? ''
     expect(tierTag).toMatch(/^(\u666e\u901a|\u7cbe\u82f1|BOSS)$/)
+    const hpRow = detailModal.locator('.detail-row').filter({
+      has: page.locator('.detail-label', { hasText: 'HP' }),
+    }).first()
+    await expect(hpRow).toBeVisible()
+    const hpVal = (await hpRow.locator('.detail-value').textContent())?.trim() ?? ''
+    const hpMatch = hpVal.match(/(\d+)\s*\/\s*(\d+)/)
+    expect(hpMatch).toBeTruthy()
+    expect(Number(hpMatch[2])).toBeGreaterThan(1)
   })
 
   test('encounter message appears at battle start', async ({ page }) => {

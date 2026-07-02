@@ -229,6 +229,16 @@ describe('audioBus', () => {
     expect(filters.some((f) => f.type === 'highpass')).toBe(true)
   })
 
+  it('playCombatLogLineSound is silent for roundMaintenance', () => {
+    localStorage.removeItem('e2eFastCombat')
+    setAudioMuted(false)
+    tabVisibilityState = 'visible'
+    playCombatLogLineSound({ type: 'roundMaintenance', round: 1 })
+    const ctx = getOrCreateAudioContext()
+    expect(ctx.createBufferSource).not.toHaveBeenCalled()
+    expect(ctx.createOscillator).not.toHaveBeenCalled()
+  })
+
   it('playCombatDamageLineSound magic schedules synthesis', () => {
     playCombatDamageLineSound({
       targetId: 'm',

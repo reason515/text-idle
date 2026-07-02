@@ -15,6 +15,12 @@ import {
   SPELL_BASIC_ATTACK_COEFF,
   SPELL_MULTIPLIER_K,
 } from './damageUtils.js'
+import { serializeEncounter, serializePanelStep } from './combatDisplayState.js'
+import {
+  createBattleStatsAccumulator,
+  recordHeroDamageToMonster,
+  recordMonsterDamageToHero,
+} from './combatBattleStats.js'
 import {
   getAnyWarriorSkillById,
   getSkillWithEnhancements,
@@ -1086,7 +1092,7 @@ function heroMitigationNoteKind(actor, damageType) {
   return null
 }
 
-function heroCombatStats(hero) {
+export function heroCombatStats(hero) {
   const maxHP = computeHeroMaxHP(hero)
   const maxMP = computeHeroMaxMP(hero)
   const eq = getEquipmentBonuses(hero?.equipment)
@@ -1536,7 +1542,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       monsterIntendedTargetIds[m.id] = nextId
       const prevHero = prevId != null ? heroes.find((h) => h.id === prevId) : null
       const newHero = heroes.find((h) => h.id === nextId)
-      log.push({
+      pushCombatLog({
         round,
         type: 'monsterTargetIntent',
         monsterId: m.id,
@@ -1555,11 +1561,46 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
   }
 
   const log = []
+  const steps = []
+  const battleStats = createBattleStatsAccumulator()
+  const encounter = serializeEncounter(monsterUnits, heroUnits)
   const turnActedByRound = {}
   let round = 1
   let initialOrder = []
   /** One per living unit turn slot in round order (design: combat action step). */
   let combatActionSteps = 0
+
+  function recordStatsForLogEntry(entry) {
+    if (!entry || entry.type != null) return
+    if (entry.isMiss === true) return
+    const fd = Math.floor(Number(entry.finalDamage) || 0)
+    if (fd <= 0) return
+    if (entry.actorClass && entry.targetTier != null && entry.actorId) {
+      recordHeroDamageToMonster(battleStats, {
+        actorId: entry.actorId,
+        action: entry.action,
+        skillId: entry.skillId,
+        finalDamage: fd,
+        isMiss: entry.isMiss,
+      })
+    }
+    if (entry.actorTier != null && entry.targetClass && entry.targetId) {
+      recordMonsterDamageToHero(battleStats, {
+        targetId: entry.targetId,
+        action: entry.action,
+        skillId: entry.skillId,
+        finalDamage: fd,
+        damageType: entry.damageType,
+        isMiss: entry.isMiss,
+      })
+    }
+  }
+
+  function pushCombatLog(entry) {
+    log.push(entry)
+    steps.push(serializePanelStep(heroUnits, monsterUnits))
+    recordStatsForLogEntry(entry)
+  }
 
   /**
    * Log seal rider holy damage as a separate line when Seal of Righteousness is active.
@@ -1572,7 +1613,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     if (!rider || rider.finalDamage <= 0) return
     const riderThreatMult = getEffectiveThreatMultiplierForHero(paladin, 1)
     addThreatFromDamage(threat, target.id, paladin.id, rider.finalDamage, 1, paladin)
-    log.push({
+    pushCombatLog({
       round,
       actorId: paladin.id,
       actorName: paladin.name,
@@ -1992,8 +2033,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound
       if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType
     }
-    if (pendingOtEntry) log.push(pendingOtEntry)
-    log.push(logEntry)
+    if (pendingOtEntry) pushCombatLog(pendingOtEntry)
+    pushCombatLog(logEntry)
     if (
       actor.side === 'hero' &&
       actor.class === 'Paladin' &&
@@ -2033,7 +2074,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       tacticsConditionWhenRequiresPickedTarget(baCond) &&
       !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)
     ) {
-      log.push({
+      pushCombatLog({
         round,
         type: 'actionSkipped',
         skipReason: 'tactics-gate',
@@ -2065,7 +2106,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       if (actor.currentHP <= 0) continue
       combatActionSteps += 1
       if (consumeFreezeTurn(actor)) {
-        log.push({
+        pushCombatLog({
           round,
           type: 'actionSkipped',
           skipReason: 'freeze',
@@ -2079,7 +2120,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         continue
       }
       if (consumeStunTurn(actor)) {
-        log.push({
+        pushCombatLog({
           round,
           type: 'actionSkipped',
           skipReason: 'stun',
@@ -2154,7 +2195,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             })
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2211,7 +2252,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             applyTauntThreatBoost(threat, target.id, actor.id, heroUnits)
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2309,7 +2350,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
                 entry.threatAmount = Math.round(firstHit.finalDamage * mult)
                 entry.threatTargetName = firstHit.target.name
               }
-              log.push(entry)
+              pushCombatLog(entry)
               usedSkill = true
               break
             }
@@ -2401,7 +2442,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.debuffArmorReduction = sr.debuffArmorReduction
               entry.debuffDuration = sr.debuffDuration
             }
-            log.push(entry)
+            pushCombatLog(entry)
             usedSkill = true
             break
           }
@@ -2552,7 +2593,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.threatAmount = firstHit.finalDamage
               entry.threatTargetName = firstHit.targetName
             }
-            log.push(entry)
+            pushCombatLog(entry)
             usedSkill = true
             break
           }
@@ -2629,7 +2670,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             entry.threatAmount = sr.finalDamage
             entry.threatTargetName = mageTarget.name
           }
-          log.push(entry)
+          pushCombatLog(entry)
           usedSkill = true
           break
         }
@@ -2731,7 +2772,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.threatBeneficiaryName = priestTarget.name
               entry.threatBeneficiaryClass = priestTarget.class || null
             }
-            log.push(entry)
+            pushCombatLog(entry)
             emitMonsterIntentChangesIfNeeded({ preStableIntentIds })
             usedSkill = true
             break
@@ -2749,7 +2790,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               sr.absorbAmount,
               monsterLastTarget
             )
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2784,7 +2825,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               if (before > 0) cleared += before
               threat[m.id][actor.id] = 0
             }
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2814,7 +2855,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             if (sr.finalDamage > 0) {
               addThreatFromDamage(threat, priestTarget.id, actor.id, sr.finalDamage, 1)
             }
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2904,7 +2945,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
             const sr = executeBearForm(actor, skill)
             if (!actor.skillCooldowns) actor.skillCooldowns = {}
             actor.skillCooldowns[skillId] = round
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2950,7 +2991,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
 
           if (skillId === 'rejuvenation') {
             const sr = executeRejuvenation(actor, druidTarget, skill, { rng })
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -2994,7 +3035,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               actor
             )
             const healThreatMult = getEffectiveThreatMultiplierForHero(actor, 1.0)
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -3094,7 +3135,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.threatAmount = Math.round(sr.finalDamage * getEffectiveThreatMultiplierForHero(actor, baseThreatMult))
               entry.threatTargetName = druidTarget.name
             }
-            log.push(entry)
+            pushCombatLog(entry)
             usedSkill = true
             break
           }
@@ -3145,7 +3186,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           if (skillId === 'seal-of-righteousness') {
             if (paladinCond && !checkCondition(paladinCond, actor, null, heroUnits, monsterUnits, ctx)) continue
             const sr = executeSealOfRighteousness(actor, skill)
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -3194,7 +3235,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               }
             }
             const firstHit = sr.hits[0]
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -3263,7 +3304,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               sr.heal,
               monsterLastTarget
             )
-            log.push({
+            pushCombatLog({
               round,
               actorId: actor.id,
               actorName: actor.name,
@@ -3374,7 +3415,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
               entry.threatTargetName = paladinTarget.name
               appendSealRiderLog(actor, paladinTarget)
             }
-            log.push(entry)
+            pushCombatLog(entry)
             usedSkill = true
             break
           }
@@ -3437,7 +3478,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
           tacticsConditionWhenRequiresPickedTarget(baCond) &&
           !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)
         ) {
-          log.push({
+          pushCombatLog({
             round,
             type: 'actionSkipped',
             skipReason: 'tactics-gate',
@@ -3468,7 +3509,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         const hpBefore = unit.currentHP
         const dotShieldCasterId = unit.shield?.casterId ?? null
         const sr = applyDamageToShieldedUnit(unit, dotDamage)
-        log.push({
+        pushCombatLog({
           round,
           type: 'dot',
           targetId: unit.id,
@@ -3512,7 +3553,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         const actualHeal = unit.currentHP - hpBefore
         if (actualHeal <= 0) continue
         const caster = heroUnits.find((x) => x.id === h.casterId)
-        log.push({
+        pushCombatLog({
           round,
           type: 'hot',
           targetId: unit.id,
@@ -3583,7 +3624,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         })
       }
       if (manaRegenUpdates.length > 0) {
-        log.push({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
+        pushCombatLog({ round, type: 'manaRegenBatch', updates: manaRegenUpdates })
       }
 
       const hpRegenUpdates = []
@@ -3607,7 +3648,7 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
         })
       }
       if (hpRegenUpdates.length > 0) {
-        log.push({ round, type: 'hpRegenBatch', updates: hpRegenUpdates })
+        pushCombatLog({ round, type: 'hpRegenBatch', updates: hpRegenUpdates })
       }
     }
 
@@ -3626,6 +3667,8 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
       tickHeroBuffs(unit)
     }
 
+    pushCombatLog({ round, type: 'roundMaintenance' })
+
     round += 1
   }
 
@@ -3640,6 +3683,9 @@ export function runAutoCombat({ heroes, monsters, rng = Math.random, maxRounds =
     rounds: round - 1,
     combatActionSteps,
     log,
+    steps,
+    encounter,
+    battleStats,
     initialOrder,
     turnActedByRound,
     rewards: outcome === 'victory' ? rewardForVictory(monsterUnits, heroes, rng) : { exp: 0, gold: 0, equipment: [] },

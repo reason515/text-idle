@@ -17,7 +17,7 @@ type PlayerCombatState struct {
 	LastTickAt       time.Time  `gorm:"not null" json:"last_tick_at"`
 	LastCycleDelayMs int64      `gorm:"not null;default:1000" json:"last_cycle_delay_ms"`
 	RngSeed          uint64     `gorm:"not null;default:0" json:"rng_seed"`
-	CombatVersion    int        `gorm:"not null;default:1" json:"combat_version"`
+	CombatVersion    int        `gorm:"not null;default:2" json:"combat_version"`
 	PausedAt         *time.Time `json:"paused_at,omitempty"`
 	PendingExpansion *string    `gorm:"type:text" json:"pending_expansion,omitempty"`
 	EventSeq         int64      `gorm:"not null;default:0" json:"event_seq"`

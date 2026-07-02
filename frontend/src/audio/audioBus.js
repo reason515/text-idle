@@ -1591,6 +1591,7 @@ function playSkillCategory(ctx, category, gainScale = 1) {
 export function playCombatLogLineSound(entry) {
   if (!canPlayCombatSfx()) return
   if (entry == null || entry.type === 'manaRegenBatch' || entry.type === 'unitDefeated') return
+  if (entry.type === 'roundMaintenance') return
   if (entry.type === 'monsterTargetIntent' || entry.type === 'ot') {
     playMonsterTargetSwitchSound()
     return

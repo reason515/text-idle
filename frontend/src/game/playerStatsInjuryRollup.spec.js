@@ -144,4 +144,23 @@ describe('playerStatsInjuryRollup', () => {
   it('returns empty object for non-array', () => {
     expect(rollupHeroInjuryFromBattleLog(null)).toEqual({})
   })
+
+  it('ignores typed log rows including roundMaintenance', () => {
+    const log = [
+      {
+        actorId: 'm1',
+        actorTier: 'normal',
+        targetId: 'h1',
+        targetClass: 'Warrior',
+        action: 'basic',
+        damageType: 'physical',
+        finalDamage: 9,
+      },
+      { round: 1, type: 'roundMaintenance' },
+      { round: 1, type: 'hpRegenBatch', updates: [] },
+    ]
+    expect(rollupHeroInjuryFromBattleLog(log)).toEqual({
+      h1: { basic: 9, basicPhysical: 9, basicMagic: 0, skill: 0 },
+    })
+  })
 })

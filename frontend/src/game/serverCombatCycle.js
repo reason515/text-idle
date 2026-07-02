@@ -20,8 +20,6 @@ import {
   applyBattleToPlayerStats,
   applyRestToPlayerStats,
 } from './playerStatistics.js'
-import { rollupHeroDamageFromBattleLog } from './playerStatsDamageRollup.js'
-import { rollupHeroInjuryFromBattleLog } from './playerStatsInjuryRollup.js'
 import {
   applyBattleToLeaderboardTrack,
   applyRestToLeaderboardTrack,
@@ -29,6 +27,7 @@ import {
 } from './leaderboardTrack.js'
 import { estimateVisibleBattleCycleMs } from './combatPacing.js'
 import { INVENTORY_MAX } from './inventory.js'
+import { battleStatsToDeltas } from './combatBattleStats.js'
 
 function getSquadMaxLevel(squad) {
   if (!Array.isArray(squad) || squad.length === 0) return 1
@@ -137,6 +136,7 @@ export function runServerCombatCycle(save, opts = {}) {
   })
 
   const result = runAutoCombat({ heroes: squad, monsters, rng })
+  const { damageByHeroDelta, injuryByHeroDelta } = battleStatsToDeltas(result.battleStats)
 
   let levelUpCount = 0
   let restStepsThisBattle = 0
@@ -187,8 +187,8 @@ export function runServerCombatCycle(save, opts = {}) {
       goldGained: result.rewards.gold,
       xpGained: result.rewards.exp,
       outcome: 'victory',
-      damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-      injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
+      damageByHeroDelta,
+      injuryByHeroDelta,
     })
     out.leaderboardTrack = applyBattleToLeaderboardTrack(
       normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -212,8 +212,8 @@ export function runServerCombatCycle(save, opts = {}) {
       goldGained: 0,
       xpGained: 0,
       outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
-      damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-      injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log),
+      damageByHeroDelta,
+      injuryByHeroDelta,
     })
     out.leaderboardTrack = applyBattleToLeaderboardTrack(
       normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -256,6 +256,8 @@ export function runServerCombatCycle(save, opts = {}) {
     nextCycleDelayMs,
     events,
     log: result.log,
+    encounter: result.encounter,
+    steps: result.steps,
     nextRngSeed: rngSeed + 1 + (result.combatActionSteps ?? 0),
   }
 }

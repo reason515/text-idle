@@ -380,6 +380,9 @@
     "nextCycleDelayMs": 134300,
     "gold": 21,
     "combatActionSteps": 25,
-    "eventCount": 1
+    "eventCount": 1,
+    "logLength": 38,
+    "stepsLength": 38,
+    "hasEncounter": true
   }
 }

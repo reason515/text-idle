@@ -210,13 +210,22 @@ export function estimateVisibleBattleCycleMs(result, options = {}) {
   const log = Array.isArray(result?.log) ? result.log : []
   for (let i = 0; i < log.length; i += 1) {
     const entry = log[i]
+    if (entry?.type === 'roundMaintenance') {
+      const nextEntry = log[i + 1]
+      if (!nextEntry || nextEntry.round !== entry.round) {
+        ms += stepMs
+      }
+      continue
+    }
     ms += stepMs
     if (entry?.type === 'manaRegenBatch' || entry?.type === 'hpRegenBatch') {
       ms += estimateRegenBatchRevealMs(entry)
     }
     if (shouldEmitUnitDefeated(entry)) ms += stepMs
     const nextEntry = log[i + 1]
-    if (!nextEntry || nextEntry.round !== entry.round) ms += stepMs
+    if (!nextEntry || nextEntry.round !== entry.round) {
+      if (nextEntry?.type !== 'roundMaintenance') ms += stepMs
+    }
   }
 
   if (levelUpCount > 0) {

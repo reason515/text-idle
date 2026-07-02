@@ -26,6 +26,16 @@ describe('serverCombatCycle', () => {
     expect(a.save.gold).toBe(b.save.gold)
     expect(a.save.playerStats?.combatActionSteps).toBe(b.save.playerStats?.combatActionSteps)
     expect(a.nextCycleDelayMs).toBe(b.nextCycleDelayMs)
+    expect(a.encounter?.monsters?.length).toBeGreaterThan(0)
+    expect(a.steps?.length).toBe(a.log?.length)
+  })
+
+  it('combatActionSteps stays below log length for a full cycle', () => {
+    const save = buildFixtureSave()
+    const cycle = runServerCombatCycle(save, { rngSeed: 1001 })
+    expect(cycle.skipped).toBe(false)
+    expect(cycle.log.length).toBeGreaterThan(cycle.save.playerStats?.combatActionSteps ?? 0)
+    expect(cycle.steps?.length).toBe(cycle.log?.length)
   })
 
   it('persists hero xp and level after victory rest phase', () => {

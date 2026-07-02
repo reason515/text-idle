@@ -66,7 +66,7 @@ func (s *CombatLoopService) SyncCombatStateFromSave(userID uint, save json.RawMe
 			NextTickAt:    now,
 			LastTickAt:    now,
 			RngSeed:       uint64(userID)*2654435761 + 1,
-			CombatVersion: 1,
+			CombatVersion: 2,
 			EventSeq:      0,
 			UpdatedAt:     now,
 		}
@@ -207,15 +207,23 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 		state.NextTickAt = now.Add(clientResumeGateDuration)
 	}
 	state.RngSeed = result.NextRngSeed
+	state.CombatVersion = 2
 	state.UpdatedAt = now
 
 	// Emit log batch before cycle_complete so clients show monsters before summary/rest.
 	if len(result.Log) > 0 {
+		payload := map[string]interface{}{
+			"log": json.RawMessage(result.Log),
+		}
+		if len(result.Encounter) > 0 {
+			payload["encounter"] = json.RawMessage(result.Encounter)
+		}
+		if len(result.Steps) > 0 {
+			payload["steps"] = json.RawMessage(result.Steps)
+		}
 		logBatch, err := json.Marshal(map[string]interface{}{
-			"type": "combat.log_batch",
-			"payload": map[string]interface{}{
-				"log": json.RawMessage(result.Log),
-			},
+			"type":    "combat.log_batch",
+			"payload": payload,
 		})
 		if err != nil {
 			return err

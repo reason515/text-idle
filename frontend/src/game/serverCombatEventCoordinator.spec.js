@@ -5,14 +5,31 @@ import {
   normalizeCycleCompletePayload,
 } from './serverCombatEventCoordinator.js'
 
+function sampleBatchPayload() {
+  return {
+    log: [{ round: 1, action: 'basic', actorClass: 'Warrior', targetTier: 'normal' }],
+    encounter: {
+      monsters: [{ id: 'm1', name: 'Goblin', maxHP: 20, currentHP: 20, debuffs: [] }],
+      heroes: [{ id: 'h1', name: 'Hero', maxHP: 100, currentHP: 100, maxMP: 50, currentMP: 50, debuffs: [], buffs: [] }],
+    },
+    steps: [
+      {
+        monsters: [{ id: 'm1', maxHP: 20, currentHP: 15, debuffs: [] }],
+        heroes: [{ id: 'h1', maxHP: 100, currentHP: 100, maxMP: 50, currentMP: 50, debuffs: [], buffs: [] }],
+      },
+    ],
+  }
+}
+
 describe('serverCombatEventCoordinator', () => {
   it('processes cycle_complete after log replay in same batch order', async () => {
     const coordinator = createServerCombatEventCoordinator()
     const replayLog = vi.fn(async () => {})
     const processComplete = vi.fn(async () => {})
+    const batch = sampleBatchPayload()
     const logMsg = {
       type: 'combat.log_batch',
-      event: { payload: { log: [{ type: 'hit', round: 1 }] } },
+      event: { payload: batch },
     }
     const completeMsg = {
       type: 'combat.cycle_complete',
@@ -21,6 +38,7 @@ describe('serverCombatEventCoordinator', () => {
 
     await coordinator.handleLogBatch(logMsg, replayLog, processComplete)
     expect(replayLog).toHaveBeenCalledTimes(1)
+    expect(replayLog).toHaveBeenCalledWith(batch)
     expect(processComplete).not.toHaveBeenCalled()
 
     await coordinator.handleCycleComplete(completeMsg, processComplete)
@@ -35,7 +53,7 @@ describe('serverCombatEventCoordinator', () => {
     const processComplete = vi.fn(async () => {})
     const logMsg = {
       type: 'combat.log_batch',
-      event: { payload: { log: [{ type: 'hit', round: 1 }] } },
+      event: { payload: sampleBatchPayload() },
     }
     const completeMsg = {
       type: 'combat.cycle_complete',
@@ -64,7 +82,7 @@ describe('serverCombatEventCoordinator', () => {
     const logMsg = {
       type: 'combat.log_batch',
       seq: 5,
-      event: { payload: { log: [{ type: 'hit', round: 1 }] } },
+      event: { payload: sampleBatchPayload() },
     }
     const currentComplete = {
       type: 'combat.cycle_complete',
@@ -100,6 +118,46 @@ describe('serverCombatEventCoordinator', () => {
 
     await coordinator.handleCycleComplete(completeMsg, processComplete)
     expect(processComplete).toHaveBeenCalledWith(completeMsg)
+  })
+
+  it('does not replay when log_batch lacks encounter or steps', async () => {
+    const coordinator = createServerCombatEventCoordinator()
+    const replayLog = vi.fn(async () => {})
+    const processComplete = vi.fn(async () => {})
+    const logOnlyMsg = {
+      type: 'combat.log_batch',
+      event: { payload: { log: [{ round: 1, action: 'basic' }] } },
+    }
+    const completeMsg = {
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory' } },
+    }
+
+    await coordinator.handleLogBatch(logOnlyMsg, replayLog, processComplete)
+    expect(replayLog).not.toHaveBeenCalled()
+    expect(coordinator.getDebugState().logReplayedThisCycle).toBe(true)
+
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+  })
+
+  it('does not replay when steps length mismatches log', async () => {
+    const coordinator = createServerCombatEventCoordinator()
+    const replayLog = vi.fn(async () => {})
+    const processComplete = vi.fn(async () => {})
+    const batch = sampleBatchPayload()
+    const badMsg = {
+      type: 'combat.log_batch',
+      event: {
+        payload: {
+          ...batch,
+          log: [...batch.log, { round: 2, action: 'basic' }],
+        },
+      },
+    }
+
+    await coordinator.handleLogBatch(badMsg, replayLog, processComplete)
+    expect(replayLog).not.toHaveBeenCalled()
   })
 
   it('normalizeLogBatchEntries parses string log payloads', () => {

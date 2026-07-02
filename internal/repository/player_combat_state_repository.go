@@ -56,7 +56,7 @@ func (r *PlayerCombatStateRepository) EnsureForUser(userID uint, now time.Time) 
 		NextTickAt:    now,
 		LastTickAt:    now,
 		RngSeed:       uint64(userID)*2654435761 + 1,
-		CombatVersion: 1,
+		CombatVersion: 2,
 		EventSeq:      0,
 		UpdatedAt:     now,
 	}

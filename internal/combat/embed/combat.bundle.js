@@ -3804,6 +3804,173 @@ var TextIdleCombat = (() => {
     };
   }
 
+  // frontend/src/game/combatDisplayState.js
+  function cloneDebuffs(debuffs) {
+    return Array.isArray(debuffs) ? debuffs.map((d) => ({ ...d })) : [];
+  }
+  function cloneBuffs(buffs) {
+    return Array.isArray(buffs) ? buffs.map((b) => ({ ...b })) : [];
+  }
+  function cloneShield(shield) {
+    if (!shield || typeof shield !== "object") return void 0;
+    return { ...shield };
+  }
+  function cloneTaunt(taunt) {
+    if (!taunt || typeof taunt !== "object") return void 0;
+    return { ...taunt };
+  }
+  function serializeMonsterUnit(unit) {
+    return {
+      id: unit.id,
+      typeId: unit.typeId,
+      name: unit.name,
+      tier: unit.tier,
+      level: unit.level ?? 1,
+      damageType: unit.damageType ?? "physical",
+      skill: unit.skill ?? null,
+      skillChance: unit.skillChance,
+      maxHP: unit.maxHP,
+      currentHP: unit.currentHP,
+      physAtk: unit.physAtk,
+      spellPower: unit.spellPower,
+      agility: unit.agility,
+      armor: unit.armor,
+      resistance: unit.resistance,
+      physCrit: unit.physCrit,
+      spellCrit: unit.spellCrit,
+      hit: unit.hit,
+      dodge: unit.dodge,
+      debuffs: cloneDebuffs(unit.debuffs),
+      taunt: cloneTaunt(unit.taunt),
+      shield: cloneShield(unit.shield)
+    };
+  }
+  function serializeHeroUnit(unit) {
+    return {
+      id: unit.id,
+      name: unit.name,
+      class: unit.class,
+      level: unit.level ?? 1,
+      maxHP: unit.maxHP,
+      currentHP: unit.currentHP,
+      maxMP: unit.maxMP,
+      currentMP: unit.currentMP,
+      agility: unit.agility,
+      debuffs: cloneDebuffs(unit.debuffs),
+      buffs: cloneBuffs(unit.buffs),
+      shield: cloneShield(unit.shield)
+    };
+  }
+  function serializeMonsterStep(unit) {
+    return {
+      id: unit.id,
+      maxHP: unit.maxHP,
+      currentHP: unit.currentHP,
+      debuffs: cloneDebuffs(unit.debuffs),
+      taunt: cloneTaunt(unit.taunt),
+      shield: cloneShield(unit.shield)
+    };
+  }
+  function serializeHeroStep(unit) {
+    return {
+      id: unit.id,
+      maxHP: unit.maxHP,
+      currentHP: unit.currentHP,
+      maxMP: unit.maxMP,
+      currentMP: unit.currentMP,
+      debuffs: cloneDebuffs(unit.debuffs),
+      buffs: cloneBuffs(unit.buffs),
+      shield: cloneShield(unit.shield)
+    };
+  }
+  function serializeEncounter(monsterUnits, heroUnits) {
+    return {
+      monsters: (monsterUnits || []).map(serializeMonsterUnit),
+      heroes: (heroUnits || []).map(serializeHeroUnit)
+    };
+  }
+  function serializePanelStep(heroUnits, monsterUnits) {
+    return {
+      monsters: (monsterUnits || []).map(serializeMonsterStep),
+      heroes: (heroUnits || []).map(serializeHeroStep)
+    };
+  }
+
+  // frontend/src/game/combatBattleStats.js
+  function createBattleStatsAccumulator() {
+    return {
+      damageByHero: {},
+      injuryByHero: {}
+    };
+  }
+  function ensureDamageHero(acc, id) {
+    if (!acc.damageByHero[id]) {
+      acc.damageByHero[id] = { basic: 0, skill: 0, skillById: {} };
+    }
+    return acc.damageByHero[id];
+  }
+  function ensureInjuryHero(acc, id) {
+    if (!acc.injuryByHero[id]) {
+      acc.injuryByHero[id] = { basic: 0, basicPhysical: 0, basicMagic: 0, skill: 0, skillById: {} };
+    }
+    return acc.injuryByHero[id];
+  }
+  function recordHeroDamageToMonster(acc, hit) {
+    if (!hit?.actorId || hit.isMiss === true) return;
+    const fd = Math.floor(Number(hit.finalDamage) || 0);
+    if (fd <= 0) return;
+    const row = ensureDamageHero(acc, String(hit.actorId));
+    if (hit.action === "skill") {
+      row.skill += fd;
+      const sid = typeof hit.skillId === "string" && hit.skillId ? hit.skillId : "__unknown__";
+      row.skillById[sid] = (row.skillById[sid] || 0) + fd;
+    } else if (hit.action === "basic" || hit.action === "attack") {
+      row.basic += fd;
+    }
+  }
+  function recordMonsterDamageToHero(acc, hit) {
+    if (!hit?.targetId || hit.isMiss === true) return;
+    const fd = Math.floor(Number(hit.finalDamage) || 0);
+    if (fd <= 0) return;
+    const row = ensureInjuryHero(acc, String(hit.targetId));
+    if (hit.action === "skill") {
+      row.skill += fd;
+      const sid = typeof hit.skillId === "string" && hit.skillId ? hit.skillId : "__unknown__";
+      row.skillById[sid] = (row.skillById[sid] || 0) + fd;
+    } else if (hit.action === "basic" || hit.action === "attack") {
+      row.basic += fd;
+      if (hit.damageType === "magic") {
+        row.basicMagic += fd;
+      } else {
+        row.basicPhysical += fd;
+      }
+    }
+  }
+  function battleStatsToDeltas(acc) {
+    const damageByHeroDelta = {};
+    for (const [id, rec] of Object.entries(acc.damageByHero || {})) {
+      const out = { basic: rec.basic, skill: rec.skill };
+      if (rec.skillById && Object.keys(rec.skillById).length > 0) {
+        out.skillById = { ...rec.skillById };
+      }
+      damageByHeroDelta[id] = out;
+    }
+    const injuryByHeroDelta = {};
+    for (const [id, rec] of Object.entries(acc.injuryByHero || {})) {
+      const out = {
+        basic: rec.basic,
+        basicPhysical: rec.basicPhysical,
+        basicMagic: rec.basicMagic,
+        skill: rec.skill
+      };
+      if (rec.skillById && Object.keys(rec.skillById).length > 0) {
+        out.skillById = { ...rec.skillById };
+      }
+      injuryByHeroDelta[id] = out;
+    }
+    return { damageByHeroDelta, injuryByHeroDelta };
+  }
+
   // frontend/src/game/monsterSkills.js
   var MONSTER_SKILLS = {
     "stone-shard": {
@@ -5876,7 +6043,7 @@ var TextIdleCombat = (() => {
         monsterIntendedTargetIds[m.id] = nextId;
         const prevHero = prevId != null ? heroes2.find((h) => h.id === prevId) : null;
         const newHero = heroes2.find((h) => h.id === nextId);
-        log.push({
+        pushCombatLog({
           round,
           type: "monsterTargetIntent",
           monsterId: m.id,
@@ -5894,17 +6061,50 @@ var TextIdleCombat = (() => {
       }
     }
     const log = [];
+    const steps = [];
+    const battleStats = createBattleStatsAccumulator();
+    const encounter = serializeEncounter(monsterUnits, heroUnits);
     const turnActedByRound = {};
     let round = 1;
     let initialOrder = [];
     let combatActionSteps = 0;
+    function recordStatsForLogEntry(entry) {
+      if (!entry || entry.type != null) return;
+      if (entry.isMiss === true) return;
+      const fd = Math.floor(Number(entry.finalDamage) || 0);
+      if (fd <= 0) return;
+      if (entry.actorClass && entry.targetTier != null && entry.actorId) {
+        recordHeroDamageToMonster(battleStats, {
+          actorId: entry.actorId,
+          action: entry.action,
+          skillId: entry.skillId,
+          finalDamage: fd,
+          isMiss: entry.isMiss
+        });
+      }
+      if (entry.actorTier != null && entry.targetClass && entry.targetId) {
+        recordMonsterDamageToHero(battleStats, {
+          targetId: entry.targetId,
+          action: entry.action,
+          skillId: entry.skillId,
+          finalDamage: fd,
+          damageType: entry.damageType,
+          isMiss: entry.isMiss
+        });
+      }
+    }
+    function pushCombatLog(entry) {
+      log.push(entry);
+      steps.push(serializePanelStep(heroUnits, monsterUnits));
+      recordStatsForLogEntry(entry);
+    }
     function appendSealRiderLog(paladin, target) {
       if (paladin.class !== "Paladin" || !hasActiveSeal(paladin) || (target.currentHP ?? 0) <= 0) return;
       const rider = executeSealRider(paladin, target, { rng });
       if (!rider || rider.finalDamage <= 0) return;
       const riderThreatMult = getEffectiveThreatMultiplierForHero(paladin, 1);
       addThreatFromDamage(threat, target.id, paladin.id, rider.finalDamage, 1, paladin);
-      log.push({
+      pushCombatLog({
         round,
         actorId: paladin.id,
         actorName: paladin.name,
@@ -6248,8 +6448,8 @@ var TextIdleCombat = (() => {
         if (debuffResult.damagePerRound != null) logEntry.debuffDamagePerRound = debuffResult.damagePerRound;
         if (debuffResult.damageType != null) logEntry.debuffDamageType = debuffResult.damageType;
       }
-      if (pendingOtEntry) log.push(pendingOtEntry);
-      log.push(logEntry);
+      if (pendingOtEntry) pushCombatLog(pendingOtEntry);
+      pushCombatLog(logEntry);
       if (actor.side === "hero" && actor.class === "Paladin" && hitResult.isHit && reportedFinalDamage > 0 && target.side === "monster") {
         appendSealRiderLog(actor, target);
       }
@@ -6277,7 +6477,7 @@ var TextIdleCombat = (() => {
       }
       const baCond = conditions.find((c) => c.skillId === "basic-attack");
       if (baCond && tacticsConditionWhenRequiresPickedTarget(baCond) && !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)) {
-        log.push({
+        pushCombatLog({
           round,
           type: "actionSkipped",
           skipReason: "tactics-gate",
@@ -6307,7 +6507,7 @@ var TextIdleCombat = (() => {
         if (actor.currentHP <= 0) continue;
         combatActionSteps += 1;
         if (consumeFreezeTurn(actor)) {
-          log.push({
+          pushCombatLog({
             round,
             type: "actionSkipped",
             skipReason: "freeze",
@@ -6321,7 +6521,7 @@ var TextIdleCombat = (() => {
           continue;
         }
         if (consumeStunTurn(actor)) {
-          log.push({
+          pushCombatLog({
             round,
             type: "actionSkipped",
             skipReason: "stun",
@@ -6389,7 +6589,7 @@ var TextIdleCombat = (() => {
               });
               if (!actor.skillCooldowns) actor.skillCooldowns = {};
               actor.skillCooldowns[skillId] = round;
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -6444,7 +6644,7 @@ var TextIdleCombat = (() => {
               applyTauntThreatBoost(threat, target2.id, actor.id, heroUnits);
               if (!actor.skillCooldowns) actor.skillCooldowns = {};
               actor.skillCooldowns[skillId] = round;
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -6538,7 +6738,7 @@ var TextIdleCombat = (() => {
                   entry.threatAmount = Math.round(firstHit.finalDamage * mult);
                   entry.threatTargetName = firstHit.target.name;
                 }
-                log.push(entry);
+                pushCombatLog(entry);
                 usedSkill = true;
                 break;
               }
@@ -6627,7 +6827,7 @@ var TextIdleCombat = (() => {
                 entry.debuffArmorReduction = sr.debuffArmorReduction;
                 entry.debuffDuration = sr.debuffDuration;
               }
-              log.push(entry);
+              pushCombatLog(entry);
               usedSkill = true;
               break;
             }
@@ -6773,7 +6973,7 @@ var TextIdleCombat = (() => {
                 entry2.threatAmount = firstHit.finalDamage;
                 entry2.threatTargetName = firstHit.targetName;
               }
-              log.push(entry2);
+              pushCombatLog(entry2);
               usedSkill = true;
               break;
             }
@@ -6849,7 +7049,7 @@ var TextIdleCombat = (() => {
               entry.threatAmount = sr.finalDamage;
               entry.threatTargetName = mageTarget.name;
             }
-            log.push(entry);
+            pushCombatLog(entry);
             usedSkill = true;
             break;
           }
@@ -6944,7 +7144,7 @@ var TextIdleCombat = (() => {
                 entry.threatBeneficiaryName = priestTarget.name;
                 entry.threatBeneficiaryClass = priestTarget.class || null;
               }
-              log.push(entry);
+              pushCombatLog(entry);
               emitMonsterIntentChangesIfNeeded({ preStableIntentIds });
               usedSkill = true;
               break;
@@ -6962,7 +7162,7 @@ var TextIdleCombat = (() => {
                 sr.absorbAmount,
                 monsterLastTarget
               );
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -6997,7 +7197,7 @@ var TextIdleCombat = (() => {
                 if (before > 0) cleared += before;
                 threat[m.id][actor.id] = 0;
               }
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7027,7 +7227,7 @@ var TextIdleCombat = (() => {
               if (sr.finalDamage > 0) {
                 addThreatFromDamage(threat, priestTarget.id, actor.id, sr.finalDamage, 1);
               }
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7108,7 +7308,7 @@ var TextIdleCombat = (() => {
               const sr = executeBearForm(actor, skill);
               if (!actor.skillCooldowns) actor.skillCooldowns = {};
               actor.skillCooldowns[skillId] = round;
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7148,7 +7348,7 @@ var TextIdleCombat = (() => {
             }
             if (skillId === "rejuvenation") {
               const sr = executeRejuvenation(actor, druidTarget, skill, { rng });
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7191,7 +7391,7 @@ var TextIdleCombat = (() => {
                 actor
               );
               const healThreatMult = getEffectiveThreatMultiplierForHero(actor, 1);
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7286,7 +7486,7 @@ var TextIdleCombat = (() => {
                 entry.threatAmount = Math.round(sr.finalDamage * getEffectiveThreatMultiplierForHero(actor, baseThreatMult));
                 entry.threatTargetName = druidTarget.name;
               }
-              log.push(entry);
+              pushCombatLog(entry);
               usedSkill = true;
               break;
             }
@@ -7328,7 +7528,7 @@ var TextIdleCombat = (() => {
             if (skillId === "seal-of-righteousness") {
               if (paladinCond && !checkCondition(paladinCond, actor, null, heroUnits, monsterUnits, ctx)) continue;
               const sr = executeSealOfRighteousness(actor, skill);
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7376,7 +7576,7 @@ var TextIdleCombat = (() => {
                 }
               }
               const firstHit = sr.hits[0];
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7439,7 +7639,7 @@ var TextIdleCombat = (() => {
                 sr.heal,
                 monsterLastTarget
               );
-              log.push({
+              pushCombatLog({
                 round,
                 actorId: actor.id,
                 actorName: actor.name,
@@ -7542,7 +7742,7 @@ var TextIdleCombat = (() => {
                 entry.threatTargetName = paladinTarget.name;
                 appendSealRiderLog(actor, paladinTarget);
               }
-              log.push(entry);
+              pushCombatLog(entry);
               usedSkill = true;
               break;
             }
@@ -7583,7 +7783,7 @@ var TextIdleCombat = (() => {
         if (actor.side === "hero") {
           const baCond = conditions.find((c) => c.skillId === "basic-attack");
           if (baCond && !relaxBasicAttackTacticGates && tacticsConditionWhenRequiresPickedTarget(baCond) && !checkCondition(baCond, actor, target, heroUnits, monsterUnits, ctx)) {
-            log.push({
+            pushCombatLog({
               round,
               type: "actionSkipped",
               skipReason: "tactics-gate",
@@ -7612,7 +7812,7 @@ var TextIdleCombat = (() => {
           const hpBefore = unit.currentHP;
           const dotShieldCasterId = unit.shield?.casterId ?? null;
           const sr = applyDamageToShieldedUnit(unit, dotDamage);
-          log.push({
+          pushCombatLog({
             round,
             type: "dot",
             targetId: unit.id,
@@ -7647,7 +7847,7 @@ var TextIdleCombat = (() => {
           const actualHeal = unit.currentHP - hpBefore;
           if (actualHeal <= 0) continue;
           const caster = heroUnits.find((x) => x.id === h.casterId);
-          log.push({
+          pushCombatLog({
             round,
             type: "hot",
             targetId: unit.id,
@@ -7714,7 +7914,7 @@ var TextIdleCombat = (() => {
           });
         }
         if (manaRegenUpdates.length > 0) {
-          log.push({ round, type: "manaRegenBatch", updates: manaRegenUpdates });
+          pushCombatLog({ round, type: "manaRegenBatch", updates: manaRegenUpdates });
         }
         const hpRegenUpdates = [];
         for (const hero of heroUnits) {
@@ -7737,7 +7937,7 @@ var TextIdleCombat = (() => {
           });
         }
         if (hpRegenUpdates.length > 0) {
-          log.push({ round, type: "hpRegenBatch", updates: hpRegenUpdates });
+          pushCombatLog({ round, type: "hpRegenBatch", updates: hpRegenUpdates });
         }
       }
       for (const unit of heroUnits) {
@@ -7751,6 +7951,7 @@ var TextIdleCombat = (() => {
       for (const unit of heroUnits) {
         tickHeroBuffs(unit);
       }
+      pushCombatLog({ round, type: "roundMaintenance" });
       round += 1;
     }
     const heroesAlive = alive(heroUnits).length > 0;
@@ -7763,6 +7964,9 @@ var TextIdleCombat = (() => {
       rounds: round - 1,
       combatActionSteps,
       log,
+      steps,
+      encounter,
+      battleStats,
       initialOrder,
       turnActedByRound,
       rewards: outcome === "victory" ? rewardForVictory(monsterUnits, heroes, rng) : { exp: 0, gold: 0, equipment: [] },
@@ -8029,87 +8233,6 @@ var TextIdleCombat = (() => {
     return { xpPerHero, xpByHeroId, contributions, results };
   }
 
-  // frontend/src/game/playerStatsDamageRollup.js
-  function rollupHeroDamageFromBattleLog(log) {
-    const out = {};
-    if (!Array.isArray(log)) return out;
-    for (const raw of log) {
-      if (!raw || typeof raw !== "object") continue;
-      const e = (
-        /** @type {Record<string, unknown>} */
-        raw
-      );
-      if (e.type != null) continue;
-      if (e.isMiss === true) continue;
-      const fd = Number(e.finalDamage);
-      if (!Number.isFinite(fd) || fd <= 0) continue;
-      const actorClass = e.actorClass;
-      const targetTier = e.targetTier;
-      if (!actorClass || targetTier == null) continue;
-      const actorId = e.actorId;
-      if (actorId == null || actorId === "") continue;
-      const id = String(actorId);
-      if (!out[id]) out[id] = { basic: 0, skill: 0, skillById: {} };
-      const action = e.action;
-      if (action === "skill") {
-        const add = Math.floor(fd);
-        out[id].skill += add;
-        const sidRaw = e.skillId;
-        const sid = typeof sidRaw === "string" && sidRaw ? sidRaw : "__unknown__";
-        out[id].skillById[sid] = (out[id].skillById[sid] || 0) + add;
-      } else if (action === "basic") {
-        out[id].basic += Math.floor(fd);
-      }
-    }
-    for (const rec of Object.values(out)) {
-      if (Object.keys(rec.skillById).length === 0) delete rec.skillById;
-    }
-    return out;
-  }
-
-  // frontend/src/game/playerStatsInjuryRollup.js
-  function rollupHeroInjuryFromBattleLog(log) {
-    const out = {};
-    if (!Array.isArray(log)) return out;
-    for (const raw of log) {
-      if (!raw || typeof raw !== "object") continue;
-      const e = (
-        /** @type {Record<string, unknown>} */
-        raw
-      );
-      if (e.type != null) continue;
-      if (e.isMiss === true) continue;
-      const fd = Number(e.finalDamage);
-      if (!Number.isFinite(fd) || fd <= 0) continue;
-      const actorTier = e.actorTier;
-      const targetClass = e.targetClass;
-      if (actorTier == null || !targetClass) continue;
-      const targetId = e.targetId;
-      if (targetId == null || targetId === "") continue;
-      const id = String(targetId);
-      if (!out[id]) out[id] = { basic: 0, basicPhysical: 0, basicMagic: 0, skill: 0, skillById: {} };
-      const add = Math.floor(fd);
-      const action = e.action;
-      if (action === "skill") {
-        out[id].skill += add;
-        const sidRaw = e.skillId;
-        const sid = typeof sidRaw === "string" && sidRaw ? sidRaw : "__unknown__";
-        out[id].skillById[sid] = (out[id].skillById[sid] || 0) + add;
-      } else if (action === "basic" || action === "attack") {
-        out[id].basic += add;
-        if (e.damageType === "magic") {
-          out[id].basicMagic += add;
-        } else {
-          out[id].basicPhysical += add;
-        }
-      }
-    }
-    for (const rec of Object.values(out)) {
-      if (Object.keys(rec.skillById).length === 0) delete rec.skillById;
-    }
-    return out;
-  }
-
   // frontend/src/game/combatLogDefeat.js
   function shouldEmitUnitDefeated(entry) {
     if (entry == null || entry.type === "unitDefeated" || entry.type === "manaRegenBatch") return false;
@@ -8190,13 +8313,22 @@ var TextIdleCombat = (() => {
     const log = Array.isArray(result?.log) ? result.log : [];
     for (let i = 0; i < log.length; i += 1) {
       const entry = log[i];
+      if (entry?.type === "roundMaintenance") {
+        const nextEntry2 = log[i + 1];
+        if (!nextEntry2 || nextEntry2.round !== entry.round) {
+          ms += stepMs;
+        }
+        continue;
+      }
       ms += stepMs;
       if (entry?.type === "manaRegenBatch" || entry?.type === "hpRegenBatch") {
         ms += estimateRegenBatchRevealMs(entry);
       }
       if (shouldEmitUnitDefeated(entry)) ms += stepMs;
       const nextEntry = log[i + 1];
-      if (!nextEntry || nextEntry.round !== entry.round) ms += stepMs;
+      if (!nextEntry || nextEntry.round !== entry.round) {
+        if (nextEntry?.type !== "roundMaintenance") ms += stepMs;
+      }
     }
     if (levelUpCount > 0) {
       ms += COMBAT_PACING_MS.afterVictoryBeforeLevelUp;
@@ -8295,6 +8427,7 @@ var TextIdleCombat = (() => {
       rng
     });
     const result = runAutoCombat({ heroes: squad, monsters, rng });
+    const { damageByHeroDelta, injuryByHeroDelta } = battleStatsToDeltas(result.battleStats);
     let levelUpCount = 0;
     let restStepsThisBattle = 0;
     const events = [];
@@ -8336,8 +8469,8 @@ var TextIdleCombat = (() => {
         goldGained: result.rewards.gold,
         xpGained: result.rewards.exp,
         outcome: "victory",
-        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log)
+        damageByHeroDelta,
+        injuryByHeroDelta
       });
       out.leaderboardTrack = applyBattleToLeaderboardTrack(
         normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -8360,8 +8493,8 @@ var TextIdleCombat = (() => {
         goldGained: 0,
         xpGained: 0,
         outcome: result.outcome === "draw" ? "draw" : "defeat",
-        damageByHeroDelta: rollupHeroDamageFromBattleLog(result.log),
-        injuryByHeroDelta: rollupHeroInjuryFromBattleLog(result.log)
+        damageByHeroDelta,
+        injuryByHeroDelta
       });
       out.leaderboardTrack = applyBattleToLeaderboardTrack(
         normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -8401,6 +8534,8 @@ var TextIdleCombat = (() => {
       nextCycleDelayMs,
       events,
       log: result.log,
+      encounter: result.encounter,
+      steps: result.steps,
       nextRngSeed: rngSeed + 1 + (result.combatActionSteps ?? 0)
     };
   }

@@ -6,6 +6,8 @@
     "rounds": 3,
     "exp": 12,
     "gold": 7,
-    "logLength": 15
+    "logLength": 18,
+    "stepsLength": 18,
+    "hasEncounter": true
   }
 }

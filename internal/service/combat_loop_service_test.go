@@ -370,6 +370,20 @@ func TestCombatLoopService_TickUser_emitsLogBatchBeforeCycleComplete(t *testing.
 	if events[logIdx].Seq >= events[completeIdx].Seq {
 		t.Fatalf("log_batch seq must be less than cycle_complete, log=%d complete=%d", events[logIdx].Seq, events[completeIdx].Seq)
 	}
+	var logBatch map[string]interface{}
+	if err := json.Unmarshal([]byte(events[logIdx].Payload), &logBatch); err != nil {
+		t.Fatal(err)
+	}
+	payload, _ := logBatch["payload"].(map[string]interface{})
+	if payload == nil {
+		t.Fatal("log_batch missing payload")
+	}
+	if payload["encounter"] == nil {
+		t.Error("log_batch payload missing encounter")
+	}
+	if payload["steps"] == nil {
+		t.Error("log_batch payload missing steps")
+	}
 }
 
 func TestCombatLoopService_TickUser_clampsLastTickAtTo24hCap(t *testing.T) {

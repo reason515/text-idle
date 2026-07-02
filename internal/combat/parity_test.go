@@ -81,5 +81,23 @@ func TestParity_server_cycle_fixed_trio(t *testing.T) {
 		if wantEvents, ok := expected["eventCount"].(float64); ok && len(result.Events) != int(wantEvents) {
 			t.Errorf("eventCount: got %d want %d", len(result.Events), int(wantEvents))
 		}
+		if want, ok := expected["stepsLength"].(float64); ok {
+			if len(result.Steps) == 0 {
+				t.Error("stepsLength expected but CycleResult.Steps is empty")
+			} else {
+				var steps []interface{}
+				if err := json.Unmarshal(result.Steps, &steps); err != nil {
+					t.Fatalf("parse steps: %v", err)
+				}
+				if len(steps) != int(want) {
+					t.Errorf("stepsLength: got %d want %d", len(steps), int(want))
+				}
+			}
+		}
+		if want, ok := expected["hasEncounter"].(bool); ok && want {
+			if len(result.Encounter) == 0 {
+				t.Error("hasEncounter expected but CycleResult.Encounter is empty")
+			}
+		}
 	}
 }

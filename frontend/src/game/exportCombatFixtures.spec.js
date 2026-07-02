@@ -44,6 +44,8 @@ describe.skipIf(!process.env.EXPORT_COMBAT_FIXTURES)('exportCombatFixtures', () 
         exp: autoResult.rewards.exp,
         gold: autoResult.rewards.gold,
         logLength: autoResult.log.length,
+        stepsLength: autoResult.steps.length,
+        hasEncounter: Boolean(autoResult.encounter?.monsters?.length),
       },
     })
 
@@ -68,6 +70,9 @@ describe.skipIf(!process.env.EXPORT_COMBAT_FIXTURES)('exportCombatFixtures', () 
         gold: cycleResult.save.gold,
         combatActionSteps: cycleResult.save.playerStats?.combatActionSteps,
         eventCount: cycleResult.events.length,
+        logLength: cycleResult.log?.length ?? 0,
+        stepsLength: cycleResult.steps?.length ?? 0,
+        hasEncounter: Boolean(cycleResult.encounter?.monsters?.length),
       },
     })
   })

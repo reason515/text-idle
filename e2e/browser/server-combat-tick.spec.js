@@ -10,6 +10,7 @@ const {
   waitForCombatMonsterPanel,
   setupNewRun,
   completeIntroSteps,
+  assertMonsterHpBarsNotPlaceholder,
 } = require('./testHelpers')
 
 async function fetchSave(page) {
@@ -167,6 +168,7 @@ test.describe('Server combat tick (Example 39)', () => {
     await triggerE2eCombatTick(page, { awaitPoll: true })
     await pauseCombat(page)
     await waitForCombatMonsterPanel(page)
+    await assertMonsterHpBarsNotPlaceholder(page)
   })
 
   test('pause state survives reload from server combatState', async ({ page }) => {

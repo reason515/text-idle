@@ -58,10 +58,19 @@ export function createCombatStream(opts) {
   let closed = false
   /** @type {Promise<void>} */
   let pollChain = Promise.resolve()
+  let lastProcessedSeq = 0
   const pollMs =
     typeof localStorage !== 'undefined' && localStorage.getItem('e2eFastCombat') === '1'
       ? 250
       : 5000
+
+  async function deliverEvent(msg) {
+    const seq = Number(msg?.seq) || 0
+    if (seq > 0 && seq <= lastProcessedSeq) return
+    if (seq > lastProcessedSeq) lastProcessedSeq = seq
+    if (seq > lastSeq) lastSeq = seq
+    await opts.onEvent(msg)
+  }
 
   async function pollEventsBody() {
     if (!opts.token) return
@@ -73,18 +82,20 @@ export function createCombatStream(opts) {
       const data = await res.json()
       const events = sortCombatStreamEvents(Array.isArray(data.events) ? data.events : [])
       for (const row of events) {
-        if (row.seq > lastSeq) lastSeq = row.seq
         let eventBody = null
         try {
           eventBody = row.payload ? JSON.parse(row.payload) : null
         } catch {
           eventBody = null
         }
-        await opts.onEvent({
+        await deliverEvent({
           seq: row.seq,
           type: row.type,
           event: eventBody,
         })
+      }
+      if (typeof opts.onAfterPoll === 'function') {
+        await opts.onAfterPoll()
       }
     } catch {
       /* ignore poll errors */
@@ -113,8 +124,7 @@ export function createCombatStream(opts) {
     ws.onmessage = async (ev) => {
       try {
         const msg = JSON.parse(String(ev.data))
-        if (msg.seq > lastSeq) lastSeq = msg.seq
-        pollChain = pollChain.then(() => opts.onEvent(msg)).catch(() => {})
+        pollChain = pollChain.then(() => deliverEvent(msg)).catch(() => {})
         await pollChain
       } catch {
         /* ignore */
@@ -144,10 +154,16 @@ export function createCombatStream(opts) {
 
   /** @param {number} seq */
   function setLastSeq(seq) {
-    lastSeq = Math.max(lastSeq, seq)
+    const n = Math.max(0, Math.floor(Number(seq) || 0))
+    lastSeq = Math.max(lastSeq, n)
+    lastProcessedSeq = Math.max(lastProcessedSeq, n)
   }
 
-  return { connect, disconnect, pollEvents, setLastSeq }
+  function getLastProcessedSeq() {
+    return lastProcessedSeq
+  }
+
+  return { connect, disconnect, pollEvents, setLastSeq, getLastProcessedSeq }
 }
 
 /** Force one server tick (E2E / debug only). */
@@ -181,5 +197,8 @@ export async function advanceServerCombat(token) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   })
-  return res.ok || res.status === 204
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`combat advance failed: ${res.status}`)
+  }
+  return true
 }

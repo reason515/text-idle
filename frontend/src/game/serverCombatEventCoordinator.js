@@ -4,6 +4,8 @@
  * arrive in the same poll batch.
  */
 
+import { normalizeLogBatchPayload } from './combatDisplayState.js'
+
 function parseStreamEventBody(msg) {
   let body = msg.event
   if (typeof body === 'string') {
@@ -18,18 +20,8 @@ function parseStreamEventBody(msg) {
 
 /** @param {{ event?: object }} msg */
 export function normalizeLogBatchEntries(msg) {
-  const body = parseStreamEventBody(msg)
-  if (!body) return null
-  const payload = body.payload ?? body
-  let log = payload?.log
-  if (typeof log === 'string') {
-    try {
-      log = JSON.parse(log)
-    } catch {
-      return null
-    }
-  }
-  return Array.isArray(log) ? log : null
+  const { log } = normalizeLogBatchPayload(msg)
+  return log
 }
 
 /** @param {{ event?: object }} msg */
@@ -39,9 +31,11 @@ export function normalizeCycleCompletePayload(msg) {
   return body.payload ?? body
 }
 
+export { normalizeLogBatchPayload }
+
 /**
  * @returns {{
- *   handleLogBatch: (msg: object, replayLog: (log: object[]) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<void>,
+ *   handleLogBatch: (msg: object, replayLog: (payload: { log: object[], encounter: object, steps: object[] }) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<void>,
  *   handleCycleComplete: (msg: object, processComplete: (msg: object) => Promise<void>) => Promise<void>,
  *   reset: () => void,
  *   getDebugState: () => { pendingCycleComplete: object | null, logReplayedThisCycle: boolean },
@@ -62,14 +56,18 @@ export function createServerCombatEventCoordinator() {
 
   return {
     async handleLogBatch(msg, replayLog, processComplete) {
-      const log = normalizeLogBatchEntries(msg)
-      if (log && log.length > 0) {
-        await replayLog(log)
+      const payload = normalizeLogBatchPayload(msg)
+      if (
+        payload.log &&
+        payload.log.length > 0 &&
+        payload.encounter &&
+        payload.steps &&
+        payload.steps.length === payload.log.length
+      ) {
+        await replayLog(payload)
       }
       logReplayedThisCycle = true
       await flushPendingCycleComplete(processComplete)
-      // Same poll batch may still deliver this tick's cycle_complete after flushing
-      // an older pending complete.
       logReplayedThisCycle = true
     },
 
