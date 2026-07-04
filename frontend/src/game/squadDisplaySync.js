@@ -28,3 +28,33 @@ export function buildDisplayHeroesFromSquad(squadHeroes, computeHeroDisplay, pre
     }
   })
 }
+
+/**
+ * Merge post-combat panel HP/MP with roster heroes (level, gear, spirit) for rest animation.
+ * Server save is already fully rested after sync; panel snapshot reflects end-of-combat injuries.
+ *
+ * @param {Object[]|null|undefined} postCombatDisplay
+ * @param {Object[]} rosterHeroes
+ * @returns {Object[]}
+ */
+export function buildHeroesForRestAnimation(postCombatDisplay, rosterHeroes) {
+  if (!Array.isArray(rosterHeroes) || rosterHeroes.length === 0) return []
+  if (!Array.isArray(postCombatDisplay) || postCombatDisplay.length === 0) {
+    return rosterHeroes
+  }
+  const panelById = new Map(postCombatDisplay.map((h) => [h.id, h]))
+  return rosterHeroes.map((hero) => {
+    const panel = panelById.get(hero.id)
+    if (!panel) return hero
+    return {
+      ...hero,
+      currentHP: panel.currentHP != null ? panel.currentHP : hero.currentHP,
+      currentMP:
+        hero.class === 'Warrior'
+          ? 0
+          : panel.currentMP != null
+            ? panel.currentMP
+            : hero.currentMP,
+    }
+  })
+}

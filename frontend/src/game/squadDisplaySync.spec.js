@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildDisplayHeroesFromSquad } from './squadDisplaySync.js'
+import { applyRestStep, canStartNextCombat, startRestPhase } from './combat.js'
+import { buildDisplayHeroesFromSquad, buildHeroesForRestAnimation } from './squadDisplaySync.js'
 
 function mockCompute(hero) {
   const maxHP = 100 + (hero.stamina ?? 0) * 2
@@ -35,5 +36,67 @@ describe('buildDisplayHeroesFromSquad', () => {
     const out = buildDisplayHeroesFromSquad(squad, mockCompute, prev, true)
     expect(out[0].maxHP).toBe(102)
     expect(out[0].currentHP).toBe(90)
+  })
+})
+
+describe('buildHeroesForRestAnimation', () => {
+  it('uses panel injuries with roster level and gear fields', () => {
+    const postCombat = [
+      { id: 'a', class: 'Mage', currentHP: 30, currentMP: 10, maxHP: 100, maxMP: 50, spirit: 5 },
+    ]
+    const roster = [
+      {
+        id: 'a',
+        class: 'Mage',
+        level: 5,
+        currentHP: 100,
+        currentMP: 50,
+        spirit: 5,
+        maxHP: 120,
+        maxMP: 60,
+      },
+    ]
+    const out = buildHeroesForRestAnimation(postCombat, roster)
+    expect(out[0].currentHP).toBe(30)
+    expect(out[0].currentMP).toBe(10)
+    expect(out[0].level).toBe(5)
+  })
+
+  it('forces warrior rage to 0 for rest', () => {
+    const postCombat = [{ id: 'w', class: 'Warrior', currentHP: 50, currentMP: 80 }]
+    const roster = [{ id: 'w', class: 'Warrior', currentHP: 100, currentMP: 0 }]
+    const out = buildHeroesForRestAnimation(postCombat, roster)
+    expect(out[0].currentMP).toBe(0)
+  })
+
+  it('falls back to roster when panel snapshot is missing', () => {
+    const roster = [{ id: 'a', currentHP: 50, currentMP: 20 }]
+    expect(buildHeroesForRestAnimation([], roster)).toEqual(roster)
+  })
+
+  it('rest animation needs multiple steps when roster is full but panel is injured', () => {
+    const restedRoster = [
+      {
+        id: 'h1',
+        class: 'Mage',
+        spirit: 5,
+        maxHP: 120,
+        maxMP: 40,
+        currentHP: 120,
+        currentMP: 40,
+        equipmentRecoveryBonus: 0,
+      },
+    ]
+    const injuredPanel = [{ id: 'h1', class: 'Mage', currentHP: 20, currentMP: 5 }]
+    const heroesForRest = buildHeroesForRestAnimation(injuredPanel, restedRoster)
+    let rest = startRestPhase(heroesForRest, { deathCount: 0, base: 4, spiritScale: 1 })
+    expect(canStartNextCombat(rest)).toBe(false)
+    let steps = 0
+    while (!rest.isComplete && steps < 50) {
+      rest = applyRestStep(rest)
+      steps += 1
+    }
+    expect(steps).toBeGreaterThan(1)
+    expect(canStartNextCombat(rest)).toBe(true)
   })
 })

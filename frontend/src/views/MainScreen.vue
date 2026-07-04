@@ -2976,7 +2976,10 @@ import {
 } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
 import { unitIdMatches } from '../utils/unitId.js'
-import { buildDisplayHeroesFromSquad } from '../game/squadDisplaySync.js'
+import {
+  buildDisplayHeroesFromSquad,
+  buildHeroesForRestAnimation,
+} from '../game/squadDisplaySync.js'
 import {
   applyCombatPacingDelayMs,
   COMBAT_PACING_MS,
@@ -5693,12 +5696,14 @@ async function processServerCycleCompleteEvent(msg) {
   try {
     const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
     const squadBefore = squad.value.map((h) => ({ ...h }))
+    const postCombatDisplay = displayHeroes.value.map((h) => ({ ...h }))
     const progressBefore = progress.value.currentProgress ?? 0
     await syncFromServerSave()
     const settled = await completeCombatCycleFromServer(p, {
       squadBefore,
       progressBefore,
       inventoryBeforeIds,
+      postCombatDisplay,
     })
     const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
     if (settled && seq > 0) markEventDisplayed(seq)
@@ -5855,7 +5860,10 @@ function buildCycleExplorationEntry(p, progressBefore) {
   return undefined
 }
 
-async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds }) {
+async function completeCombatCycleFromServer(
+  p,
+  { squadBefore, progressBefore, inventoryBeforeIds, postCombatDisplay },
+) {
   if (!p) return false
   let inventoryAfter = getInventory()
   let droppedEquipment = inventoryAfter.filter((i) => !inventoryBeforeIds.has(i.id))
@@ -5888,7 +5896,8 @@ async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, i
   await scrollLog()
   await emitLevelUpLogsFromSquadDiff(squadBefore)
   const skipDisplayRestore = isE2eFastMode() && p.outcome === 'defeat'
-  await autoRest(squad.value, { isDefeat: p.outcome === 'defeat', skipDisplayRestore })
+  const heroesForRest = buildHeroesForRestAnimation(postCombatDisplay, squad.value)
+  await autoRest(heroesForRest, { isDefeat: p.outcome === 'defeat', skipDisplayRestore })
   if (!skipDisplayRestore) {
     syncDisplayHeroesFromSquad()
   }
@@ -6037,13 +6046,19 @@ async function handleCombatStreamEventE2eFast(msg) {
     skipMonsterPanelRestore = true
     const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
     const squadBefore = squad.value.map((h) => ({ ...h }))
+    const postCombatDisplay = displayHeroes.value.map((h) => ({ ...h }))
     const progressBefore = progress.value.currentProgress ?? 0
     await syncFromServerSave()
     if (msg.type === 'combat.cycle_complete') {
       const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
         normalizeCycleCompletePayload(msg)
       )
-      await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+      await completeCombatCycleFromServer(p, {
+        squadBefore,
+        progressBefore,
+        inventoryBeforeIds,
+        postCombatDisplay,
+      })
     }
   }
 }
