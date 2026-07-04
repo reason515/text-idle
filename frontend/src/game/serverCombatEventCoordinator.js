@@ -34,7 +34,7 @@ export function normalizeCycleCompletePayload(msg) {
 export { normalizeLogBatchPayload }
 
 /**
- * @param {{ getDisplayedEventSeq?: () => number }} [deps]
+ * @param {{ getDisplayedEventSeq?: () => number, getLastEncounterEventSeq?: () => number }} [deps]
  * @returns {{
  *   handleLogBatch: (msg: object, replayLog: (payload: { log: object[], encounter: object, steps: object[] }) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<{ replayed: boolean, hadLog: boolean, awaitingCycleComplete: boolean }>,
  *   handleCycleComplete: (msg: object, processComplete: (msg: object) => Promise<void>) => Promise<void>,
@@ -47,6 +47,8 @@ export { normalizeLogBatchPayload }
 export function createServerCombatEventCoordinator(deps = {}) {
   const getDisplayedEventSeq =
     typeof deps.getDisplayedEventSeq === 'function' ? deps.getDisplayedEventSeq : () => 0
+  const getLastEncounterEventSeq =
+    typeof deps.getLastEncounterEventSeq === 'function' ? deps.getLastEncounterEventSeq : () => 0
 
   /** @type {object | null} */
   let pendingCycleComplete = null
@@ -58,20 +60,35 @@ export function createServerCombatEventCoordinator(deps = {}) {
     if (logReplayedThisCycle) return true
     const completeSeq = Math.max(0, Math.floor(Number(completeMsg?.seq) || 0))
     if (completeSeq <= 0) return false
-    return getDisplayedEventSeq() >= completeSeq - 1
+
+    const lastEncounter = Math.max(0, Math.floor(Number(getLastEncounterEventSeq()) || 0))
+    // Require the log_batch encounter for this cycle (allow one-seq gap for pending_expansion).
+    const minLogSeq = completeSeq - 2
+    const maxLogSeq = completeSeq - 1
+    if (lastEncounter < minLogSeq || lastEncounter > maxLogSeq) return false
+
+    const displayed = Math.max(0, Math.floor(Number(getDisplayedEventSeq()) || 0))
+    return displayed >= completeSeq - 1
   }
 
   async function flushPendingCycleComplete(processComplete) {
-    if (!pendingCycleComplete || !canFlushCycleComplete(pendingCycleComplete)) return
+    if (!pendingCycleComplete || !canFlushCycleComplete(pendingCycleComplete)) return false
     const msg = pendingCycleComplete
+    try {
+      await processComplete(msg)
+    } catch {
+      awaitingCycleComplete = true
+      return false
+    }
     pendingCycleComplete = null
     logReplayedThisCycle = false
     awaitingCycleComplete = false
-    await processComplete(msg)
+    return true
   }
 
   return {
     async handleLogBatch(msg, replayLog, processComplete) {
+      logReplayedThisCycle = false
       const payload = normalizeLogBatchPayload(msg)
       const canReplay =
         payload.log &&
@@ -88,8 +105,8 @@ export function createServerCombatEventCoordinator(deps = {}) {
       } else if (!payload.log?.length) {
         logReplayedThisCycle = true
       }
-      await flushPendingCycleComplete(processComplete)
-      awaitingCycleComplete = logReplayedThisCycle
+      const settled = await flushPendingCycleComplete(processComplete)
+      awaitingCycleComplete = !settled && (logReplayedThisCycle || pendingCycleComplete != null)
       return {
         replayed: !!canReplay,
         hadLog: !!(payload.log && payload.log.length > 0),
@@ -99,7 +116,10 @@ export function createServerCombatEventCoordinator(deps = {}) {
 
     async handleCycleComplete(msg, processComplete) {
       pendingCycleComplete = msg
-      await flushPendingCycleComplete(processComplete)
+      const settled = await flushPendingCycleComplete(processComplete)
+      if (!settled && pendingCycleComplete != null) {
+        awaitingCycleComplete = true
+      }
     },
 
     isAwaitingCycleComplete() {

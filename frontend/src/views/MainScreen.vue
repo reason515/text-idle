@@ -2874,6 +2874,7 @@ import {
   isAwaitingClientAdvance,
   hasUndisplayedCombatEvents,
   resolveStreamProcessedEventSeq,
+  hasBattleSummarySinceLastEncounter,
 } from '../game/offlineReturnSync.js'
 import {
   getDisplayedEventSeq,
@@ -3289,6 +3290,8 @@ let lastLeaveSnapshot = null
 let resumeCombatUi = false
 /** Last hydrated monsters from log_batch (E2E detail modal when panel is cleared after rest). */
 let lastE2eBuiltMonsters = []
+/** Post-combat HP/MP snapshot captured at log replay end; used before server save sync overwrites panel. */
+let lastPostCombatDisplaySnapshot = null
 const currentMonsters = ref([])
 const displayedLog = ref([])
 const lastOutcome = ref('')
@@ -5627,6 +5630,7 @@ let combatStream = null
 let lastReplayMonsterCount = 0
 const serverCombatEvents = createServerCombatEventCoordinator({
   getDisplayedEventSeq,
+  getLastEncounterEventSeq,
 })
 /** @type {(() => void) | null} */
 let onCombatVisibilityChange = null
@@ -5657,6 +5661,10 @@ function getCombatAdvanceController() {
         return hasUndisplayedCombatEvents(getDisplayedEventSeq(), serverSeq)
       },
       isAwaitingCycleComplete: () => serverCombatEvents.isAwaitingCycleComplete(),
+      needsBattleSettlement: () => {
+        if (lastPostCombatDisplaySnapshot != null) return true
+        return !hasBattleSummarySinceLastEncounter(displayedLog.value)
+      },
     })
   }
   return combatAdvanceController
@@ -5684,22 +5692,26 @@ async function retryPendingCombatAdvanceAfterPoll() {
 
 async function processServerCycleCompleteEvent(msg) {
   if (msg.type === 'combat.pending_expansion') {
-    await syncFromServerSave()
+    // Defer save sync until cycle_complete settlement so post-combat HP/MP is preserved for rest UI.
     return
   }
   if (msg.type !== 'combat.cycle_complete') return
   const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
     normalizeCycleCompletePayload(msg)
   )
-  if (!p || typeof p !== 'object') return
+  if (!p || typeof p !== 'object') {
+    throw new Error('combat.cycle_complete payload missing or invalid')
+  }
   serverDisplayCycleBusy = true
+  let settled = false
   try {
     const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
     const squadBefore = squad.value.map((h) => ({ ...h }))
-    const postCombatDisplay = displayHeroes.value.map((h) => ({ ...h }))
+    const postCombatDisplay =
+      lastPostCombatDisplaySnapshot ?? displayHeroes.value.map((h) => ({ ...h }))
     const progressBefore = progress.value.currentProgress ?? 0
     await syncFromServerSave()
-    const settled = await completeCombatCycleFromServer(p, {
+    settled = await completeCombatCycleFromServer(p, {
       squadBefore,
       progressBefore,
       inventoryBeforeIds,
@@ -5707,10 +5719,13 @@ async function processServerCycleCompleteEvent(msg) {
     })
     const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
     if (settled && seq > 0) markEventDisplayed(seq)
+    if (settled) {
+      lastPostCombatDisplaySnapshot = null
+      await scheduleNextServerCombatPoll()
+    }
   } finally {
     serverDisplayCycleBusy = false
   }
-  await scheduleNextServerCombatPoll()
 }
 
 async function syncFromServerSave() {
@@ -5860,6 +5875,10 @@ function buildCycleExplorationEntry(p, progressBefore) {
   return undefined
 }
 
+function capturePostCombatDisplaySnapshot() {
+  lastPostCombatDisplaySnapshot = displayHeroes.value.map((h) => ({ ...h }))
+}
+
 async function completeCombatCycleFromServer(
   p,
   { squadBefore, progressBefore, inventoryBeforeIds, postCombatDisplay },
@@ -5916,6 +5935,7 @@ function openE2eFirstMonsterDetail() {
 async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
   if (!Array.isArray(log) || log.length === 0) return
   if (!encounter || !Array.isArray(steps) || steps.length !== log.length) return
+  lastPostCombatDisplaySnapshot = null
   const batchSeq = Math.max(0, Math.floor(Number(eventSeq) || 0))
   const plan = getLogBatchReplayPlan({
     resumeUi: resumeCombatUi,
@@ -5965,7 +5985,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     if (completedReplay) {
       encounterInProgress.value = false
       resumeCombatUi = false
-      await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
+      capturePostCombatDisplaySnapshot()
       return
     }
 
@@ -5977,6 +5997,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
       await scrollLog()
       markLogStepProgress(batchSeq, log.length)
       resumeCombatUi = false
+      capturePostCombatDisplaySnapshot()
       return
     }
 
@@ -5993,7 +6014,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     currentTargetId.value = null
     encounterInProgress.value = false
     resumeCombatUi = false
-    await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
+    capturePostCombatDisplaySnapshot()
   } finally {
     serverDisplayCycleBusy = false
   }
@@ -6044,9 +6065,13 @@ async function handleCombatStreamEventE2eFast(msg) {
   }
   if (msg.type === 'combat.cycle_complete' || msg.type === 'combat.pending_expansion') {
     skipMonsterPanelRestore = true
+    if (msg.type === 'combat.pending_expansion') {
+      return
+    }
     const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
     const squadBefore = squad.value.map((h) => ({ ...h }))
-    const postCombatDisplay = displayHeroes.value.map((h) => ({ ...h }))
+    const postCombatDisplay =
+      lastPostCombatDisplaySnapshot ?? displayHeroes.value.map((h) => ({ ...h }))
     const progressBefore = progress.value.currentProgress ?? 0
     await syncFromServerSave()
     if (msg.type === 'combat.cycle_complete') {
@@ -6059,6 +6084,7 @@ async function handleCombatStreamEventE2eFast(msg) {
         inventoryBeforeIds,
         postCombatDisplay,
       })
+      lastPostCombatDisplaySnapshot = null
     }
   }
 }

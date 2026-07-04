@@ -17,6 +17,7 @@
  *   pollEvents: () => Promise<void>,
  *   isAwaitingCycleComplete?: () => boolean,
  *   hasUndisplayedCombatEvents?: () => boolean,
+ *   needsBattleSettlement?: () => boolean,
  * }} deps
  */
 export function createCombatAdvanceController(deps) {
@@ -32,6 +33,9 @@ export function createCombatAdvanceController(deps) {
 
   function hasPendingCycleDisplay() {
     if (typeof deps.isAwaitingCycleComplete === 'function' && deps.isAwaitingCycleComplete()) {
+      return true
+    }
+    if (typeof deps.needsBattleSettlement === 'function' && deps.needsBattleSettlement()) {
       return true
     }
     return typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()

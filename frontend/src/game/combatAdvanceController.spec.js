@@ -168,6 +168,26 @@ describe('combatAdvanceController', () => {
     expect(deps.advanceServerCombat).not.toHaveBeenCalled()
   })
 
+  it('does not bootstrap while post-combat snapshot awaits settlement', async () => {
+    const ctrl = createCombatAdvanceController(
+      createDeps({
+        needsBattleSettlement: () => true,
+      }),
+    )
+    await ctrl.tryAdvanceServerCombat()
+    expect(deps.advanceServerCombat).not.toHaveBeenCalled()
+  })
+
+  it('does not bootstrap while battle summary is missing after last encounter', async () => {
+    const ctrl = createCombatAdvanceController(
+      createDeps({
+        needsBattleSettlement: () => true,
+      }),
+    )
+    await ctrl.bootstrapNextBattleIfIdle()
+    expect(deps.advanceServerCombat).not.toHaveBeenCalled()
+  })
+
   it('does not bootstrap while awaiting client advance with undisplayed events', async () => {
     const ctrl = createCombatAdvanceController(
       createDeps({
