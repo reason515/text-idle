@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   armOfflineCombat,
   installCombatPresenceLeaveTracking,
+  resetCombatPresenceLeaveStateForTests,
   sendCombatPresence,
+  shouldSkipArmOfflineOnUnload,
   startCombatPresenceHeartbeat,
   stopCombatPresenceHeartbeat,
   uninstallCombatPresenceLeaveTracking,
@@ -18,7 +20,7 @@ describe('combatPresence', () => {
 
   afterEach(() => {
     stopCombatPresenceHeartbeat()
-    uninstallCombatPresenceLeaveTracking()
+    resetCombatPresenceLeaveStateForTests()
     vi.unstubAllGlobals()
   })
 
@@ -47,7 +49,7 @@ describe('combatPresence', () => {
     intervalSpy.mockRestore()
   })
 
-  it('installCombatPresenceLeaveTracking calls arm-offline on pagehide', () => {
+  it('installCombatPresenceLeaveTracking calls arm-offline on pagehide when tab was visible', () => {
     const handlers = {}
     vi.stubGlobal('window', {
       addEventListener: vi.fn((name, fn) => {
@@ -57,6 +59,8 @@ describe('combatPresence', () => {
     })
     vi.stubGlobal('document', {
       addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      visibilityState: 'visible',
     })
     installCombatPresenceLeaveTracking()
     handlers.pagehide()
@@ -64,5 +68,54 @@ describe('combatPresence', () => {
       expect.stringContaining('/combat/arm-offline'),
       expect.any(Object),
     )
+    uninstallCombatPresenceLeaveTracking()
+  })
+
+  it('installCombatPresenceLeaveTracking skips arm-offline on quick reload pagehide', () => {
+    const handlers = {}
+    const docHandlers = {}
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn((name, fn) => {
+        docHandlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+      visibilityState: 'hidden',
+    })
+    installCombatPresenceLeaveTracking()
+    docHandlers.visibilitychange()
+    handlers.pagehide()
+    expect(fetch).not.toHaveBeenCalled()
+    uninstallCombatPresenceLeaveTracking()
+  })
+
+  it('shouldSkipArmOfflineOnUnload when hidden recently', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    const handlers = {}
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[`doc-${name}`] = fn
+      }),
+      removeEventListener: vi.fn(),
+      visibilityState: 'hidden',
+    })
+    installCombatPresenceLeaveTracking()
+    handlers['doc-visibilitychange']()
+    expect(shouldSkipArmOfflineOnUnload(Date.now() + 500)).toBe(true)
+    expect(shouldSkipArmOfflineOnUnload(Date.now() + 4000)).toBe(false)
+    uninstallCombatPresenceLeaveTracking()
+    vi.useRealTimers()
   })
 })

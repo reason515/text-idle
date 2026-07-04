@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   getDisplayedEventSeq,
+  getActiveLogBatchSeq,
+  getLogStepIndex,
   markEventDisplayed,
   initDisplayedEventSeqFromSnapshot,
   resetDisplayedEventSeqForTests,
@@ -26,5 +28,11 @@ describe('combatDisplayCursor', () => {
   it('initDisplayedEventSeqFromSnapshot falls back to leave eventSeq', () => {
     initDisplayedEventSeqFromSnapshot({ eventSeq: 7 })
     expect(getDisplayedEventSeq()).toBe(7)
+  })
+
+  it('initDisplayedEventSeqFromSnapshot restores log batch resume cursor', () => {
+    initDisplayedEventSeqFromSnapshot({ logBatchEventSeq: 5, logStepIndex: 9 })
+    expect(getActiveLogBatchSeq()).toBe(5)
+    expect(getLogStepIndex()).toBe(9)
   })
 })

@@ -88,5 +88,16 @@
 | **优化 (Optimize)** | 通过商店购买补充特定部位的装备缺口，或追求高品质 roll |
 | **经济 (Economy)** | 金币的重要消耗途径，形成「战斗/出售 → 金币 → 商店赌博 → 装备」的闭环 |
 
+## 九、服务端权威金币
+
+商店购买与背包出售会修改 **gold**（服务端权威字段，客户端 PATCH 不可写）。前端调用：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/shop/buy` | Body `{ "slotId": "Helm" }`；服务端扣金、生成装备、写入 save |
+| POST | `/shop/sell` | Body `{ "itemId": "..." }`；服务端移除物品、加金、写入 save |
+
+实现：`internal/combat/economy.go`（embedded JS `buyShopItemFromJSON` / `sellItemFromJSON`）+ `ShopService`。
+
 ---
 

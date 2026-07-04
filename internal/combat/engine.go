@@ -13,11 +13,31 @@ import (
 var combatBundleJS string
 
 var (
-	engineOnce sync.Once
-	engineMu   sync.Mutex
-	engineErr  error
-	runJSON    func(input string) (string, error)
+	engineOnce      sync.Once
+	engineMu        sync.Mutex
+	engineErr       error
+	runJSON         func(input string) (string, error)
+	buyShopJSON     func(input string) (string, error)
+	sellItemJSON    func(input string) (string, error)
 )
+
+func bindJSONCallable(vm *goja.Runtime, globalName string) (func(input string) (string, error), error) {
+	fn := vm.GlobalObject().Get(globalName)
+	if fn == nil {
+		return nil, fmt.Errorf("%s not found in bundle", globalName)
+	}
+	callable, ok := goja.AssertFunction(fn)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a function", globalName)
+	}
+	return func(input string) (string, error) {
+		val, err := callable(goja.Undefined(), vm.ToValue(input))
+		if err != nil {
+			return "", err
+		}
+		return val.String(), nil
+	}, nil
+}
 
 func initEngine() {
 	engineOnce.Do(func() {
@@ -26,23 +46,21 @@ func initEngine() {
 			engineErr = fmt.Errorf("run combat bundle: %w", err)
 			return
 		}
-		global := vm.GlobalObject()
-		fn := global.Get("runServerCombatCycleFromJSON")
-		if fn == nil {
-			engineErr = fmt.Errorf("runServerCombatCycleFromJSON not found in bundle")
+		var err error
+		runJSON, err = bindJSONCallable(vm, "runServerCombatCycleFromJSON")
+		if err != nil {
+			engineErr = err
 			return
 		}
-		callable, ok := goja.AssertFunction(fn)
-		if !ok {
-			engineErr = fmt.Errorf("runServerCombatCycleFromJSON is not a function")
+		buyShopJSON, err = bindJSONCallable(vm, "buyShopItemFromJSON")
+		if err != nil {
+			engineErr = err
 			return
 		}
-		runJSON = func(input string) (string, error) {
-			val, err := callable(goja.Undefined(), vm.ToValue(input))
-			if err != nil {
-				return "", err
-			}
-			return val.String(), nil
+		sellItemJSON, err = bindJSONCallable(vm, "sellItemFromJSON")
+		if err != nil {
+			engineErr = err
+			return
 		}
 	})
 }

@@ -2858,6 +2858,7 @@ import {
   uninstallSessionLeaveTracking,
 } from '../game/offlineSession.js'
 import {
+  armOfflineCombat,
   startCombatPresenceHeartbeat,
   stopCombatPresenceHeartbeat,
   installCombatPresenceLeaveTracking,
@@ -2870,7 +2871,18 @@ import {
   markEventDisplayed,
   markEncounterEventSeq,
   initDisplayedEventSeqFromSnapshot,
+  setActiveLogBatchSeq,
+  markLogStepProgress,
+  clearLogBatchProgress,
+  getActiveLogBatchSeq,
+  getLogStepIndex,
 } from '../game/combatDisplayCursor.js'
+import {
+  consumeQuickReloadFlag,
+  getLogBatchReplayPlan,
+  registerCombatUiSnapshotProvider,
+  unregisterCombatUiSnapshotProvider,
+} from '../game/combatUiSnapshot.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
   DEBUFF_DISPLAY,
@@ -2925,9 +2937,9 @@ import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes } from '../gam
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { formatAffixStat } from '../utils/affixStatLabels.js'
-import { getGold, addGold } from '../game/gold.js'
-import { addToInventory, getInventory, sellItem, removeFromInventory, getSellPrice } from '../game/inventory.js'
-import { buyFromShop, getShopPrice, SHOP_SLOTS } from '../game/shop.js'
+import { getGold } from '../game/gold.js'
+import { addToInventory, getInventory, sellItemOnServer, removeFromInventory, getSellPrice } from '../game/inventory.js'
+import { buyFromShopOnServer, getShopPrice, SHOP_SLOTS } from '../game/shop.js'
 import {
   formatItemDisplayName,
   getQualityColor,
@@ -3257,6 +3269,9 @@ const displayHeroes = ref([])
 const encounterInProgress = ref(false)
 /** Skip trailing log_batch from repopulating monsters after cycle_complete in the same poll. */
 let skipMonsterPanelRestore = false
+/** Session snapshot + quick reload flag for resuming log replay after F5. */
+let lastLeaveSnapshot = null
+let quickReloadReturn = false
 /** Last hydrated monsters from log_batch (E2E detail modal when panel is cleared after rest). */
 let lastE2eBuiltMonsters = []
 const currentMonsters = ref([])
@@ -3746,9 +3761,9 @@ function equipItem(item, targetHero, targetSlot) {
   showToast({ type: 'equip', itemName: formatItemDisplayName(item), heroName: heroDisplayName(hero.name), quality: item.quality })
 }
 
-function confirmSellItem(item) {
+async function confirmSellItem(item) {
   if (!item?.id) return
-  const result = sellItem(item.id)
+  const result = await sellItemOnServer(item.id)
   if (result.success) {
     gold.value = getGold()
     inventoryVersion.value++
@@ -4911,15 +4926,15 @@ function getShopConfirmLabel(slotId) {
 }
 
 function confirmShopBuy(slotId) {
-  handleShopBuy(slotId)
+  void handleShopBuy(slotId)
   shopConfirmingSlot.value = null
 }
 
-function handleShopBuy(slotId) {
+async function handleShopBuy(slotId) {
   shopMessage.value = null
-  const result = buyFromShop(slotId, squadMaxLevel.value)
+  const result = await buyFromShopOnServer(slotId)
   if (!result.success) {
-    shopMessage.value = '金币不足'
+    shopMessage.value = result.reason === 'insufficient_gold' ? '金币不足' : '购买失败'
     return
   }
   gold.value = getGold()
@@ -5265,7 +5280,7 @@ function applyOneCombatEntry(entry, { skipLog = false } = {}) {
   syncSelectedUnitsFromCombat()
 }
 
-async function processCombatLogIndex(log, encounter, steps, i, { instant = false } = {}) {
+async function processCombatLogIndex(log, encounter, steps, i, { instant = false, skipLog = false } = {}) {
   const entry = log[i]
   const isSilent = isSilentCombatLogEntry(entry)
   const combatLogStepDelayMs = getCombatLogStepDelayMs()
@@ -5275,12 +5290,12 @@ async function processCombatLogIndex(log, encounter, steps, i, { instant = false
   }
   if (!isRunning.value) return false
 
-  if (!isSilent) {
+  if (!isSilent && !skipLog) {
     if (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') {
       if (instant) applyRegenBatchInstant(entry)
       else await revealRegenBatchStep(entry)
     } else {
-      applyOneCombatEntry(entry)
+      applyOneCombatEntry(entry, { skipLog })
       if (!instant) await scrollLog()
     }
     if (shouldEmitUnitDefeated(entry)) {
@@ -5291,7 +5306,7 @@ async function processCombatLogIndex(log, encounter, steps, i, { instant = false
 
   applyAuthoritativePanelStep(encounter, steps[i])
 
-  if (shouldShowRoundSeparatorAfterEntry(entry, log[i + 1])) {
+  if (!skipLog && shouldShowRoundSeparatorAfterEntry(entry, log[i + 1])) {
     addLogEntry({ type: 'roundSeparator' })
     if (!instant) {
       await scrollLog()
@@ -5491,6 +5506,11 @@ async function startServerCombatDisplay() {
 
   await ensurePlayerSaveLoaded()
   const leaveSnapshot = readSessionSnapshot()
+  lastLeaveSnapshot = leaveSnapshot
+  quickReloadReturn = consumeQuickReloadFlag()
+  if (quickReloadReturn && leaveSnapshot?.displayedLogEntries?.length) {
+    displayedLog.value = JSON.parse(JSON.stringify(leaveSnapshot.displayedLogEntries))
+  }
   const combatStateOnLoad = getCombatStateSummary()
   isPaused.value = combatStateOnLoad?.status === 'paused'
   loadSquad()
@@ -5805,6 +5825,7 @@ async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, i
   lastRewards.value = { gold: p.goldGained || 0, exp: p.xpGained || 0, equipment: droppedEquipment }
   currentMonsters.value = []
   encounterInProgress.value = false
+  clearLogBatchProgress()
   addLogEntry({
     type: 'summary',
     outcome: p.outcome,
@@ -5830,9 +5851,16 @@ function openE2eFirstMonsterDetail() {
   if (alive) openMonsterDetail(alive)
 }
 
-async function replayServerLogBatch({ log, encounter, steps }) {
+async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
   if (!Array.isArray(log) || log.length === 0) return
   if (!encounter || !Array.isArray(steps) || steps.length !== log.length) return
+  const batchSeq = Math.max(0, Math.floor(Number(eventSeq) || 0))
+  const plan = getLogBatchReplayPlan({
+    quickReload: quickReloadReturn,
+    snapshot: lastLeaveSnapshot,
+    eventSeq: batchSeq,
+    logLength: log.length,
+  })
   serverDisplayCycleBusy = true
   try {
     currentMonsters.value = []
@@ -5840,10 +5868,14 @@ async function replayServerLogBatch({ log, encounter, steps }) {
     regenPulseByUnitId.value = {}
     monsterTargets.value = {}
     encounterInProgress.value = true
+    setActiveLogBatchSeq(batchSeq)
 
     const { monsters, heroes } = initPanelFromEncounter(encounter)
     displayHeroes.value = heroes
-    if (monsters.length > 0) {
+
+    const showEncounterRow =
+      !plan.restoreLog || !displayedLog.value.some((entry) => entry.type === 'encounter')
+    if (monsters.length > 0 && showEncounterRow) {
       addLogEntry({
         type: 'encounter',
         monsters: monsters.map((m) => ({ name: m.name, tier: m.tier })),
@@ -5854,17 +5886,50 @@ async function replayServerLogBatch({ log, encounter, steps }) {
     lastReplayMonsterCount = monsters.length
     lastE2eBuiltMonsters = monsters.map((m) => enrichMonsterForDetail(m))
 
+    const completedReplay = plan.fromStep >= log.length
+    const startStep = completedReplay ? log.length : plan.fromStep
+
+    if (startStep > 0) {
+      for (let i = 0; i < startStep; i += 1) {
+        const ok = await processCombatLogIndex(log, encounter, steps, i, {
+          instant: true,
+          skipLog: true,
+        })
+        if (!ok) return
+      }
+      markLogStepProgress(batchSeq, startStep)
+    }
+
+    if (completedReplay) {
+      encounterInProgress.value = false
+      quickReloadReturn = false
+      return
+    }
+
     if (isE2eFastMode()) {
       applyE2eCombatPanelFromBatch({ log, encounter, steps })
       if (shouldRetainE2eCombatLog()) {
         await appendE2eCombatLogChunked(log)
       }
       await scrollLog()
+      markLogStepProgress(batchSeq, log.length)
+      quickReloadReturn = false
       return
     }
 
-    await animateCombatLog({ log, encounter, steps })
+    currentActorId.value = null
+    currentTargetId.value = null
+    for (let i = startStep; i < log.length; i += 1) {
+      if (!isRunning.value) return
+      const ok = await processCombatLogIndex(log, encounter, steps, i, { instant: false })
+      if (!ok) return
+      markLogStepProgress(batchSeq, i + 1)
+    }
+    await scrollLog()
+    currentActorId.value = null
+    currentTargetId.value = null
     encounterInProgress.value = false
+    quickReloadReturn = false
   } finally {
     serverDisplayCycleBusy = false
   }
@@ -5938,7 +6003,7 @@ async function handleCombatStreamEvent(msg) {
     if (msg.type === 'combat.log_batch') {
       const batchResult = await serverCombatEvents.handleLogBatch(
         msg,
-        replayServerLogBatch,
+        (payload) => replayServerLogBatch({ ...payload, eventSeq: msg.seq }),
         processServerCycleCompleteEvent,
       )
       const payload = normalizeLogBatchPayload(msg)
@@ -5987,6 +6052,11 @@ onMounted(() => {
   installSessionLeaveTracking()
   installCombatPresenceLeaveTracking()
   installCombatVisibilityRecovery()
+  registerCombatUiSnapshotProvider(() => ({
+    logBatchEventSeq: getActiveLogBatchSeq(),
+    logStepIndex: getLogStepIndex(),
+    displayedLogEntries: displayedLog.value.slice(-200),
+  }))
   loadSquad()
   loadProgress()
   loadPlayerStats()
@@ -5999,6 +6069,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   persistSessionLeaveSnapshot()
+  unregisterCombatUiSnapshotProvider()
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    void armOfflineCombat()
+  }
   uninstallSessionLeaveTracking()
   uninstallCombatPresenceLeaveTracking()
   stopCombatPresenceHeartbeat()

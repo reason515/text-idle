@@ -5,7 +5,10 @@
 import {
   getDisplayedEventSeq,
   getLastEncounterEventSeq,
+  getActiveLogBatchSeq,
+  getLogStepIndex,
 } from './combatDisplayCursor.js'
+import { getCombatUiSnapshotOverlay } from './combatUiSnapshot.js'
 import {
   getCombatStateSummary,
   getGoldAmount,
@@ -33,6 +36,9 @@ export const OFFLINE_CAP_MS = 24 * 60 * 60 * 1000
  *   eventSeq: number,
  *   displayedEventSeq?: number,
  *   lastEncounterEventSeq?: number,
+ *   logBatchEventSeq?: number,
+ *   logStepIndex?: number,
+ *   displayedLogEntries?: unknown[],
  * }} OfflineSessionSnapshot
  */
 
@@ -64,6 +70,7 @@ export function buildSessionSnapshotFromSave(nowMs = Date.now()) {
   const stats = getPlayerStatsData()
   const inventory = getInventoryData()
   const combatState = getCombatStateSummary()
+  const uiOverlay = getCombatUiSnapshotOverlay()
   return {
     leftAtMs: nowMs,
     gold: getGoldAmount(),
@@ -75,6 +82,11 @@ export function buildSessionSnapshotFromSave(nowMs = Date.now()) {
     eventSeq: Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0)),
     displayedEventSeq: getDisplayedEventSeq(),
     lastEncounterEventSeq: getLastEncounterEventSeq(),
+    logBatchEventSeq: Math.max(0, Math.floor(Number(uiOverlay.logBatchEventSeq ?? getActiveLogBatchSeq()) || 0)),
+    logStepIndex: Math.max(0, Math.floor(Number(uiOverlay.logStepIndex ?? getLogStepIndex()) || 0)),
+    displayedLogEntries: Array.isArray(uiOverlay.displayedLogEntries)
+      ? uiOverlay.displayedLogEntries
+      : undefined,
   }
 }
 
@@ -138,6 +150,17 @@ export function readSessionSnapshot() {
         parsed.lastEncounterEventSeq != null
           ? Math.max(0, Math.floor(Number(parsed.lastEncounterEventSeq) || 0))
           : undefined,
+      logBatchEventSeq:
+        parsed.logBatchEventSeq != null
+          ? Math.max(0, Math.floor(Number(parsed.logBatchEventSeq) || 0))
+          : undefined,
+      logStepIndex:
+        parsed.logStepIndex != null
+          ? Math.max(0, Math.floor(Number(parsed.logStepIndex) || 0))
+          : undefined,
+      displayedLogEntries: Array.isArray(parsed.displayedLogEntries)
+        ? parsed.displayedLogEntries
+        : undefined,
     }
   } catch {
     return null

@@ -1103,6 +1103,40 @@ var TextIdleCombat = (() => {
     }
     return drops;
   }
+  var SHOP_SLOTS = [
+    { id: "MainHand-1H-Phys", label: "\u5355\u624B\u6B66\u5668\uFF08\u7269\u7406\uFF09", slot: "MainHand", baseKey: "MainHand" },
+    { id: "MainHand-2H", label: "\u53CC\u624B\u6B66\u5668\uFF08\u7269\u7406\uFF09", slot: "TwoHand", baseKey: "MainHand2H" },
+    { id: "MainHand-2H-Bow", label: "\u53CC\u624B\u6B66\u5668\uFF08\u5F13\uFF09", slot: "TwoHand", baseKey: "MainHand2HBow" },
+    { id: "MainHand-2H-Magic", label: "\u53CC\u624B\u6B66\u5668\uFF08\u6CD5\u6756\uFF09", slot: "TwoHand", baseKey: "MainHand2HStaff" },
+    { id: "MainHand-Magic", label: "\u5355\u624B\u6B66\u5668\uFF08\u6CD5\u6756\uFF09", slot: "MainHand", baseKey: "MainHandWand" },
+    { id: "MainHand-Hybrid", label: "\u5355\u624B\u6B66\u5668\uFF08\u81EA\u7136\u53CC\u4FEE\uFF09", slot: "MainHand", baseKey: "MainHandHybrid" },
+    { id: "MainHand-Hybrid-Str", label: "\u5355\u624B\u6B66\u5668\uFF08\u5723\u5149\u53CC\u4FEE\uFF09", slot: "MainHand", baseKey: "MainHandHybridStr" },
+    { id: "OffHand-Shield", label: "\u76FE\u724C", slot: "OffHand", baseKey: "Shield" },
+    { id: "OffHand-Orb", label: "\u526F\u624B\u7403", slot: "OffHand", baseKey: "OffHand" },
+    { id: "Helm", label: "\u5934\u76D4", slot: "Helm", baseKey: "Helm" },
+    { id: "Armor", label: "\u80F8\u7532", slot: "Armor", baseKey: "Armor" },
+    { id: "Gloves", label: "\u624B\u5957", slot: "Gloves", baseKey: "Gloves" },
+    { id: "Boots", label: "\u9774\u5B50", slot: "Boots", baseKey: "Boots" },
+    { id: "Belt", label: "\u8170\u5E26", slot: "Belt", baseKey: "Belt" },
+    { id: "Amulet", label: "\u9879\u94FE", slot: "Amulet", baseKey: "Amulet" },
+    { id: "Ring", label: "\u6212\u6307", slot: null, baseKey: null }
+  ];
+  function generateShopItem(slotId, level, rng = Math.random) {
+    const lvl = Math.max(1, Math.floor(level));
+    const entry = SHOP_SLOTS.find((s) => s.id === slotId);
+    if (!entry) return null;
+    let slotOverride = entry.slot;
+    let baseKeyOverride = entry.baseKey;
+    if (slotId === "Ring") {
+      slotOverride = "Ring";
+      baseKeyOverride = "Ring";
+    }
+    const droppableSlots = getDroppableSlots(getItemTierByMonsterLevel(lvl));
+    if (slotOverride && slotOverride !== "TwoHand" && !droppableSlots.includes(slotOverride)) {
+      return null;
+    }
+    return generateOneItem(lvl, "shop", rng, slotOverride, baseKeyOverride);
+  }
   var MAINHAND_SLOT = "MainHand";
   var TWOHAND_SLOT = "TwoHand";
   var WEAPON_SLOTS = [MAINHAND_SLOT, TWOHAND_SLOT];
@@ -8347,8 +8381,139 @@ var TextIdleCombat = (() => {
     return ms;
   }
 
+  // frontend/src/game/shop.js
+  var SLOT_BASE_PRICE = {
+    "MainHand-1H-Phys": 400,
+    "MainHand-2H": 600,
+    "MainHand-2H-Bow": 600,
+    "MainHand-2H-Magic": 600,
+    "MainHand-Magic": 450,
+    "MainHand-Hybrid": 450,
+    "MainHand-Hybrid-Str": 450,
+    "OffHand-Shield": 350,
+    "OffHand-Orb": 375,
+    Helm: 250,
+    Armor: 325,
+    Gloves: 175,
+    Boots: 175,
+    Belt: 160,
+    Amulet: 275,
+    Ring: 225
+  };
+  var LEVEL_FACTOR = 0.08;
+  function getShopPrice(slotId, level) {
+    const lvl = Math.max(1, Math.floor(level));
+    const base = SLOT_BASE_PRICE[slotId] ?? 200;
+    const mult = 1 + lvl * LEVEL_FACTOR;
+    return Math.max(1, Math.floor(base * mult));
+  }
+
+  // frontend/src/game/serverEconomy.js
+  function squadMaxLevel(squad) {
+    if (!Array.isArray(squad) || squad.length === 0) return 1;
+    return Math.max(...squad.map((h) => Math.max(1, h.level ?? 1)));
+  }
+  function createSeededRng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = s * 1664525 + 1013904223 >>> 0;
+      return s / 4294967296;
+    };
+  }
+  function applyShopBuyToSave(save, slotId, rng = Math.random) {
+    const out = JSON.parse(JSON.stringify(save));
+    const level = squadMaxLevel(out.squad);
+    const price = getShopPrice(slotId, level);
+    const gold = Math.max(0, Math.floor(Number(out.gold) || 0));
+    if (gold < price) {
+      return { success: false, save: out, reason: "insufficient_gold" };
+    }
+    const item = generateShopItem(slotId, level, rng);
+    if (!item) {
+      return { success: false, save: out, reason: "invalid_slot" };
+    }
+    out.gold = gold - price;
+    if (!Array.isArray(out.inventory)) out.inventory = [];
+    let inventoryFull = false;
+    if (out.inventory.length >= INVENTORY_MAX) {
+      inventoryFull = true;
+    } else {
+      out.inventory.push(item);
+    }
+    return {
+      success: true,
+      save: out,
+      item,
+      inventoryFull,
+      goldDeducted: price
+    };
+  }
+  function applySellItemToSave(save, itemId) {
+    const out = JSON.parse(JSON.stringify(save));
+    if (!Array.isArray(out.inventory)) out.inventory = [];
+    const idx = out.inventory.findIndex((i) => i.id === itemId);
+    if (idx < 0) {
+      return { success: false, save: out, reason: "not_found" };
+    }
+    const [item] = out.inventory.splice(idx, 1);
+    const goldGain = getSellPrice(item);
+    out.gold = Math.max(0, Math.floor(Number(out.gold) || 0)) + goldGain;
+    return { success: true, save: out, item, goldGained: goldGain };
+  }
+  function buyShopItemFromJSON(inputStr) {
+    const input = JSON.parse(inputStr);
+    const rng = input.rngSeed != null ? createSeededRng(Number(input.rngSeed) || 1) : Math.random;
+    const result = applyShopBuyToSave(input.save, input.slotId, rng);
+    return JSON.stringify(result);
+  }
+  function sellItemFromJSON(inputStr) {
+    const input = JSON.parse(inputStr);
+    const result = applySellItemToSave(input.save, input.itemId);
+    return JSON.stringify(result);
+  }
+  if (typeof globalThis !== "undefined") {
+    globalThis.buyShopItemFromJSON = buyShopItemFromJSON;
+    globalThis.sellItemFromJSON = sellItemFromJSON;
+  }
+
   // frontend/src/game/inventory.js
   var INVENTORY_MAX = 100;
+  var SLOT_SELL_MULT = {
+    MainHand: 1.5,
+    TwoHand: 1.5,
+    OffHand: 1.3,
+    Armor: 1.2,
+    Helm: 1.1,
+    Gloves: 1,
+    Boots: 1,
+    Belt: 0.9,
+    Amulet: 1.1,
+    Ring: 1.1,
+    Ring1: 1.1,
+    Ring2: 1.1
+  };
+  function getSellPrice(item) {
+    if (!item) return 0;
+    let base = 8;
+    switch (item.quality) {
+      case QUALITY_MAGIC:
+        base = 25;
+        break;
+      case QUALITY_RARE:
+        base = 60;
+        break;
+      case QUALITY_UNIQUE:
+        base = 150;
+        break;
+      default:
+        base = 8;
+    }
+    let tierMult = 1;
+    if (item.itemTier === "exceptional") tierMult = 2;
+    else if (item.itemTier === "elite") tierMult = 4;
+    const slotMult = SLOT_SELL_MULT[item.slot] ?? 1;
+    return Math.max(1, Math.floor(base * tierMult * slotMult));
+  }
 
   // frontend/src/game/serverCombatCycle.js
   function getSquadMaxLevel(squad) {
@@ -8360,7 +8525,7 @@ var TextIdleCombat = (() => {
     const sum = squad.reduce((acc, h) => acc + Math.max(1, h.level ?? 1), 0);
     return sum / squad.length;
   }
-  function createSeededRng(seed) {
+  function createSeededRng2(seed) {
     let s = seed >>> 0;
     return () => {
       s = s * 1664525 + 1013904223 >>> 0;
@@ -8419,7 +8584,7 @@ var TextIdleCombat = (() => {
     const preCombatSquad = JSON.parse(JSON.stringify(squad));
     const rngSeed = Number(opts.rngSeed) || 1;
     const tickNowMs = Number(opts.nowMs) || Date.now();
-    const rng = createSeededRng(rngSeed);
+    const rng = createSeededRng2(rngSeed);
     const progress = out.combatProgress || {};
     const squadLevel = getSquadMaxLevel(squad);
     const squadAverageLevel = getSquadAverageLevel(squad);

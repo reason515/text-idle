@@ -6,8 +6,8 @@
  * - Sell for gold (price by quality + tier)
  */
 
-import { addGold } from './gold.js'
-import { getInventoryData, setInventoryData } from './playerSave.js'
+import { getGoldAmount, getInventoryData, setGoldAmount, setInventoryData, cancelScheduledPersist, ensurePlayerSaveLoaded, normalizePlayerSave } from './playerSave.js'
+import { applySellItemToSave } from './serverEconomy.js'
 import { QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE, QUALITY_UNIQUE } from './equipment.js'
 
 export const INVENTORY_MAX = 100
@@ -114,10 +114,61 @@ export function getSellPrice(item) {
  * @param {string} itemId
  * @returns {{ success: boolean, gold?: number, item?: Object }}
  */
+function applySellResultToCache(result) {
+  if (!result?.success || !result.save) return result
+  cancelScheduledPersist()
+  const normalized = normalizePlayerSave(result.save)
+  setGoldAmount(normalized.gold)
+  setInventoryData(normalized.inventory)
+  return result
+}
+
+/**
+ * Sell item: remove from inventory and add gold (local cache; tests).
+ * Production UI should call sellItemOnServer.
+ */
 export function sellItem(itemId) {
-  const item = removeFromInventory(itemId)
-  if (!item) return { success: false }
-  const gold = getSellPrice(item)
-  addGold(gold)
-  return { success: true, gold, item }
+  const save = {
+    gold: getGoldAmount(),
+    inventory: getInventory(),
+  }
+  const result = applySellItemToSave(save, itemId)
+  if (!result.success) return { success: false }
+  applySellResultToCache(result)
+  return { success: true, gold: result.goldGained, item: result.item }
+}
+
+function apiBase() {
+  return import.meta.env.DEV ? '/api' : ''
+}
+
+/**
+ * Server-authoritative sell (gold persisted on backend).
+ * @param {string} itemId
+ */
+export async function sellItemOnServer(itemId) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return { success: false, reason: 'unauthorized' }
+  const res = await fetch(`${apiBase()}/shop/sell`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ itemId }),
+  })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    return { success: false, reason: 'unauthorized' }
+  }
+  if (res.status === 404) {
+    return { success: false, reason: 'not_found' }
+  }
+  if (!res.ok) {
+    return { success: false, reason: 'request_failed' }
+  }
+  const data = await res.json()
+  cancelScheduledPersist()
+  await ensurePlayerSaveLoaded(true)
+  return { success: true, gold: data.goldGained, item: data.item }
 }

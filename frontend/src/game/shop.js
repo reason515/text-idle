@@ -5,9 +5,18 @@
  * - Price by slot + level
  */
 
-import { getGold, deductGold } from './gold.js'
-import { addToInventory, isInventoryFull } from './inventory.js'
-import { generateShopItem, SHOP_SLOTS } from './equipment.js'
+import { getGold } from './gold.js'
+import { getInventory } from './inventory.js'
+import { SHOP_SLOTS } from './equipment.js'
+import { applyShopBuyToSave } from './serverEconomy.js'
+import {
+  cancelScheduledPersist,
+  ensurePlayerSaveLoaded,
+  getSquadData,
+  normalizePlayerSave,
+  setGoldAmount,
+  setInventoryData,
+} from './playerSave.js'
 
 /** Base price by slot id. Higher = more expensive; tuned for "save up to buy" feel. */
 const SLOT_BASE_PRICE = {
@@ -52,31 +61,75 @@ export function getShopPrice(slotId, level) {
  * @param {Function} rng - Random 0..1
  * @returns {{ success: boolean, item?: Object, inventoryFull?: boolean, goldDeducted?: number }}
  */
+function applyShopBuyResultToCache(result) {
+  if (!result?.success || !result.save) return result
+  cancelScheduledPersist()
+  const normalized = normalizePlayerSave(result.save)
+  setGoldAmount(normalized.gold)
+  setInventoryData(normalized.inventory)
+  return result
+}
+
+/**
+ * Buy from shop using local save cache (tests / memory-only).
+ * Production UI should call buyFromShopOnServer.
+ */
 export function buyFromShop(slotId, squadMaxLevel, rng = Math.random) {
-  const level = Math.max(1, squadMaxLevel)
-  const price = getShopPrice(slotId, level)
-  const currentGold = getGold()
-  if (currentGold < price) {
-    return { success: false }
+  const squad = getSquadData()
+  const save = {
+    gold: getGold(),
+    squad: squad.length > 0 ? squad : [{ level: Math.max(1, squadMaxLevel) }],
+    inventory: getInventory(),
   }
-  const item = generateShopItem(slotId, level, rng)
-  if (!item) {
-    return { success: false }
-  }
-  deductGold(price)
-  const added = addToInventory(item)
-  if (!added) {
-    return {
-      success: true,
-      item,
-      inventoryFull: true,
-      goldDeducted: price,
-    }
-  }
+  const result = applyShopBuyToSave(save, slotId, rng)
+  if (!result.success) return { success: false }
+  applyShopBuyResultToCache(result)
   return {
     success: true,
-    item,
-    goldDeducted: price,
+    item: result.item,
+    inventoryFull: result.inventoryFull,
+    goldDeducted: result.goldDeducted,
+  }
+}
+
+function apiBase() {
+  return import.meta.env.DEV ? '/api' : ''
+}
+
+/**
+ * Server-authoritative shop purchase (gold is persisted on the backend).
+ * @param {string} slotId
+ * @returns {Promise<{ success: boolean, item?: object, inventoryFull?: boolean, goldDeducted?: number, reason?: string }>}
+ */
+export async function buyFromShopOnServer(slotId) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null
+  if (!token) return { success: false, reason: 'unauthorized' }
+  const res = await fetch(`${apiBase()}/shop/buy`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ slotId }),
+  })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    return { success: false, reason: 'unauthorized' }
+  }
+  if (res.status === 402) {
+    return { success: false, reason: 'insufficient_gold' }
+  }
+  if (!res.ok) {
+    return { success: false, reason: 'request_failed' }
+  }
+  const data = await res.json()
+  cancelScheduledPersist()
+  await ensurePlayerSaveLoaded(true)
+  return {
+    success: true,
+    item: data.item,
+    inventoryFull: !!data.inventoryFull,
+    goldDeducted: data.goldDeducted,
   }
 }
 

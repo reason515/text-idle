@@ -280,6 +280,8 @@ export function runServerCombatCycleFromJSON(inputStr) {
   return JSON.stringify(result)
 }
 
+import './serverEconomy.js'
+
 if (typeof globalThis !== 'undefined') {
   globalThis.runServerCombatCycleFromJSON = runServerCombatCycleFromJSON
 }

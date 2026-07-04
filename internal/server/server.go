@@ -35,6 +35,7 @@ func NewApp(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *Ap
 	combatHub := service.NewCombatHub()
 	combatLoop := service.NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, combatHub)
 	combatScheduler := service.NewCombatScheduler(combatStateRepo, combatLoop)
+	shopService := service.NewShopService(saveService, combatLoop)
 	messageBoardRepo := repository.NewMessageBoardRepository(db)
 	messageBoardService := service.NewMessageBoardService(messageBoardRepo, saveService)
 	saveHandler := handler.NewSaveHandler(saveService, combatLoop)
@@ -42,6 +43,7 @@ func NewApp(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *Ap
 	leaderboardHandler := handler.NewLeaderboardHandler(leaderboardService)
 	messageBoardHandler := handler.NewMessageBoardHandler(messageBoardService)
 	combatHandler := handler.NewCombatHandler(combatLoop, saveService, combatEventRepo, combatHub)
+	shopHandler := handler.NewShopHandler(shopService)
 	authMw := middleware.AuthRequired(userRepo)
 	wsAuthMw := middleware.AuthRequiredQueryOrHeader(userRepo)
 
@@ -70,6 +72,8 @@ func NewApp(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *Ap
 	r.POST("/combat/advance", authMw, combatHandler.Advance)
 	r.POST("/combat/arm-offline", authMw, combatHandler.ArmOffline)
 	r.POST("/combat/presence", authMw, combatHandler.Presence)
+	r.POST("/shop/buy", authMw, shopHandler.Buy)
+	r.POST("/shop/sell", authMw, shopHandler.Sell)
 	r.GET("/combat/ws", wsAuthMw, combatHandler.WebSocket)
 	r.POST("/debug/combat/tick", authMw, combatHandler.DebugTick)
 

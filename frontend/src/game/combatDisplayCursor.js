@@ -5,6 +5,44 @@
 
 let displayedEventSeq = 0
 let lastEncounterEventSeq = 0
+let activeLogBatchSeq = 0
+let logStepIndex = 0
+
+/** @returns {number} */
+export function getActiveLogBatchSeq() {
+  return activeLogBatchSeq
+}
+
+/** @returns {number} */
+export function getLogStepIndex() {
+  return logStepIndex
+}
+
+/** @param {number} seq */
+export function setActiveLogBatchSeq(seq) {
+  activeLogBatchSeq = Math.max(0, Math.floor(Number(seq) || 0))
+  logStepIndex = 0
+}
+
+/**
+ * @param {number} seq log_batch event seq
+ * @param {number} stepIndex next step index (0 = not started)
+ */
+export function markLogStepProgress(seq, stepIndex) {
+  const batchSeq = Math.max(0, Math.floor(Number(seq) || 0))
+  const step = Math.max(0, Math.floor(Number(stepIndex) || 0))
+  if (batchSeq <= 0) return
+  if (activeLogBatchSeq !== batchSeq) {
+    activeLogBatchSeq = batchSeq
+    logStepIndex = 0
+  }
+  if (step > logStepIndex) logStepIndex = step
+}
+
+export function clearLogBatchProgress() {
+  activeLogBatchSeq = 0
+  logStepIndex = 0
+}
 
 /** @returns {number} */
 export function getDisplayedEventSeq() {
@@ -28,16 +66,20 @@ export function markEncounterEventSeq(seq) {
   if (n > lastEncounterEventSeq) lastEncounterEventSeq = n
 }
 
-/** @param {{ displayedEventSeq?: number, eventSeq?: number, lastEncounterEventSeq?: number } | null | undefined} snapshot */
+/** @param {{ displayedEventSeq?: number, eventSeq?: number, lastEncounterEventSeq?: number, logBatchEventSeq?: number, logStepIndex?: number } | null | undefined} snapshot */
 export function initDisplayedEventSeqFromSnapshot(snapshot) {
   const fromDisplayed = Math.max(0, Math.floor(Number(snapshot?.displayedEventSeq) || 0))
   const fromLeave = Math.max(0, Math.floor(Number(snapshot?.eventSeq) || 0))
   displayedEventSeq =
     fromDisplayed > 0 || snapshot?.displayedEventSeq != null ? fromDisplayed : fromLeave
   lastEncounterEventSeq = Math.max(0, Math.floor(Number(snapshot?.lastEncounterEventSeq) || 0))
+  activeLogBatchSeq = Math.max(0, Math.floor(Number(snapshot?.logBatchEventSeq) || 0))
+  logStepIndex = Math.max(0, Math.floor(Number(snapshot?.logStepIndex) || 0))
 }
 
 export function resetDisplayedEventSeqForTests() {
   displayedEventSeq = 0
   lastEncounterEventSeq = 0
+  activeLogBatchSeq = 0
+  logStepIndex = 0
 }

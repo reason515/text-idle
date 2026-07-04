@@ -82,6 +82,16 @@ func (s *SaveService) PatchPlayerSave(userID uint, patch json.RawMessage) error 
 	return s.storeSave(userID, merged)
 }
 
+// ApplyAuthoritativeSave stores a server-computed save (e.g. shop buy/sell) without
+// client authoritative-field checks. Callers must derive the save from the current
+// authoritative save.
+func (s *SaveService) ApplyAuthoritativeSave(userID uint, data json.RawMessage) error {
+	if !json.Valid(data) {
+		return errors.New("invalid json")
+	}
+	return s.storeSave(userID, data)
+}
+
 // PutSaveUnrestricted stores save JSON without authoritative-field checks (E2E debug only).
 func (s *SaveService) PutSaveUnrestricted(userID uint, data json.RawMessage) error {
 	if !json.Valid(data) {
