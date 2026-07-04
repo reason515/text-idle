@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -129,6 +130,20 @@ func TestServeSPA_routes(t *testing.T) {
 		}
 		if rec.Header().Get("Content-Encoding") != "gzip" {
 			t.Fatal("expected gzip for JS asset")
+		}
+	})
+
+	t.Run("missing hashed asset returns 404 not index.html", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(rec)
+		c.Request = httptest.NewRequest(http.MethodGet, "/assets/index-stalehash.js", nil)
+		serveSPA(fsys)(c)
+
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "<html") {
+			t.Fatalf("missing asset must not fall back to index.html, body = %q", rec.Body.String())
 		}
 	})
 }

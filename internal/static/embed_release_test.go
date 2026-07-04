@@ -26,4 +26,14 @@ func TestEmbedWebHasIndexHTML(t *testing.T) {
 	if len(entries) == 0 {
 		t.Fatal("assets dir is empty in embed")
 	}
+	hasUnderscoreChunk := false
+	for _, e := range entries {
+		if len(e.Name()) > 0 && e.Name()[0] == '_' {
+			hasUnderscoreChunk = true
+			break
+		}
+	}
+	if !hasUnderscoreChunk {
+		t.Fatal("assets must include Vite underscore-prefixed helper chunks (e.g. _plugin-vue_export-helper-*.js)")
+	}
 }

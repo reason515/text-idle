@@ -44,6 +44,22 @@ func wantsGzip(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 }
 
+// shouldNotSpaFallback reports paths that must return 404 when missing (hashed bundles, fonts, audio).
+// SPA fallback is only for client-side routes such as /login or /main.
+func shouldNotSpaFallback(path string) bool {
+	if strings.HasPrefix(path, "assets/") ||
+		strings.HasPrefix(path, "fonts/") ||
+		strings.HasPrefix(path, "audio/") {
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".js", ".css", ".map", ".woff", ".woff2", ".ttf", ".wav", ".mp3", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".json":
+		return true
+	default:
+		return false
+	}
+}
+
 func serveStaticFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, path string) {
 	w.Header().Set("Cache-Control", staticCacheControl(path))
 
@@ -82,6 +98,11 @@ func serveSPA(fsys fs.FS) gin.HandlerFunc {
 				serveStaticFile(c.Writer, c.Request, fsys, path)
 				return
 			}
+		}
+		if shouldNotSpaFallback(path) {
+			c.Status(http.StatusNotFound)
+			c.String(http.StatusNotFound, "not found")
+			return
 		}
 		c.Status(http.StatusOK)
 		serveStaticFile(c.Writer, c.Request, fsys, "index.html")

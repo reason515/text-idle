@@ -81,4 +81,22 @@ router.beforeEach(async (to, _from, next) => {
   next()
 })
 
+const CHUNK_RELOAD_KEY = 'tiChunkReloadOnce'
+
+function isStaleChunkLoadError(err) {
+  const msg = err instanceof Error ? err.message : String(err ?? '')
+  return /Failed to fetch dynamically imported module|Loading chunk .* failed/i.test(msg)
+}
+
+router.onError((err) => {
+  if (!isStaleChunkLoadError(err)) return
+  try {
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1') return
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+  window.location.reload()
+})
+
 createApp(App).use(router).mount('#app')
