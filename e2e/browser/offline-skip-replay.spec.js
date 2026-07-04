@@ -8,6 +8,8 @@ const {
   runWallClockTicks,
 } = require('./testHelpers')
 
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Offline skip replay', () => {
   test('long offline skips log replay without hang', async ({ page }) => {
     const email = uniqueTestEmail('offline-skip')
@@ -33,10 +35,11 @@ test.describe('Offline skip replay', () => {
       )
     })
 
-    await page.reload()
-    await expect(page.getByTestId('player-stats-efficiency')).toBeVisible({ timeout: 30000 })
-    await expect(page.getByTestId('offline-summary-modal')).toBeVisible({ timeout: 15000 })
+    await page.goto('/main?e2e=1', { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
+    await expect(page.getByTestId('offline-summary-modal')).toBeVisible({ timeout: 30000 })
     await page.getByTestId('offline-summary-close').click()
+    await expect(page.getByTestId('player-stats-efficiency')).toBeVisible({ timeout: 10000 })
     await expect(page.getByTestId('player-stats-efficiency')).toBeEnabled({ timeout: 5000 })
   })
 })

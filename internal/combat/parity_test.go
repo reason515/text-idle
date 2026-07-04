@@ -101,3 +101,33 @@ func TestParity_server_cycle_fixed_trio(t *testing.T) {
 		}
 	}
 }
+
+func TestRunCycle_passesNowMsToBundle(t *testing.T) {
+	fix := loadFixture(t, "server_cycle_fixed_trio")
+	saveRaw, err := json.Marshal(fix["save"])
+	if err != nil {
+		t.Fatalf("marshal save: %v", err)
+	}
+	nowMs := int64(1_700_000_000_000)
+	result, err := RunCycle(saveRaw, 1001, nowMs)
+	if err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+	if result.Skipped {
+		t.Fatalf("expected not skipped, reason=%s", result.Reason)
+	}
+	var save map[string]interface{}
+	if err := json.Unmarshal(result.Save, &save); err != nil {
+		t.Fatalf("parse save: %v", err)
+	}
+	stats, _ := save["playerStats"].(map[string]interface{})
+	timeline, _ := stats["battleTimeline"].([]interface{})
+	if len(timeline) == 0 {
+		t.Fatal("expected battleTimeline entry")
+	}
+	last, _ := timeline[len(timeline)-1].(map[string]interface{})
+	endedAtMs, _ := last["endedAtMs"].(float64)
+	if int64(endedAtMs) != nowMs {
+		t.Fatalf("endedAtMs: got %v want %d", endedAtMs, nowMs)
+	}
+}

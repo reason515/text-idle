@@ -7,27 +7,27 @@ const {
   armOfflineCombat,
   runWallClockTicks,
   fetchServerSave,
-  waitForServerBattleCountAtLeast,
 } = require('./testHelpers')
 
-test.describe.configure({ mode: 'serial' })
-
-test.describe('Offline stats sync', () => {
-  test('player stats panel reflects offline wall-clock ticks', async ({ page }) => {
-    const email = uniqueTestEmail('offline-stats')
-    await registerAndGoToMain(page, email)
+test.describe('Offline leaderboard sync', () => {
+  test('offline ticks update leaderboard eligibility', async ({ page }) => {
+    const email = uniqueTestEmail('offline-lb')
+    const teamName = `Offline-${uniqueTestEmail('lb').slice(0, 10)}`
+    await registerAndGoToMain(page, email, { teamName })
     await pauseCombat(page)
 
     const saveBefore = await fetchServerSave(page)
     const battlesBefore = saveBefore.playerStats?.battleCount ?? 0
 
     await armOfflineCombat(page)
-    await runWallClockTicks(page, 3)
-    await waitForServerBattleCountAtLeast(page, battlesBefore + 3)
+    await runWallClockTicks(page, 40)
+
+    await expect.poll(async () => {
+      const save = await fetchServerSave(page)
+      return save.leaderboardTrack?.lifetimeSteps ?? 0
+    }, { timeout: 15000 }).toBeGreaterThanOrEqual(1000)
 
     const saveAfter = await fetchServerSave(page)
-    const battlesAfter = saveAfter.playerStats?.battleCount ?? 0
-    expect(battlesAfter).toBeGreaterThanOrEqual(battlesBefore + 3)
 
     await page.addInitScript(
       ({ snapshot }) => {
@@ -47,12 +47,13 @@ test.describe('Offline stats sync', () => {
       },
     )
 
-    await page.reload()
+    await page.goto('/main?e2e=1', { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await expect(page).toHaveURL(/\/main/, { timeout: 15000 })
     await expect(page.getByTestId('offline-summary-modal')).toBeVisible({ timeout: 15000 })
     await page.getByTestId('offline-summary-close').click()
-    await expect(page.getByTestId('player-stats-efficiency')).toBeEnabled({ timeout: 5000 })
-    await page.getByTestId('player-stats-efficiency').click()
-    await expect(page.getByTestId('player-stats-modal-overlay')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByTestId('player-stats-battle-count')).toHaveText(String(battlesAfter))
+
+    await page.getByTestId('feed-tab-leaderboard').click()
+    await expect(page.getByTestId('leaderboard-gold-list')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('你的排名')).toBeVisible({ timeout: 10000 })
   })
 })

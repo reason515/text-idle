@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -132,6 +133,21 @@ func saveBattleCount(t *testing.T, saveService *SaveService, userID uint) float6
 	stats := parseSavePlayerStats(t, raw)
 	count, _ := stats["battleCount"].(float64)
 	return count
+}
+
+func (h *combatLoopHarness) getLeaderboardEntry(t *testing.T) *model.LeaderboardEntry {
+	t.Helper()
+	if h.leaderboardRepo == nil {
+		return nil
+	}
+	entry, err := h.leaderboardRepo.GetByUserID(h.userID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
 }
 
 func (h *combatLoopHarness) seedSave(t *testing.T, save json.RawMessage) {
@@ -788,4 +804,217 @@ func TestCombatLoopService_Backfill_migratesStuckClientGated(t *testing.T) {
 	if state.OfflineCapUntil.IsZero() {
 		t.Fatal("expected offline_cap_until set after backfill migration")
 	}
+}
+
+func (h *combatLoopHarness) wallClockTick(t *testing.T, now time.Time) {
+	t.Helper()
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.NextTickAt = now.Add(-time.Second)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.TickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func battleTimelineEndedAtMs(t *testing.T, raw json.RawMessage) []float64 {
+	t.Helper()
+	stats := parseSavePlayerStats(t, raw)
+	timeline, _ := stats["battleTimeline"].([]interface{})
+	out := make([]float64, 0, len(timeline))
+	for _, row := range timeline {
+		entry, _ := row.(map[string]interface{})
+		ms, _ := entry["endedAtMs"].(float64)
+		out = append(out, ms)
+	}
+	return out
+}
+
+func TestCombatLoopService_BurstWallClock_respectsMaxTicksPerScan(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	t.Setenv("COMBAT_MAX_OFFLINE_TICKS_PER_SCAN", "3")
+	h := setupCombatLoopHarness(t, "burst-scan@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	base := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, base); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, base); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = base.Add(-2 * time.Hour)
+	state.LastCycleDelayMs = 200
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	before := saveBattleCount(t, h.saveService, h.userID)
+	tickNow := base.Add(2 * time.Hour)
+	if err := h.loop.TickUser(h.userID, tickNow); err != nil {
+		t.Fatal(err)
+	}
+	after := saveBattleCount(t, h.saveService, h.userID)
+	delta := after - before
+	if delta > 3 {
+		t.Fatalf("expected at most 3 burst ticks per scan, before=%v after=%v delta=%v", before, after, delta)
+	}
+	if delta < 1 {
+		t.Fatalf("expected at least 1 burst tick when overdue, before=%v after=%v delta=%v", before, after, delta)
+	}
+}
+
+func TestCombatLoopService_WallClock_burstTimelineEndedAtMs_increments(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	h := setupCombatLoopHarness(t, "burst-ms@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	base := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, base); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, base); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		tickAt := base.Add(time.Duration(i) * time.Second)
+		if err := h.loop.ForceTickUser(h.userID, tickAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	raw, err := h.saveService.GetSave(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ended := battleTimelineEndedAtMs(t, raw)
+	if len(ended) < 3 {
+		t.Fatalf("expected at least 3 timeline entries, got %d", len(ended))
+	}
+	lastThree := ended[len(ended)-3:]
+	if !(lastThree[0] < lastThree[1] && lastThree[1] < lastThree[2]) {
+		t.Fatalf("expected strictly increasing endedAtMs, got %v", lastThree)
+	}
+}
+
+func TestCombatLoopService_WallClock_paused_doesNotUpdateStats(t *testing.T) {
+	h := setupCombatLoopHarness(t, "wall-paused@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.Pause(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	before := saveBattleCount(t, h.saveService, h.userID)
+	h.wallClockTick(t, now)
+	after := saveBattleCount(t, h.saveService, h.userID)
+	if after != before {
+		t.Fatalf("paused wall-clock tick should not update stats, before=%v after=%v", before, after)
+	}
+}
+
+func TestCombatLoopService_WallClockTick_upsertsLeaderboardEntry(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	h := setupCombatLoopHarnessWithLeaderboard(t, "wall-lb-entry@test.com", true)
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 40; i++ {
+		state, _ := h.combatStateRepo.GetByUserID(h.userID)
+		state.NextTickAt = now.Add(-time.Second)
+		if err := h.combatStateRepo.Upsert(state); err != nil {
+			t.Fatal(err)
+		}
+		if err := h.loop.ForceTickUser(h.userID, now.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		entry := h.getLeaderboardEntry(t)
+		if entry != nil {
+			raw, _ := h.saveService.GetSave(h.userID)
+			track := parseSaveLeaderboardTrack(t, raw)
+			lifetime, _ := track["lifetimeSteps"].(float64)
+			if entry.ExplorationSteps != int(lifetime) {
+				t.Fatalf("entry steps=%d save track=%v", entry.ExplorationSteps, lifetime)
+			}
+			return
+		}
+	}
+	t.Fatal("expected leaderboard entry after enough wall-clock ticks")
+}
+
+func TestCombatLoopService_WallClock_belowMinSteps_notEligible(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	h := setupCombatLoopHarnessWithLeaderboard(t, "wall-below-min@test.com", true)
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ForceTickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := h.saveService.GetSave(h.userID)
+	track := parseSaveLeaderboardTrack(t, raw)
+	lifetime, _ := track["lifetimeSteps"].(float64)
+	if lifetime >= float64(LeaderboardMinLifetimeSteps) {
+		t.Fatalf("fixture tick should stay below min steps for this test, lifetime=%v", lifetime)
+	}
+	entry := h.getLeaderboardEntry(t)
+	if entry != nil {
+		t.Fatalf("expected no leaderboard entry below %d steps, got %+v", LeaderboardMinLifetimeSteps, entry)
+	}
+}
+
+func TestCombatLoopService_WallClock_crossesMinSteps_becomesEligible(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	h := setupCombatLoopHarnessWithLeaderboard(t, "wall-eligible@test.com", true)
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 40; i++ {
+		state, _ := h.combatStateRepo.GetByUserID(h.userID)
+		state.NextTickAt = now.Add(-time.Second)
+		if err := h.combatStateRepo.Upsert(state); err != nil {
+			t.Fatal(err)
+		}
+		if err := h.loop.ForceTickUser(h.userID, now.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := h.saveService.GetSave(h.userID)
+		track := parseSaveLeaderboardTrack(t, raw)
+		lifetime, _ := track["lifetimeSteps"].(float64)
+		if lifetime >= float64(LeaderboardMinLifetimeSteps) {
+			entry := h.getLeaderboardEntry(t)
+			if entry == nil {
+				t.Fatalf("expected leaderboard entry once lifetimeSteps=%v", lifetime)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected lifetimeSteps to reach %d within 40 ticks", LeaderboardMinLifetimeSteps)
 }

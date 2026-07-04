@@ -39,21 +39,35 @@ type combatTestRouter struct {
 	engine *gin.Engine
 	token  string
 	db     *gorm.DB
+	loop   *service.CombatLoopService
+	hub    *service.CombatHub
 }
 
 func setupCombatTestRouter(t *testing.T) *combatTestRouter {
+	return setupCombatTestRouterOptions(t, combatTestRouterOptions{})
+}
+
+type combatTestRouterOptions struct {
+	withLeaderboard bool
+}
+
+func setupCombatTestRouterOptions(t *testing.T, opts combatTestRouterOptions) *combatTestRouter {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(
+	models := []interface{}{
 		&model.User{},
 		&model.PlayerSave{},
 		&model.PlayerCombatState{},
 		&model.CombatEvent{},
-	); err != nil {
+	}
+	if opts.withLeaderboard {
+		models = append(models, &model.LeaderboardEntry{})
+	}
+	if err := db.AutoMigrate(models...); err != nil {
 		t.Fatal(err)
 	}
 
@@ -63,7 +77,15 @@ func setupCombatTestRouter(t *testing.T) *combatTestRouter {
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	combatStateRepo := repository.NewPlayerCombatStateRepository(db)
 	combatEventRepo := repository.NewCombatEventRepository(db)
-	saveService := service.NewSaveService(saveRepo, nil, nil)
+	var saveService *service.SaveService
+	var leaderboardService *service.LeaderboardService
+	if opts.withLeaderboard {
+		leaderboardRepo := repository.NewLeaderboardRepository(db)
+		leaderboardService = service.NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
+		saveService = service.NewSaveService(saveRepo, leaderboardService, nil)
+	} else {
+		saveService = service.NewSaveService(saveRepo, nil, nil)
+	}
 	combatHub := service.NewCombatHub()
 	combatLoop := service.NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, combatHub)
 	saveHandler := NewSaveHandler(saveService, combatLoop)
@@ -77,9 +99,14 @@ func setupCombatTestRouter(t *testing.T) *combatTestRouter {
 	r.GET("/combat/events", authMw, combatHandler.Events)
 	r.POST("/combat/pause", authMw, combatHandler.Pause)
 	r.POST("/combat/resume", authMw, combatHandler.Resume)
+	r.POST("/combat/advance", authMw, combatHandler.Advance)
 	r.POST("/combat/arm-offline", authMw, combatHandler.ArmOffline)
 	r.POST("/combat/presence", authMw, combatHandler.Presence)
 	r.POST("/debug/combat/tick", authMw, combatHandler.DebugTick)
+	if opts.withLeaderboard {
+		leaderboardHandler := NewLeaderboardHandler(leaderboardService)
+		r.GET("/leaderboard", authMw, leaderboardHandler.Get)
+	}
 
 	regBody, _ := json.Marshal(map[string]string{"email": "combat@example.com", "password": "password123"})
 	regReq := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(regBody))
@@ -101,7 +128,13 @@ func setupCombatTestRouter(t *testing.T) *combatTestRouter {
 		t.Fatal(err)
 	}
 
-	return &combatTestRouter{engine: r, token: regResp.Token, db: db}
+	return &combatTestRouter{
+		engine: r,
+		token:  regResp.Token,
+		db:     db,
+		loop:   combatLoop,
+		hub:    combatHub,
+	}
 }
 
 func TestCombatHandler_PauseAndResume(t *testing.T) {
@@ -228,5 +261,119 @@ func TestCombatHandler_ArmOffline_thenDebugTick_updatesSaveStats(t *testing.T) {
 	battlesAfter, _ := statsAfter["battleCount"].(float64)
 	if battlesAfter <= battlesBefore {
 		t.Fatalf("expected battleCount increase after arm-offline tick, before=%v after=%v", battlesBefore, battlesAfter)
+	}
+}
+
+func TestCombatHandler_ArmOffline_thenDebugTick_upsertsLeaderboard(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	rt := setupCombatTestRouterOptions(t, combatTestRouterOptions{withLeaderboard: true})
+
+	armReq := httptest.NewRequest(http.MethodPost, "/combat/arm-offline", nil)
+	armReq.Header.Set("Authorization", "Bearer "+rt.token)
+	armW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(armW, armReq)
+	if armW.Code != http.StatusNoContent {
+		t.Fatalf("arm-offline expected 204, got %d", armW.Code)
+	}
+
+	for i := 0; i < 25; i++ {
+		tickReq := httptest.NewRequest(http.MethodPost, "/debug/combat/tick", nil)
+		tickReq.Header.Set("Authorization", "Bearer "+rt.token)
+		tickW := httptest.NewRecorder()
+		rt.engine.ServeHTTP(tickW, tickReq)
+		if tickW.Code != http.StatusNoContent {
+			t.Fatalf("debug tick expected 204, got %d", tickW.Code)
+		}
+	}
+
+	lbReq := httptest.NewRequest(http.MethodGet, "/leaderboard", nil)
+	lbReq.Header.Set("Authorization", "Bearer "+rt.token)
+	lbW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(lbW, lbReq)
+	if lbW.Code != http.StatusOK {
+		t.Fatalf("leaderboard expected 200, got %d body=%s", lbW.Code, lbW.Body.String())
+	}
+	var lbBody map[string]interface{}
+	json.Unmarshal(lbW.Body.Bytes(), &lbBody)
+	self, _ := lbBody["self"].(map[string]interface{})
+	eligible, _ := self["eligible"].(bool)
+	if !eligible {
+		t.Fatalf("expected eligible self after offline ticks, body=%v", lbBody)
+	}
+}
+
+func TestCombatHandler_Presence_thenAdvance_clientGated(t *testing.T) {
+	rt := setupCombatTestRouter(t)
+	now := time.Now()
+	rt.hub.SetUserConnectedForTest(1, true)
+	if err := rt.loop.RecordPresence(1, now); err != nil {
+		t.Fatal(err)
+	}
+
+	presenceReq := httptest.NewRequest(http.MethodPost, "/combat/presence", nil)
+	presenceReq.Header.Set("Authorization", "Bearer "+rt.token)
+	presenceW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(presenceW, presenceReq)
+	if presenceW.Code != http.StatusNoContent {
+		t.Fatalf("presence expected 204, got %d", presenceW.Code)
+	}
+
+	saveBeforeReq := httptest.NewRequest(http.MethodGet, "/save", nil)
+	saveBeforeReq.Header.Set("Authorization", "Bearer "+rt.token)
+	saveBeforeW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(saveBeforeW, saveBeforeReq)
+	var saveBefore map[string]interface{}
+	json.Unmarshal(saveBeforeW.Body.Bytes(), &saveBefore)
+	statsBefore, _ := saveBefore["playerStats"].(map[string]interface{})
+	stepsBefore, _ := statsBefore["combatActionSteps"].(float64)
+
+	advanceReq := httptest.NewRequest(http.MethodPost, "/combat/advance", nil)
+	advanceReq.Header.Set("Authorization", "Bearer "+rt.token)
+	advanceW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(advanceW, advanceReq)
+	if advanceW.Code != http.StatusNoContent {
+		t.Fatalf("advance expected 204, got %d body=%s", advanceW.Code, advanceW.Body.String())
+	}
+
+	saveAfterReq := httptest.NewRequest(http.MethodGet, "/save", nil)
+	saveAfterReq.Header.Set("Authorization", "Bearer "+rt.token)
+	saveAfterW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(saveAfterW, saveAfterReq)
+	var saveAfter map[string]interface{}
+	json.Unmarshal(saveAfterW.Body.Bytes(), &saveAfter)
+	statsAfter, _ := saveAfter["playerStats"].(map[string]interface{})
+	stepsAfter, _ := statsAfter["combatActionSteps"].(float64)
+	if stepsAfter <= stepsBefore {
+		t.Fatalf("expected combat progress after client-gated advance, before=%v after=%v", stepsBefore, stepsAfter)
+	}
+}
+
+func TestCombatHandler_ArmOffline_statusReflectsWallClock(t *testing.T) {
+	rt := setupCombatTestRouter(t)
+
+	armReq := httptest.NewRequest(http.MethodPost, "/combat/arm-offline", nil)
+	armReq.Header.Set("Authorization", "Bearer "+rt.token)
+	armW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(armW, armReq)
+	if armW.Code != http.StatusNoContent {
+		t.Fatalf("arm-offline expected 204, got %d", armW.Code)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/combat/status", nil)
+	statusReq.Header.Set("Authorization", "Bearer "+rt.token)
+	statusW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(statusW, statusReq)
+	if statusW.Code != http.StatusOK {
+		t.Fatalf("status expected 200, got %d", statusW.Code)
+	}
+	var status map[string]interface{}
+	json.Unmarshal(statusW.Body.Bytes(), &status)
+	nextTickAtStr, _ := status["nextTickAt"].(string)
+	nextTickAt, err := time.Parse(time.RFC3339, nextTickAtStr)
+	if err != nil {
+		t.Fatalf("parse nextTickAt: %v", err)
+	}
+	if nextTickAt.Sub(time.Now().UTC()) > 7*24*time.Hour {
+		t.Fatalf("expected wall-clock nextTickAt near term, got %v", nextTickAt)
 	}
 }
