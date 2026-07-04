@@ -3,6 +3,10 @@
  */
 
 import {
+  getDisplayedEventSeq,
+  getLastEncounterEventSeq,
+} from './combatDisplayCursor.js'
+import {
   getCombatStateSummary,
   getGoldAmount,
   getInventoryData,
@@ -27,6 +31,8 @@ export const OFFLINE_CAP_MS = 24 * 60 * 60 * 1000
  *   cumulativeGold: number,
  *   cumulativeXp: number,
  *   eventSeq: number,
+ *   displayedEventSeq?: number,
+ *   lastEncounterEventSeq?: number,
  * }} OfflineSessionSnapshot
  */
 
@@ -67,7 +73,14 @@ export function buildSessionSnapshotFromSave(nowMs = Date.now()) {
     cumulativeGold: Math.max(0, Math.floor(Number(stats.cumulativeGold) || 0)),
     cumulativeXp: Math.max(0, Math.floor(Number(stats.cumulativeXp) || 0)),
     eventSeq: Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0)),
+    displayedEventSeq: getDisplayedEventSeq(),
+    lastEncounterEventSeq: getLastEncounterEventSeq(),
   }
+}
+
+/** Refresh offline-summary baseline after return processing without clobbering leave cursors mid-load. */
+export function finalizeSessionBaselineAfterReturn(nowMs = Date.now()) {
+  persistSessionSnapshot(buildSessionSnapshotFromSave(nowMs))
 }
 
 /** @param {OfflineSessionSnapshot} snapshot */
@@ -117,6 +130,14 @@ export function readSessionSnapshot() {
       cumulativeGold: Math.max(0, Math.floor(Number(parsed.cumulativeGold) || 0)),
       cumulativeXp: Math.max(0, Math.floor(Number(parsed.cumulativeXp) || 0)),
       eventSeq: Math.max(0, Math.floor(Number(parsed.eventSeq) || 0)),
+      displayedEventSeq:
+        parsed.displayedEventSeq != null
+          ? Math.max(0, Math.floor(Number(parsed.displayedEventSeq) || 0))
+          : undefined,
+      lastEncounterEventSeq:
+        parsed.lastEncounterEventSeq != null
+          ? Math.max(0, Math.floor(Number(parsed.lastEncounterEventSeq) || 0))
+          : undefined,
     }
   } catch {
     return null

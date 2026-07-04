@@ -186,6 +186,30 @@ test.describe('Server combat tick (Example 39)', () => {
     expect(statusAfter.status).toBe('paused')
   })
 
+  test('reload replays undisplayed combat events without starting a new battle', async ({ page }) => {
+    const email = uniqueTestEmail('server-tick-reload-replay')
+    await registerAndGoToMain(page, email)
+    await pauseCombat(page)
+
+    const saveBeforeTick = await fetchSave(page)
+    const battlesBefore = saveBeforeTick.playerStats?.battleCount ?? 0
+
+    await triggerE2eCombatTick(page, { awaitPoll: true })
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+
+    const saveAfterTick = await fetchSave(page)
+    expect(saveAfterTick.playerStats?.battleCount ?? 0).toBeGreaterThan(battlesBefore)
+
+    await pauseCombat(page)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.locator('.battle-screen')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.log-encounter').first()).toBeVisible({ timeout: 20000 })
+
+    const saveAfterReload = await fetchSave(page)
+    expect(saveAfterReload.playerStats?.battleCount ?? 0).toBe(saveAfterTick.playerStats?.battleCount ?? 0)
+  })
+
   test('debug force tick advances save while server status stays paused', async ({ page }) => {
     const email = uniqueTestEmail('server-tick-pause-force')
     await registerAndGoToMain(page, email)

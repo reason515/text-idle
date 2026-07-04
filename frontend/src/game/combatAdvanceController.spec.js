@@ -147,4 +147,15 @@ describe('combatAdvanceController', () => {
     await ctrl.bootstrapNextBattleIfIdle()
     expect(deps.advanceServerCombat).not.toHaveBeenCalled()
   })
+
+  it('does not bootstrap while awaiting client advance with undisplayed events', async () => {
+    const ctrl = createCombatAdvanceController(
+      createDeps({
+        isAwaitingClientAdvance: () => true,
+        hasUndisplayedCombatEvents: () => true,
+      }),
+    )
+    await ctrl.bootstrapNextBattleIfIdle()
+    expect(deps.advanceServerCombat).not.toHaveBeenCalled()
+  })
 })

@@ -38,12 +38,17 @@ export function createCombatAdvanceController(deps) {
   }
 
   function shouldSkipBootstrap() {
+    const awaitingAdvance =
+      typeof deps.isAwaitingClientAdvance === 'function' && deps.isAwaitingClientAdvance()
+    const undisplayed =
+      typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()
     return (
       deps.isServerDisplayCycleBusy() ||
       deps.isEncounterInProgress() ||
       deps.isPaused() ||
       shouldSkipClientAdvanceGate() ||
-      deps.getCurrentMonsterCount() > 0
+      deps.getCurrentMonsterCount() > 0 ||
+      (awaitingAdvance && undisplayed)
     )
   }
 
@@ -81,11 +86,16 @@ export function createCombatAdvanceController(deps) {
   }
 
   async function retryPendingCombatAdvanceAfterPoll() {
+    const awaitingAdvance =
+      typeof deps.isAwaitingClientAdvance === 'function' && deps.isAwaitingClientAdvance()
+    const undisplayed =
+      typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()
     if (
       deps.isServerDisplayCycleBusy() ||
       deps.isEncounterInProgress() ||
       deps.isPaused() ||
-      shouldSkipClientAdvanceGate()
+      shouldSkipClientAdvanceGate() ||
+      (awaitingAdvance && undisplayed)
     ) {
       return
     }

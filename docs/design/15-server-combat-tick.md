@@ -145,6 +145,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 
 - Remove `runCombatLoop` as authority; subscribe to WS + poll events.
 - On `/main` load: `POST /combat/resume` (if not paused) → `syncFromServerSave` → **offline summary** → connect WS + start presence heartbeat → advance when log replay completes.
+- **Refresh / return:** session snapshot stores `displayedEventSeq` (last event fully shown on screen) separately from leave-time `eventSeq` (offline gap detection). Poll `GET /combat/events?since=displayedEventSeq` before `POST /combat/advance`; do not bootstrap advance while client-gated and events remain undisplayed.
 - `combatPresence.js`: `pagehide` / tab hidden → `POST /combat/arm-offline`; visible `/main` → periodic `POST /combat/presence`.
 - Long offline return: if `eventSeq` gap > 10, skip historical log replay; load authoritative save (stats + leaderboard track) and continue from next ClientGated cycle.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.

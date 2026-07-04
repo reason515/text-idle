@@ -2852,6 +2852,8 @@ import {
   computeOfflineSummary,
   readSessionSnapshot,
   persistSessionSnapshot,
+  persistSessionLeaveSnapshot,
+  finalizeSessionBaselineAfterReturn,
   installSessionLeaveTracking,
   uninstallSessionLeaveTracking,
 } from '../game/offlineSession.js'
@@ -2862,7 +2864,13 @@ import {
   uninstallCombatPresenceLeaveTracking,
   sendCombatPresence,
 } from '../game/combatPresence.js'
-import { shouldSkipOfflineEventReplay } from '../game/offlineReturnSync.js'
+import { shouldSkipOfflineEventReplay, resolveCombatEventPollSeq, isAwaitingClientAdvance, hasUndisplayedCombatEvents } from '../game/offlineReturnSync.js'
+import {
+  getDisplayedEventSeq,
+  markEventDisplayed,
+  markEncounterEventSeq,
+  initDisplayedEventSeqFromSnapshot,
+} from '../game/combatDisplayCursor.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
   DEBUFF_DISPLAY,
@@ -5458,9 +5466,8 @@ function dismissOfflineSummaryModal() {
   persistSessionSnapshot()
 }
 
-function maybeShowOfflineSummary() {
-  const snapshot = readSessionSnapshot()
-  const summary = computeOfflineSummary(snapshot, {
+function maybeShowOfflineSummary(leaveSnapshot = readSessionSnapshot()) {
+  const summary = computeOfflineSummary(leaveSnapshot, {
     gold: getGoldAmount(),
     inventory: getInventoryData(),
     playerStats: getPlayerStatsData(),
@@ -5471,7 +5478,10 @@ function maybeShowOfflineSummary() {
     offlineSummary.value = summary
     showOfflineSummaryModal.value = true
   }
-  persistSessionSnapshot()
+}
+
+function hasEncounterInDisplayedLog() {
+  return displayedLog.value.some((entry) => entry.type === 'encounter')
 }
 
 async function startServerCombatDisplay() {
@@ -5480,6 +5490,7 @@ async function startServerCombatDisplay() {
   isRunning.value = true
 
   await ensurePlayerSaveLoaded()
+  const leaveSnapshot = readSessionSnapshot()
   const combatStateOnLoad = getCombatStateSummary()
   isPaused.value = combatStateOnLoad?.status === 'paused'
   loadSquad()
@@ -5492,23 +5503,28 @@ async function startServerCombatDisplay() {
     await resumeServerCombat(token)
   }
   await syncFromServerSave()
-  maybeShowOfflineSummary()
+  maybeShowOfflineSummary(leaveSnapshot)
 
-  const snapshot = readSessionSnapshot()
   const combatState = getCombatStateSummary()
   const currentEventSeq = Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0))
-  const savedEventSeq = Math.max(
-    0,
-    Math.floor(Number(snapshot?.eventSeq ?? combatState?.eventSeq) || 0),
-  )
-  const skipOfflineReplay = shouldSkipOfflineEventReplay(savedEventSeq, currentEventSeq)
+  const leaveEventSeq = Math.max(0, Math.floor(Number(leaveSnapshot?.eventSeq) || 0))
+  const skipOfflineReplay = shouldSkipOfflineEventReplay(leaveEventSeq, currentEventSeq)
+  initDisplayedEventSeqFromSnapshot(leaveSnapshot)
+  const pollStartSeq = resolveCombatEventPollSeq({
+    leaveEventSeq,
+    displayedEventSeq: leaveSnapshot?.displayedEventSeq,
+    lastEncounterEventSeq: leaveSnapshot?.lastEncounterEventSeq,
+    currentEventSeq,
+    skipOfflineReplay,
+    hasEncounterInLog: hasEncounterInDisplayedLog(),
+  })
 
   combatStream = createCombatStream({
     token,
     onEvent: handleCombatStreamEvent,
     onAfterPoll: retryPendingCombatAdvanceAfterPoll,
   })
-  combatStream.setLastSeq(skipOfflineReplay ? currentEventSeq : savedEventSeq)
+  combatStream.setLastSeq(pollStartSeq)
   combatStream.connect()
   startCombatPresenceHeartbeat()
   if (typeof window !== 'undefined') {
@@ -5547,6 +5563,7 @@ async function startServerCombatDisplay() {
     await combatStream.pollEvents()
   }
   await bootstrapNextBattleIfIdle()
+  finalizeSessionBaselineAfterReturn()
 }
 
 /** @type {ReturnType<typeof createCombatStream> | null} */
@@ -5572,6 +5589,9 @@ function getCombatAdvanceController() {
       getToken: getCombatAuthToken,
       advanceServerCombat,
       pollEvents: () => combatStream?.pollEvents?.() ?? Promise.resolve(),
+      isAwaitingClientAdvance: () => isAwaitingClientAdvance(getCombatStateSummary()?.nextTickAt),
+      hasUndisplayedCombatEvents: () =>
+        hasUndisplayedCombatEvents(getDisplayedEventSeq(), getCombatStateSummary()?.eventSeq),
     })
   }
   return combatAdvanceController
@@ -5883,6 +5903,9 @@ async function handleCombatStreamEventE2eFast(msg) {
         lastReplayMonsterCount = (encounter.monsters || []).length
       }
       applyE2eCombatPanelFromBatch({ log, encounter, steps })
+      if (monsters.length > 0) {
+        markEncounterEventSeq(msg.seq)
+      }
       if (shouldRetainE2eCombatLog()) {
         await appendE2eCombatLogChunked(log)
       }
@@ -5905,28 +5928,43 @@ async function handleCombatStreamEventE2eFast(msg) {
   }
 }
 
-/** @param {{ type: string, event?: { payload?: object } }} msg */
+/** @param {{ type: string, seq?: number, event?: { payload?: object } }} msg */
 async function handleCombatStreamEvent(msg) {
-  if (shouldSkipClientAdvanceGate()) {
-    return handleCombatStreamEventE2eFast(msg)
-  }
-  if (msg.type === 'combat.log_batch') {
-    const batchResult = await serverCombatEvents.handleLogBatch(
-      msg,
-      replayServerLogBatch,
-      processServerCycleCompleteEvent,
-    )
-    if (batchResult?.hadLog && !batchResult.replayed) {
-      getCombatAdvanceController().onLogBatchReplayResult(batchResult)
+  try {
+    if (shouldSkipClientAdvanceGate()) {
+      await handleCombatStreamEventE2eFast(msg)
+      return
     }
-    return
-  }
-  if (msg.type === 'combat.cycle_complete') {
-    await serverCombatEvents.handleCycleComplete(msg, processServerCycleCompleteEvent)
-    return
-  }
-  if (msg.type === 'combat.pending_expansion') {
-    await processServerCycleCompleteEvent(msg)
+    if (msg.type === 'combat.log_batch') {
+      const batchResult = await serverCombatEvents.handleLogBatch(
+        msg,
+        replayServerLogBatch,
+        processServerCycleCompleteEvent,
+      )
+      const payload = normalizeLogBatchPayload(msg)
+      if (
+        payload.log &&
+        payload.log.length > 0 &&
+        payload.encounter &&
+        (batchResult?.replayed || batchResult?.hadLog)
+      ) {
+        markEncounterEventSeq(msg.seq)
+      }
+      if (batchResult?.hadLog && !batchResult.replayed) {
+        getCombatAdvanceController().onLogBatchReplayResult(batchResult)
+      }
+      return
+    }
+    if (msg.type === 'combat.cycle_complete') {
+      await serverCombatEvents.handleCycleComplete(msg, processServerCycleCompleteEvent)
+      return
+    }
+    if (msg.type === 'combat.pending_expansion') {
+      await processServerCycleCompleteEvent(msg)
+    }
+  } finally {
+    const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
+    if (seq > 0) markEventDisplayed(seq)
   }
 }
 
