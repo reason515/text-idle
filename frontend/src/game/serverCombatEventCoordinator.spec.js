@@ -129,7 +129,7 @@ describe('serverCombatEventCoordinator', () => {
     expect(processComplete).toHaveBeenCalledWith(completeMsg)
   })
 
-  it('defers cycle_complete when log_batch lacks encounter or steps', async () => {
+  it('finalizes cycle_complete when log batch lacks encounter or steps', async () => {
     const coordinator = createServerCombatEventCoordinator()
     const replayLog = vi.fn(async () => {})
     const processComplete = vi.fn(async () => {})
@@ -144,15 +144,14 @@ describe('serverCombatEventCoordinator', () => {
 
     const result = await coordinator.handleLogBatch(logOnlyMsg, replayLog, processComplete)
     expect(replayLog).not.toHaveBeenCalled()
-    expect(result).toEqual({ replayed: false, hadLog: true, awaitingCycleComplete: false })
-    expect(coordinator.getDebugState().logReplayedThisCycle).toBe(false)
+    expect(result).toEqual({ replayed: false, hadLog: true, awaitingCycleComplete: true })
 
     await coordinator.handleCycleComplete(completeMsg, processComplete)
-    expect(processComplete).not.toHaveBeenCalled()
-    expect(coordinator.getDebugState().pendingCycleComplete).toBe(completeMsg)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+    expect(coordinator.getDebugState().pendingCycleComplete).toBeNull()
   })
 
-  it('does not replay when steps length mismatches log', async () => {
+  it('does not replay when steps length mismatches log but still allows settlement', async () => {
     const coordinator = createServerCombatEventCoordinator()
     const replayLog = vi.fn(async () => {})
     const processComplete = vi.fn(async () => {})
@@ -166,9 +165,34 @@ describe('serverCombatEventCoordinator', () => {
         },
       },
     }
+    const completeMsg = {
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory' } },
+    }
 
     await coordinator.handleLogBatch(badMsg, replayLog, processComplete)
     expect(replayLog).not.toHaveBeenCalled()
+    expect(coordinator.getDebugState().logReplayedThisCycle).toBe(true)
+
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+  })
+
+  it('flushes cycle_complete when log batch seq was already displayed', async () => {
+    let displayedSeq = 0
+    const coordinator = createServerCombatEventCoordinator({
+      getDisplayedEventSeq: () => displayedSeq,
+    })
+    const processComplete = vi.fn(async () => {})
+    const completeMsg = {
+      seq: 6,
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory', goldGained: 12, xpGained: 8 } },
+    }
+
+    displayedSeq = 5
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
   })
 
   it('sets awaitingCycleComplete after log replay until cycle_complete', async () => {

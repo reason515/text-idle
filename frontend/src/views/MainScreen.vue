@@ -5611,7 +5611,9 @@ async function startServerCombatDisplay() {
 /** @type {ReturnType<typeof createCombatStream> | null} */
 let combatStream = null
 let lastReplayMonsterCount = 0
-const serverCombatEvents = createServerCombatEventCoordinator()
+const serverCombatEvents = createServerCombatEventCoordinator({
+  getDisplayedEventSeq,
+})
 /** @type {(() => void) | null} */
 let onCombatVisibilityChange = null
 let serverDisplayCycleBusy = false
@@ -5682,6 +5684,8 @@ async function processServerCycleCompleteEvent(msg) {
       normalizeCycleCompletePayload(msg)
     )
     await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+    const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
+    if (seq > 0) markEventDisplayed(seq)
   } finally {
     serverDisplayCycleBusy = false
   }
@@ -6058,7 +6062,9 @@ async function handleCombatStreamEvent(msg) {
     }
   } finally {
     const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
-    if (seq > 0) markEventDisplayed(seq)
+    if (seq > 0 && msg.type !== 'combat.cycle_complete') {
+      markEventDisplayed(seq)
+    }
   }
 }
 

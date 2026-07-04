@@ -43,8 +43,9 @@ test.describe('Offline combat summary', () => {
             victoryCount: statsBefore.victoryCount ?? 0,
             cumulativeGold: statsBefore.cumulativeGold ?? 0,
             cumulativeXp: statsBefore.cumulativeXp ?? 0,
-            eventSeq: statsBefore.eventSeq ?? 0,
-          }),
+          eventSeq: statsBefore.eventSeq ?? 0,
+          wallClockArmed: true,
+        }),
         )
       },
       {

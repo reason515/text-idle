@@ -39,6 +39,7 @@ export const OFFLINE_CAP_MS = 24 * 60 * 60 * 1000
  *   logBatchEventSeq?: number,
  *   logStepIndex?: number,
  *   displayedLogEntries?: unknown[],
+ *   wallClockArmed?: boolean,
  * }} OfflineSessionSnapshot
  */
 
@@ -92,7 +93,19 @@ export function buildSessionSnapshotFromSave(nowMs = Date.now()) {
 
 /** Refresh offline-summary baseline after return processing without clobbering leave cursors mid-load. */
 export function finalizeSessionBaselineAfterReturn(nowMs = Date.now()) {
-  persistSessionSnapshot(buildSessionSnapshotFromSave(nowMs))
+  const snapshot = buildSessionSnapshotFromSave(nowMs)
+  persistSessionSnapshot({ ...snapshot, wallClockArmed: false })
+}
+
+/** Mark that wall-clock offline combat was armed (tab hidden long enough to leave /main). */
+export function markSessionWallClockArmed(nowMs = Date.now()) {
+  const existing = readSessionSnapshot()
+  const base = existing ?? buildSessionSnapshotFromSave(nowMs)
+  persistSessionSnapshot({
+    ...base,
+    wallClockArmed: true,
+    leftAtMs: base.leftAtMs > 0 ? base.leftAtMs : nowMs,
+  })
 }
 
 /** @param {OfflineSessionSnapshot} snapshot */
@@ -116,15 +129,18 @@ export function clearOfflineSessionSnapshot() {
 }
 
 /**
- * Persist stats when the tab hides or unloads. On full page reload, keep the prior
- * leftAtMs so away duration is not reset by a refresh.
+ * Persist stats when the tab hides or unloads. On full page reload while the tab is still
+ * visible, refresh leftAtMs so an online F5 is not mistaken for a long offline period.
  */
 export function persistSessionLeaveSnapshot(nowMs = Date.now()) {
   const existing = readSessionSnapshot()
   const snapshot = buildSessionSnapshotFromSave(nowMs)
-  if (typeof performance !== 'undefined') {
+  snapshot.wallClockArmed = !!existing?.wallClockArmed
+  if (typeof performance !== 'undefined' && typeof document !== 'undefined') {
     const nav = performance.getEntriesByType('navigation')[0]
-    if (nav?.type === 'reload' && existing?.leftAtMs) {
+    const reloading = nav?.type === 'reload'
+    const hidden = document.visibilityState === 'hidden'
+    if (reloading && hidden && existing?.leftAtMs) {
       snapshot.leftAtMs = existing.leftAtMs
     }
   }
@@ -171,6 +187,7 @@ export function readSessionSnapshot() {
       displayedLogEntries: Array.isArray(parsed.displayedLogEntries)
         ? parsed.displayedLogEntries
         : undefined,
+      wallClockArmed: parsed.wallClockArmed === true,
     }
   } catch {
     return null
@@ -233,6 +250,7 @@ export function computeOfflineSummary(snapshot, current) {
     equipment: [],
   }
   if (!snapshot) return empty
+  if (!snapshot.wallClockArmed) return { ...empty, offlineMs: Math.max(0, (current.nowMs ?? Date.now()) - snapshot.leftAtMs) }
 
   const nowMs = current.nowMs ?? Date.now()
   const offlineMs = Math.max(0, nowMs - snapshot.leftAtMs)

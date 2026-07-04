@@ -66,9 +66,9 @@ export function createCombatStream(opts) {
   async function deliverEvent(msg) {
     const seq = Number(msg?.seq) || 0
     if (seq > 0 && seq <= lastProcessedSeq) return
+    await opts.onEvent(msg)
     if (seq > lastProcessedSeq) lastProcessedSeq = seq
     if (seq > lastSeq) lastSeq = seq
-    await opts.onEvent(msg)
   }
 
   async function pollEventsBody() {

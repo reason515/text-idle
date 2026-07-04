@@ -34,22 +34,34 @@ export function normalizeCycleCompletePayload(msg) {
 export { normalizeLogBatchPayload }
 
 /**
+ * @param {{ getDisplayedEventSeq?: () => number }} [deps]
  * @returns {{
- *   handleLogBatch: (msg: object, replayLog: (payload: { log: object[], encounter: object, steps: object[] }) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<void>,
+ *   handleLogBatch: (msg: object, replayLog: (payload: { log: object[], encounter: object, steps: object[] }) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<{ replayed: boolean, hadLog: boolean, awaitingCycleComplete: boolean }>,
  *   handleCycleComplete: (msg: object, processComplete: (msg: object) => Promise<void>) => Promise<void>,
+ *   isAwaitingCycleComplete: () => boolean,
  *   reset: () => void,
- *   getDebugState: () => { pendingCycleComplete: object | null, logReplayedThisCycle: boolean },
+ *   getDebugState: () => { pendingCycleComplete: object | null, logReplayedThisCycle: boolean, awaitingCycleComplete: boolean },
  * }}
  */
-export function createServerCombatEventCoordinator() {
+export function createServerCombatEventCoordinator(deps = {}) {
+  const getDisplayedEventSeq =
+    typeof deps.getDisplayedEventSeq === 'function' ? deps.getDisplayedEventSeq : () => 0
+
   /** @type {object | null} */
   let pendingCycleComplete = null
   let logReplayedThisCycle = false
   /** True after log replay until cycle_complete is processed (blocks early /combat/advance). */
   let awaitingCycleComplete = false
 
+  function canFlushCycleComplete(completeMsg) {
+    if (logReplayedThisCycle) return true
+    const completeSeq = Math.max(0, Math.floor(Number(completeMsg?.seq) || 0))
+    if (completeSeq <= 0) return false
+    return getDisplayedEventSeq() >= completeSeq - 1
+  }
+
   async function flushPendingCycleComplete(processComplete) {
-    if (!pendingCycleComplete || !logReplayedThisCycle) return
+    if (!pendingCycleComplete || !canFlushCycleComplete(pendingCycleComplete)) return
     const msg = pendingCycleComplete
     pendingCycleComplete = null
     logReplayedThisCycle = false
@@ -68,6 +80,9 @@ export function createServerCombatEventCoordinator() {
         payload.steps.length === payload.log.length
       if (canReplay) {
         await replayLog(payload)
+        logReplayedThisCycle = true
+      } else if (payload.log?.length) {
+        // Unreplayable batch: skip log playback but still allow settlement.
         logReplayedThisCycle = true
       } else if (!payload.log?.length) {
         logReplayedThisCycle = true

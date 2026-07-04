@@ -10,6 +10,7 @@ import {
   computeOfflineSummary,
   formatOfflineDuration,
   persistSessionLeaveSnapshot,
+  markSessionWallClockArmed,
 } from './offlineSession.js'
 import { resetPlayerSaveForTests, setPlayerSaveMemoryOnly } from './playerSave.js'
 
@@ -52,7 +53,8 @@ describe('offlineSession', () => {
       eventSeq: 12,
     }
     persistSessionSnapshot(snapshot)
-    expect(readSessionSnapshot()).toEqual(snapshot)
+    expect(readSessionSnapshot()).toMatchObject(snapshot)
+    expect(readSessionSnapshot()?.wallClockArmed).toBe(false)
   })
 
   it('buildSessionSnapshotFromSave uses current save values', () => {
@@ -79,12 +81,34 @@ describe('offlineSession', () => {
       cumulativeGold: 0,
       cumulativeXp: 0,
       eventSeq: 0,
+      wallClockArmed: true,
     }
     const summary = computeOfflineSummary(snapshot, {
       gold: 100,
       inventory: [],
       playerStats: { battleCount: 5, victoryCount: 4, cumulativeGold: 200, cumulativeXp: 50 },
       nowMs: snapshot.leftAtMs + OFFLINE_MIN_MS - 1,
+    })
+    expect(summary.show).toBe(false)
+  })
+
+  it('computeOfflineSummary hides when wall-clock offline was not armed', () => {
+    const snapshot = {
+      leftAtMs: 1_000_000,
+      gold: 0,
+      inventoryIds: [],
+      battleCount: 0,
+      victoryCount: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      eventSeq: 0,
+      wallClockArmed: false,
+    }
+    const summary = computeOfflineSummary(snapshot, {
+      gold: 100,
+      inventory: [],
+      playerStats: { battleCount: 5, victoryCount: 4, cumulativeGold: 200, cumulativeXp: 50 },
+      nowMs: snapshot.leftAtMs + 5 * OFFLINE_MIN_MS,
     })
     expect(summary.show).toBe(false)
   })
@@ -99,6 +123,7 @@ describe('offlineSession', () => {
       cumulativeGold: 100,
       cumulativeXp: 20,
       eventSeq: 4,
+      wallClockArmed: true,
     }
     const summary = computeOfflineSummary(snapshot, {
       gold: 60,
@@ -131,6 +156,7 @@ describe('offlineSession', () => {
       cumulativeGold: 0,
       cumulativeXp: 0,
       eventSeq: 0,
+      wallClockArmed: true,
     }
     const summary = computeOfflineSummary(snapshot, {
       gold: 0,
@@ -143,10 +169,32 @@ describe('offlineSession', () => {
     expect(summary.show).toBe(true)
   })
 
-  it('persistSessionLeaveSnapshot keeps leftAtMs on reload navigation', () => {
+  it('persistSessionLeaveSnapshot keeps leftAtMs on reload while tab is hidden', () => {
     vi.stubGlobal('performance', {
       getEntriesByType: () => [{ type: 'reload' }],
     })
+    vi.stubGlobal('document', { visibilityState: 'hidden' })
+    persistSessionSnapshot({
+      leftAtMs: 1_000_000,
+      gold: 0,
+      inventoryIds: [],
+      battleCount: 0,
+      victoryCount: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      eventSeq: 0,
+      wallClockArmed: true,
+    })
+    persistSessionLeaveSnapshot(9_000_000)
+    expect(readSessionSnapshot()?.leftAtMs).toBe(1_000_000)
+    expect(readSessionSnapshot()?.wallClockArmed).toBe(true)
+  })
+
+  it('persistSessionLeaveSnapshot refreshes leftAtMs on visible reload', () => {
+    vi.stubGlobal('performance', {
+      getEntriesByType: () => [{ type: 'reload' }],
+    })
+    vi.stubGlobal('document', { visibilityState: 'visible' })
     persistSessionSnapshot({
       leftAtMs: 1_000_000,
       gold: 0,
@@ -158,7 +206,13 @@ describe('offlineSession', () => {
       eventSeq: 0,
     })
     persistSessionLeaveSnapshot(9_000_000)
-    expect(readSessionSnapshot()?.leftAtMs).toBe(1_000_000)
+    expect(readSessionSnapshot()?.leftAtMs).toBe(9_000_000)
+  })
+
+  it('markSessionWallClockArmed sets wallClockArmed on snapshot', () => {
+    markSessionWallClockArmed(5_000_000)
+    expect(readSessionSnapshot()?.wallClockArmed).toBe(true)
+    expect(readSessionSnapshot()?.leftAtMs).toBe(5_000_000)
   })
 
   it('uses dedicated storage key', () => {

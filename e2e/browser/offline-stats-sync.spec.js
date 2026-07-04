@@ -43,6 +43,7 @@ test.describe('Offline stats sync', () => {
           cumulativeGold: saveBefore.playerStats?.cumulativeGold ?? 0,
           cumulativeXp: saveBefore.playerStats?.cumulativeXp ?? 0,
           eventSeq: 0,
+          wallClockArmed: true,
         },
       },
     )

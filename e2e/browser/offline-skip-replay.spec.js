@@ -31,6 +31,7 @@ test.describe('Offline skip replay', () => {
           cumulativeGold: 0,
           cumulativeXp: 0,
           eventSeq: 0,
+          wallClockArmed: true,
         }),
       )
     })

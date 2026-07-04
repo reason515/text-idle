@@ -185,6 +185,42 @@ describe('combatStream', () => {
     expect(seen).toEqual([3])
   })
 
+  it('pollEvents retries cycle_complete when handler fails before ack', async () => {
+    const seen = []
+    let failOnce = true
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        events: [
+          {
+            seq: 4,
+            type: 'combat.cycle_complete',
+            payload: JSON.stringify({
+              type: 'combat.cycle_complete',
+              payload: { outcome: 'victory' },
+            }),
+          },
+        ],
+      }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: async (msg) => {
+        seen.push(msg.seq)
+        if (failOnce) {
+          failOnce = false
+          throw new Error('settlement failed')
+        }
+      },
+    })
+    stream.setLastSeq(3)
+    await stream.pollEvents()
+    await stream.pollEvents()
+    expect(seen).toEqual([4, 4])
+  })
+
   it('pollEvents calls onAfterPoll after delivering events', async () => {
     const afterPoll = vi.fn(async () => {})
     const stream = createCombatStream({

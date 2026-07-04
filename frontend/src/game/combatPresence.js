@@ -3,6 +3,7 @@
  */
 
 import { markQuickReloadPending } from './combatUiSnapshot.js'
+import { markSessionWallClockArmed } from './offlineSession.js'
 
 const PRESENCE_INTERVAL_MS = 30_000
 /** Tab hidden this long before arming wall-clock mode (avoids reload arming offline). */
@@ -30,6 +31,9 @@ export async function armOfflineCombat() {
       headers,
       keepalive: true,
     })
+    if (res.ok || res.status === 204) {
+      markSessionWallClockArmed()
+    }
     return res.ok || res.status === 204
   } catch {
     return false
