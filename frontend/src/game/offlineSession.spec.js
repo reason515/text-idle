@@ -6,6 +6,7 @@ import {
   buildSessionSnapshotFromSave,
   persistSessionSnapshot,
   readSessionSnapshot,
+  clearOfflineSessionSnapshot,
   computeOfflineSummary,
   formatOfflineDuration,
   persistSessionLeaveSnapshot,
@@ -172,5 +173,20 @@ describe('offlineSession', () => {
       eventSeq: 0,
     })
     expect(localStorage.getItem(OFFLINE_SESSION_STORAGE_KEY)).toBeTruthy()
+  })
+
+  it('clearOfflineSessionSnapshot removes persisted leave snapshot', () => {
+    persistSessionSnapshot({
+      leftAtMs: 123,
+      gold: 0,
+      inventoryIds: [],
+      battleCount: 0,
+      victoryCount: 0,
+      cumulativeGold: 0,
+      cumulativeXp: 0,
+      eventSeq: 9,
+    })
+    clearOfflineSessionSnapshot()
+    expect(readSessionSnapshot()).toBeNull()
   })
 })

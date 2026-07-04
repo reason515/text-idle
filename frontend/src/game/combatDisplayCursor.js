@@ -80,9 +80,13 @@ export function initDisplayedEventSeqFromSnapshot(snapshot) {
   logStepIndex = Math.max(0, Math.floor(Number(snapshot?.logStepIndex) || 0))
 }
 
-export function resetDisplayedEventSeqForTests() {
+export function resetCombatDisplayCursor() {
   displayedEventSeq = 0
   lastEncounterEventSeq = 0
   activeLogBatchSeq = 0
   logStepIndex = 0
+}
+
+export function resetDisplayedEventSeqForTests() {
+  resetCombatDisplayCursor()
 }

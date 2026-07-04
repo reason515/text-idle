@@ -105,6 +105,16 @@ export function persistSessionSnapshot(snapshot = buildSessionSnapshotFromSave()
   }
 }
 
+/** Drop leave snapshot (e.g. new account after server wipe or logout). */
+export function clearOfflineSessionSnapshot() {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
 /**
  * Persist stats when the tab hides or unloads. On full page reload, keep the prior
  * leftAtMs so away duration is not reset by a refresh.

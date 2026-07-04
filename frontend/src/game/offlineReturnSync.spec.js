@@ -4,6 +4,8 @@ import {
   offlineReturnStartupOrder,
   shouldSkipOfflineEventReplay,
   resolveCombatEventPollSeq,
+  isStaleOfflineSessionSnapshot,
+  clampCombatEventPollSeq,
   isAwaitingClientAdvance,
   hasUndisplayedCombatEvents,
 } from './offlineReturnSync.js'
@@ -81,5 +83,16 @@ describe('offlineReturnSync', () => {
     const summaryIdx = order.indexOf('maybeShowOfflineSummary')
     expect(syncIdx).toBeGreaterThan(-1)
     expect(summaryIdx).toBeGreaterThan(syncIdx)
+  })
+
+  it('isStaleOfflineSessionSnapshot when local seq exceeds server', () => {
+    expect(isStaleOfflineSessionSnapshot({ eventSeq: 1940 }, 2)).toBe(true)
+    expect(isStaleOfflineSessionSnapshot({ displayedEventSeq: 50 }, 50)).toBe(false)
+    expect(isStaleOfflineSessionSnapshot(null, 0)).toBe(false)
+  })
+
+  it('clampCombatEventPollSeq resets poll cursor above server seq', () => {
+    expect(clampCombatEventPollSeq(1940, 2)).toBe(0)
+    expect(clampCombatEventPollSeq(3, 10)).toBe(3)
   })
 })

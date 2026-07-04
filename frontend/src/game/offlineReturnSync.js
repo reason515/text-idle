@@ -42,6 +42,34 @@ export function isAwaitingClientAdvance(nextTickAt, nowMs = Date.now()) {
  * }} opts
  * @returns {number}
  */
+/**
+ * True when a persisted leave snapshot belongs to a prior account or wiped server save.
+ * @param {{ eventSeq?: number, displayedEventSeq?: number } | null | undefined} snapshot
+ * @param {number} serverEventSeq
+ * @returns {boolean}
+ */
+export function isStaleOfflineSessionSnapshot(snapshot, serverEventSeq) {
+  if (!snapshot) return false
+  const snapSeq = Math.max(
+    Math.max(0, Math.floor(Number(snapshot.eventSeq) || 0)),
+    Math.max(0, Math.floor(Number(snapshot.displayedEventSeq) || 0)),
+  )
+  const server = Math.max(0, Math.floor(Number(serverEventSeq) || 0))
+  return snapSeq > server
+}
+
+/**
+ * Poll cursor cannot exceed the server's latest event seq.
+ * @param {number} pollStartSeq
+ * @param {number} serverEventSeq
+ * @returns {number}
+ */
+export function clampCombatEventPollSeq(pollStartSeq, serverEventSeq) {
+  const poll = Math.max(0, Math.floor(Number(pollStartSeq) || 0))
+  const server = Math.max(0, Math.floor(Number(serverEventSeq) || 0))
+  return poll > server ? 0 : poll
+}
+
 export function resolveCombatEventPollSeq(opts) {
   const current = Math.max(0, Math.floor(Number(opts.currentEventSeq) || 0))
   if (opts.skipOfflineReplay) return current

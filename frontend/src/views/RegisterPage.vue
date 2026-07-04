@@ -56,6 +56,8 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthLayout from '../components/AuthLayout.vue'
 import { resetPlayerSaveOnServer, clearLegacyLocalSaveKeys } from '../game/playerSave.js'
+import { clearOfflineSessionSnapshot } from '../game/offlineSession.js'
+import { resetCombatDisplayCursor } from '../game/combatDisplayCursor.js'
 
 const router = useRouter()
 const email = ref('')
@@ -110,6 +112,8 @@ async function submit() {
         localStorage.setItem('token', data.token)
       }
       clearLegacyLocalSaveKeys()
+      clearOfflineSessionSnapshot()
+      resetCombatDisplayCursor()
       await resetPlayerSaveOnServer()
       router.push('/intro')
     } else {

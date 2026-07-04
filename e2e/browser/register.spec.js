@@ -88,6 +88,17 @@ test.describe('Register E2E', () => {
         { id: 'jaina', name: 'Jaina Proudmoore', class: 'Mage', hp: 100, atk: 18, def: 5 },
         { id: 'valeera', name: 'Valeera', class: 'Rogue', hp: 120, atk: 16, def: 6 }
       ]))
+      localStorage.setItem('tiOfflineSession', JSON.stringify({
+        leftAtMs: Date.now() - 60000,
+        gold: 0,
+        inventoryIds: [],
+        battleCount: 100,
+        victoryCount: 90,
+        cumulativeGold: 5000,
+        cumulativeXp: 800,
+        eventSeq: 1940,
+        displayedEventSeq: 1940,
+      }))
     })
 
     const email = uniqueTestEmail('e2e-clear')
@@ -107,5 +118,8 @@ test.describe('Register E2E', () => {
 
     await expect(page.getByText('No characters in squad')).not.toBeVisible()
     await expect(page.getByText('Varian Wrynn')).not.toBeVisible()
+
+    const offlineSession = await page.evaluate(() => localStorage.getItem('tiOfflineSession'))
+    expect(offlineSession).toBeNull()
   })
 })

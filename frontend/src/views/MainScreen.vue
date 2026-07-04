@@ -2856,6 +2856,7 @@ import {
   finalizeSessionBaselineAfterReturn,
   installSessionLeaveTracking,
   uninstallSessionLeaveTracking,
+  clearOfflineSessionSnapshot,
 } from '../game/offlineSession.js'
 import {
   armOfflineCombat,
@@ -2865,12 +2866,20 @@ import {
   uninstallCombatPresenceLeaveTracking,
   sendCombatPresence,
 } from '../game/combatPresence.js'
-import { shouldSkipOfflineEventReplay, resolveCombatEventPollSeq, isAwaitingClientAdvance, hasUndisplayedCombatEvents } from '../game/offlineReturnSync.js'
+import {
+  shouldSkipOfflineEventReplay,
+  resolveCombatEventPollSeq,
+  clampCombatEventPollSeq,
+  isStaleOfflineSessionSnapshot,
+  isAwaitingClientAdvance,
+  hasUndisplayedCombatEvents,
+} from '../game/offlineReturnSync.js'
 import {
   getDisplayedEventSeq,
   markEventDisplayed,
   markEncounterEventSeq,
   initDisplayedEventSeqFromSnapshot,
+  resetCombatDisplayCursor,
   setActiveLogBatchSeq,
   markLogStepProgress,
   clearLogBatchProgress,
@@ -4981,6 +4990,8 @@ function waitForRecruitPromptChoice() {
 }
 function confirmLogout() {
   logoutConfirming.value = false
+  clearOfflineSessionSnapshot()
+  resetCombatDisplayCursor()
   localStorage.removeItem('token')
   clearPlayerSaveCache()
   router.push('/login')
@@ -5506,10 +5517,15 @@ async function startServerCombatDisplay() {
   isRunning.value = true
 
   await ensurePlayerSaveLoaded()
-  const leaveSnapshot = readSessionSnapshot()
-  lastLeaveSnapshot = leaveSnapshot
+  let leaveSnapshot = readSessionSnapshot()
   const combatStateOnLoad = getCombatStateSummary()
   const reloadEventSeq = Math.max(0, Math.floor(Number(combatStateOnLoad?.eventSeq) || 0))
+  if (isStaleOfflineSessionSnapshot(leaveSnapshot, reloadEventSeq)) {
+    clearOfflineSessionSnapshot()
+    resetCombatDisplayCursor()
+    leaveSnapshot = null
+  }
+  lastLeaveSnapshot = leaveSnapshot
   resumeCombatUi =
     consumeQuickReloadFlag() && shouldResumeCombatUiFromSnapshot(leaveSnapshot, reloadEventSeq)
   if (resumeCombatUi && leaveSnapshot?.displayedLogEntries?.length) {
@@ -5533,14 +5549,17 @@ async function startServerCombatDisplay() {
   const leaveEventSeq = Math.max(0, Math.floor(Number(leaveSnapshot?.eventSeq) || 0))
   const skipOfflineReplay = shouldSkipOfflineEventReplay(leaveEventSeq, currentEventSeq)
   initDisplayedEventSeqFromSnapshot(leaveSnapshot)
-  const pollStartSeq = resolveCombatEventPollSeq({
-    leaveEventSeq,
-    displayedEventSeq: leaveSnapshot?.displayedEventSeq,
-    lastEncounterEventSeq: leaveSnapshot?.lastEncounterEventSeq,
+  const pollStartSeq = clampCombatEventPollSeq(
+    resolveCombatEventPollSeq({
+      leaveEventSeq,
+      displayedEventSeq: leaveSnapshot?.displayedEventSeq,
+      lastEncounterEventSeq: leaveSnapshot?.lastEncounterEventSeq,
+      currentEventSeq,
+      skipOfflineReplay,
+      hasEncounterInLog: hasEncounterInDisplayedLog(),
+    }),
     currentEventSeq,
-    skipOfflineReplay,
-    hasEncounterInLog: hasEncounterInDisplayedLog(),
-  })
+  )
 
   combatStream = createCombatStream({
     token,
