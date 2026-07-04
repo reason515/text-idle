@@ -5632,8 +5632,15 @@ function getCombatAdvanceController() {
       advanceServerCombat,
       pollEvents: () => combatStream?.pollEvents?.() ?? Promise.resolve(),
       isAwaitingClientAdvance: () => isAwaitingClientAdvance(getCombatStateSummary()?.nextTickAt),
-      hasUndisplayedCombatEvents: () =>
-        hasUndisplayedCombatEvents(getDisplayedEventSeq(), getCombatStateSummary()?.eventSeq),
+      hasUndisplayedCombatEvents: () => {
+        const streamSeq = combatStream?.getLastProcessedSeq?.() ?? 0
+        const serverSeq = Math.max(
+          Math.floor(Number(getCombatStateSummary()?.eventSeq) || 0),
+          Math.floor(Number(streamSeq) || 0),
+        )
+        return hasUndisplayedCombatEvents(getDisplayedEventSeq(), serverSeq)
+      },
+      isAwaitingCycleComplete: () => serverCombatEvents.isAwaitingCycleComplete(),
     })
   }
   return combatAdvanceController

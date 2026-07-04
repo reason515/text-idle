@@ -144,7 +144,7 @@ describe('serverCombatEventCoordinator', () => {
 
     const result = await coordinator.handleLogBatch(logOnlyMsg, replayLog, processComplete)
     expect(replayLog).not.toHaveBeenCalled()
-    expect(result).toEqual({ replayed: false, hadLog: true })
+    expect(result).toEqual({ replayed: false, hadLog: true, awaitingCycleComplete: false })
     expect(coordinator.getDebugState().logReplayedThisCycle).toBe(false)
 
     await coordinator.handleCycleComplete(completeMsg, processComplete)
@@ -169,6 +169,27 @@ describe('serverCombatEventCoordinator', () => {
 
     await coordinator.handleLogBatch(badMsg, replayLog, processComplete)
     expect(replayLog).not.toHaveBeenCalled()
+  })
+
+  it('sets awaitingCycleComplete after log replay until cycle_complete', async () => {
+    const coordinator = createServerCombatEventCoordinator()
+    const replayLog = vi.fn(async () => {})
+    const processComplete = vi.fn(async () => {})
+    const logMsg = {
+      type: 'combat.log_batch',
+      event: { payload: sampleBatchPayload() },
+    }
+
+    const result = await coordinator.handleLogBatch(logMsg, replayLog, processComplete)
+    expect(result.awaitingCycleComplete).toBe(true)
+    expect(coordinator.isAwaitingCycleComplete()).toBe(true)
+
+    const completeMsg = {
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory' } },
+    }
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(coordinator.isAwaitingCycleComplete()).toBe(false)
   })
 
   it('normalizeLogBatchEntries parses string log payloads', () => {

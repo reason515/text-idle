@@ -85,9 +85,6 @@ func (s *CombatLoopService) isClientGated(state *model.PlayerCombatState, userID
 	if os.Getenv("TEXT_IDLE_E2E") == "1" {
 		return false
 	}
-	if s.hub == nil || !s.hub.HasConnection(userID) {
-		return false
-	}
 	if state.LastClientSeenAt.IsZero() {
 		return false
 	}

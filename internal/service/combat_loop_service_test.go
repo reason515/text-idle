@@ -665,6 +665,32 @@ func TestCombatLoopService_WallClockTick_setsNextTickAtToDelay(t *testing.T) {
 	}
 }
 
+func TestCombatLoopService_ClientGated_presenceWithoutWebsocket(t *testing.T) {
+	h := setupCombatLoopHarness(t, "presence-gate@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	h.hub.SetUserConnectedForTest(h.userID, false)
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(-time.Second)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.TickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = h.combatStateRepo.GetByUserID(h.userID)
+	if !isAwaitingClientResume(state.NextTickAt, now) {
+		t.Fatalf("expected client-gated next_tick_at with presence only, got %v", state.NextTickAt)
+	}
+}
+
 func TestCombatLoopService_ClientGatedTick_setsFarFutureNextTickAt(t *testing.T) {
 	h := setupCombatLoopHarness(t, "client-gate@test.com")
 	save := loadFixtureSave(t)

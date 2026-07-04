@@ -45,12 +45,15 @@ export function createServerCombatEventCoordinator() {
   /** @type {object | null} */
   let pendingCycleComplete = null
   let logReplayedThisCycle = false
+  /** True after log replay until cycle_complete is processed (blocks early /combat/advance). */
+  let awaitingCycleComplete = false
 
   async function flushPendingCycleComplete(processComplete) {
     if (!pendingCycleComplete || !logReplayedThisCycle) return
     const msg = pendingCycleComplete
     pendingCycleComplete = null
     logReplayedThisCycle = false
+    awaitingCycleComplete = false
     await processComplete(msg)
   }
 
@@ -70,7 +73,12 @@ export function createServerCombatEventCoordinator() {
         logReplayedThisCycle = true
       }
       await flushPendingCycleComplete(processComplete)
-      return { replayed: !!canReplay, hadLog: !!(payload.log && payload.log.length > 0) }
+      awaitingCycleComplete = logReplayedThisCycle
+      return {
+        replayed: !!canReplay,
+        hadLog: !!(payload.log && payload.log.length > 0),
+        awaitingCycleComplete,
+      }
     },
 
     async handleCycleComplete(msg, processComplete) {
@@ -78,15 +86,21 @@ export function createServerCombatEventCoordinator() {
       await flushPendingCycleComplete(processComplete)
     },
 
+    isAwaitingCycleComplete() {
+      return awaitingCycleComplete
+    },
+
     reset() {
       pendingCycleComplete = null
       logReplayedThisCycle = false
+      awaitingCycleComplete = false
     },
 
     getDebugState() {
       return {
         pendingCycleComplete,
         logReplayedThisCycle,
+        awaitingCycleComplete,
       }
     },
   }

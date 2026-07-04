@@ -15,6 +15,8 @@
  *   getToken: () => string | null,
  *   advanceServerCombat: (token: string) => Promise<boolean>,
  *   pollEvents: () => Promise<void>,
+ *   isAwaitingCycleComplete?: () => boolean,
+ *   hasUndisplayedCombatEvents?: () => boolean,
  * }} deps
  */
 export function createCombatAdvanceController(deps) {
@@ -28,27 +30,31 @@ export function createCombatAdvanceController(deps) {
     return deps.isE2eFastMode()
   }
 
+  function hasPendingCycleDisplay() {
+    if (typeof deps.isAwaitingCycleComplete === 'function' && deps.isAwaitingCycleComplete()) {
+      return true
+    }
+    return typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()
+  }
+
   function shouldSkipAdvance() {
     return (
       shouldSkipClientAdvanceGate() ||
       deps.isPaused() ||
       !deps.hasCombatStream() ||
-      deps.isServerDisplayCycleBusy()
+      deps.isServerDisplayCycleBusy() ||
+      hasPendingCycleDisplay()
     )
   }
 
   function shouldSkipBootstrap() {
-    const awaitingAdvance =
-      typeof deps.isAwaitingClientAdvance === 'function' && deps.isAwaitingClientAdvance()
-    const undisplayed =
-      typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()
     return (
       deps.isServerDisplayCycleBusy() ||
       deps.isEncounterInProgress() ||
       deps.isPaused() ||
       shouldSkipClientAdvanceGate() ||
       deps.getCurrentMonsterCount() > 0 ||
-      (awaitingAdvance && undisplayed)
+      hasPendingCycleDisplay()
     )
   }
 
@@ -86,16 +92,12 @@ export function createCombatAdvanceController(deps) {
   }
 
   async function retryPendingCombatAdvanceAfterPoll() {
-    const awaitingAdvance =
-      typeof deps.isAwaitingClientAdvance === 'function' && deps.isAwaitingClientAdvance()
-    const undisplayed =
-      typeof deps.hasUndisplayedCombatEvents === 'function' && deps.hasUndisplayedCombatEvents()
     if (
       deps.isServerDisplayCycleBusy() ||
       deps.isEncounterInProgress() ||
       deps.isPaused() ||
       shouldSkipClientAdvanceGate() ||
-      (awaitingAdvance && undisplayed)
+      hasPendingCycleDisplay()
     ) {
       return
     }

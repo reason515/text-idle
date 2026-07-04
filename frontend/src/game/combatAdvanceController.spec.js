@@ -148,6 +148,26 @@ describe('combatAdvanceController', () => {
     expect(deps.advanceServerCombat).not.toHaveBeenCalled()
   })
 
+  it('does not bootstrap while awaiting cycle_complete after log replay', async () => {
+    const ctrl = createCombatAdvanceController(
+      createDeps({
+        isAwaitingCycleComplete: () => true,
+      }),
+    )
+    await ctrl.bootstrapNextBattleIfIdle()
+    expect(deps.advanceServerCombat).not.toHaveBeenCalled()
+  })
+
+  it('does not bootstrap while undisplayed combat events remain', async () => {
+    const ctrl = createCombatAdvanceController(
+      createDeps({
+        hasUndisplayedCombatEvents: () => true,
+      }),
+    )
+    await ctrl.bootstrapNextBattleIfIdle()
+    expect(deps.advanceServerCombat).not.toHaveBeenCalled()
+  })
+
   it('does not bootstrap while awaiting client advance with undisplayed events', async () => {
     const ctrl = createCombatAdvanceController(
       createDeps({
