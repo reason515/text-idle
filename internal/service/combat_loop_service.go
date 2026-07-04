@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/text-idle/text-idle/internal/combat"
@@ -18,18 +19,52 @@ const offlineCapHours = 24
 // after finishing log replay (online display-synced pacing).
 const clientResumeGateDuration = 100 * 365 * 24 * time.Hour
 
-const maxOfflineCatchUpTicks = 100
+const clientPresenceTimeout = 90 * time.Second
+
+const defaultMaxOfflineTicksPerScan = 20
 
 func isAwaitingClientResume(nextTickAt, now time.Time) bool {
 	return nextTickAt.Sub(now) > 7*24*time.Hour
 }
 
+func maxOfflineTicksPerScanFromEnv() int {
+	if v := os.Getenv("COMBAT_MAX_OFFLINE_TICKS_PER_SCAN"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return defaultMaxOfflineTicksPerScan
+}
+
+func cycleDelayMs(state *model.PlayerCombatState) int64 {
+	delay := state.LastCycleDelayMs
+	if delay < 1000 {
+		delay = 1000
+	}
+	return delay
+}
+
+func cycleDelay(state *model.PlayerCombatState) time.Duration {
+	return time.Duration(cycleDelayMs(state)) * time.Millisecond
+}
+
+func wallClockArmed(state *model.PlayerCombatState) bool {
+	return !state.OfflineCapUntil.IsZero()
+}
+
+func wallClockCapped(state *model.PlayerCombatState, now time.Time) bool {
+	if !wallClockArmed(state) {
+		return false
+	}
+	return !now.Before(state.OfflineCapUntil)
+}
+
 // CombatLoopService runs one server combat tick for a user.
 type CombatLoopService struct {
-	saveService      *SaveService
-	combatStateRepo  *repository.PlayerCombatStateRepository
-	combatEventRepo  *repository.CombatEventRepository
-	hub              *CombatHub
+	saveService     *SaveService
+	combatStateRepo *repository.PlayerCombatStateRepository
+	combatEventRepo *repository.CombatEventRepository
+	hub             *CombatHub
 }
 
 func NewCombatLoopService(
@@ -44,6 +79,19 @@ func NewCombatLoopService(
 		combatEventRepo: combatEventRepo,
 		hub:             hub,
 	}
+}
+
+func (s *CombatLoopService) isClientGated(state *model.PlayerCombatState, userID uint, now time.Time) bool {
+	if os.Getenv("TEXT_IDLE_E2E") == "1" {
+		return false
+	}
+	if s.hub == nil || !s.hub.HasConnection(userID) {
+		return false
+	}
+	if state.LastClientSeenAt.IsZero() {
+		return false
+	}
+	return now.Sub(state.LastClientSeenAt) < clientPresenceTimeout
 }
 
 // EnsureCombatState creates or updates combat scheduler state from the current save.
@@ -108,9 +156,80 @@ func squadEmpty(save json.RawMessage) bool {
 	return len(squad) == 0
 }
 
-// TickUser executes one combat cycle when due (respects pause and schedule).
+// ArmOffline switches the player to wall-clock scheduler mode (tab hidden / browser closed).
+func (s *CombatLoopService) ArmOffline(userID uint, now time.Time) error {
+	state, err := s.ensureState(userID, now)
+	if err != nil {
+		return err
+	}
+	if state.Status == model.CombatStatusPaused {
+		return nil
+	}
+	save, err := s.saveService.GetSave(userID)
+	if err != nil {
+		return err
+	}
+	if squadEmpty(save) {
+		return nil
+	}
+	state.OfflineCapUntil = now.Add(offlineCapHours * time.Hour)
+	state.LastClientSeenAt = time.Time{}
+	delay := cycleDelay(state)
+	nextDue := state.LastTickAt.Add(delay)
+	if nextDue.Before(now) {
+		nextDue = now
+	}
+	state.NextTickAt = nextDue
+	state.UpdatedAt = now
+	return s.combatStateRepo.Upsert(state)
+}
+
+// RecordPresence marks the client as actively viewing /main (client-gated pacing).
+func (s *CombatLoopService) RecordPresence(userID uint, now time.Time) error {
+	state, err := s.ensureState(userID, now)
+	if err != nil {
+		return err
+	}
+	state.LastClientSeenAt = now
+	state.UpdatedAt = now
+	return s.combatStateRepo.Upsert(state)
+}
+
+// TickUser executes up to maxOfflineTicksPerScan combat cycles when due.
 func (s *CombatLoopService) TickUser(userID uint, now time.Time) error {
-	return s.tickUser(userID, now, true, true)
+	maxTicks := maxOfflineTicksPerScanFromEnv()
+	for i := 0; i < maxTicks; i++ {
+		state, err := s.combatStateRepo.GetByUserID(userID)
+		if err != nil {
+			return err
+		}
+		if state.Status == model.CombatStatusPaused || state.Status == model.CombatStatusEmptySquad {
+			return nil
+		}
+		if s.isClientGated(state, userID, now) {
+			if state.NextTickAt.After(now) {
+				return nil
+			}
+			return s.tickUser(userID, now, true, true)
+		}
+		if wallClockCapped(state, now) {
+			return nil
+		}
+		if state.NextTickAt.After(now) {
+			return nil
+		}
+		tickAt := now
+		if i > 0 {
+			simulated := state.LastTickAt.Add(cycleDelay(state))
+			if simulated.Before(now) {
+				tickAt = simulated
+			}
+		}
+		if err := s.tickUser(userID, tickAt, true, true); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ForceTickUser runs one cycle immediately (E2E debug); ignores pause and next_tick_at.
@@ -163,22 +282,30 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 		}
 	}
 
-	schedulableUntil := state.LastTickAt.Add(offlineCapHours * time.Hour)
-	if respectSchedule && now.After(schedulableUntil) && state.NextTickAt.After(schedulableUntil) {
-		state.LastTickAt = now
-		state.NextTickAt = now
+	clientGated := s.isClientGated(state, userID, now)
+
+	if !clientGated && wallClockCapped(state, now) {
+		state.NextTickAt = state.OfflineCapUntil
 		state.UpdatedAt = now
 		return s.combatStateRepo.Upsert(state)
 	}
-	capStart := now.Add(-offlineCapHours * time.Hour)
-	if state.LastTickAt.Before(capStart) {
-		state.LastTickAt = capStart
+
+	if clientGated && respectSchedule {
+		schedulableUntil := state.LastTickAt.Add(offlineCapHours * time.Hour)
+		if now.After(schedulableUntil) && isAwaitingClientResume(state.NextTickAt, now) {
+			state.LastTickAt = now
+			state.NextTickAt = now
+			state.UpdatedAt = now
+			return s.combatStateRepo.Upsert(state)
+		}
 	}
+
 	if respectSchedule && state.NextTickAt.After(now) {
 		return nil
 	}
 
-	result, err := combat.RunCycle(save, state.RngSeed)
+	nowMs := now.UnixMilli()
+	result, err := combat.RunCycle(save, state.RngSeed, nowMs)
 	if err != nil {
 		return err
 	}
@@ -203,14 +330,19 @@ func (s *CombatLoopService) tickUser(userID uint, now time.Time, respectPause, r
 	state.LastCycleDelayMs = int64(delay / time.Millisecond)
 	if os.Getenv("TEXT_IDLE_E2E") == "1" {
 		state.NextTickAt = now.Add(delay)
-	} else {
+	} else if clientGated {
 		state.NextTickAt = now.Add(clientResumeGateDuration)
+	} else {
+		nextDue := now.Add(delay)
+		if wallClockArmed(state) && !nextDue.Before(state.OfflineCapUntil) {
+			nextDue = state.OfflineCapUntil
+		}
+		state.NextTickAt = nextDue
 	}
 	state.RngSeed = result.NextRngSeed
 	state.CombatVersion = 2
 	state.UpdatedAt = now
 
-	// Emit log batch before cycle_complete so clients show monsters before summary/rest.
 	if len(result.Log) > 0 {
 		payload := map[string]interface{}{
 			"log": json.RawMessage(result.Log),
@@ -297,45 +429,12 @@ func (s *CombatLoopService) Resume(userID uint, now time.Time) error {
 	}
 	state.PausedAt = nil
 	state.UpdatedAt = now
-	if err := s.combatStateRepo.Upsert(state); err != nil {
-		return err
-	}
-	return s.catchUpMissedTicks(userID, now)
+	return s.combatStateRepo.Upsert(state)
 }
 
 // Advance runs the next combat cycle after the client finishes displaying the prior one.
 func (s *CombatLoopService) Advance(userID uint, now time.Time) error {
 	return s.tickUser(userID, now, true, false)
-}
-
-func (s *CombatLoopService) catchUpMissedTicks(userID uint, now time.Time) error {
-	for i := 0; i < maxOfflineCatchUpTicks; i++ {
-		state, err := s.combatStateRepo.GetByUserID(userID)
-		if err != nil {
-			return err
-		}
-		if state.Status == model.CombatStatusPaused || state.Status == model.CombatStatusEmptySquad {
-			return nil
-		}
-		if !isAwaitingClientResume(state.NextTickAt, now) {
-			return nil
-		}
-		delay := time.Duration(state.LastCycleDelayMs) * time.Millisecond
-		if delay < time.Second {
-			delay = time.Second
-		}
-		schedulableUntil := state.LastTickAt.Add(offlineCapHours * time.Hour)
-		if now.After(schedulableUntil) {
-			return nil
-		}
-		if now.Before(state.LastTickAt.Add(delay)) {
-			return nil
-		}
-		if err := s.tickUser(userID, now, true, false); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *CombatLoopService) ensureState(userID uint, now time.Time) (*model.PlayerCombatState, error) {
@@ -356,7 +455,7 @@ func (s *CombatLoopService) ensureState(userID uint, now time.Time) (*model.Play
 	return s.combatStateRepo.GetByUserID(userID)
 }
 
-// BackfillStuckCombatStates re-syncs combat status for every save (e.g. after deploy).
+// BackfillStuckCombatStates re-syncs combat status and migrates client-gated stuck rows.
 func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error) {
 	rows, err := s.saveService.ListAllSaves()
 	if err != nil {
@@ -367,7 +466,46 @@ func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error
 		if err := s.SyncCombatStateFromSave(row.UserID, json.RawMessage(row.SaveData), now); err != nil {
 			return synced, err
 		}
+		state, err := s.combatStateRepo.GetByUserID(row.UserID)
+		if err != nil {
+			continue
+		}
+		if state.Status == model.CombatStatusPaused || state.Status == model.CombatStatusEmptySquad {
+			synced++
+			continue
+		}
+		clientConnected := s.hub != nil && s.hub.HasConnection(row.UserID)
+		recentPresence := !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < clientPresenceTimeout
+		if isAwaitingClientResume(state.NextTickAt, now) && !clientConnected && !recentPresence {
+			save, err := s.saveService.GetSave(row.UserID)
+			if err != nil || squadEmpty(save) {
+				synced++
+				continue
+			}
+			state.OfflineCapUntil = now.Add(offlineCapHours * time.Hour)
+			state.LastClientSeenAt = time.Time{}
+			state.NextTickAt = now
+			state.UpdatedAt = now
+			if err := s.combatStateRepo.Upsert(state); err != nil {
+				return synced, err
+			}
+		}
 		synced++
 	}
 	return synced, nil
+}
+
+// OnClientDisconnected arms wall-clock mode when the last WS drops and presence expired.
+func (s *CombatLoopService) OnClientDisconnected(userID uint, now time.Time) error {
+	if s.hub != nil && s.hub.HasConnection(userID) {
+		return nil
+	}
+	state, err := s.combatStateRepo.GetByUserID(userID)
+	if err != nil {
+		return nil
+	}
+	if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < clientPresenceTimeout {
+		return nil
+	}
+	return s.ArmOffline(userID, now)
 }

@@ -38,6 +38,15 @@ describe('serverCombatCycle', () => {
     expect(cycle.steps?.length).toBe(cycle.log?.length)
   })
 
+  it('uses nowMs for battleTimeline endedAtMs', () => {
+    const save = buildFixtureSave()
+    const nowMs = 1_700_000_000_000
+    const cycle = runServerCombatCycle(save, { rngSeed: 1001, nowMs })
+    const timeline = cycle.save.playerStats?.battleTimeline ?? []
+    expect(timeline.length).toBeGreaterThan(0)
+    expect(timeline[timeline.length - 1].endedAtMs).toBe(nowMs)
+  })
+
   it('persists hero xp and level after victory rest phase', () => {
     const save = buildFixtureSave()
     const warrior = save.squad.find((h) => h.id === 'varian')

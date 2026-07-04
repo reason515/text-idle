@@ -8411,6 +8411,7 @@ var TextIdleCombat = (() => {
     }
     const preCombatSquad = JSON.parse(JSON.stringify(squad));
     const rngSeed = Number(opts.rngSeed) || 1;
+    const tickNowMs = Number(opts.nowMs) || Date.now();
     const rng = createSeededRng(rngSeed);
     const progress = out.combatProgress || {};
     const squadLevel = getSquadMaxLevel(squad);
@@ -8470,7 +8471,8 @@ var TextIdleCombat = (() => {
         xpGained: result.rewards.exp,
         outcome: "victory",
         damageByHeroDelta,
-        injuryByHeroDelta
+        injuryByHeroDelta,
+        endedAtMs: tickNowMs
       });
       out.leaderboardTrack = applyBattleToLeaderboardTrack(
         normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -8494,7 +8496,8 @@ var TextIdleCombat = (() => {
         xpGained: 0,
         outcome: result.outcome === "draw" ? "draw" : "defeat",
         damageByHeroDelta,
-        injuryByHeroDelta
+        injuryByHeroDelta,
+        endedAtMs: tickNowMs
       });
       out.leaderboardTrack = applyBattleToLeaderboardTrack(
         normalizeLeaderboardTrack(out.leaderboardTrack),

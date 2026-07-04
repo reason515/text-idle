@@ -21,6 +21,8 @@ type PlayerCombatState struct {
 	PausedAt         *time.Time `json:"paused_at,omitempty"`
 	PendingExpansion *string    `gorm:"type:text" json:"pending_expansion,omitempty"`
 	EventSeq         int64      `gorm:"not null;default:0" json:"event_seq"`
+	OfflineCapUntil  time.Time  `json:"offline_cap_until"`
+	LastClientSeenAt time.Time  `json:"last_client_seen_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 

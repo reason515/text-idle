@@ -65,7 +65,7 @@
 | **每场战斗中 / 每场战斗结束** | 将本场**战斗行动步**并入累计（按行动计数或战后汇总，与实现一致） |
 | **每场战后休息**（每步或整段完成，与实现一致） | 将本场休息所消耗步数并入**累计休息步数** |
 
-- **离线战斗**：若与在线采用相同战斗结算逻辑，则离线场次同样在对应结算点写入（与 [01-overview.md](./01-overview.md) 中「数据统计与在线一致」一致）。
+- **离线战斗**：WallClock scheduler tick 与在线 ClientGated tick 使用相同的 `runServerCombatCycle` 写入路径（`playerStats`、`leaderboardTrack`、排行榜 upsert）；详见 [15-server-combat-tick.md](./15-server-combat-tick.md) section 9。回归时若跳过历史日志回放，仍从 `GET /save` 加载完整统计。
 - **PVP / 特殊战斗**：是否计入全局统计应在实现中明确；建议默认与 PVE 一致分别累计或提供筛选，避免混淆时在 UI 标注。
 
 ---

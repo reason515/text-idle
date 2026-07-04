@@ -21,16 +21,23 @@ See also: [01-overview.md](./01-overview.md) (offline engage), [03-combat.md](./
 ```text
 CombatScheduler (1s)
   -> ListDueCombatStates(limit=50)
-  -> WorkerPool.Submit(TickUser)
+  -> WorkerPool.Submit(TickUser up to COMBAT_MAX_OFFLINE_TICKS_PER_SCAN)
 
 TickUser:
   load PlayerSave + PlayerCombatState
-  RunOneCycle (internal/combat)
+  RunOneCycle (internal/combat, nowMs for timeline)
   persist save, combat state, CombatEvent, leaderboard
   WebSocket broadcast (if connected)
 ```
 
-**Wall-clock between cycles (online):** After each tick the scheduler sets `next_tick_at` to a client-resume gate; the **next** cycle runs only when the browser calls `POST /combat/advance` after finishing log replay. The 1s scheduler still picks up brand-new accounts (`next_tick_at=now`) and E2E (`TEXT_IDLE_E2E=1` keeps short delays). Offline catch-up runs inside `POST /combat/resume` when wall time since `last_tick_at` exceeds `last_cycle_delay_ms`.
+**Dual scheduling modes:**
+
+| Mode | When | `next_tick_at` after tick |
+|------|------|---------------------------|
+| **ClientGated** | `/main` visible: WS connected + `POST /combat/presence` within **90s** | Far future until `POST /combat/advance` |
+| **WallClock** | `POST /combat/arm-offline` (pagehide / tab hidden), WS drop without recent presence, or presence timeout | `now + last_cycle_delay_ms` (scheduler auto-ticks) |
+
+E2E (`TEXT_IDLE_E2E=1`): short delays; scheduler disabled; use `POST /debug/combat/tick`.
 
 ---
 
@@ -49,6 +56,8 @@ TickUser:
 | `paused_at` | Set when user pauses |
 | `pending_expansion` | JSON blob for non-blocking recruit offer |
 | `event_seq` | Monotonic event counter per user |
+| `offline_cap_until` | Wall-clock end of current offline earning window (`arm-offline` sets `now + 24h`) |
+| `last_client_seen_at` | Last `POST /combat/presence` from visible `/main` |
 
 ### 3.2 `combat_events`
 
@@ -87,18 +96,16 @@ In `PlayerSave.SaveData`:
 
 ## 4. Offline cap (24h)
 
-On each tick, if `now - last_tick_at` exceeds 24h (e.g. server downtime or long absence), treat elapsed scheduling as capped:
+When the client calls `POST /combat/arm-offline` (or server migrates a stuck client-gated row on deploy):
 
 ```text
-schedulable_until = last_tick_at + 24h
-if now > schedulable_until and next_tick_at > schedulable_until:
-  advance last_tick_at and next_tick_at to now without running combat (no retroactive burst)
-cap_start = now - 24h
-if last_tick_at < cap_start:
-  last_tick_at = cap_start
+offline_cap_until = now + 24h
+next_tick_at = max(now, last_tick_at + last_cycle_delay_ms)
 ```
 
-No retroactive burst beyond one cap window on first login after long absence (migration sets `last_tick_at = now`).
+Wall-clock scheduler ticks while `now < offline_cap_until`. When capped, no further combat runs until the next `arm-offline` starts a new 24h window.
+
+`POST /combat/resume` only clears pause; it does **not** batch catch-up ticks (scheduler handles wall-clock progress).
 
 ---
 
@@ -122,7 +129,9 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 | PATCH | `/save/player` | Whitelist player edits |
 | PUT | `/save` | Rejected if authoritative fields change (legacy clients) |
 | POST | `/combat/pause` | `status=paused` |
-| POST | `/combat/resume` | `status=running`; offline catch-up while client-gated; does **not** arm scheduler |
+| POST | `/combat/resume` | `status=running` (unpause only) |
+| POST | `/combat/arm-offline` | Start wall-clock mode + 24h cap window |
+| POST | `/combat/presence` | Refresh client-gated presence (visible `/main`) |
 | POST | `/combat/advance` | Run next combat cycle after client log replay completes |
 | GET | `/combat/status` | Lightweight combat state |
 | GET | `/combat/events?since=` | Event replay |
@@ -135,7 +144,9 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 ## 7. Client role
 
 - Remove `runCombatLoop` as authority; subscribe to WS + poll events.
-- On `/main` load, restore pause UI from embedded `combatState.status`; call `POST /combat/resume` only when the client is not paused.
+- On `/main` load: `POST /combat/resume` (if not paused) → `syncFromServerSave` → **offline summary** → connect WS + start presence heartbeat → advance when log replay completes.
+- `combatPresence.js`: `pagehide` / tab hidden → `POST /combat/arm-offline`; visible `/main` → periodic `POST /combat/presence`.
+- Long offline return: if `eventSeq` gap > 10, skip historical log replay; load authoritative save (stats + leaderboard track) and continue from next ClientGated cycle.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
 - **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/advance` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client **polls only** (no advance/resume). Background tabs **pause** log replay until visible again.
@@ -165,6 +176,10 @@ Existing players on deploy: create `PlayerCombatState` with `next_tick_at=now`, 
 
 ---
 
-## 9. Statistics
+## 9. Statistics and leaderboard
 
-Each successful tick calls the same increments as client `applyBattleToPlayerStats` / `applyRestToPlayerStats` after `RunOneCycle`. Timeline entries use server `time.Now()` for `endedAtMs`.
+Each successful tick (WallClock or ClientGated) runs `runServerCombatCycle` in the embedded bundle: `applyBattleToPlayerStats`, `applyRestToPlayerStats`, `applyBattleToLeaderboardTrack`, `applyRestToLeaderboardTrack`. `storeSave` calls `UpsertFromSaveJSON` for `leaderboard_entries`.
+
+`RunCycle` passes `nowMs` for `battleTimeline.endedAtMs`. Offline ticks use the same path as online; skipping log replay on return does **not** skip stat accumulation (authoritative data is in save JSON).
+
+See [13-player-statistics.md](./13-player-statistics.md) section 3.

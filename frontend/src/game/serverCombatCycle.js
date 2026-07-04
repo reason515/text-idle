@@ -118,6 +118,7 @@ export function runServerCombatCycle(save, opts = {}) {
 
   const preCombatSquad = JSON.parse(JSON.stringify(squad))
   const rngSeed = Number(opts.rngSeed) || 1
+  const tickNowMs = Number(opts.nowMs) || Date.now()
   const rng = createSeededRng(rngSeed)
   const progress = out.combatProgress || {}
   const squadLevel = getSquadMaxLevel(squad)
@@ -189,6 +190,7 @@ export function runServerCombatCycle(save, opts = {}) {
       outcome: 'victory',
       damageByHeroDelta,
       injuryByHeroDelta,
+      endedAtMs: tickNowMs,
     })
     out.leaderboardTrack = applyBattleToLeaderboardTrack(
       normalizeLeaderboardTrack(out.leaderboardTrack),
@@ -214,6 +216,7 @@ export function runServerCombatCycle(save, opts = {}) {
       outcome: result.outcome === 'draw' ? 'draw' : 'defeat',
       damageByHeroDelta,
       injuryByHeroDelta,
+      endedAtMs: tickNowMs,
     })
     out.leaderboardTrack = applyBattleToLeaderboardTrack(
       normalizeLeaderboardTrack(out.leaderboardTrack),

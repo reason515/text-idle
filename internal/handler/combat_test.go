@@ -77,6 +77,8 @@ func setupCombatTestRouter(t *testing.T) *combatTestRouter {
 	r.GET("/combat/events", authMw, combatHandler.Events)
 	r.POST("/combat/pause", authMw, combatHandler.Pause)
 	r.POST("/combat/resume", authMw, combatHandler.Resume)
+	r.POST("/combat/arm-offline", authMw, combatHandler.ArmOffline)
+	r.POST("/combat/presence", authMw, combatHandler.Presence)
 	r.POST("/debug/combat/tick", authMw, combatHandler.DebugTick)
 
 	regBody, _ := json.Marshal(map[string]string{"email": "combat@example.com", "password": "password123"})
@@ -184,5 +186,47 @@ func TestCombatHandler_DebugTick_notFoundWithoutE2E(t *testing.T) {
 	rt.engine.ServeHTTP(tickW, tickReq)
 	if tickW.Code != http.StatusNotFound {
 		t.Fatalf("debug tick expected 404 without E2E, got %d", tickW.Code)
+	}
+}
+
+func TestCombatHandler_ArmOffline_thenDebugTick_updatesSaveStats(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	rt := setupCombatTestRouter(t)
+
+	armReq := httptest.NewRequest(http.MethodPost, "/combat/arm-offline", nil)
+	armReq.Header.Set("Authorization", "Bearer "+rt.token)
+	armW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(armW, armReq)
+	if armW.Code != http.StatusNoContent {
+		t.Fatalf("arm-offline expected 204, got %d body=%s", armW.Code, armW.Body.String())
+	}
+
+	saveBeforeReq := httptest.NewRequest(http.MethodGet, "/save", nil)
+	saveBeforeReq.Header.Set("Authorization", "Bearer "+rt.token)
+	saveBeforeW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(saveBeforeW, saveBeforeReq)
+	var saveBefore map[string]interface{}
+	json.Unmarshal(saveBeforeW.Body.Bytes(), &saveBefore)
+	statsBefore, _ := saveBefore["playerStats"].(map[string]interface{})
+	battlesBefore, _ := statsBefore["battleCount"].(float64)
+
+	tickReq := httptest.NewRequest(http.MethodPost, "/debug/combat/tick", nil)
+	tickReq.Header.Set("Authorization", "Bearer "+rt.token)
+	tickW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(tickW, tickReq)
+	if tickW.Code != http.StatusNoContent {
+		t.Fatalf("debug tick expected 204, got %d body=%s", tickW.Code, tickW.Body.String())
+	}
+
+	saveAfterReq := httptest.NewRequest(http.MethodGet, "/save", nil)
+	saveAfterReq.Header.Set("Authorization", "Bearer "+rt.token)
+	saveAfterW := httptest.NewRecorder()
+	rt.engine.ServeHTTP(saveAfterW, saveAfterReq)
+	var saveAfter map[string]interface{}
+	json.Unmarshal(saveAfterW.Body.Bytes(), &saveAfter)
+	statsAfter, _ := saveAfter["playerStats"].(map[string]interface{})
+	battlesAfter, _ := statsAfter["battleCount"].(float64)
+	if battlesAfter <= battlesBefore {
+		t.Fatalf("expected battleCount increase after arm-offline tick, before=%v after=%v", battlesBefore, battlesAfter)
 	}
 }

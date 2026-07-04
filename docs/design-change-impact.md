@@ -118,14 +118,15 @@ The product **ships with a fixed Warrior / Mage / Priest trio** at game start. K
 
 | Check | Affected areas | Notes |
 |-------|----------------|-------|
-| **Scheduler / combat state** | [15-server-combat-tick.md](design/15-server-combat-tick.md), `internal/model/player_combat_state.go`, `internal/service/combat_scheduler.go` | Central ticker; `next_tick_at`; 24h cap; no client authority |
+| **Scheduler / combat state** | [15-server-combat-tick.md](design/15-server-combat-tick.md), `internal/model/player_combat_state.go`, `internal/service/combat_scheduler.go` | Dual mode: ClientGated vs WallClock; `offline_cap_until`; `POST /combat/arm-offline`, `/combat/presence`; 24h cap |
+| **Offline return UX** | `offlineReturnSync.js`, `combatPresence.js`, MainScreen startup order | Summary after sync; skip replay when event gap > 10; stats from save not log |
+| **Requirements / E2E** | Example 39–41, `offline-combat-summary.spec.js`, `offline-stats-sync.spec.js`, `offline-skip-replay.spec.js`, `server-combat-tick.spec.js` | Wall-clock ticks; stats/leaderboard track; skip replay |
 | **Go combat engine** | `internal/combat/`, `testdata/combat/` | Parity with Vitest fixtures; `combat_version` bump on formula change |
 | **Save authority** | `internal/service/save_service.go`, `PATCH /save/player`, [playerSave.js](../frontend/src/game/playerSave.js) | Client cannot PATCH gold/stats; server writes on tick |
 | **WebSocket / events** | `internal/handler/combat_ws.go`, `frontend/src/game/combatStream.js` | `combat.log_batch` carries `{ log, encounter, steps }`; `combat.cycle_complete`, `combat.pending_expansion` |
 | **Recruit non-blocking** | MainScreen squad UI, `pendingExpansionRecruit`, Example 39 | Red dot; no modal await on combat loop; `/character-select` when ready |
 | **Client combat loop removed** | [MainScreen.vue](../frontend/src/views/MainScreen.vue) | No `runCombatLoop` authority; pacing display-only |
-| **Requirements / E2E** | [requirements-format.md](../requirements-format.md) Example 39, `e2e/browser/server-combat-tick.spec.js` | Example 39 AC1-AC6 + pause reload; pending recruit does not pause |
-| **Deployment** | [deployment.md](../deployment.md) | Single process includes scheduler; restart-safe |
+| **Deployment** | [deployment.md](../deployment.md) | Single process includes scheduler; restart-safe backfill |
 
 ## Usage
 

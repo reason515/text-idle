@@ -868,6 +868,46 @@ async function triggerE2eCombatTick(page, { awaitPoll = false, skipResume = fals
   if (awaitPoll) await pollPromise
 }
 
+async function armOfflineCombat(page) {
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  if (!token) return
+  await page.request.post('/api/combat/arm-offline', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+async function runWallClockTicks(page, count) {
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  if (!token) throw new Error('missing auth token for wall-clock ticks')
+  const headers = { Authorization: `Bearer ${token}` }
+  for (let i = 0; i < count; i += 1) {
+    const res = await page.request.post('/api/debug/combat/tick', { headers })
+    if (res.status() !== 204) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`debug combat tick ${i + 1}/${count} failed: ${res.status()} ${body}`)
+    }
+  }
+}
+
+async function fetchServerSave(page) {
+  return page.evaluate(async () => {
+    const apiBase = window.location.port === '5173' ? '/api' : ''
+    const res = await fetch(`${apiBase}/save`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+    if (!res.ok) throw new Error(`GET /save failed: ${res.status}`)
+    return res.json()
+  })
+}
+
+async function waitForServerBattleCountAtLeast(page, minCount, options = {}) {
+  const timeout = options.timeout ?? 15000
+  await expect.poll(async () => {
+    const save = await fetchServerSave(page)
+    return save.playerStats?.battleCount ?? 0
+  }, { timeout }).toBeGreaterThanOrEqual(minCount)
+}
+
 async function updateStoredState(page, pageFunction, arg, options = {}) {
   const {
     pauseFirst = false,
@@ -1069,6 +1109,10 @@ module.exports = {
   openE2eFirstMonsterDetail,
   simulateRecruitPromptModal,
   triggerE2eCombatTick,
+  armOfflineCombat,
+  runWallClockTicks,
+  fetchServerSave,
+  waitForServerBattleCountAtLeast,
   enableClientAdvanceE2eMode,
   syncClientCombatRunning,
   triggerClientAdvancePoll,

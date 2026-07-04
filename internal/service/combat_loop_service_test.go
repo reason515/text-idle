@@ -30,22 +30,36 @@ func loadFixtureSave(t *testing.T) json.RawMessage {
 }
 
 type combatLoopHarness struct {
-	db              *gorm.DB
-	userID          uint
-	saveRepo        *repository.PlayerSaveRepository
-	combatStateRepo *repository.PlayerCombatStateRepository
-	combatEventRepo *repository.CombatEventRepository
-	saveService     *SaveService
-	loop            *CombatLoopService
+	db                *gorm.DB
+	userID            uint
+	saveRepo          *repository.PlayerSaveRepository
+	combatStateRepo   *repository.PlayerCombatStateRepository
+	combatEventRepo   *repository.CombatEventRepository
+	leaderboardRepo    *repository.LeaderboardRepository
+	saveService       *SaveService
+	leaderboardService *LeaderboardService
+	loop              *CombatLoopService
+	hub               *CombatHub
 }
 
 func setupCombatLoopHarness(t *testing.T, email string) *combatLoopHarness {
+	t.Helper()
+	return setupCombatLoopHarnessWithLeaderboard(t, email, false)
+}
+
+func setupCombatLoopHarnessWithLeaderboard(t *testing.T, email string, withLeaderboard bool) *combatLoopHarness {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.PlayerSave{}, &model.PlayerCombatState{}, &model.CombatEvent{}); err != nil {
+	models := []interface{}{
+		&model.User{}, &model.PlayerSave{}, &model.PlayerCombatState{}, &model.CombatEvent{},
+	}
+	if withLeaderboard {
+		models = append(models, &model.LeaderboardEntry{})
+	}
+	if err := db.AutoMigrate(models...); err != nil {
 		t.Fatal(err)
 	}
 	user := model.User{Email: email, Password: "x", Token: "tok-" + email}
@@ -55,18 +69,69 @@ func setupCombatLoopHarness(t *testing.T, email string) *combatLoopHarness {
 	saveRepo := repository.NewPlayerSaveRepository(db)
 	combatStateRepo := repository.NewPlayerCombatStateRepository(db)
 	combatEventRepo := repository.NewCombatEventRepository(db)
-	saveService := NewSaveService(saveRepo, nil, nil)
+	userRepo := repository.NewUserRepository(db)
+	var saveService *SaveService
+	var leaderboardRepo *repository.LeaderboardRepository
+	var leaderboardService *LeaderboardService
+	if withLeaderboard {
+		leaderboardRepo = repository.NewLeaderboardRepository(db)
+		leaderboardService = NewLeaderboardService(leaderboardRepo, saveRepo, userRepo, true)
+		saveService = NewSaveService(saveRepo, leaderboardService, nil)
+	} else {
+		saveService = NewSaveService(saveRepo, nil, nil)
+	}
 	hub := NewCombatHub()
 	loop := NewCombatLoopService(saveService, combatStateRepo, combatEventRepo, hub)
-	return &combatLoopHarness{
-		db:              db,
-		userID:          user.ID,
-		saveRepo:        saveRepo,
-		combatStateRepo: combatStateRepo,
-		combatEventRepo: combatEventRepo,
-		saveService:     saveService,
-		loop:            loop,
+	h := &combatLoopHarness{
+		db:                 db,
+		userID:             user.ID,
+		saveRepo:           saveRepo,
+		combatStateRepo:    combatStateRepo,
+		combatEventRepo:    combatEventRepo,
+		leaderboardRepo:    leaderboardRepo,
+		saveService:        saveService,
+		leaderboardService: leaderboardService,
+		loop:               loop,
+		hub:                hub,
 	}
+	return h
+}
+
+func parseSavePlayerStats(t *testing.T, raw json.RawMessage) map[string]interface{} {
+	t.Helper()
+	var m map[string]interface{}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	stats, _ := m["playerStats"].(map[string]interface{})
+	if stats == nil {
+		return map[string]interface{}{}
+	}
+	return stats
+}
+
+func parseSaveLeaderboardTrack(t *testing.T, raw json.RawMessage) map[string]interface{} {
+	t.Helper()
+	var m map[string]interface{}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	track, _ := m["leaderboardTrack"].(map[string]interface{})
+	if track == nil {
+		return map[string]interface{}{}
+	}
+	return track
+}
+
+func saveBattleCount(t *testing.T, saveService *SaveService, userID uint) float64 {
+	t.Helper()
+	raw, err := saveService.GetSave(userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := parseSavePlayerStats(t, raw)
+	count, _ := stats["battleCount"].(float64)
+	return count
 }
 
 func (h *combatLoopHarness) seedSave(t *testing.T, save json.RawMessage) {
@@ -386,55 +451,30 @@ func TestCombatLoopService_TickUser_emitsLogBatchBeforeCycleComplete(t *testing.
 	}
 }
 
-func TestCombatLoopService_TickUser_clampsLastTickAtTo24hCap(t *testing.T) {
-	h := setupCombatLoopHarness(t, "cap-clamp@test.com")
+func TestCombatLoopService_WallClock_stopsAtOfflineCapUntil(t *testing.T) {
+	h := setupCombatLoopHarness(t, "wall-cap@test.com")
 	save := loadFixtureSave(t)
 	h.seedSave(t, save)
 	now := time.Now()
 	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
 		t.Fatal(err)
 	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
 	state, _ := h.combatStateRepo.GetByUserID(h.userID)
-	state.LastTickAt = now.Add(-48 * time.Hour)
+	state.OfflineCapUntil = now.Add(-time.Minute)
 	state.NextTickAt = now.Add(-time.Second)
 	if err := h.combatStateRepo.Upsert(state); err != nil {
 		t.Fatal(err)
 	}
+	battlesBefore := saveBattleCount(t, h.saveService, h.userID)
 	if err := h.loop.TickUser(h.userID, now); err != nil {
 		t.Fatal(err)
 	}
-	state, _ = h.combatStateRepo.GetByUserID(h.userID)
-	capStart := now.Add(-offlineCapHours * time.Hour)
-	if state.LastTickAt.Before(capStart.Add(-time.Second)) {
-		t.Fatalf("expected last_tick_at clamped near cap window, got %v capStart=%v", state.LastTickAt, capStart)
-	}
-}
-
-func TestCombatLoopService_TickUser_offlineCapBlocksProgressBeyond24h(t *testing.T) {
-	h := setupCombatLoopHarness(t, "cap-block@test.com")
-	save := loadFixtureSave(t)
-	h.seedSave(t, save)
-	now := time.Now()
-	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
-		t.Fatal(err)
-	}
-	state, _ := h.combatStateRepo.GetByUserID(h.userID)
-	state.LastTickAt = now.Add(-48 * time.Hour)
-	state.NextTickAt = now
-	if err := h.combatStateRepo.Upsert(state); err != nil {
-		t.Fatal(err)
-	}
-	goldBefore := saveGold(t, h.saveService, h.userID)
-	if err := h.loop.TickUser(h.userID, now); err != nil {
-		t.Fatal(err)
-	}
-	goldAfter := saveGold(t, h.saveService, h.userID)
-	if goldAfter != goldBefore {
-		t.Fatalf("expected no combat beyond 24h cap when next_tick_at already at now, gold before=%v after=%v", goldBefore, goldAfter)
-	}
-	state, _ = h.combatStateRepo.GetByUserID(h.userID)
-	if state.NextTickAt.Before(now.Add(-time.Second)) || state.NextTickAt.After(now.Add(time.Second)) {
-		t.Fatalf("expected next_tick_at near now after cap skip, got %v", state.NextTickAt)
+	battlesAfter := saveBattleCount(t, h.saveService, h.userID)
+	if battlesAfter != battlesBefore {
+		t.Fatalf("expected no combat after offline cap expired, before=%v after=%v", battlesBefore, battlesAfter)
 	}
 }
 
@@ -498,6 +538,10 @@ func TestCombatLoopService_Advance_runsNextTickWhenClientGated(t *testing.T) {
 	if err := h.combatStateRepo.Upsert(state); err != nil {
 		t.Fatal(err)
 	}
+	h.hub.SetUserConnectedForTest(h.userID, true)
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
 	goldBefore := saveGold(t, h.saveService, h.userID)
 	if err := h.loop.Advance(h.userID, now); err != nil {
 		t.Fatal(err)
@@ -549,5 +593,199 @@ func TestCombatLoopService_Resume_doesNotArmSchedulerWhenClientGated(t *testing.
 		if row.UserID == h.userID {
 			t.Fatalf("expected user not scheduler-due after unpause while client gated, due=%+v", due)
 		}
+	}
+}
+
+func TestCombatLoopService_ArmOffline_setsOfflineCapUntil24h(t *testing.T) {
+	h := setupCombatLoopHarness(t, "arm-offline@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := now.Add(offlineCapHours * time.Hour)
+	if state.OfflineCapUntil.Sub(want).Abs() > 2*time.Second {
+		t.Fatalf("offline_cap_until=%v want~=%v", state.OfflineCapUntil, want)
+	}
+	if !state.LastClientSeenAt.IsZero() {
+		t.Fatal("expected last_client_seen_at cleared on arm-offline")
+	}
+}
+
+func TestCombatLoopService_WallClockTick_setsNextTickAtToDelay(t *testing.T) {
+	h := setupCombatLoopHarness(t, "wall-next@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(-time.Second)
+	state.LastCycleDelayMs = 5000
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.TickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = h.combatStateRepo.GetByUserID(h.userID)
+	if isAwaitingClientResume(state.NextTickAt, now) {
+		t.Fatalf("expected wall-clock next_tick_at, got far future %v", state.NextTickAt)
+	}
+	if state.NextTickAt.Before(now) {
+		t.Fatalf("expected next_tick_at in the future, got %v", state.NextTickAt)
+	}
+}
+
+func TestCombatLoopService_ClientGatedTick_setsFarFutureNextTickAt(t *testing.T) {
+	h := setupCombatLoopHarness(t, "client-gate@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	h.hub.SetUserConnectedForTest(h.userID, true)
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(-time.Second)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.TickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = h.combatStateRepo.GetByUserID(h.userID)
+	if !isAwaitingClientResume(state.NextTickAt, now) {
+		t.Fatalf("expected client-gated next_tick_at, got %v", state.NextTickAt)
+	}
+}
+
+func TestCombatLoopService_WallClock_multipleTicks_accumulateStats(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	t.Setenv("COMBAT_MAX_OFFLINE_TICKS_PER_SCAN", "5")
+	h := setupCombatLoopHarness(t, "wall-stats@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	before := saveBattleCount(t, h.saveService, h.userID)
+	for i := 0; i < 3; i++ {
+		state, _ := h.combatStateRepo.GetByUserID(h.userID)
+		state.NextTickAt = now.Add(-time.Second)
+		if err := h.combatStateRepo.Upsert(state); err != nil {
+			t.Fatal(err)
+		}
+		if err := h.loop.ForceTickUser(h.userID, now.Add(time.Duration(i)*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	after := saveBattleCount(t, h.saveService, h.userID)
+	if after-before < 3 {
+		t.Fatalf("expected at least 3 battles, before=%v after=%v", before, after)
+	}
+	raw, _ := h.saveService.GetSave(h.userID)
+	stats := parseSavePlayerStats(t, raw)
+	steps, _ := stats["combatActionSteps"].(float64)
+	if steps <= 0 {
+		t.Fatalf("expected combatActionSteps > 0, got %v", steps)
+	}
+}
+
+func TestCombatLoopService_WallClockTick_updatesLeaderboardTrack(t *testing.T) {
+	t.Setenv("TEXT_IDLE_E2E", "1")
+	h := setupCombatLoopHarnessWithLeaderboard(t, "wall-lb@test.com", true)
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ArmOffline(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(-time.Second)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.ForceTickUser(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := h.saveService.GetSave(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	track := parseSaveLeaderboardTrack(t, raw)
+	lifetime, _ := track["lifetimeSteps"].(float64)
+	if lifetime <= 0 {
+		t.Fatalf("expected leaderboardTrack.lifetimeSteps > 0, got %v", lifetime)
+	}
+}
+
+func TestCombatLoopService_Resume_doesNotCatchUp(t *testing.T) {
+	h := setupCombatLoopHarness(t, "resume-no-catchup@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(clientResumeGateDuration)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	before := saveBattleCount(t, h.saveService, h.userID)
+	if err := h.loop.Resume(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	after := saveBattleCount(t, h.saveService, h.userID)
+	if after != before {
+		t.Fatalf("resume should not catch up battles, before=%v after=%v", before, after)
+	}
+}
+
+func TestCombatLoopService_Backfill_migratesStuckClientGated(t *testing.T) {
+	h := setupCombatLoopHarness(t, "backfill@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.NextTickAt = now.Add(clientResumeGateDuration)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.loop.BackfillStuckCombatStates(now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = h.combatStateRepo.GetByUserID(h.userID)
+	if isAwaitingClientResume(state.NextTickAt, now) {
+		t.Fatalf("expected backfill to migrate stuck client gate, next_tick_at=%v", state.NextTickAt)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected offline_cap_until set after backfill migration")
 	}
 }

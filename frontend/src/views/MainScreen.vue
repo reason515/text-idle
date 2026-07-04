@@ -1267,7 +1267,7 @@
             <div class="player-stats-damage-card player-stats-win-rate-card" data-testid="player-stats-win-rate-section">
               <div class="player-stats-damage-card-title">战斗胜负</div>
               <p class="player-stats-win-rate-summary">
-                总场次 <strong class="player-stats-win-rate-total">{{ playerStatsWinRateSummary.battleCount }}</strong>；
+                总场次 <strong class="player-stats-win-rate-total" data-testid="player-stats-battle-count">{{ playerStatsWinRateSummary.battleCount }}</strong>；
                 胜利 <strong class="val-victory">{{ playerStatsWinRateSummary.victoryCount }}</strong>；
                 胜率 <strong>{{ playerStatsWinRateSummary.winRatePct }}%</strong>
               </p>
@@ -2855,6 +2855,14 @@ import {
   installSessionLeaveTracking,
   uninstallSessionLeaveTracking,
 } from '../game/offlineSession.js'
+import {
+  startCombatPresenceHeartbeat,
+  stopCombatPresenceHeartbeat,
+  installCombatPresenceLeaveTracking,
+  uninstallCombatPresenceLeaveTracking,
+  sendCombatPresence,
+} from '../game/combatPresence.js'
+import { shouldSkipOfflineEventReplay } from '../game/offlineReturnSync.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
 import {
   DEBUFF_DISPLAY,
@@ -5473,22 +5481,35 @@ async function startServerCombatDisplay() {
   await ensurePlayerSaveLoaded()
   const combatStateOnLoad = getCombatStateSummary()
   isPaused.value = combatStateOnLoad?.status === 'paused'
-  maybeShowOfflineSummary()
   loadSquad()
   loadProgress()
   loadPlayerStats()
   gold.value = getGold()
   seedInitialMapLogIfEmpty()
 
+  if (!isPaused.value) {
+    await resumeServerCombat(token)
+  }
+  await syncFromServerSave()
+  maybeShowOfflineSummary()
+
+  const snapshot = readSessionSnapshot()
+  const combatState = getCombatStateSummary()
+  const currentEventSeq = Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0))
+  const savedEventSeq = Math.max(
+    0,
+    Math.floor(Number(snapshot?.eventSeq ?? combatState?.eventSeq) || 0),
+  )
+  const skipOfflineReplay = shouldSkipOfflineEventReplay(savedEventSeq, currentEventSeq)
+
   combatStream = createCombatStream({
     token,
     onEvent: handleCombatStreamEvent,
     onAfterPoll: retryPendingCombatAdvanceAfterPoll,
   })
-  const combatState = getCombatStateSummary()
-  const savedEventSeq = Math.max(0, Math.floor(Number(combatState?.eventSeq) || 0))
-  combatStream.setLastSeq(savedEventSeq)
+  combatStream.setLastSeq(skipOfflineReplay ? currentEventSeq : savedEventSeq)
   combatStream.connect()
+  startCombatPresenceHeartbeat()
   if (typeof window !== 'undefined') {
     window.__tiCombatStreamPoll = () => combatStream?.pollEvents?.()
     if (isE2eClientAdvanceMode()) {
@@ -5521,10 +5542,9 @@ async function startServerCombatDisplay() {
   if (shouldSkipClientAdvanceGate()) {
     return
   }
-  if (!isPaused.value) {
-    await resumeServerCombat(token)
+  if (!skipOfflineReplay) {
+    await combatStream.pollEvents()
   }
-  await combatStream.pollEvents()
   await bootstrapNextBattleIfIdle()
 }
 
@@ -5902,7 +5922,7 @@ function installCombatVisibilityRecovery() {
   if (typeof document === 'undefined' || onCombatVisibilityChange) return
   onCombatVisibilityChange = () => {
     if (document.visibilityState !== 'visible' || isPaused.value || !combatStream) return
-    void combatStream.pollEvents().then(() => retryPendingCombatAdvanceAfterPoll())
+    void sendCombatPresence().then(() => combatStream.pollEvents()).then(() => retryPendingCombatAdvanceAfterPoll())
   }
   document.addEventListener('visibilitychange', onCombatVisibilityChange)
 }
@@ -5915,6 +5935,7 @@ function uninstallCombatVisibilityRecovery() {
 
 onMounted(() => {
   installSessionLeaveTracking()
+  installCombatPresenceLeaveTracking()
   installCombatVisibilityRecovery()
   loadSquad()
   loadProgress()
@@ -5929,6 +5950,8 @@ onMounted(() => {
 onUnmounted(() => {
   persistSessionLeaveSnapshot()
   uninstallSessionLeaveTracking()
+  uninstallCombatPresenceLeaveTracking()
+  stopCombatPresenceHeartbeat()
   uninstallCombatVisibilityRecovery()
   serverCombatEvents.reset()
   combatAdvanceController?.reset()

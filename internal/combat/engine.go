@@ -48,15 +48,20 @@ func initEngine() {
 }
 
 // RunCycle executes one server combat cycle via the embedded JS engine.
-func RunCycle(save json.RawMessage, rngSeed uint64) (CycleResult, error) {
+// nowMs is wall-clock ms for battleTimeline endedAtMs; use 0 to let the bundle default.
+func RunCycle(save json.RawMessage, rngSeed uint64, nowMs int64) (CycleResult, error) {
 	initEngine()
 	if engineErr != nil {
 		return CycleResult{}, engineErr
 	}
-	input, err := json.Marshal(map[string]interface{}{
+	payload := map[string]interface{}{
 		"save":    json.RawMessage(save),
 		"rngSeed": rngSeed,
-	})
+	}
+	if nowMs > 0 {
+		payload["nowMs"] = nowMs
+	}
+	input, err := json.Marshal(payload)
 	if err != nil {
 		return CycleResult{}, err
 	}

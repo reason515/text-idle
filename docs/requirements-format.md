@@ -1673,6 +1673,32 @@ When implementing Mage heroes, refer to [05-skills.md](design/05-skills.md) sect
 | AC2 | Player was away less than 1 minute                                    | Player refreshes `/main`                                                  | **No** offline summary modal is shown                                |
 | AC3 | Player was away more than 24 hours with progress                      | Summary modal opens                                                       | Duration display is capped at **24 hours** and copy notes the offline cap |
 | AC4 | Player dismisses the offline summary modal                            | Player continues on `/main`                                               | Modal closes; snapshot refreshes so the same progress is not shown again on immediate refresh |
+| AC5 | Player was away with wall-clock offline ticks                         | Player opens `/main` after sync                                           | Summary battle/gold/XP deltas match authoritative save (shown **after** resume/sync, not before) |
+
+---
+
+## Example 41: Wall-clock offline scheduler, stats, and skip replay
+
+**User Story**
+
+> As a returning player,  
+> I want the server to keep fighting while I am away (up to 24h), with stats and leaderboard updated,  
+> So that I see accurate progress without replaying hundreds of log lines.
+
+**Design Reference**
+
+- [15-server-combat-tick.md](design/15-server-combat-tick.md) sections 2, 4, 6, 7, 9
+- [13-player-statistics.md](design/13-player-statistics.md) section 3
+
+**Acceptance Criteria**
+
+| #   | Given                                                                 | When                                                                      | Then                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AC1 | Squad non-empty; client calls `POST /combat/arm-offline`              | Scheduler runs due ticks before `offline_cap_until`                       | Save gains battles, gold/XP, `playerStats`, and `leaderboardTrack` increments |
+| AC2 | `now >= offline_cap_until`                                            | Scheduler evaluates next tick                                             | **No** new combat runs until next `arm-offline`                      |
+| AC3 | Player returns after many offline ticks (`eventSeq` gap > 10)          | Player opens `/main`                                                      | UI skips historical log replay; stats panel matches `GET /save`      |
+| AC4 | Player visible on `/main` with recent presence                          | Client finishes log replay                                                | Next cycle waits for `POST /combat/advance` (ClientGated)             |
+| AC5 | Player pauses combat                                                  | Wall-clock scheduler runs                                                 | **No** offline ticks while paused                                    |
 
 ---
 

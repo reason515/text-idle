@@ -9,12 +9,27 @@ import (
 
 // CombatHub tracks per-user WebSocket connections for combat events.
 type CombatHub struct {
-	mu    sync.RWMutex
-	conns map[uint]map[*websocket.Conn]struct{}
+	mu             sync.RWMutex
+	conns          map[uint]map[*websocket.Conn]struct{}
+	testConnected  map[uint]bool
 }
 
 func NewCombatHub() *CombatHub {
 	return &CombatHub{conns: make(map[uint]map[*websocket.Conn]struct{})}
+}
+
+// SetUserConnectedForTest marks a user as WS-connected (unit tests only).
+func (h *CombatHub) SetUserConnectedForTest(userID uint, connected bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.testConnected == nil {
+		h.testConnected = make(map[uint]bool)
+	}
+	if connected {
+		h.testConnected[userID] = true
+	} else {
+		delete(h.testConnected, userID)
+	}
 }
 
 func (h *CombatHub) Register(userID uint, conn *websocket.Conn) {
@@ -53,6 +68,9 @@ func (h *CombatHub) Broadcast(userID uint, payload []byte) {
 func (h *CombatHub) HasConnection(userID uint) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	if h.testConnected != nil && h.testConnected[userID] {
+		return true
+	}
 	return len(h.conns[userID]) > 0
 }
 

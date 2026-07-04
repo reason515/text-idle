@@ -94,6 +94,24 @@ func (h *CombatHandler) Advance(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *CombatHandler) ArmOffline(c *gin.Context) {
+	userID := c.GetUint(middleware.UserIDKey)
+	if err := h.loopService.ArmOffline(userID, time.Now()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *CombatHandler) Presence(c *gin.Context) {
+	userID := c.GetUint(middleware.UserIDKey)
+	if err := h.loopService.RecordPresence(userID, time.Now()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *CombatHandler) WebSocket(c *gin.Context) {
 	userID := c.GetUint(middleware.UserIDKey)
 	conn, err := combatUpgrader.Upgrade(c.Writer, c.Request, nil)
@@ -103,6 +121,7 @@ func (h *CombatHandler) WebSocket(c *gin.Context) {
 	h.hub.Register(userID, conn)
 	defer func() {
 		h.hub.Unregister(userID, conn)
+		_ = h.loopService.OnClientDisconnected(userID, time.Now())
 		conn.Close()
 	}()
 	for {

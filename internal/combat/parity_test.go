@@ -47,7 +47,7 @@ func TestParity_server_cycle_fixed_trio(t *testing.T) {
 		}
 	}
 
-	result, err := RunCycle(saveRaw, rngSeed)
+	result, err := RunCycle(saveRaw, rngSeed, 0)
 	if err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
