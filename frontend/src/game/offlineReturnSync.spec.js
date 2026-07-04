@@ -8,6 +8,8 @@ import {
   clampCombatEventPollSeq,
   isAwaitingClientAdvance,
   hasUndisplayedCombatEvents,
+  hasBattleSummarySinceLastEncounter,
+  resolveStreamProcessedEventSeq,
 } from './offlineReturnSync.js'
 
 describe('offlineReturnSync', () => {
@@ -94,5 +96,41 @@ describe('offlineReturnSync', () => {
   it('clampCombatEventPollSeq resets poll cursor above server seq', () => {
     expect(clampCombatEventPollSeq(1940, 2)).toBe(0)
     expect(clampCombatEventPollSeq(3, 10)).toBe(3)
+  })
+
+  it('hasBattleSummarySinceLastEncounter detects summary after encounter', () => {
+    const log = [
+      { type: 'encounter' },
+      { type: 'hit' },
+      { type: 'summary', outcome: 'victory' },
+    ]
+    expect(hasBattleSummarySinceLastEncounter(log)).toBe(true)
+    expect(hasBattleSummarySinceLastEncounter([{ type: 'encounter' }, { type: 'hit' }])).toBe(false)
+    expect(hasBattleSummarySinceLastEncounter([])).toBe(true)
+  })
+
+  it('resolveStreamProcessedEventSeq rewinds when cycle acked without summary', () => {
+    const log = [{ type: 'encounter' }, { type: 'hit' }]
+    expect(
+      resolveStreamProcessedEventSeq({
+        displayedEventSeq: 12,
+        lastEncounterEventSeq: 11,
+        logEntries: log,
+      }),
+    ).toBe(11)
+    expect(
+      resolveStreamProcessedEventSeq({
+        displayedEventSeq: 12,
+        lastEncounterEventSeq: 11,
+        logEntries: [...log, { type: 'summary', outcome: 'victory' }],
+      }),
+    ).toBe(12)
+    expect(
+      resolveStreamProcessedEventSeq({
+        displayedEventSeq: 11,
+        lastEncounterEventSeq: 11,
+        logEntries: log,
+      }),
+    ).toBe(11)
   })
 })

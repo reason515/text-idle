@@ -116,6 +116,43 @@ describe('combatStream', () => {
     expect(seen[0].type).toBe('combat.cycle_complete')
   })
 
+  it('setLastSeq does not advance processed ack cursor', async () => {
+    const seen = []
+    const fetchMock = vi.fn(async (url) => {
+      if (String(url).includes('/combat/events?since=11')) {
+        return {
+          ok: true,
+          json: async () => ({
+            events: [
+              {
+                seq: 12,
+                type: 'combat.cycle_complete',
+                payload: JSON.stringify({
+                  type: 'combat.cycle_complete',
+                  payload: { outcome: 'victory' },
+                }),
+              },
+            ],
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ events: [] }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: async (msg) => {
+        seen.push(msg.seq)
+      },
+    })
+    stream.setLastSeq(11)
+    stream.setLastProcessedSeq(11)
+    await stream.pollEvents()
+
+    expect(seen).toEqual([12])
+  })
+
   it('debugCombatTick posts to debug endpoint', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 204 }))
     vi.stubGlobal('fetch', fetchMock)

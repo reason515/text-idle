@@ -2873,11 +2873,13 @@ import {
   isStaleOfflineSessionSnapshot,
   isAwaitingClientAdvance,
   hasUndisplayedCombatEvents,
+  resolveStreamProcessedEventSeq,
 } from '../game/offlineReturnSync.js'
 import {
   getDisplayedEventSeq,
   markEventDisplayed,
   markEncounterEventSeq,
+  getLastEncounterEventSeq,
   initDisplayedEventSeqFromSnapshot,
   resetCombatDisplayCursor,
   setActiveLogBatchSeq,
@@ -5306,17 +5308,19 @@ async function processCombatLogIndex(log, encounter, steps, i, { instant = false
     if (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') {
       if (instant) applyRegenBatchInstant(entry)
       else await revealRegenBatchStep(entry)
+      if (steps[i]) applyAuthoritativePanelStep(encounter, steps[i])
     } else {
       applyOneCombatEntry(entry, { skipLog })
       if (!instant) await scrollLog()
+      if (steps[i]) applyAuthoritativePanelStep(encounter, steps[i])
+      if (shouldEmitUnitDefeated(entry)) {
+        if (instant) applyUnitDefeatedLogEntry(buildUnitDefeatedEntry(entry))
+        else await revealUnitDefeatedStep(buildUnitDefeatedEntry(entry), combatLogStepDelayMs)
+      }
     }
-    if (shouldEmitUnitDefeated(entry)) {
-      if (instant) applyUnitDefeatedLogEntry(buildUnitDefeatedEntry(entry))
-      else await revealUnitDefeatedStep(buildUnitDefeatedEntry(entry), combatLogStepDelayMs)
-    }
+  } else if (steps[i]) {
+    applyAuthoritativePanelStep(encounter, steps[i])
   }
-
-  applyAuthoritativePanelStep(encounter, steps[i])
 
   if (!skipLog && shouldShowRoundSeparatorAfterEntry(entry, log[i + 1])) {
     addLogEntry({ type: 'roundSeparator' })
@@ -5567,6 +5571,13 @@ async function startServerCombatDisplay() {
     onAfterPoll: retryPendingCombatAdvanceAfterPoll,
   })
   combatStream.setLastSeq(pollStartSeq)
+  combatStream.setLastProcessedSeq(
+    resolveStreamProcessedEventSeq({
+      displayedEventSeq: getDisplayedEventSeq(),
+      lastEncounterEventSeq: getLastEncounterEventSeq(),
+      logEntries: displayedLog.value,
+    }),
+  )
   combatStream.connect()
   startCombatPresenceHeartbeat()
   if (typeof window !== 'undefined') {
@@ -5674,18 +5685,23 @@ async function processServerCycleCompleteEvent(msg) {
     return
   }
   if (msg.type !== 'combat.cycle_complete') return
+  const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
+    normalizeCycleCompletePayload(msg)
+  )
+  if (!p || typeof p !== 'object') return
   serverDisplayCycleBusy = true
   try {
     const inventoryBeforeIds = new Set(getInventory().map((i) => i.id))
     const squadBefore = squad.value.map((h) => ({ ...h }))
     const progressBefore = progress.value.currentProgress ?? 0
     await syncFromServerSave()
-    const p = /** @type {{ outcome?: string, rounds?: number, goldGained?: number, xpGained?: number }} */ (
-      normalizeCycleCompletePayload(msg)
-    )
-    await completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds })
+    const settled = await completeCombatCycleFromServer(p, {
+      squadBefore,
+      progressBefore,
+      inventoryBeforeIds,
+    })
     const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
-    if (seq > 0) markEventDisplayed(seq)
+    if (settled && seq > 0) markEventDisplayed(seq)
   } finally {
     serverDisplayCycleBusy = false
   }
@@ -5807,14 +5823,17 @@ function applyE2eCombatPanelFromBatch({ log, encounter, steps }) {
     if (!isSilentCombatLogEntry(entry)) {
       if (entry.type === 'manaRegenBatch' || entry.type === 'hpRegenBatch') {
         applyRegenBatchInstant(entry)
+        if (steps[i]) applyAuthoritativePanelStep(encounter, steps[i])
       } else {
         applyOneCombatEntry(entry, { skipLog: true })
+        if (steps[i]) applyAuthoritativePanelStep(encounter, steps[i])
         if (shouldEmitUnitDefeated(entry)) {
           applyUnitDefeatedLogEntry(buildUnitDefeatedEntry(entry), { skipLog: true })
         }
       }
+    } else if (steps[i]) {
+      applyAuthoritativePanelStep(encounter, steps[i])
     }
-    if (steps[i]) applyAuthoritativePanelStep(encounter, steps[i])
   }
   syncE2eBuiltMonstersFromPanel()
 }
@@ -5837,8 +5856,7 @@ function buildCycleExplorationEntry(p, progressBefore) {
 }
 
 async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds }) {
-  if (!p) return
-  await emitLevelUpLogsFromSquadDiff(squadBefore)
+  if (!p) return false
   let inventoryAfter = getInventory()
   let droppedEquipment = inventoryAfter.filter((i) => !inventoryBeforeIds.has(i.id))
   const payloadEquipment = Array.isArray(p.equipmentDropped) ? p.equipmentDropped : []
@@ -5868,11 +5886,13 @@ async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, i
     exploration: buildCycleExplorationEntry(p, progressBefore),
   })
   await scrollLog()
+  await emitLevelUpLogsFromSquadDiff(squadBefore)
   const skipDisplayRestore = isE2eFastMode() && p.outcome === 'defeat'
   await autoRest(squad.value, { isDefeat: p.outcome === 'defeat', skipDisplayRestore })
   if (!skipDisplayRestore) {
     syncDisplayHeroesFromSquad()
   }
+  return true
 }
 
 function openMonsterDetail(monster) {
@@ -5936,6 +5956,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     if (completedReplay) {
       encounterInProgress.value = false
       resumeCombatUi = false
+      await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
       return
     }
 
@@ -5963,6 +5984,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     currentTargetId.value = null
     encounterInProgress.value = false
     resumeCombatUi = false
+    await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
   } finally {
     serverDisplayCycleBusy = false
   }

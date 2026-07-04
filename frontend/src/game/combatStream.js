@@ -150,10 +150,15 @@ export function createCombatStream(opts) {
     }
   }
 
-  /** @param {number} seq */
+  /** Poll cursor only; does not skip undelivered events. @param {number} seq */
   function setLastSeq(seq) {
     const n = Math.max(0, Math.floor(Number(seq) || 0))
     lastSeq = Math.max(lastSeq, n)
+  }
+
+  /** Ack cursor: events with seq <= this are skipped unless shouldRedeliver allows retry. @param {number} seq */
+  function setLastProcessedSeq(seq) {
+    const n = Math.max(0, Math.floor(Number(seq) || 0))
     lastProcessedSeq = Math.max(lastProcessedSeq, n)
   }
 
@@ -161,7 +166,7 @@ export function createCombatStream(opts) {
     return lastProcessedSeq
   }
 
-  return { connect, disconnect, pollEvents, setLastSeq, getLastProcessedSeq }
+  return { connect, disconnect, pollEvents, setLastSeq, setLastProcessedSeq, getLastProcessedSeq }
 }
 
 /** Force one server tick (E2E / debug only). */

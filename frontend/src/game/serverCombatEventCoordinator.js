@@ -39,6 +39,7 @@ export { normalizeLogBatchPayload }
  *   handleLogBatch: (msg: object, replayLog: (payload: { log: object[], encounter: object, steps: object[] }) => Promise<void>, processComplete: (msg: object) => Promise<void>) => Promise<{ replayed: boolean, hadLog: boolean, awaitingCycleComplete: boolean }>,
  *   handleCycleComplete: (msg: object, processComplete: (msg: object) => Promise<void>) => Promise<void>,
  *   isAwaitingCycleComplete: () => boolean,
+ *   tryFlushPendingCycleComplete: (processComplete: (msg: object) => Promise<void>) => Promise<boolean>,
  *   reset: () => void,
  *   getDebugState: () => { pendingCycleComplete: object | null, logReplayedThisCycle: boolean, awaitingCycleComplete: boolean },
  * }}
@@ -103,6 +104,11 @@ export function createServerCombatEventCoordinator(deps = {}) {
 
     isAwaitingCycleComplete() {
       return awaitingCycleComplete
+    },
+
+    async tryFlushPendingCycleComplete(processComplete) {
+      await flushPendingCycleComplete(processComplete)
+      return pendingCycleComplete == null
     },
 
     reset() {

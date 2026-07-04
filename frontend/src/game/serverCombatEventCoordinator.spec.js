@@ -195,6 +195,28 @@ describe('serverCombatEventCoordinator', () => {
     expect(processComplete).toHaveBeenCalledWith(completeMsg)
   })
 
+  it('tryFlushPendingCycleComplete returns false until log replay allows flush', async () => {
+    const coordinator = createServerCombatEventCoordinator()
+    const replayLog = vi.fn(async () => {})
+    const processComplete = vi.fn(async () => {})
+    const completeMsg = {
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory' } },
+    }
+    const logMsg = {
+      type: 'combat.log_batch',
+      event: { payload: sampleBatchPayload() },
+    }
+
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(await coordinator.tryFlushPendingCycleComplete(processComplete)).toBe(false)
+    expect(processComplete).not.toHaveBeenCalled()
+
+    await coordinator.handleLogBatch(logMsg, replayLog, processComplete)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+    expect(await coordinator.tryFlushPendingCycleComplete(processComplete)).toBe(true)
+  })
+
   it('sets awaitingCycleComplete after log replay until cycle_complete', async () => {
     const coordinator = createServerCombatEventCoordinator()
     const replayLog = vi.fn(async () => {})

@@ -98,6 +98,51 @@ export function hasUndisplayedCombatEvents(displayedEventSeq, currentEventSeq) {
 }
 
 /**
+ * True when the combat log contains a summary row after the most recent encounter row.
+ * @param {Array<{ type?: string }>} logEntries
+ * @returns {boolean}
+ */
+export function hasBattleSummarySinceLastEncounter(logEntries) {
+  if (!Array.isArray(logEntries) || logEntries.length === 0) return true
+  let lastEncounterIdx = -1
+  for (let i = logEntries.length - 1; i >= 0; i -= 1) {
+    if (logEntries[i]?.type === 'encounter') {
+      lastEncounterIdx = i
+      break
+    }
+  }
+  if (lastEncounterIdx < 0) return true
+  for (let i = lastEncounterIdx + 1; i < logEntries.length; i += 1) {
+    if (logEntries[i]?.type === 'summary') return true
+  }
+  return false
+}
+
+/**
+ * Stream ack cursor: rewind one step when cycle_complete was acked without settlement.
+ * @param {{
+ *   displayedEventSeq?: number,
+ *   lastEncounterEventSeq?: number,
+ *   logEntries?: Array<{ type?: string }>,
+ * }} opts
+ * @returns {number}
+ */
+export function resolveStreamProcessedEventSeq(opts) {
+  const displayed = Math.max(0, Math.floor(Number(opts.displayedEventSeq) || 0))
+  if (displayed <= 0) return 0
+  const lastEncounter = Math.max(0, Math.floor(Number(opts.lastEncounterEventSeq) || 0))
+  const logEntries = Array.isArray(opts.logEntries) ? opts.logEntries : []
+  if (
+    displayed > lastEncounter &&
+    lastEncounter > 0 &&
+    !hasBattleSummarySinceLastEncounter(logEntries)
+  ) {
+    return Math.max(0, displayed - 1)
+  }
+  return displayed
+}
+
+/**
  * Recommended startup order labels for tests and documentation.
  * @returns {string[]}
  */
