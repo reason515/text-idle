@@ -115,8 +115,12 @@ function onVisibilityChange() {
 
 function onPageHide() {
   clearArmOfflineTimer()
+  markQuickReloadPending()
   if (shouldSkipArmOfflineOnUnload()) {
-    markQuickReloadPending()
+    return
+  }
+  // Reload often fires pagehide while the tab is still "visible" (no prior hidden event).
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
     return
   }
   void armOfflineCombat()

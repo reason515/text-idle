@@ -20,8 +20,11 @@ export function getLogStepIndex() {
 
 /** @param {number} seq */
 export function setActiveLogBatchSeq(seq) {
-  activeLogBatchSeq = Math.max(0, Math.floor(Number(seq) || 0))
-  logStepIndex = 0
+  const next = Math.max(0, Math.floor(Number(seq) || 0))
+  if (activeLogBatchSeq !== next) {
+    activeLogBatchSeq = next
+    logStepIndex = 0
+  }
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   getLogStepIndex,
   markEventDisplayed,
   initDisplayedEventSeqFromSnapshot,
+  setActiveLogBatchSeq,
   resetDisplayedEventSeqForTests,
 } from './combatDisplayCursor.js'
 
@@ -28,6 +29,13 @@ describe('combatDisplayCursor', () => {
   it('initDisplayedEventSeqFromSnapshot falls back to leave eventSeq', () => {
     initDisplayedEventSeqFromSnapshot({ eventSeq: 7 })
     expect(getDisplayedEventSeq()).toBe(7)
+  })
+
+  it('setActiveLogBatchSeq preserves logStepIndex when batch seq unchanged', () => {
+    initDisplayedEventSeqFromSnapshot({ logBatchEventSeq: 5, logStepIndex: 9 })
+    setActiveLogBatchSeq(5)
+    expect(getActiveLogBatchSeq()).toBe(5)
+    expect(getLogStepIndex()).toBe(9)
   })
 
   it('initDisplayedEventSeqFromSnapshot restores log batch resume cursor', () => {

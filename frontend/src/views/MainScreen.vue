@@ -2881,6 +2881,7 @@ import {
   consumeQuickReloadFlag,
   getLogBatchReplayPlan,
   registerCombatUiSnapshotProvider,
+  shouldResumeCombatUiFromSnapshot,
   unregisterCombatUiSnapshotProvider,
 } from '../game/combatUiSnapshot.js'
 import { getMonsterSkillById } from '../game/monsterSkills.js'
@@ -3271,7 +3272,7 @@ const encounterInProgress = ref(false)
 let skipMonsterPanelRestore = false
 /** Session snapshot + quick reload flag for resuming log replay after F5. */
 let lastLeaveSnapshot = null
-let quickReloadReturn = false
+let resumeCombatUi = false
 /** Last hydrated monsters from log_batch (E2E detail modal when panel is cleared after rest). */
 let lastE2eBuiltMonsters = []
 const currentMonsters = ref([])
@@ -5507,11 +5508,13 @@ async function startServerCombatDisplay() {
   await ensurePlayerSaveLoaded()
   const leaveSnapshot = readSessionSnapshot()
   lastLeaveSnapshot = leaveSnapshot
-  quickReloadReturn = consumeQuickReloadFlag()
-  if (quickReloadReturn && leaveSnapshot?.displayedLogEntries?.length) {
+  const combatStateOnLoad = getCombatStateSummary()
+  const reloadEventSeq = Math.max(0, Math.floor(Number(combatStateOnLoad?.eventSeq) || 0))
+  resumeCombatUi =
+    consumeQuickReloadFlag() && shouldResumeCombatUiFromSnapshot(leaveSnapshot, reloadEventSeq)
+  if (resumeCombatUi && leaveSnapshot?.displayedLogEntries?.length) {
     displayedLog.value = JSON.parse(JSON.stringify(leaveSnapshot.displayedLogEntries))
   }
-  const combatStateOnLoad = getCombatStateSummary()
   isPaused.value = combatStateOnLoad?.status === 'paused'
   loadSquad()
   loadProgress()
@@ -5856,7 +5859,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
   if (!encounter || !Array.isArray(steps) || steps.length !== log.length) return
   const batchSeq = Math.max(0, Math.floor(Number(eventSeq) || 0))
   const plan = getLogBatchReplayPlan({
-    quickReload: quickReloadReturn,
+    resumeUi: resumeCombatUi,
     snapshot: lastLeaveSnapshot,
     eventSeq: batchSeq,
     logLength: log.length,
@@ -5902,7 +5905,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
 
     if (completedReplay) {
       encounterInProgress.value = false
-      quickReloadReturn = false
+      resumeCombatUi = false
       return
     }
 
@@ -5913,7 +5916,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
       }
       await scrollLog()
       markLogStepProgress(batchSeq, log.length)
-      quickReloadReturn = false
+      resumeCombatUi = false
       return
     }
 
@@ -5929,7 +5932,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     currentActorId.value = null
     currentTargetId.value = null
     encounterInProgress.value = false
-    quickReloadReturn = false
+    resumeCombatUi = false
   } finally {
     serverDisplayCycleBusy = false
   }

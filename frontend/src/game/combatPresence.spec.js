@@ -49,8 +49,11 @@ describe('combatPresence', () => {
     intervalSpy.mockRestore()
   })
 
-  it('installCombatPresenceLeaveTracking calls arm-offline on pagehide when tab was visible', () => {
+  it('installCombatPresenceLeaveTracking calls arm-offline on pagehide after long hidden', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     const handlers = {}
+    const docHandlers = {}
     vi.stubGlobal('window', {
       addEventListener: vi.fn((name, fn) => {
         handlers[name] = fn
@@ -58,17 +61,22 @@ describe('combatPresence', () => {
       removeEventListener: vi.fn(),
     })
     vi.stubGlobal('document', {
-      addEventListener: vi.fn(),
+      addEventListener: vi.fn((name, fn) => {
+        docHandlers[name] = fn
+      }),
       removeEventListener: vi.fn(),
-      visibilityState: 'visible',
+      visibilityState: 'hidden',
     })
     installCombatPresenceLeaveTracking()
+    docHandlers.visibilitychange()
+    vi.advanceTimersByTime(4000)
     handlers.pagehide()
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/combat/arm-offline'),
       expect.any(Object),
     )
     uninstallCombatPresenceLeaveTracking()
+    vi.useRealTimers()
   })
 
   it('installCombatPresenceLeaveTracking skips arm-offline on quick reload pagehide', () => {
@@ -89,6 +97,25 @@ describe('combatPresence', () => {
     })
     installCombatPresenceLeaveTracking()
     docHandlers.visibilitychange()
+    handlers.pagehide()
+    expect(fetch).not.toHaveBeenCalled()
+    uninstallCombatPresenceLeaveTracking()
+  })
+
+  it('installCombatPresenceLeaveTracking skips arm-offline on visible pagehide (reload burst)', () => {
+    const handlers = {}
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      visibilityState: 'visible',
+    })
+    installCombatPresenceLeaveTracking()
     handlers.pagehide()
     expect(fetch).not.toHaveBeenCalled()
     uninstallCombatPresenceLeaveTracking()
