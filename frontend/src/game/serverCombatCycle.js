@@ -142,13 +142,17 @@ export function runServerCombatCycle(save, opts = {}) {
   let levelUpCount = 0
   let restStepsThisBattle = 0
   /** @type {object[]} */
+  const equipmentAdded = []
+  /** @type {object[]} */
   const events = []
   let pendingExpansionRecruit = out.pendingExpansionRecruit ?? null
 
   if (result.outcome === 'victory') {
     const prevUnlockedMapCount = progress.unlockedMapCount ?? 1
     for (const eq of result.rewards.equipment || []) {
-      addToInventoryOnSave(out, eq)
+      if (addToInventoryOnSave(out, eq)) {
+        equipmentAdded.push(eq)
+      }
     }
     const victoryExploration = settleVictoryExploration(progress, monsters, {
       referenceLevel: squadLevel,
@@ -246,7 +250,7 @@ export function runServerCombatCycle(save, opts = {}) {
       rounds: result.rounds,
       goldGained: result.outcome === 'victory' ? result.rewards.gold : 0,
       xpGained: result.outcome === 'victory' ? result.rewards.exp : 0,
-      equipmentDropped: result.outcome === 'victory' ? result.rewards.equipment || [] : [],
+      equipmentDropped: result.outcome === 'victory' ? equipmentAdded : [],
       restSteps: restStepsThisBattle,
       combatActionSteps: result.combatActionSteps ?? 0,
     },

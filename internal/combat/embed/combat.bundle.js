@@ -1749,6 +1749,7 @@ var TextIdleCombat = (() => {
         throw new Error("failed to load save");
       }
       const data = await res.json();
+      cancelScheduledPersist();
       cache = normalizePlayerSave(data);
       if (isSaveEmpty(cache)) {
         const legacy = readLegacyLocalSave();
@@ -1771,6 +1772,12 @@ var TextIdleCombat = (() => {
   }
   function isSavePersistBlocked() {
     return typeof window !== "undefined" && window.__tiBlockSavePersist === true;
+  }
+  function cancelScheduledPersist() {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
   }
   async function flushPlayerSave(options = {}) {
     if (memoryOnly || isSavePersistBlocked()) return;
@@ -8431,12 +8438,15 @@ var TextIdleCombat = (() => {
     const { damageByHeroDelta, injuryByHeroDelta } = battleStatsToDeltas(result.battleStats);
     let levelUpCount = 0;
     let restStepsThisBattle = 0;
+    const equipmentAdded = [];
     const events = [];
     let pendingExpansionRecruit = out.pendingExpansionRecruit ?? null;
     if (result.outcome === "victory") {
       const prevUnlockedMapCount = progress.unlockedMapCount ?? 1;
       for (const eq of result.rewards.equipment || []) {
-        addToInventoryOnSave(out, eq);
+        if (addToInventoryOnSave(out, eq)) {
+          equipmentAdded.push(eq);
+        }
       }
       const victoryExploration = settleVictoryExploration(progress, monsters, {
         referenceLevel: squadLevel
@@ -8525,7 +8535,7 @@ var TextIdleCombat = (() => {
         rounds: result.rounds,
         goldGained: result.outcome === "victory" ? result.rewards.gold : 0,
         xpGained: result.outcome === "victory" ? result.rewards.exp : 0,
-        equipmentDropped: result.outcome === "victory" ? result.rewards.equipment || [] : [],
+        equipmentDropped: result.outcome === "victory" ? equipmentAdded : [],
         restSteps: restStepsThisBattle,
         combatActionSteps: result.combatActionSteps ?? 0
       }

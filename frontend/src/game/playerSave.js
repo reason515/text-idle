@@ -290,6 +290,7 @@ export async function ensurePlayerSaveLoaded(force = false) {
       throw new Error('failed to load save')
     }
     const data = await res.json()
+    cancelScheduledPersist()
     cache = normalizePlayerSave(data)
     if (isSaveEmpty(cache)) {
       const legacy = readLegacyLocalSave()
@@ -329,9 +330,16 @@ function isSavePersistBlocked() {
   return typeof window !== 'undefined' && window.__tiBlockSavePersist === true
 }
 
+export function cancelScheduledPersist() {
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+}
+
 function schedulePersist() {
   if (memoryOnly || isSavePersistBlocked()) return
-  if (persistTimer) clearTimeout(persistTimer)
+  cancelScheduledPersist()
   persistTimer = setTimeout(() => {
     persistTimer = null
     if (isSavePersistBlocked()) return

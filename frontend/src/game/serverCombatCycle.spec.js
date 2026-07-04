@@ -114,6 +114,36 @@ describe('serverCombatCycle', () => {
     expect(Array.isArray(complete.payload.equipmentDropped)).toBe(true)
     if (complete.payload.equipmentDropped.length > 0) {
       expect(complete.payload.equipmentDropped[0]).toHaveProperty('quality')
+      expect(result.save.inventory.some((i) => i.id === complete.payload.equipmentDropped[0].id)).toBe(true)
     }
+  })
+
+  it('omits equipmentDropped when inventory is full', () => {
+    const save = buildFixtureSave()
+    for (const hero of save.squad) {
+      hero.stamina = Math.max(hero.stamina ?? 0, 200)
+      hero.strength = Math.max(hero.strength ?? 0, 80)
+    }
+    save.combatProgress.currentProgress = 100
+    save.combatProgress.bossAvailable = true
+    save.inventory = Array.from({ length: 100 }, (_, i) => ({
+      id: `fill-${i}`,
+      baseName: 'Cap',
+      quality: 'normal',
+      slot: 'Helm',
+    }))
+
+    let result = null
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const cycle = runServerCombatCycle(save, { rngSeed: seed })
+      if (cycle.outcome === 'victory') {
+        result = cycle
+        break
+      }
+    }
+    expect(result).not.toBeNull()
+    const complete = result.events.find((e) => e.type === 'combat.cycle_complete')
+    expect(complete?.payload?.equipmentDropped ?? []).toEqual([])
+    expect(result.save.inventory).toHaveLength(100)
   })
 })

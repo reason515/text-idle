@@ -3015,6 +3015,7 @@ import {
   clearPlayerSaveCache,
   flushPlayerSave,
   ensurePlayerSaveLoaded,
+  cancelScheduledPersist,
   getPendingExpansionRecruit,
   getCombatStateSummary,
 } from '../game/playerSave.js'
@@ -5619,12 +5620,14 @@ async function processServerCycleCompleteEvent(msg) {
 }
 
 async function syncFromServerSave() {
+  cancelScheduledPersist()
   await ensurePlayerSaveLoaded(true)
   loadSquad()
   loadProgress()
   loadPlayerStats()
   gold.value = getGold()
   syncDisplayHeroesFromSquad()
+  inventoryVersion.value++
 }
 
 async function emitLevelUpLogsFromSquadDiff(beforeSquad) {
@@ -5763,11 +5766,20 @@ function buildCycleExplorationEntry(p, progressBefore) {
 async function completeCombatCycleFromServer(p, { squadBefore, progressBefore, inventoryBeforeIds }) {
   if (!p) return
   await emitLevelUpLogsFromSquadDiff(squadBefore)
-  const inventoryAfter = getInventory()
+  let inventoryAfter = getInventory()
   let droppedEquipment = inventoryAfter.filter((i) => !inventoryBeforeIds.has(i.id))
   const payloadEquipment = Array.isArray(p.equipmentDropped) ? p.equipmentDropped : []
-  if (droppedEquipment.length === 0 && payloadEquipment.length > 0) {
-    droppedEquipment = payloadEquipment
+  const missingFromSync = payloadEquipment.filter(
+    (eq) => eq?.id && !inventoryAfter.some((i) => i.id === eq.id),
+  )
+  if (missingFromSync.length > 0) {
+    cancelScheduledPersist()
+    for (const eq of missingFromSync) {
+      addToInventory(eq)
+    }
+    inventoryAfter = getInventory()
+    droppedEquipment = inventoryAfter.filter((i) => !inventoryBeforeIds.has(i.id))
+    inventoryVersion.value++
   }
   lastOutcome.value = p.outcome || ''
   lastRewards.value = { gold: p.goldGained || 0, exp: p.xpGained || 0, equipment: droppedEquipment }
