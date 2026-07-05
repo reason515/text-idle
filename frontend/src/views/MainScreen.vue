@@ -5574,7 +5574,10 @@ async function startServerCombatDisplay() {
   combatStream = createCombatStream({
     token,
     onEvent: handleCombatStreamEvent,
-    onAfterPoll: retryPendingCombatAdvanceAfterPoll,
+    onAfterPoll: async () => {
+      await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
+      await retryPendingCombatAdvanceAfterPoll()
+    },
   })
   combatStream.setLastSeq(pollStartSeq)
   combatStream.setLastProcessedSeq(
@@ -5875,8 +5878,9 @@ function buildCycleExplorationEntry(p, progressBefore) {
   return undefined
 }
 
-function capturePostCombatDisplaySnapshot() {
+async function capturePostCombatDisplaySnapshot() {
   lastPostCombatDisplaySnapshot = displayHeroes.value.map((h) => ({ ...h }))
+  await serverCombatEvents.tryFlushPendingCycleComplete(processServerCycleCompleteEvent)
 }
 
 async function completeCombatCycleFromServer(
@@ -5985,7 +5989,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     if (completedReplay) {
       encounterInProgress.value = false
       resumeCombatUi = false
-      capturePostCombatDisplaySnapshot()
+      await capturePostCombatDisplaySnapshot()
       return
     }
 
@@ -5997,7 +6001,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
       await scrollLog()
       markLogStepProgress(batchSeq, log.length)
       resumeCombatUi = false
-      capturePostCombatDisplaySnapshot()
+      await capturePostCombatDisplaySnapshot()
       return
     }
 
@@ -6014,7 +6018,7 @@ async function replayServerLogBatch({ log, encounter, steps, eventSeq = 0 }) {
     currentTargetId.value = null
     encounterInProgress.value = false
     resumeCombatUi = false
-    capturePostCombatDisplaySnapshot()
+    await capturePostCombatDisplaySnapshot()
   } finally {
     serverDisplayCycleBusy = false
   }
@@ -6089,12 +6093,13 @@ async function handleCombatStreamEventE2eFast(msg) {
   }
 }
 
-/** @param {{ type: string, seq?: number, event?: { payload?: object } }} msg */
+/** @param {{ type: string, seq?: number, event?: { payload?: object } }} msg @returns {Promise<boolean|void>} false = do not ack stream cursor */
 async function handleCombatStreamEvent(msg) {
+  let ack = true
   try {
     if (shouldSkipClientAdvanceGate()) {
       await handleCombatStreamEventE2eFast(msg)
-      return
+      return ack
     }
     if (msg.type === 'combat.log_batch') {
       const batchResult = await serverCombatEvents.handleLogBatch(
@@ -6103,25 +6108,22 @@ async function handleCombatStreamEvent(msg) {
         processServerCycleCompleteEvent,
       )
       const payload = normalizeLogBatchPayload(msg)
-      if (
-        payload.log &&
-        payload.log.length > 0 &&
-        payload.encounter &&
-        (batchResult?.replayed || batchResult?.hadLog)
-      ) {
+      if (payload.log && payload.log.length > 0 && (batchResult?.replayed || batchResult?.hadLog)) {
         markEncounterEventSeq(msg.seq)
       }
       if (batchResult?.hadLog && !batchResult.replayed) {
         getCombatAdvanceController().onLogBatchReplayResult(batchResult)
       }
-      return
+      return ack
     }
     if (msg.type === 'combat.cycle_complete') {
       await serverCombatEvents.handleCycleComplete(msg, processServerCycleCompleteEvent)
-      return
+      ack = serverCombatEvents.getDebugState().pendingCycleComplete == null
+      return ack
     }
     if (msg.type === 'combat.pending_expansion') {
       await processServerCycleCompleteEvent(msg)
+      return ack
     }
   } finally {
     const seq = Math.max(0, Math.floor(Number(msg?.seq) || 0))
@@ -6129,6 +6131,7 @@ async function handleCombatStreamEvent(msg) {
       markEventDisplayed(seq)
     }
   }
+  return ack
 }
 
 function installCombatVisibilityRecovery() {

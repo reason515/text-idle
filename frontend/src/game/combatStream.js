@@ -65,8 +65,13 @@ export function createCombatStream(opts) {
 
   async function deliverEvent(msg) {
     const seq = Number(msg?.seq) || 0
-    if (seq > 0 && seq <= lastProcessedSeq) return
-    await opts.onEvent(msg)
+    const allowRedelivery =
+      seq > 0 &&
+      seq <= lastProcessedSeq &&
+      (msg.type === 'combat.cycle_complete' || msg.type === 'combat.pending_expansion')
+    if (seq > 0 && seq <= lastProcessedSeq && !allowRedelivery) return
+    const ack = await opts.onEvent(msg)
+    if (ack === false) return
     if (seq > lastProcessedSeq) lastProcessedSeq = seq
     if (seq > lastSeq) lastSeq = seq
   }

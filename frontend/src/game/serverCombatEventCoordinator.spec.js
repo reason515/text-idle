@@ -198,6 +198,22 @@ describe('serverCombatEventCoordinator', () => {
     expect(processComplete).toHaveBeenCalledWith(completeMsg)
   })
 
+  it('flushes cycle_complete when displayed is ready but encounter seq was not tracked', async () => {
+    const coordinator = createServerCombatEventCoordinator({
+      getDisplayedEventSeq: () => 5,
+      getLastEncounterEventSeq: () => 0,
+    })
+    const processComplete = vi.fn(async () => {})
+    const completeMsg = {
+      seq: 6,
+      type: 'combat.cycle_complete',
+      event: { payload: { outcome: 'victory' } },
+    }
+
+    await coordinator.handleCycleComplete(completeMsg, processComplete)
+    expect(processComplete).toHaveBeenCalledWith(completeMsg)
+  })
+
   it('defers cycle_complete when displayed seq is ahead but encounter seq does not match', async () => {
     const coordinator = createServerCombatEventCoordinator({
       getDisplayedEventSeq: () => 6,

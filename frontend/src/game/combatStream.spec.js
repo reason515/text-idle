@@ -258,6 +258,86 @@ describe('combatStream', () => {
     expect(seen).toEqual([4, 4])
   })
 
+  it('pollEvents retries cycle_complete when handler returns ack false', async () => {
+    const seen = []
+    let settleOnce = false
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        events: [
+          {
+            seq: 4,
+            type: 'combat.cycle_complete',
+            payload: JSON.stringify({
+              type: 'combat.cycle_complete',
+              payload: { outcome: 'victory' },
+            }),
+          },
+        ],
+      }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: async (msg) => {
+        seen.push(msg.seq)
+        if (!settleOnce) {
+          settleOnce = true
+          return false
+        }
+      },
+    })
+    stream.setLastSeq(3)
+    await stream.pollEvents()
+    await stream.pollEvents()
+    expect(seen).toEqual([4, 4])
+  })
+
+  it('pollEvents redelivers cycle_complete after deferred settlement', async () => {
+    const seen = []
+    let settled = false
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        events: [
+          {
+            seq: 6,
+            type: 'combat.pending_expansion',
+            payload: JSON.stringify({
+              type: 'combat.pending_expansion',
+              payload: { mapId: 'elwynn-forest' },
+            }),
+          },
+          {
+            seq: 7,
+            type: 'combat.cycle_complete',
+            payload: JSON.stringify({
+              type: 'combat.cycle_complete',
+              payload: { outcome: 'victory' },
+            }),
+          },
+        ],
+      }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stream = createCombatStream({
+      token: 'tok',
+      onEvent: async (msg) => {
+        seen.push(`${msg.type}:${msg.seq}`)
+        if (msg.type === 'combat.cycle_complete' && !settled) {
+          return false
+        }
+        if (msg.type === 'combat.cycle_complete') settled = true
+      },
+    })
+    stream.setLastSeq(5)
+    await stream.pollEvents()
+    await stream.pollEvents()
+    expect(seen.filter((row) => row === 'combat.cycle_complete:7').length).toBe(2)
+  })
+
   it('pollEvents calls onAfterPoll after delivering events', async () => {
     const afterPoll = vi.fn(async () => {})
     const stream = createCombatStream({

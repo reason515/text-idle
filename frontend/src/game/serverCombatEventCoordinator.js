@@ -61,14 +61,17 @@ export function createServerCombatEventCoordinator(deps = {}) {
     const completeSeq = Math.max(0, Math.floor(Number(completeMsg?.seq) || 0))
     if (completeSeq <= 0) return false
 
+    const displayed = Math.max(0, Math.floor(Number(getDisplayedEventSeq()) || 0))
+    if (displayed < completeSeq - 1) return false
+
     const lastEncounter = Math.max(0, Math.floor(Number(getLastEncounterEventSeq()) || 0))
+    // Log replay finished but encounter seq was not tracked (legacy / partial payloads).
+    if (lastEncounter <= 0) return true
+
     // Require the log_batch encounter for this cycle (allow one-seq gap for pending_expansion).
     const minLogSeq = completeSeq - 2
     const maxLogSeq = completeSeq - 1
-    if (lastEncounter < minLogSeq || lastEncounter > maxLogSeq) return false
-
-    const displayed = Math.max(0, Math.floor(Number(getDisplayedEventSeq()) || 0))
-    return displayed >= completeSeq - 1
+    return lastEncounter >= minLogSeq && lastEncounter <= maxLogSeq
   }
 
   async function flushPendingCycleComplete(processComplete) {
