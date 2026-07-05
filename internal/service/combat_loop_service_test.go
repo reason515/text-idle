@@ -1080,7 +1080,7 @@ func TestCombatLoopService_OnClientDisconnected_schedulesArmOfflineWhenPresenceR
 	}
 }
 
-func TestCombatLoopService_OnClientConnected_cancelsScheduledArmOffline(t *testing.T) {
+func TestCombatLoopService_OnClientConnected_cancelsDisconnectScheduleOnly(t *testing.T) {
 	t.Setenv("TEXT_IDLE_CLIENT_PRESENCE_TIMEOUT_MS", "200")
 	h := setupCombatLoopHarness(t, "disconnect-cancel@test.com")
 	save := loadFixtureSave(t)
@@ -1102,7 +1102,56 @@ func TestCombatLoopService_OnClientConnected_cancelsScheduledArmOffline(t *testi
 		t.Fatal(err)
 	}
 	if !state.OfflineCapUntil.IsZero() {
-		t.Fatal("expected scheduled arm-offline to be cancelled on reconnect")
+		t.Fatal("expected scheduled disconnect arm-offline to be cancelled on reconnect")
+	}
+}
+
+func TestCombatLoopService_OnClientConnected_keepsTabHiddenSchedule(t *testing.T) {
+	h := setupCombatLoopHarness(t, "tab-hidden-reconnect@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now.Add(-5*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.ScheduleArmOfflineAfterTabHidden(h.userID)
+	h.loop.OnClientConnected(h.userID)
+	time.Sleep(3100 * time.Millisecond)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected tab-hidden arm-offline to survive websocket reconnect")
+	}
+}
+
+func TestCombatLoopService_TabHiddenSchedule_notOverwrittenByDisconnect(t *testing.T) {
+	t.Setenv("TEXT_IDLE_CLIENT_PRESENCE_TIMEOUT_MS", "120000")
+	h := setupCombatLoopHarness(t, "tab-hidden-disconnect@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now.Add(-5*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.ScheduleArmOfflineAfterTabHidden(h.userID)
+	if err := h.loop.OnClientDisconnected(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3100 * time.Millisecond)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected tab-hidden arm-offline within 3s even when disconnect also scheduled")
 	}
 }
 

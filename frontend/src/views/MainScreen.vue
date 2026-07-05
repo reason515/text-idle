@@ -6138,7 +6138,10 @@ function installCombatVisibilityRecovery() {
   if (typeof document === 'undefined' || onCombatVisibilityChange) return
   onCombatVisibilityChange = () => {
     if (document.visibilityState !== 'visible' || isPaused.value || !combatStream) return
-    void sendCombatPresence().then(() => combatStream.pollEvents()).then(() => retryPendingCombatAdvanceAfterPoll())
+    void syncFromServerSave()
+      .then(() => sendCombatPresence())
+      .then(() => combatStream.pollEvents())
+      .then(() => retryPendingCombatAdvanceAfterPoll())
   }
   document.addEventListener('visibilitychange', onCombatVisibilityChange)
 }

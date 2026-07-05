@@ -86,7 +86,7 @@ type CombatLoopService struct {
 	combatEventRepo  *repository.CombatEventRepository
 	hub              *CombatHub
 	armOfflineMu     sync.Mutex
-	armOfflineTimers map[uint]*time.Timer
+	armOfflineTimers map[uint]map[armOfflineScheduleMode]*time.Timer
 }
 
 func NewCombatLoopService(
@@ -100,7 +100,7 @@ func NewCombatLoopService(
 		combatStateRepo:  combatStateRepo,
 		combatEventRepo:  combatEventRepo,
 		hub:              hub,
-		armOfflineTimers: make(map[uint]*time.Timer),
+		armOfflineTimers: make(map[uint]map[armOfflineScheduleMode]*time.Timer),
 	}
 }
 
@@ -523,16 +523,37 @@ func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error
 	return synced, nil
 }
 
-// OnClientConnected cancels a pending post-disconnect arm-offline timer.
+// OnClientConnected cancels a pending post-disconnect arm-offline timer only.
+// Tab-hidden schedules must survive websocket reconnect while the tab stays backgrounded.
 func (s *CombatLoopService) OnClientConnected(userID uint) {
-	s.cancelScheduledArmOffline(userID)
+	s.cancelScheduledArmOfflineModes(userID, armOfflineAfterDisconnect)
 }
 
 func (s *CombatLoopService) cancelScheduledArmOffline(userID uint) {
+	s.cancelScheduledArmOfflineModes(userID)
+}
+
+func (s *CombatLoopService) cancelScheduledArmOfflineModes(userID uint, modes ...armOfflineScheduleMode) {
 	s.armOfflineMu.Lock()
 	defer s.armOfflineMu.Unlock()
-	if timer, ok := s.armOfflineTimers[userID]; ok {
-		timer.Stop()
+	slots, ok := s.armOfflineTimers[userID]
+	if !ok {
+		return
+	}
+	if len(modes) == 0 {
+		for _, timer := range slots {
+			timer.Stop()
+		}
+		delete(s.armOfflineTimers, userID)
+		return
+	}
+	for _, mode := range modes {
+		if timer, ok := slots[mode]; ok {
+			timer.Stop()
+			delete(slots, mode)
+		}
+	}
+	if len(slots) == 0 {
 		delete(s.armOfflineTimers, userID)
 	}
 }
@@ -542,16 +563,26 @@ func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Dura
 		_ = s.ArmOffline(userID, time.Now())
 		return
 	}
+	scheduledAt := time.Now()
 	s.armOfflineMu.Lock()
-	defer s.armOfflineMu.Unlock()
-	if timer, ok := s.armOfflineTimers[userID]; ok {
+	slots := s.armOfflineTimers[userID]
+	if slots == nil {
+		slots = make(map[armOfflineScheduleMode]*time.Timer)
+		s.armOfflineTimers[userID] = slots
+	}
+	if timer, ok := slots[mode]; ok {
 		timer.Stop()
 	}
 	uid := userID
 	scheduleMode := mode
 	timer := time.AfterFunc(delay, func() {
 		s.armOfflineMu.Lock()
-		delete(s.armOfflineTimers, uid)
+		if userSlots, ok := s.armOfflineTimers[uid]; ok {
+			delete(userSlots, scheduleMode)
+			if len(userSlots) == 0 {
+				delete(s.armOfflineTimers, uid)
+			}
+		}
 		s.armOfflineMu.Unlock()
 		state, err := s.combatStateRepo.GetByUserID(uid)
 		if err != nil {
@@ -559,7 +590,7 @@ func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Dura
 		}
 		now := time.Now()
 		if scheduleMode == armOfflineAfterTabHidden {
-			if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < delay {
+			if !state.LastClientSeenAt.IsZero() && state.LastClientSeenAt.After(scheduledAt) {
 				return
 			}
 			_ = s.ArmOffline(uid, now)
@@ -574,7 +605,8 @@ func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Dura
 		}
 		_ = s.ArmOffline(uid, now)
 	})
-	s.armOfflineTimers[userID] = timer
+	slots[mode] = timer
+	s.armOfflineMu.Unlock()
 }
 
 // OnClientDisconnected arms wall-clock mode when the last WS drops and presence expired.

@@ -151,7 +151,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 - Long offline return: if `eventSeq` gap > 10, skip historical log replay; load authoritative save (stats + leaderboard track) and continue from next ClientGated cycle.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
-- **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/advance` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client **polls only** (no advance/resume). Background tabs **pause** log replay until visible again.
+- **Event ordering:** `serverCombatEventCoordinator.js` holds `cycle_complete` until the matching `log_batch` replay finishes, then calls `POST /combat/advance` via `scheduleNextServerCombatPoll`. On `visibilitychange` → `visible`, the client **syncs save**, **polls only** (no advance/resume). Background tabs **pause** log replay until visible again. Tab-hidden and disconnect arm-offline schedules use **separate server timers**; websocket reconnect cancels only the disconnect schedule.
 
 ### 7.1 Offline combat summary (return visit)
 
