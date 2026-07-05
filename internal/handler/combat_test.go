@@ -101,6 +101,7 @@ func setupCombatTestRouterOptions(t *testing.T, opts combatTestRouterOptions) *c
 	r.POST("/combat/resume", authMw, combatHandler.Resume)
 	r.POST("/combat/advance", authMw, combatHandler.Advance)
 	r.POST("/combat/arm-offline", authMw, combatHandler.ArmOffline)
+	r.POST("/combat/schedule-arm-offline", authMw, combatHandler.ScheduleArmOffline)
 	r.POST("/combat/presence", authMw, combatHandler.Presence)
 	r.POST("/debug/combat/tick", authMw, combatHandler.DebugTick)
 	if opts.withLeaderboard {

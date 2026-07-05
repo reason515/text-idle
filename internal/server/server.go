@@ -71,6 +71,7 @@ func NewApp(db *gorm.DB, staticFS fs.FS, includeTestUsersInLeaderboard bool) *Ap
 	r.POST("/combat/resume", authMw, combatHandler.Resume)
 	r.POST("/combat/advance", authMw, combatHandler.Advance)
 	r.POST("/combat/arm-offline", authMw, combatHandler.ArmOffline)
+	r.POST("/combat/schedule-arm-offline", authMw, combatHandler.ScheduleArmOffline)
 	r.POST("/combat/presence", authMw, combatHandler.Presence)
 	r.POST("/shop/buy", authMw, shopHandler.Buy)
 	r.POST("/shop/sell", authMw, shopHandler.Sell)

@@ -3,6 +3,7 @@ import {
   armOfflineCombat,
   installCombatPresenceLeaveTracking,
   resetCombatPresenceLeaveStateForTests,
+  scheduleArmOfflineCombat,
   sendCombatPresence,
   shouldArmOfflineOnVisiblePageHide,
   shouldSkipArmOfflineOnUnload,
@@ -33,6 +34,14 @@ describe('combatPresence', () => {
     )
   })
 
+  it('scheduleArmOfflineCombat posts to /combat/schedule-arm-offline', async () => {
+    await scheduleArmOfflineCombat()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/combat/schedule-arm-offline'),
+      expect.objectContaining({ method: 'POST', keepalive: true }),
+    )
+  })
+
   it('sendCombatPresence posts to /combat/presence', async () => {
     await sendCombatPresence()
     expect(fetch).toHaveBeenCalledWith(
@@ -50,7 +59,7 @@ describe('combatPresence', () => {
     intervalSpy.mockRestore()
   })
 
-  it('installCombatPresenceLeaveTracking calls arm-offline on pagehide after long hidden', () => {
+  it('installCombatPresenceLeaveTracking schedules arm-offline on hidden and arms on pagehide after long hidden', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     const handlers = {}
@@ -70,6 +79,10 @@ describe('combatPresence', () => {
     })
     installCombatPresenceLeaveTracking()
     docHandlers.visibilitychange()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/combat/schedule-arm-offline'),
+      expect.objectContaining({ method: 'POST', keepalive: true }),
+    )
     vi.advanceTimersByTime(4000)
     handlers.pagehide()
     expect(fetch).toHaveBeenCalledWith(
@@ -99,7 +112,14 @@ describe('combatPresence', () => {
     installCombatPresenceLeaveTracking()
     docHandlers.visibilitychange()
     handlers.pagehide()
-    expect(fetch).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/combat/schedule-arm-offline'),
+      expect.any(Object),
+    )
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/combat/arm-offline'),
+      expect.any(Object),
+    )
     uninstallCombatPresenceLeaveTracking()
   })
 
@@ -160,7 +180,6 @@ describe('combatPresence', () => {
   })
 
   it('pauses presence heartbeat while hidden and resumes when visible again', () => {
-    vi.useFakeTimers()
     const intervalSpy = vi.spyOn(globalThis, 'setInterval')
     vi.stubGlobal('window', {
       addEventListener: vi.fn(),
@@ -185,7 +204,28 @@ describe('combatPresence', () => {
     uninstallCombatPresenceLeaveTracking()
     stopCombatPresenceHeartbeat()
     intervalSpy.mockRestore()
-    vi.useRealTimers()
+  })
+
+  it('schedules arm-offline on window blur when tab stays visible', () => {
+    const handlers = {}
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      visibilityState: 'visible',
+    })
+    installCombatPresenceLeaveTracking()
+    handlers.blur()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/combat/schedule-arm-offline'),
+      expect.objectContaining({ method: 'POST', keepalive: true }),
+    )
+    uninstallCombatPresenceLeaveTracking()
   })
 
   it('shouldSkipArmOfflineOnUnload when hidden recently', () => {

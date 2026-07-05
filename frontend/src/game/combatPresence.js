@@ -7,7 +7,7 @@ import { markSessionWallClockArmed } from './offlineSession.js'
 
 const PRESENCE_INTERVAL_MS = 30_000
 /** Tab hidden this long before arming wall-clock mode (avoids reload arming offline). */
-const ARM_OFFLINE_HIDDEN_MS = 3000
+export const ARM_OFFLINE_HIDDEN_MS = 3000
 /** Page unload within this window after hidden is treated as reload/close burst (skip arm). */
 const QUICK_UNLOAD_MS = 3000
 
@@ -34,6 +34,26 @@ export async function armOfflineCombat() {
     if (res.ok || res.status === 204) {
       markSessionWallClockArmed()
     }
+    return res.ok || res.status === 204
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Ask the server to arm wall-clock mode after tab/window unfocused unless presence
+ * is refreshed first (server timer avoids background tab setTimeout throttling).
+ * @returns {Promise<boolean>}
+ */
+export async function scheduleArmOfflineCombat() {
+  const headers = authHeaders()
+  if (!headers) return false
+  try {
+    const res = await fetch(`${apiBase()}/combat/schedule-arm-offline`, {
+      method: 'POST',
+      headers,
+      keepalive: true,
+    })
     return res.ok || res.status === 204
   } catch {
     return false
@@ -81,7 +101,7 @@ export function stopCombatPresenceHeartbeat() {
   }
 }
 
-/** Pause heartbeat while tab is hidden without clearing the resume flag. */
+/** Pause heartbeat while tab is hidden or window unfocused without clearing the resume flag. */
 function pauseCombatPresenceHeartbeatForHidden() {
   if (presenceTimer) {
     clearInterval(presenceTimer)
@@ -89,28 +109,24 @@ function pauseCombatPresenceHeartbeatForHidden() {
   }
 }
 
-/** @type {ReturnType<typeof setTimeout> | null} */
-let armOfflineTimer = null
+function resumeCombatPresenceAfterForeground() {
+  if (isDocumentHidden()) return
+  if (presenceHeartbeatWanted) {
+    startCombatPresenceHeartbeat()
+    return
+  }
+  void sendCombatPresence()
+}
+
 let hiddenAtMs = 0
 /** @type {(() => void) | null} */
 let pageHideHandler = null
 /** @type {(() => void) | null} */
 let visibilityHandler = null
-
-function clearArmOfflineTimer() {
-  if (armOfflineTimer) {
-    clearTimeout(armOfflineTimer)
-    armOfflineTimer = null
-  }
-}
-
-function scheduleDelayedArmOffline() {
-  clearArmOfflineTimer()
-  armOfflineTimer = setTimeout(() => {
-    armOfflineTimer = null
-    void armOfflineCombat()
-  }, ARM_OFFLINE_HIDDEN_MS)
-}
+/** @type {(() => void) | null} */
+let windowBlurHandler = null
+/** @type {(() => void) | null} */
+let windowFocusHandler = null
 
 /**
  * @param {number} [nowMs]
@@ -131,23 +147,41 @@ export function shouldArmOfflineOnVisiblePageHide() {
   return nav?.type !== 'reload'
 }
 
+function isDocumentHidden() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden'
+}
+
+function onBackgroundLeave() {
+  pauseCombatPresenceHeartbeatForHidden()
+  void scheduleArmOfflineCombat()
+}
+
+function onForegroundReturn() {
+  if (isDocumentHidden()) return
+  resumeCombatPresenceAfterForeground()
+}
+
 function onVisibilityChange() {
   if (typeof document === 'undefined') return
   if (document.visibilityState === 'hidden') {
     hiddenAtMs = Date.now()
-    pauseCombatPresenceHeartbeatForHidden()
-    scheduleDelayedArmOffline()
+    onBackgroundLeave()
     return
   }
   hiddenAtMs = 0
-  clearArmOfflineTimer()
-  if (presenceHeartbeatWanted) {
-    startCombatPresenceHeartbeat()
-  }
+  onForegroundReturn()
+}
+
+function onWindowBlur() {
+  if (isDocumentHidden()) return
+  onBackgroundLeave()
+}
+
+function onWindowFocus() {
+  onForegroundReturn()
 }
 
 function onPageHide() {
-  clearArmOfflineTimer()
   markQuickReloadPending()
   if (shouldSkipArmOfflineOnUnload()) {
     return
@@ -166,25 +200,37 @@ export function installCombatPresenceLeaveTracking() {
   uninstallCombatPresenceLeaveTracking()
   pageHideHandler = onPageHide
   visibilityHandler = onVisibilityChange
+  windowBlurHandler = onWindowBlur
+  windowFocusHandler = onWindowFocus
   window.addEventListener('pagehide', pageHideHandler)
+  window.addEventListener('blur', windowBlurHandler)
+  window.addEventListener('focus', windowFocusHandler)
   document.addEventListener('visibilitychange', visibilityHandler)
 }
 
 export function uninstallCombatPresenceLeaveTracking() {
-  clearArmOfflineTimer()
   hiddenAtMs = 0
-  if (typeof window !== 'undefined' && pageHideHandler) {
-    window.removeEventListener('pagehide', pageHideHandler)
+  if (typeof window !== 'undefined') {
+    if (pageHideHandler) {
+      window.removeEventListener('pagehide', pageHideHandler)
+    }
+    if (windowBlurHandler) {
+      window.removeEventListener('blur', windowBlurHandler)
+    }
+    if (windowFocusHandler) {
+      window.removeEventListener('focus', windowFocusHandler)
+    }
   }
   if (typeof document !== 'undefined' && visibilityHandler) {
     document.removeEventListener('visibilitychange', visibilityHandler)
   }
   pageHideHandler = null
   visibilityHandler = null
+  windowBlurHandler = null
+  windowFocusHandler = null
 }
 
 /** Reset hidden timer state for unit tests. */
 export function resetCombatPresenceLeaveStateForTests() {
-  clearArmOfflineTimer()
   hiddenAtMs = 0
 }

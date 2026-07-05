@@ -22,6 +22,16 @@ const clientResumeGateDuration = 100 * 365 * 24 * time.Hour
 
 const clientPresenceTimeout = 90 * time.Second
 
+// tabHiddenArmOfflineDelay matches frontend ARM_OFFLINE_HIDDEN_MS (quick reload cancel window).
+const tabHiddenArmOfflineDelay = 3 * time.Second
+
+type armOfflineScheduleMode int
+
+const (
+	armOfflineAfterDisconnect armOfflineScheduleMode = iota
+	armOfflineAfterTabHidden
+)
+
 const defaultMaxOfflineTicksPerScan = 20
 
 func clientPresenceTimeoutDuration() time.Duration {
@@ -193,6 +203,12 @@ func (s *CombatLoopService) ArmOffline(userID uint, now time.Time) error {
 	state.NextTickAt = nextDue
 	state.UpdatedAt = now
 	return s.combatStateRepo.Upsert(state)
+}
+
+// ScheduleArmOfflineAfterTabHidden arms wall-clock mode after the tab/window is unfocused
+// unless presence is refreshed before the delay (F5 reload sends presence on /main mount).
+func (s *CombatLoopService) ScheduleArmOfflineAfterTabHidden(userID uint) {
+	s.scheduleArmOfflineAfter(userID, tabHiddenArmOfflineDelay, armOfflineAfterTabHidden)
 }
 
 // RecordPresence marks the client as actively viewing /main (client-gated pacing).
@@ -521,7 +537,7 @@ func (s *CombatLoopService) cancelScheduledArmOffline(userID uint) {
 	}
 }
 
-func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Duration) {
+func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Duration, mode armOfflineScheduleMode) {
 	if delay <= 0 {
 		_ = s.ArmOffline(userID, time.Now())
 		return
@@ -532,18 +548,26 @@ func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Dura
 		timer.Stop()
 	}
 	uid := userID
+	scheduleMode := mode
 	timer := time.AfterFunc(delay, func() {
 		s.armOfflineMu.Lock()
 		delete(s.armOfflineTimers, uid)
 		s.armOfflineMu.Unlock()
-		if s.hub != nil && s.hub.HasConnection(uid) {
-			return
-		}
 		state, err := s.combatStateRepo.GetByUserID(uid)
 		if err != nil {
 			return
 		}
 		now := time.Now()
+		if scheduleMode == armOfflineAfterTabHidden {
+			if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < delay {
+				return
+			}
+			_ = s.ArmOffline(uid, now)
+			return
+		}
+		if s.hub != nil && s.hub.HasConnection(uid) {
+			return
+		}
 		timeout := clientPresenceTimeoutDuration()
 		if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < timeout {
 			return
@@ -567,7 +591,7 @@ func (s *CombatLoopService) OnClientDisconnected(userID uint, now time.Time) err
 	timeout := clientPresenceTimeoutDuration()
 	if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < timeout {
 		delay := state.LastClientSeenAt.Add(timeout).Sub(now)
-		s.scheduleArmOfflineAfter(userID, delay)
+		s.scheduleArmOfflineAfter(userID, delay, armOfflineAfterDisconnect)
 		return nil
 	}
 	return s.ArmOffline(userID, now)

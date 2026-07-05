@@ -1130,3 +1130,79 @@ func TestCombatLoopService_OnClientDisconnected_armsImmediatelyWhenPresenceExpir
 		t.Fatal("expected immediate arm-offline when presence expired")
 	}
 }
+
+func TestCombatLoopService_ScheduleArmOfflineAfterTabHidden_armsWhenPresenceStale(t *testing.T) {
+	h := setupCombatLoopHarness(t, "tab-hidden-arm@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.ScheduleArmOfflineAfterTabHidden(h.userID)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected no immediate arm-offline while presence is recent")
+	}
+	time.Sleep(3100 * time.Millisecond)
+	state, err = h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected arm-offline after tab hidden delay when presence is stale")
+	}
+}
+
+func TestCombatLoopService_ScheduleArmOfflineAfterTabHidden_cancelledByPresence(t *testing.T) {
+	h := setupCombatLoopHarness(t, "tab-hidden-cancel@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.ScheduleArmOfflineAfterTabHidden(h.userID)
+	if err := h.loop.RecordPresence(h.userID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3100 * time.Millisecond)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected scheduled arm-offline to be cancelled by presence refresh")
+	}
+}
+
+func TestCombatLoopService_ScheduleArmOfflineAfterTabHidden_armsDespiteWebsocket(t *testing.T) {
+	h := setupCombatLoopHarness(t, "tab-hidden-ws@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now.Add(-5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.ScheduleArmOfflineAfterTabHidden(h.userID)
+	time.Sleep(3100 * time.Millisecond)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected arm-offline after tab hidden even when websocket could still be connected")
+	}
+}

@@ -103,6 +103,12 @@ func (h *CombatHandler) ArmOffline(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *CombatHandler) ScheduleArmOffline(c *gin.Context) {
+	userID := c.GetUint(middleware.UserIDKey)
+	h.loopService.ScheduleArmOfflineAfterTabHidden(userID)
+	c.Status(http.StatusNoContent)
+}
+
 func (h *CombatHandler) Presence(c *gin.Context) {
 	userID := c.GetUint(middleware.UserIDKey)
 	if err := h.loopService.RecordPresence(userID, time.Now()); err != nil {
