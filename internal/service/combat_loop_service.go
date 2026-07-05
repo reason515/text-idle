@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/text-idle/text-idle/internal/combat"
@@ -22,6 +23,15 @@ const clientResumeGateDuration = 100 * 365 * 24 * time.Hour
 const clientPresenceTimeout = 90 * time.Second
 
 const defaultMaxOfflineTicksPerScan = 20
+
+func clientPresenceTimeoutDuration() time.Duration {
+	if ms := os.Getenv("TEXT_IDLE_CLIENT_PRESENCE_TIMEOUT_MS"); ms != "" {
+		if n, err := strconv.Atoi(ms); err == nil && n > 0 {
+			return time.Duration(n) * time.Millisecond
+		}
+	}
+	return clientPresenceTimeout
+}
 
 func isAwaitingClientResume(nextTickAt, now time.Time) bool {
 	return nextTickAt.Sub(now) > 7*24*time.Hour
@@ -61,10 +71,12 @@ func wallClockCapped(state *model.PlayerCombatState, now time.Time) bool {
 
 // CombatLoopService runs one server combat tick for a user.
 type CombatLoopService struct {
-	saveService     *SaveService
-	combatStateRepo *repository.PlayerCombatStateRepository
-	combatEventRepo *repository.CombatEventRepository
-	hub             *CombatHub
+	saveService      *SaveService
+	combatStateRepo  *repository.PlayerCombatStateRepository
+	combatEventRepo  *repository.CombatEventRepository
+	hub              *CombatHub
+	armOfflineMu     sync.Mutex
+	armOfflineTimers map[uint]*time.Timer
 }
 
 func NewCombatLoopService(
@@ -74,10 +86,11 @@ func NewCombatLoopService(
 	hub *CombatHub,
 ) *CombatLoopService {
 	return &CombatLoopService{
-		saveService:     saveService,
-		combatStateRepo: combatStateRepo,
-		combatEventRepo: combatEventRepo,
-		hub:             hub,
+		saveService:      saveService,
+		combatStateRepo:  combatStateRepo,
+		combatEventRepo:  combatEventRepo,
+		hub:              hub,
+		armOfflineTimers: make(map[uint]*time.Timer),
 	}
 }
 
@@ -88,7 +101,7 @@ func (s *CombatLoopService) isClientGated(state *model.PlayerCombatState, userID
 	if state.LastClientSeenAt.IsZero() {
 		return false
 	}
-	return now.Sub(state.LastClientSeenAt) < clientPresenceTimeout
+	return now.Sub(state.LastClientSeenAt) < clientPresenceTimeoutDuration()
 }
 
 // EnsureCombatState creates or updates combat scheduler state from the current save.
@@ -155,6 +168,7 @@ func squadEmpty(save json.RawMessage) bool {
 
 // ArmOffline switches the player to wall-clock scheduler mode (tab hidden / browser closed).
 func (s *CombatLoopService) ArmOffline(userID uint, now time.Time) error {
+	s.cancelScheduledArmOffline(userID)
 	state, err := s.ensureState(userID, now)
 	if err != nil {
 		return err
@@ -183,6 +197,7 @@ func (s *CombatLoopService) ArmOffline(userID uint, now time.Time) error {
 
 // RecordPresence marks the client as actively viewing /main (client-gated pacing).
 func (s *CombatLoopService) RecordPresence(userID uint, now time.Time) error {
+	s.cancelScheduledArmOffline(userID)
 	state, err := s.ensureState(userID, now)
 	if err != nil {
 		return err
@@ -472,7 +487,7 @@ func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error
 			continue
 		}
 		clientConnected := s.hub != nil && s.hub.HasConnection(row.UserID)
-		recentPresence := !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < clientPresenceTimeout
+		recentPresence := !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < clientPresenceTimeoutDuration()
 		if isAwaitingClientResume(state.NextTickAt, now) && !clientConnected && !recentPresence {
 			save, err := s.saveService.GetSave(row.UserID)
 			if err != nil || squadEmpty(save) {
@@ -492,7 +507,55 @@ func (s *CombatLoopService) BackfillStuckCombatStates(now time.Time) (int, error
 	return synced, nil
 }
 
+// OnClientConnected cancels a pending post-disconnect arm-offline timer.
+func (s *CombatLoopService) OnClientConnected(userID uint) {
+	s.cancelScheduledArmOffline(userID)
+}
+
+func (s *CombatLoopService) cancelScheduledArmOffline(userID uint) {
+	s.armOfflineMu.Lock()
+	defer s.armOfflineMu.Unlock()
+	if timer, ok := s.armOfflineTimers[userID]; ok {
+		timer.Stop()
+		delete(s.armOfflineTimers, userID)
+	}
+}
+
+func (s *CombatLoopService) scheduleArmOfflineAfter(userID uint, delay time.Duration) {
+	if delay <= 0 {
+		_ = s.ArmOffline(userID, time.Now())
+		return
+	}
+	s.armOfflineMu.Lock()
+	defer s.armOfflineMu.Unlock()
+	if timer, ok := s.armOfflineTimers[userID]; ok {
+		timer.Stop()
+	}
+	uid := userID
+	timer := time.AfterFunc(delay, func() {
+		s.armOfflineMu.Lock()
+		delete(s.armOfflineTimers, uid)
+		s.armOfflineMu.Unlock()
+		if s.hub != nil && s.hub.HasConnection(uid) {
+			return
+		}
+		state, err := s.combatStateRepo.GetByUserID(uid)
+		if err != nil {
+			return
+		}
+		now := time.Now()
+		timeout := clientPresenceTimeoutDuration()
+		if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < timeout {
+			return
+		}
+		_ = s.ArmOffline(uid, now)
+	})
+	s.armOfflineTimers[userID] = timer
+}
+
 // OnClientDisconnected arms wall-clock mode when the last WS drops and presence expired.
+// When presence is still recent, schedules arm-offline after the presence window instead
+// of skipping permanently (browser close while /main was visible).
 func (s *CombatLoopService) OnClientDisconnected(userID uint, now time.Time) error {
 	if s.hub != nil && s.hub.HasConnection(userID) {
 		return nil
@@ -501,7 +564,10 @@ func (s *CombatLoopService) OnClientDisconnected(userID uint, now time.Time) err
 	if err != nil {
 		return nil
 	}
-	if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < clientPresenceTimeout {
+	timeout := clientPresenceTimeoutDuration()
+	if !state.LastClientSeenAt.IsZero() && now.Sub(state.LastClientSeenAt) < timeout {
+		delay := state.LastClientSeenAt.Add(timeout).Sub(now)
+		s.scheduleArmOfflineAfter(userID, delay)
 		return nil
 	}
 	return s.ArmOffline(userID, now)

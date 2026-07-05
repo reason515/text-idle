@@ -119,6 +119,7 @@ func (h *CombatHandler) WebSocket(c *gin.Context) {
 		return
 	}
 	h.hub.Register(userID, conn)
+	h.loopService.OnClientConnected(userID)
 	defer func() {
 		h.hub.Unregister(userID, conn)
 		_ = h.loopService.OnClientDisconnected(userID, time.Now())

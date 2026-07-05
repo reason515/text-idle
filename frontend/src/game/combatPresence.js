@@ -57,9 +57,15 @@ export async function sendCombatPresence() {
 
 /** @type {ReturnType<typeof setInterval> | null} */
 let presenceTimer = null
+/** When true, resume the heartbeat after tab becomes visible again. */
+let presenceHeartbeatWanted = false
 
 export function startCombatPresenceHeartbeat() {
-  stopCombatPresenceHeartbeat()
+  presenceHeartbeatWanted = true
+  if (presenceTimer) {
+    clearInterval(presenceTimer)
+    presenceTimer = null
+  }
   void sendCombatPresence()
   if (typeof window === 'undefined') return
   presenceTimer = setInterval(() => {
@@ -68,6 +74,15 @@ export function startCombatPresenceHeartbeat() {
 }
 
 export function stopCombatPresenceHeartbeat() {
+  presenceHeartbeatWanted = false
+  if (presenceTimer) {
+    clearInterval(presenceTimer)
+    presenceTimer = null
+  }
+}
+
+/** Pause heartbeat while tab is hidden without clearing the resume flag. */
+function pauseCombatPresenceHeartbeatForHidden() {
   if (presenceTimer) {
     clearInterval(presenceTimer)
     presenceTimer = null
@@ -106,15 +121,29 @@ export function shouldSkipArmOfflineOnUnload(nowMs = Date.now()) {
   return nowMs - hiddenAtMs < QUICK_UNLOAD_MS
 }
 
+/**
+ * Visible pagehide happens on F5 reload and on browser close. Only skip arm-offline for reload.
+ * @returns {boolean}
+ */
+export function shouldArmOfflineOnVisiblePageHide() {
+  if (typeof performance === 'undefined') return true
+  const nav = performance.getEntriesByType('navigation')[0]
+  return nav?.type !== 'reload'
+}
+
 function onVisibilityChange() {
   if (typeof document === 'undefined') return
   if (document.visibilityState === 'hidden') {
     hiddenAtMs = Date.now()
+    pauseCombatPresenceHeartbeatForHidden()
     scheduleDelayedArmOffline()
     return
   }
   hiddenAtMs = 0
   clearArmOfflineTimer()
+  if (presenceHeartbeatWanted) {
+    startCombatPresenceHeartbeat()
+  }
 }
 
 function onPageHide() {
@@ -125,7 +154,9 @@ function onPageHide() {
   }
   // Reload often fires pagehide while the tab is still "visible" (no prior hidden event).
   if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-    return
+    if (!shouldArmOfflineOnVisiblePageHide()) {
+      return
+    }
   }
   void armOfflineCombat()
 }

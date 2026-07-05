@@ -1044,3 +1044,89 @@ func TestCombatLoopService_WallClock_crossesMinSteps_becomesEligible(t *testing.
 	}
 	t.Fatalf("expected lifetimeSteps to reach %d within 40 ticks", LeaderboardMinLifetimeSteps)
 }
+
+func TestCombatLoopService_OnClientDisconnected_schedulesArmOfflineWhenPresenceRecent(t *testing.T) {
+	t.Setenv("TEXT_IDLE_CLIENT_PRESENCE_TIMEOUT_MS", "80")
+	h := setupCombatLoopHarness(t, "disconnect-delay@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.OnClientDisconnected(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected no immediate arm-offline while presence is recent")
+	}
+	time.Sleep(120 * time.Millisecond)
+	state, err = h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected delayed arm-offline after presence timeout")
+	}
+	if !state.LastClientSeenAt.IsZero() {
+		t.Fatal("expected last_client_seen_at cleared after arm-offline")
+	}
+}
+
+func TestCombatLoopService_OnClientConnected_cancelsScheduledArmOffline(t *testing.T) {
+	t.Setenv("TEXT_IDLE_CLIENT_PRESENCE_TIMEOUT_MS", "200")
+	h := setupCombatLoopHarness(t, "disconnect-cancel@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.RecordPresence(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.OnClientDisconnected(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	h.loop.OnClientConnected(h.userID)
+	time.Sleep(250 * time.Millisecond)
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected scheduled arm-offline to be cancelled on reconnect")
+	}
+}
+
+func TestCombatLoopService_OnClientDisconnected_armsImmediatelyWhenPresenceExpired(t *testing.T) {
+	h := setupCombatLoopHarness(t, "disconnect-immediate@test.com")
+	save := loadFixtureSave(t)
+	h.seedSave(t, save)
+	now := time.Now()
+	if err := h.loop.EnsureCombatState(h.userID, save, now); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := h.combatStateRepo.GetByUserID(h.userID)
+	state.LastClientSeenAt = now.Add(-2 * clientPresenceTimeout)
+	if err := h.combatStateRepo.Upsert(state); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.loop.OnClientDisconnected(h.userID, now); err != nil {
+		t.Fatal(err)
+	}
+	state, err := h.combatStateRepo.GetByUserID(h.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.OfflineCapUntil.IsZero() {
+		t.Fatal("expected immediate arm-offline when presence expired")
+	}
+}

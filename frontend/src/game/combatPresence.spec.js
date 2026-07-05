@@ -4,6 +4,7 @@ import {
   installCombatPresenceLeaveTracking,
   resetCombatPresenceLeaveStateForTests,
   sendCombatPresence,
+  shouldArmOfflineOnVisiblePageHide,
   shouldSkipArmOfflineOnUnload,
   startCombatPresenceHeartbeat,
   stopCombatPresenceHeartbeat,
@@ -102,7 +103,7 @@ describe('combatPresence', () => {
     uninstallCombatPresenceLeaveTracking()
   })
 
-  it('installCombatPresenceLeaveTracking skips arm-offline on visible pagehide (reload burst)', () => {
+  it('installCombatPresenceLeaveTracking skips arm-offline on visible pagehide reload', () => {
     const handlers = {}
     vi.stubGlobal('window', {
       addEventListener: vi.fn((name, fn) => {
@@ -115,10 +116,76 @@ describe('combatPresence', () => {
       removeEventListener: vi.fn(),
       visibilityState: 'visible',
     })
+    vi.stubGlobal('performance', {
+      getEntriesByType: vi.fn(() => [{ type: 'reload' }]),
+    })
     installCombatPresenceLeaveTracking()
     handlers.pagehide()
     expect(fetch).not.toHaveBeenCalled()
     uninstallCombatPresenceLeaveTracking()
+  })
+
+  it('installCombatPresenceLeaveTracking arms offline on visible pagehide browser close', () => {
+    const handlers = {}
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((name, fn) => {
+        handlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      visibilityState: 'visible',
+    })
+    vi.stubGlobal('performance', {
+      getEntriesByType: vi.fn(() => [{ type: 'navigate' }]),
+    })
+    installCombatPresenceLeaveTracking()
+    handlers.pagehide()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/combat/arm-offline'),
+      expect.objectContaining({ method: 'POST', keepalive: true }),
+    )
+    uninstallCombatPresenceLeaveTracking()
+  })
+
+  it('shouldArmOfflineOnVisiblePageHide returns false only for reload navigation', () => {
+    vi.stubGlobal('performance', {
+      getEntriesByType: vi.fn(() => [{ type: 'reload' }]),
+    })
+    expect(shouldArmOfflineOnVisiblePageHide()).toBe(false)
+    performance.getEntriesByType.mockReturnValue([{ type: 'navigate' }])
+    expect(shouldArmOfflineOnVisiblePageHide()).toBe(true)
+  })
+
+  it('pauses presence heartbeat while hidden and resumes when visible again', () => {
+    vi.useFakeTimers()
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval')
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+    startCombatPresenceHeartbeat()
+    expect(intervalSpy).toHaveBeenCalledTimes(1)
+    const docHandlers = {}
+    vi.stubGlobal('document', {
+      addEventListener: vi.fn((name, fn) => {
+        docHandlers[name] = fn
+      }),
+      removeEventListener: vi.fn(),
+      visibilityState: 'hidden',
+    })
+    installCombatPresenceLeaveTracking()
+    docHandlers.visibilitychange()
+    expect(intervalSpy).toHaveBeenCalledTimes(1)
+    document.visibilityState = 'visible'
+    docHandlers.visibilitychange()
+    expect(intervalSpy).toHaveBeenCalledTimes(2)
+    uninstallCombatPresenceLeaveTracking()
+    stopCombatPresenceHeartbeat()
+    intervalSpy.mockRestore()
+    vi.useRealTimers()
   })
 
   it('shouldSkipArmOfflineOnUnload when hidden recently', () => {

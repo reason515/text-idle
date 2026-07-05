@@ -35,7 +35,7 @@ TickUser:
 | Mode | When | `next_tick_at` after tick |
 |------|------|---------------------------|
 | **ClientGated** | `/main` visible: WS connected + `POST /combat/presence` within **90s** | Far future until `POST /combat/advance` |
-| **WallClock** | `POST /combat/arm-offline` (pagehide / tab hidden), WS drop without recent presence, or presence timeout | `now + last_cycle_delay_ms` (scheduler auto-ticks) |
+| **WallClock** | `POST /combat/arm-offline` (pagehide / tab hidden / browser close), WS drop after presence window, or presence timeout | `now + last_cycle_delay_ms` (scheduler auto-ticks) |
 
 E2E (`TEXT_IDLE_E2E=1`): short delays; scheduler disabled; use `POST /debug/combat/tick`.
 
@@ -146,7 +146,7 @@ When `shouldPromptExpansionRecruitAfterBoss` would have opened a modal:
 - Remove `runCombatLoop` as authority; subscribe to WS + poll events.
 - On `/main` load: `POST /combat/resume` (if not paused) → `syncFromServerSave` → **offline summary** → connect WS + start presence heartbeat → advance when log replay completes.
 - **Refresh / return:** session snapshot stores `displayedEventSeq` (last event fully shown on screen) separately from leave-time `eventSeq` (offline gap detection). Poll `GET /combat/events?since=displayedEventSeq` before `POST /combat/advance`; do not bootstrap advance while client-gated and events remain undisplayed. **Quick reload (F5):** snapshot also stores `displayedLogEntries`, `logBatchEventSeq`, and `logStepIndex`; on return the client restores the log and resumes `log_batch` replay from the saved step (instant-apply prior steps to the panel only) instead of replaying the whole battle from turn 1.
-- `combatPresence.js`: tab hidden **3s+** or `pagehide` after long hidden → `POST /combat/arm-offline`; **quick reload** (`visibilitychange` → `hidden` then `pagehide` within 3s) skips arm-offline so the server stays client-gated and replays undisplayed events instead of wall-clock catch-up. Leaving `/main` via in-app route (tab still visible) arms offline on unmount. Visible `/main` → periodic `POST /combat/presence`.
+- `combatPresence.js`: tab hidden **3s+** or `pagehide` (including **browser close while tab still visible**, but not F5 reload) → `POST /combat/arm-offline`; **quick reload** (`visibilitychange` → `hidden` then `pagehide` within 3s) skips arm-offline so the server stays client-gated and replays undisplayed events instead of wall-clock catch-up. Leaving `/main` via in-app route (tab still visible) arms offline on unmount. Visible `/main` → periodic `POST /combat/presence`; **presence heartbeat pauses while the tab is hidden** so wall-clock mode is not cancelled by background presence. **WebSocket drop** with recent presence schedules server-side arm-offline after the **90s** presence window (not a one-shot skip).
 - Long offline return: if `eventSeq` gap > 10, skip historical log replay; load authoritative save (stats + leaderboard track) and continue from next ClientGated cycle.
 - [combatPacing.js](../../frontend/src/game/combatPacing.js) is **display-only** for log animation when tab is visible.
 - Audio: unchanged ([14-audio.md](./14-audio.md)); mute when tab hidden.
