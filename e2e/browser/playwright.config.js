@@ -26,5 +26,22 @@ module.exports = defineConfig({
       ...devices['Desktop Chrome'],
       viewport: { width: 1920, height: 1080 },
     },
+    // Mobile smoke is mobile-project only; keep desktop suite unchanged.
+    testIgnore: /mobile-smoke\.spec\.js/,
+  }, {
+    name: 'mobile-chrome',
+    testMatch: /mobile-smoke\.spec\.js/,
+    use: {
+      ...devices['iPhone 13'],
+      // iPhone 13 descriptor defaults to WebKit (not installed); force Chromium
+      // while keeping the mobile viewport/UA/touch/isMobile semantics.
+      browserName: 'chromium',
+    },
+  }, {
+    name: 'mobile-chrome-xl',
+    testMatch: /mobile-smoke\.spec\.js/,
+    use: {
+      ...devices['Pixel 7'],
+    },
   }],
 })
