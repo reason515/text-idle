@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>挂机英雄团 · 移动端原型 / Expedition Atlas</title>
+  <style>
+    :root {
+      --ink: #18231f;
+      --ink-soft: #56645d;
+      --paper: #f2eedf;
+      --paper-deep: #ded7bf;
+      --mist: #d9e5df;
+      --forest: #1f6b55;
+      --forest-deep: #10463a;
+      --moss: #9dc36c;
+      --gold: #c99038;
+      --gold-soft: #f1dba6;
+      --red: #c85846;
+      --violet: #7766a8;
+      --blue: #4f83ac;
+      --white: #fffdf5;
+      --line: rgba(24, 35, 31, .15);
+      --shadow: 0 16px 42px rgba(24, 35, 31, .18);
+      --serif: Georgia, 'Songti SC', 'SimSun', serif;
+      --sans: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; min-height: 100%; background: #1b2622; color: var(--ink); font-family: var(--sans); }
+    button { font: inherit; }
+    button, [data-open] { cursor: pointer; }
+
+    /* Prototype workbench only — the phone itself starts below. */
+    .prototype-bar { position: sticky; top: 0; z-index: 50; min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 18px; color: #e8f0e9; background: #101916; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .prototype-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .prototype-mark { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid #9dc36c; border-radius: 50% 50% 48% 48%; color: #cde49b; font-family: var(--serif); }
+    .prototype-title strong { display: block; font-size: 12px; letter-spacing: .08em; }
+    .prototype-title span { display: block; margin-top: 2px; color: #93a89b; font-size: 10px; }
+    .viewport-switch { display: flex; gap: 5px; }
+    .viewport-switch button { min-width: 42px; padding: 6px 7px; color: #91a598; background: transparent; border: 1px solid #3d5047; border-radius: 5px; font-size: 11px; }
+    .viewport-switch button.active { color: #152119; background: #b9d88c; border-color: #b9d88c; }
+
+    .stage { display: grid; place-items: start center; min-height: calc(100vh - 54px); padding: 30px 16px 42px; background: radial-gradient(circle at 50% 0, #4d7565 0, #233b33 40%, #17221e 78%); }
+    .phone { width: 390px; height: 844px; overflow: hidden; position: relative; isolation: isolate; border: 7px solid #0e1512; border-radius: 42px; background: var(--paper); box-shadow: 0 35px 70px rgba(0,0,0,.42), inset 0 0 0 1px #536057; }
+    .phone::before { content: ''; position: absolute; z-index: 30; top: 8px; left: 50%; width: 94px; height: 20px; transform: translateX(-50%); border-radius: 14px; background: #0e1512; pointer-events: none; }
+    .app { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--paper); }
+    .screen { display: none; flex: 1; min-height: 0; overflow: auto; padding-bottom: 82px; }
+    .screen.active { display: block; animation: rise .25s ease-out; }
+    @keyframes rise { from { opacity: .5; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+    /* Shared language */
+    .eyebrow { color: var(--forest); font-family: var(--serif); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 25px 18px 10px; }
+    .section-heading h2 { margin: 0; color: var(--ink); font-family: var(--serif); font-size: 20px; font-weight: 600; }
+    .text-button { padding: 6px 0; color: var(--forest); background: none; border: 0; font-size: 12px; font-weight: 700; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 4px 8px; border-radius: 30px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .chip.live { color: #d9f0d9; background: rgba(31,107,85,.9); }
+    .chip.gold { color: #6d4810; background: var(--gold-soft); }
+    .chip.muted { color: var(--ink-soft); background: rgba(24,35,31,.07); }
+    .surface { background: var(--white); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 5px 14px rgba(24,35,31,.06); }
+    .icon { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; font-family: var(--serif); font-size: 17px; }
+
+    /* Expedition / home */
+    .hero-header { position: relative; overflow: hidden; min-height: 218px; padding: 35px 18px 18px; color: #f8f4e8; background: linear-gradient(145deg, #0d3f35 0%, #1f6b55 56%, #477d62 100%); }
+    .hero-header::after { content: ''; position: absolute; right: -46px; bottom: -72px; width: 265px; height: 198px; border: 1px solid rgba(243,239,215,.28); border-radius: 54% 48% 38% 56%; transform: rotate(-18deg); box-shadow: -30px -34px 0 -29px rgba(243,239,215,.28), -59px -61px 0 -58px rgba(243,239,215,.2); }
+    .hero-header::before { content: ''; position: absolute; top: -104px; right: 20px; width: 250px; height: 250px; border: 1px solid rgba(211,233,184,.22); border-radius: 48% 52% 42% 58%; transform: rotate(28deg); }
+    .top-line, .map-identity, .route-card { position: relative; z-index: 1; }
+    .top-line { display: flex; align-items: center; justify-content: space-between; }
+    .team-name { color: #bcd9aa; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+    .header-action { display: grid; place-items: center; width: 31px; height: 31px; color: #eff3e6; background: rgba(255,255,255,.11); border: 1px solid rgba(255,255,255,.22); border-radius: 50%; }
+    .map-identity { margin-top: 19px; }
+    .map-identity h1 { max-width: 255px; margin: 3px 0 0; color: #fffdf3; font-family: var(--serif); font-size: 30px; line-height: 1.08; font-weight: 600; letter-spacing: .02em; }
+    .map-identity p { margin: 7px 0 0; color: #d8e5cc; font-size: 11px; }
+    .route-card { display: flex; align-items: center; gap: 11px; margin-top: 17px; padding: 10px 11px; background: rgba(8,34,27,.35); border: 1px solid rgba(242,238,219,.2); border-radius: 12px; backdrop-filter: blur(8px); }
+    .route-steps { display: flex; align-items: center; flex: 1; min-width: 0; }
+    .route-steps i { position: relative; display: block; width: 14px; height: 14px; flex: 0 0 14px; border: 2px solid #d8e5cc; border-radius: 50%; }
+    .route-steps i::after { content: ''; position: absolute; top: 4px; left: 10px; width: 29px; border-top: 1px dashed rgba(220,237,202,.65); }
+    .route-steps i:last-child::after { display: none; }
+    .route-steps i.done { background: #b8d987; border-color: #b8d987; }
+    .route-steps i.current { border-color: #f4d28c; box-shadow: 0 0 0 4px rgba(244,210,140,.15); }
+    .route-steps i.locked { opacity: .48; }
+    .route-copy { min-width: 78px; text-align: right; }
+    .route-copy strong { display: block; color: #f5e1aa; font-family: var(--serif); font-size: 16px; }
+    .route-copy span { color: #c9d8c3; font-size: 9px; }
+
+    .vitals { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: -10px 18px 0; position: relative; z-index: 3; }
+    .vital { min-height: 70px; padding: 11px 12px; background: var(--white); border: 1px solid rgba(24,35,31,.12); border-radius: 13px; box-shadow: 0 6px 15px rgba(24,35,31,.11); }
+    .vital-label { display: block; color: var(--ink-soft); font-size: 10px; }
+    .vital strong { display: block; margin-top: 6px; font-family: var(--serif); font-size: 19px; font-weight: 600; }
+    .vital.gold strong { color: #9c6621; }
+    .vital.exp strong { color: var(--forest); }
+    .vital small { margin-left: 3px; color: var(--ink-soft); font-size: 9px; font-family: var(--sans); }
+
+    .encounter { margin: 0 18px; overflow: hidden; color: #f7f1e3; border: 1px solid rgba(8,39,32,.55); border-radius: 19px; background: #173f36; box-shadow: var(--shadow); }
+    .encounter-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 13px 7px; }
+    .encounter-label { color: #acc99c; font-size: 10px; letter-spacing: .1em; }
+    .enemy { display: flex; align-items: center; gap: 12px; padding: 3px 13px 13px; }
+    .enemy-seal { position: relative; display: grid; place-items: center; width: 49px; height: 49px; overflow: hidden; color: #f4d38a; border: 1px solid rgba(245,214,150,.7); border-radius: 50%; font-family: var(--serif); font-size: 26px; background: radial-gradient(circle, #724f38 0 29%, #3d312a 31% 58%, #1e322c 60%); }
+    .enemy-main { flex: 1; min-width: 0; }
+    .enemy-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .enemy-title strong { font-family: var(--serif); font-size: 19px; font-weight: 600; }
+    .enemy-title span { color: #dfb674; font-size: 10px; }
+    .enemy-target { margin-top: 4px; color: #b8cdbb; font-size: 10px; }
+    .enemy-target b { color: #ffe9b7; }
+    .health { height: 7px; overflow: hidden; margin-top: 9px; border-radius: 10px; background: rgba(255,255,255,.16); }
+    .health i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a7cc77, #d6e98d); }
+    .activity { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 10px 13px; background: rgba(0,0,0,.14); border-top: 1px solid rgba(255,255,255,.1); }
+    .activity-copy { min-width: 0; color: #d6e4d0; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .activity-copy b { color: #fff1c4; }
+    .activity button { flex: 0 0 auto; padding: 6px 9px; color: #e6f0df; background: transparent; border: 1px solid rgba(230,240,223,.36); border-radius: 7px; font-size: 10px; }
+    /* Compact prototype: encounter.heroes is shown as 1–3 units and
+       encounter.monsters as 1–5 units; both retain the existing array payload shape. */
+    .battlefield { margin: 0 18px; padding: 12px; overflow: hidden; background: #193e35; border: 1px solid rgba(8,39,32,.55); border-radius: 19px; box-shadow: var(--shadow); }
+    .battlefield-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; color: #c7dcc4; font-size: 10px; }.battlefield-top b { color: #f7e6bc; font-family: var(--serif); font-size: 13px; }
+    .formation-label { display: flex; align-items: center; gap: 7px; margin: 10px 0 7px; color: #bad0bd; font-size: 9px; letter-spacing: .08em; }.formation-label::after { content: ''; flex: 1; border-top: 1px solid rgba(218,235,205,.18); }
+    .party-formation { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }.party-unit { min-width: 0; padding: 7px 4px 6px; text-align: center; color: #f8f5e9; border: 1px solid rgba(244,241,223,.18); border-radius: 9px; background: rgba(255,255,255,.07); }.party-unit b { display: grid; place-items: center; width: 25px; height: 25px; margin: 0 auto 4px; border-radius: 50%; color: white; font-family: var(--serif); font-size: 14px; }.party-unit span { display: block; overflow: hidden; font-size: 8px; white-space: nowrap; text-overflow: ellipsis; }.unit-warrior b { background:#805e4a; }.unit-mage b { background:#4f83ac; }.unit-priest b { background:#b09f6d; }.unit-druid b { background:#c8783f; }.unit-paladin b { background:#c87875; }.party-hp { height: 3px; overflow: hidden; margin-top: 5px; background: rgba(255,255,255,.16); border-radius: 5px; }.party-hp i { display:block; height:100%; background:#b9da8d; }
+    .enemy-formation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }.enemy-unit { position: relative; min-width: 0; min-height: 63px; padding: 6px 5px; text-align: left; color: #eff1e7; border: 1px solid rgba(244,241,223,.15); border-radius: 9px; background: rgba(0,0,0,.15); }.enemy-unit.elite { border-color: rgba(212,173,247,.55); background: rgba(112,84,145,.2); }.enemy-unit b { display:block; overflow:hidden; color:#f8f0dd; font-size:9px; white-space:nowrap; text-overflow:ellipsis; }.enemy-unit span { display:block; margin-top:2px; color:#b9cdbb; font-size:8px; }.enemy-unit .enemy-hp { display:block; height:3px; overflow:hidden; margin-top:6px; background:rgba(255,255,255,.14); border-radius:4px; }.enemy-unit .enemy-hp i { display:block; height:100%; background:#d8d989; }.enemy-target-chip { position:absolute; right:4px; bottom:4px; max-width:calc(100% - 8px); overflow:hidden; color:#f2d08a !important; font-size:7px !important; white-space:nowrap; text-overflow:ellipsis; }
+
+    .squad-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 1px 18px 7px; scrollbar-width: none; }
+    .squad-scroll::-webkit-scrollbar { display: none; }
+    .hero-card { width: 128px; flex: 0 0 128px; overflow: hidden; text-align: left; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 10px rgba(24,35,31,.06); }
+    .hero-card.selected { outline: 2px solid rgba(31,107,85,.7); outline-offset: 1px; }
+    .portrait { height: 63px; position: relative; overflow: hidden; padding: 10px; color: white; }
+    .portrait::after { content: ''; position: absolute; right: -12px; bottom: -22px; width: 75px; height: 75px; border: 1px solid rgba(255,255,255,.33); border-radius: 42% 58% 52% 48%; }
+    .portrait b { position: relative; z-index: 1; font-family: var(--serif); font-size: 26px; }
+    .warrior { background: linear-gradient(135deg, #654537, #bb7960); }.mage { background: linear-gradient(135deg, #35496e, #759bc7); }.priest { background: linear-gradient(135deg, #8e835e, #d6c88d); }
+    .hero-info { padding: 8px 9px 9px; }
+    .hero-info strong { display: block; font-size: 12px; }.hero-info span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 9px; }
+    .mini-bar { height: 4px; overflow: hidden; margin-top: 8px; border-radius: 5px; background: #e4e3da; }.mini-bar i { display: block; height: 100%; background: var(--forest); }.mini-bar.mp i { background: var(--blue); }
+
+    .feed { margin: 0 18px; padding: 1px 13px 8px; }
+    .feed-item { position: relative; display: grid; grid-template-columns: 25px 1fr; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .feed-item:last-child { border-bottom: 0; }.feed-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 23px; height: 23px; color: var(--forest); border: 1px solid rgba(31,107,85,.3); border-radius: 50%; background: #e8f1df; font-family: var(--serif); font-size: 13px; }.feed-item:not(:last-child) .feed-dot::after { content: ''; position: absolute; top: 23px; left: 10px; height: 24px; border-left: 1px solid rgba(31,107,85,.25); }
+    .feed-copy { min-width: 0; }.feed-copy strong { font-size: 11px; }.feed-copy p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }.feed-copy em { color: var(--violet); font-style: normal; font-weight: 700; }.feed-copy .damage { color: var(--red); font-weight: 700; }.feed-time { display: block; margin-top: 4px; color: #8b948d; font-size: 9px; }
+
+    /* Equipment */
+    .simple-header { padding: 37px 18px 16px; color: var(--white); background: linear-gradient(135deg, #182b27, #295246); }.simple-header h1 { margin: 3px 0 0; font-family: var(--serif); font-size: 29px; font-weight: 600; }.simple-header p { margin: 6px 0 0; color: #c5d6c8; font-size: 11px; }
+    .loadout { display: flex; gap: 10px; overflow-x: auto; padding: 14px 18px 3px; scrollbar-width: none; }.loadout::-webkit-scrollbar { display: none; }
+    .loadout button { min-width: 94px; padding: 10px; text-align: left; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 12px; }.loadout button.active { color: var(--white); background: var(--forest); border-color: var(--forest); }.loadout span { display: block; font-size: 10px; opacity: .72; }.loadout b { display: block; margin-top: 3px; font-family: var(--serif); font-size: 16px; }
+    .build-summary { display: flex; align-items: center; gap: 12px; margin: 14px 18px 0; padding: 13px; }.build-crest { display: grid; place-items: center; width: 45px; height: 45px; color: #f6e1aa; border-radius: 50%; background: #534533; font-family: var(--serif); font-size: 24px; }.build-summary strong { display: block; font-family: var(--serif); font-size: 17px; }.build-summary p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; }.build-summary .score { margin-left: auto; text-align: right; }.build-summary .score b { color: var(--forest); font-family: var(--serif); font-size: 22px; }.build-summary .score span { display: block; color: var(--ink-soft); font-size: 9px; }
+    .slot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; padding: 0 18px; }.slot { min-height: 104px; padding: 11px; text-align: left; background: var(--white); border: 1px solid var(--line); border-radius: 13px; }.slot.wide { grid-column: span 2; min-height: 76px; }.slot-label { color: var(--ink-soft); font-size: 9px; }.slot-item { display: block; margin-top: 12px; font-family: var(--serif); font-size: 15px; }.magic { color: #527bb8; }.rare { color: #a56c18; }.normal { color: var(--ink); }.slot-stat { display: block; margin-top: 5px; color: var(--ink-soft); font-size: 9px; }.slot-plus { display: inline-grid; place-items: center; width: 25px; height: 25px; margin-top: 9px; color: var(--forest); border: 1px dashed rgba(31,107,85,.5); border-radius: 50%; font-size: 18px; }
+
+    /* Insight */
+    .insight-banner { margin: 14px 18px 0; overflow: hidden; color: var(--white); border-radius: 18px; background: linear-gradient(125deg, #665a89, #8878b1); box-shadow: 0 12px 23px rgba(86,71,129,.23); }.insight-banner > div { padding: 16px; }.insight-banner h2 { margin: 2px 0 4px; font-family: var(--serif); font-size: 22px; }.insight-banner p { margin: 0; color: #e9e1fb; font-size: 10px; }.trend { height: 71px; margin-top: 10px; background-image: linear-gradient(rgba(255,255,255,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.13) 1px, transparent 1px); background-size: 28px 24px; }.trend svg { width: 100%; height: 100%; overflow: visible; }
+    .metric-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 0 18px; }.metric { padding: 12px 9px; text-align: center; }.metric span { display: block; color: var(--ink-soft); font-size: 9px; }.metric b { display: block; margin-top: 5px; color: var(--forest); font-family: var(--serif); font-size: 20px; }.metric:nth-child(2) b { color: var(--gold); }.metric:nth-child(3) b { color: var(--violet); }
+    .recommendation { margin: 0 18px; padding: 14px; border-left: 4px solid var(--gold); }.recommendation strong { font-size: 12px; }.recommendation p { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.65; }.recommendation b { color: var(--forest); }
+    .breakdown { margin: 0 18px; padding: 13px; }.breakdown-row { display: grid; grid-template-columns: 72px 1fr 31px; gap: 9px; align-items: center; padding: 8px 0; font-size: 10px; }.breakdown-row:not(:last-child) { border-bottom: 1px solid var(--line); }.breakdown-row strong { font-weight: 600; }.bar { overflow: hidden; height: 7px; border-radius: 9px; background: #e6e5dc; }.bar i { display: block; height: 100%; border-radius: inherit; background: var(--forest); }.breakdown-row:nth-child(2) .bar i { background: var(--blue); }.breakdown-row:nth-child(3) .bar i { background: var(--gold); }.breakdown-row em { color: var(--ink-soft); font-style: normal; text-align: right; }
+
+    /* Archive */
+    .menu-list { margin: 14px 18px; overflow: hidden; }.menu-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 60px; padding: 10px 12px; text-align: left; color: var(--ink); background: var(--white); border: 0; border-bottom: 1px solid var(--line); }.menu-row:last-child { border-bottom: 0; }.menu-row .menu-copy { flex: 1; }.menu-row strong { display: block; font-size: 12px; }.menu-row span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 9px; }.menu-row > b { color: var(--forest); font-family: var(--serif); font-size: 20px; font-weight: 400; }.menu-row.danger strong, .menu-row.danger > b { color: var(--red); }
+
+    /* Navigation */
+    .nav { position: absolute; z-index: 15; right: 0; bottom: 0; left: 0; display: flex; align-items: stretch; height: 74px; padding: 8px 9px max(8px, env(safe-area-inset-bottom)); background: rgba(255,253,245,.95); border-top: 1px solid rgba(24,35,31,.13); backdrop-filter: blur(14px); }.nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #78837c; background: transparent; border: 0; font-size: 9px; }.nav .nav-mark { display: grid; place-items: center; width: 24px; height: 24px; color: currentColor; border-radius: 9px; font-family: var(--serif); font-size: 19px; }.nav button.active { color: var(--forest); font-weight: 700; }.nav button.active .nav-mark { color: var(--white); background: var(--forest); }
+
+    /* Sheets */
+    .veil { position: absolute; z-index: 40; inset: 0; display: none; background: rgba(10,21,17,.48); opacity: 0; transition: opacity .22s ease; }.veil.open { display: block; opacity: 1; }.sheet { position: absolute; z-index: 41; right: 0; bottom: 0; left: 0; max-height: 79%; display: flex; flex-direction: column; overflow: hidden; color: var(--ink); background: #f8f5e9; border-radius: 25px 25px 0 0; box-shadow: 0 -12px 40px rgba(7,17,12,.25); transform: translateY(105%); transition: transform .28s cubic-bezier(.2,.9,.2,1); }.sheet.open { transform: none; }.grab { width: 35px; height: 4px; margin: 9px auto 3px; border-radius: 4px; background: #c3c4b8; }.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px 18px 13px; border-bottom: 1px solid var(--line); }.sheet-head h2 { margin: 2px 0 0; font-family: var(--serif); font-size: 22px; }.sheet-head p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; }.close { display: grid; place-items: center; width: 31px; height: 31px; color: var(--ink-soft); background: rgba(24,35,31,.06); border: 0; border-radius: 50%; font-size: 19px; }.sheet-body { overflow: auto; padding: 13px 18px 28px; }.tabs { display: flex; gap: 4px; padding: 0 18px 10px; border-bottom: 1px solid var(--line); }.tabs button { flex: 1; padding: 8px; color: var(--ink-soft); background: transparent; border: 0; border-bottom: 2px solid transparent; font-size: 11px; }.tabs button.active { color: var(--forest); border-bottom-color: var(--forest); font-weight: 700; }.detail-hero { display: flex; align-items: center; gap: 12px; }.detail-avatar { display: grid; place-items: center; width: 54px; height: 54px; color: white; border-radius: 50%; font-family: var(--serif); font-size: 28px; background: #805e4a; }.detail-hero h3 { margin: 0; font-family: var(--serif); font-size: 20px; }.detail-hero span { display: block; margin-top: 4px; color: var(--ink-soft); font-size: 10px; }.stat-table { margin-top: 15px; }.stat-table div { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 11px; }.stat-table span { color: var(--ink-soft); }.stat-table b { font-weight: 600; }.skill-note { margin-top: 15px; padding: 12px; background: #e7efe0; border-radius: 12px; }.skill-note strong { display: block; font-size: 12px; }.skill-note p { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.6; }.log-card { margin-bottom: 9px; padding: 11px; }.log-card strong { font-size: 11px; }.log-card p { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }.log-card .formula { display: inline-block; margin-top: 7px; padding: 4px 6px; color: #586860; background: #edf0e8; border-radius: 5px; font-family: var(--serif); font-size: 9px; }
+
+    /* v4 — compact raid HUD: remove the paper / reading-room surface in favor of a playable combat stage. */
+    :root { --ink:#f3f5ff; --ink-soft:#a1a9bf; --paper:#0c0f18; --paper-deep:#151a28; --mist:#1d2535; --forest:#7e91ff; --forest-deep:#303d93; --moss:#71d6c6; --gold:#f2bd58; --gold-soft:#4a391c; --red:#fa706f; --violet:#b596ff; --blue:#6fb9ff; --white:#151a28; --line:rgba(202,212,255,.15); --shadow:0 16px 38px rgba(0,0,0,.4); --serif:'Ark Pixel','Microsoft YaHei',sans-serif; --sans:'Ark Pixel','Microsoft YaHei',sans-serif; }
+    html,body { background:#070913; } body { background:radial-gradient(circle at 50% -10%,#293069 0,#0b0f1c 46%,#070913 100%); }
+    .stage { background:radial-gradient(circle at 50% 0,#2a3267 0,#0b0f1c 47%,#070913 100%); }.phone { background:var(--paper); border-color:#04050a; box-shadow:0 35px 80px rgba(0,0,0,.65), inset 0 0 0 1px #313a59; }.app { background:var(--paper); }
+    .prototype-bar { background:#080a11; }.prototype-mark { color:var(--gold); border-color:var(--gold); }.viewport-switch button.active { color:#0b0d15; background:var(--gold); border-color:var(--gold); }
+    .surface,.vital,.hero-card,.slot,.loadout button,.metric,.menu-row,.sheet { background:#151a28; border-color:var(--line); box-shadow:0 7px 18px rgba(0,0,0,.22); }.section-heading h2,.hero-info strong,.slot-item,.build-summary strong,.menu-row strong { color:var(--ink); }.text-button,.nav button.active { color:var(--gold); }.chip.live { color:#0a1020; background:var(--moss); }.chip.gold { color:#24180a; background:var(--gold); }
+    .hero-header { min-height:112px; padding:29px 16px 12px; background:linear-gradient(105deg,#121b38,#20275b 58%,#472b4e); border-bottom:1px solid rgba(140,157,255,.3); }.hero-header::before { top:-110px; right:-32px; width:220px; height:220px; border-color:rgba(170,183,255,.18); }.hero-header::after { right:-65px; bottom:-118px; width:220px; height:165px; border-color:rgba(242,189,88,.22); box-shadow:none; }.map-identity { display:none; }.top-line { gap:8px; }.team-name { color:#bec8ff; font-size:10px; }.header-action { color:#f1e9ff; background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.2); }.route-card { margin-top:13px; padding:8px 10px; background:rgba(4,6,18,.36); border-color:rgba(203,213,255,.19); }.route-copy strong { color:var(--gold); font-family:var(--sans); font-size:13px; }.route-copy span { color:#b9c3e5; }.route-steps i { border-color:#aebbe8; }.route-steps i.done { background:var(--moss); border-color:var(--moss); }.route-steps i.current { border-color:var(--gold); }.route-steps i::after { border-color:rgba(211,219,255,.45); }
+    .vitals { gap:7px; margin:-8px 16px 0; }.vital { min-height:57px; padding:8px 10px; border-radius:11px; }.vital-label { color:var(--ink-soft); }.vital strong { margin-top:3px; color:var(--ink); font-family:var(--sans); font-size:16px; }.vital.gold strong,.vital.exp strong { color:var(--gold); }.vital.exp strong { color:var(--moss); }
+    .section-heading { margin:17px 16px 8px; }.section-heading h2 { font-family:var(--sans); font-size:16px; }.battlefield { margin:0 16px; padding:10px; background:linear-gradient(145deg,#171d32,#0d1020); border-color:rgba(133,151,255,.3); border-radius:15px; box-shadow:inset 0 1px 0 rgba(255,255,255,.06),var(--shadow); }.battlefield-top { margin-bottom:6px; color:#acb8d9; }.battlefield-top b { color:var(--gold); }.formation-label { margin:7px 0 5px; color:#8592be; }.party-formation { grid-template-columns:repeat(3,minmax(0,1fr)); }.party-unit { padding:6px 3px 5px; color:#e9ecff; background:linear-gradient(145deg,rgba(91,112,210,.22),rgba(20,24,49,.75)); border-color:rgba(137,155,255,.28); }.party-unit b { width:23px; height:23px; margin-bottom:3px; }.party-hp i { background:var(--moss); }.enemy-formation { grid-template-columns:repeat(3,minmax(0,1fr)); }.enemy-unit { min-height:55px; padding:5px 4px; background:linear-gradient(145deg,rgba(92,32,52,.35),rgba(25,15,29,.8)); border-color:rgba(248,112,111,.23); }.enemy-unit.elite { background:linear-gradient(145deg,rgba(112,70,155,.45),rgba(35,18,49,.82)); border-color:rgba(186,150,255,.64); }.enemy-unit b { font-size:8px; }.enemy-unit .enemy-hp i { background:linear-gradient(90deg,#e96069,#f4a062); }.enemy-target-chip { color:#f0c76d !important; }.activity { margin:8px -10px -10px; background:rgba(0,0,0,.25); border-color:rgba(196,210,255,.11); }.activity-copy { color:#b9c4e4; }.activity-copy b { color:var(--gold); }.activity button { color:#e4e8ff; border-color:rgba(203,213,255,.32); }
+    .feed { margin:0 16px; background:#121625; }.feed-item { border-color:var(--line); }.feed-dot { color:var(--gold); background:#252039; border-color:rgba(181,150,255,.4); }.feed-copy p,.feed-time { color:var(--ink-soft); }.feed-copy em { color:var(--gold); }.feed-copy .damage { color:var(--red); }
+    .simple-header { padding:30px 16px 13px; background:linear-gradient(120deg,#151a33,#282d61); }.simple-header h1 { font-family:var(--sans); font-size:24px; }.loadout { padding:11px 16px 3px; }.loadout button.active { background:linear-gradient(135deg,#5669d4,#8d62bd); border-color:#9bafff; }.build-summary { margin:11px 16px 0; }.slot-grid { padding:0 16px; }.recommendation,.breakdown,.menu-list { margin-left:16px; margin-right:16px; background:#151a28; }.insight-banner { margin:12px 16px 0; background:linear-gradient(125deg,#38498e,#744a8a); }.metric-row { padding:0 16px; }.nav { background:rgba(12,15,27,.96); border-color:rgba(196,210,255,.14); }.nav button { color:#8b95b6; }.nav button.active .nav-mark { color:#101328; background:var(--gold); }
+
+    /* v5 — CRT RAID: a dark terminal battlefield seen from behind the party. */
+    @font-face { font-family:'Ark Pixel'; src:url('../../../frontend/public/fonts/ark-pixel-zh_cn.woff2') format('woff2'); font-display:swap; }
+    :root { --ink:#c6ffd7; --ink-soft:#6fb887; --paper:#000; --paper-deep:#061007; --mist:#0a190d; --forest:#00d66e; --forest-deep:#075c30; --moss:#63ffad; --gold:#ffd34f; --gold-soft:#4e3f07; --red:#ff6666; --violet:#d18cff; --blue:#60baff; --white:#050c06; --line:rgba(0,214,110,.26); --shadow:0 12px 30px rgba(0,0,0,.72); --serif:'Ark Pixel','Courier New',monospace; --sans:'Ark Pixel','Courier New',monospace; }
+    html,body { background:#000; } body,.stage { background:radial-gradient(ellipse at 50% -20%,#063d20 0,#001209 37%,#000 80%); }.phone,.app { background:#000; }.phone { border-color:#031408; box-shadow:0 25px 74px rgba(0,0,0,.82),inset 0 0 0 1px #08733c; }
+    .prototype-bar { background:#000; }.prototype-mark { color:var(--forest); border-color:var(--forest); }.viewport-switch button.active { color:#001208; background:var(--forest); border-color:var(--forest); }
+    .surface,.vital,.hero-card,.slot,.loadout button,.metric,.menu-row,.sheet { background:linear-gradient(145deg,#061108,#010502); border-color:var(--line); box-shadow:inset 0 0 18px rgba(0,214,110,.035),0 6px 18px rgba(0,0,0,.4); }.section-heading h2,.hero-info strong,.slot-item,.build-summary strong,.menu-row strong { color:var(--forest); text-shadow:0 0 10px rgba(0,214,110,.35); }.text-button,.nav button.active { color:var(--gold); }.chip.live { color:#001208; background:var(--moss); }.chip.gold { color:#2c2000; background:var(--gold); }
+    .hero-header { min-height:74px; padding:26px 14px 8px; background:linear-gradient(105deg,#010702,#062911 55%,#061309); border-bottom:1px solid #0a6a36; }.hero-header::before,.hero-header::after { display:none; }.team-name { color:#72de95; font-size:9px; text-shadow:0 0 8px rgba(0,214,110,.4); }.header-action { color:#8affb1; background:#041108; border-color:#14753f; }.route-card { margin-top:8px; padding:6px 8px; background:#010703; border-color:#0b5c30; border-radius:7px; }.route-copy strong { color:var(--gold); font-size:11px; }.route-copy span { color:#77bf90; font-size:8px; }.route-steps { justify-content:flex-end; }.route-steps i { width:9px; height:9px; flex-basis:9px; border-color:#3d7850; }.route-steps i.done { background:var(--forest); border-color:var(--forest); box-shadow:0 0 7px rgba(0,214,110,.7); }.route-steps i.current { border-color:var(--gold); box-shadow:0 0 7px rgba(255,211,79,.6); }.route-steps i::after { top:2px; left:7px; width:17px; border-color:#28653c; }
+    .vitals { margin:-2px 14px 0; gap:6px; }.vital { min-height:47px; padding:7px 8px; border-radius:7px; }.vital-label { color:#659f76; font-size:8px; }.vital strong { margin-top:3px; font-size:14px; }.vital.gold strong { color:var(--gold); }.vital.exp strong { color:var(--forest); }.vital small { color:#73a884; font-size:7px; }
+    .section-heading { margin:13px 14px 6px; }.section-heading h2 { font-size:14px; }.battlefield { position:relative; isolation:isolate; overflow:hidden; margin:0 14px; padding:8px; background:linear-gradient(180deg,#020804 0,#061408 48%,#010401 100%); border:1px solid #0c763d; border-radius:6px; box-shadow:inset 0 0 0 1px rgba(96,255,173,.09),inset 0 0 35px rgba(0,214,110,.08),var(--shadow); }.battlefield::before { content:''; position:absolute; z-index:-1; left:8%; right:8%; top:30px; bottom:36px; opacity:.72; background:linear-gradient(160deg,rgba(0,214,110,.04),rgba(0,214,110,.22) 55%,rgba(0,214,110,.02)); border:1px solid rgba(0,214,110,.34); clip-path:polygon(29% 0,71% 0,100% 100%,0 100%); transform:perspective(180px) rotateX(10deg); }.battlefield::after { content:''; position:absolute; z-index:-1; left:14%; right:14%; top:49%; border-top:1px dashed rgba(99,255,173,.58); box-shadow:0 0 9px rgba(0,214,110,.55); }
+    .battlefield-top,.formation-label,.enemy-formation,.party-formation,.activity { position:relative; z-index:1; }.battlefield-top { color:#6fb887; margin-bottom:5px; font-size:8px; }.battlefield-top b { color:var(--gold); font-size:13px; }.formation-label { margin:6px 0 4px; color:#4f9a68; font-size:7px; }.formation-label::after { border-color:rgba(0,214,110,.2); }.enemy-label { padding-left:8%; }.party-label { padding-left:2%; }
+    .enemy-formation { grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; width:83%; margin:0 auto; transform:perspective(210px) rotateX(4deg) scale(.91); transform-origin:center top; }.enemy-unit { min-height:43px; padding:4px 3px; color:#c9ffd9; background:linear-gradient(145deg,rgba(68,6,7,.8),rgba(13,1,2,.92)); border-color:rgba(255,102,102,.4); border-radius:4px; box-shadow:0 3px 8px rgba(0,0,0,.7); }.enemy-unit.elite { background:linear-gradient(145deg,rgba(69,12,95,.85),rgba(17,2,24,.96)); border-color:rgba(209,140,255,.72); }.enemy-unit b { color:#ffd0d0; font-size:7px; }.enemy-unit span { color:#c58b8b; font-size:6px; }.enemy-unit .enemy-hp { display:block; height:2px; overflow:hidden; margin-top:4px; background:#250707; border-radius:0; }.enemy-unit .enemy-hp i { display:block; height:100%; background:#ff5252; }.enemy-target-chip { position:static; max-width:none; overflow:visible; margin-top:3px !important; color:#ffd34f !important; white-space:nowrap; text-overflow:clip; }
+    .party-formation { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-top:2px; transform:perspective(150px) rotateX(-3deg); transform-origin:center bottom; }.party-unit { min-height:54px; padding:5px 3px; color:#d5ffe0; background:linear-gradient(145deg,rgba(1,71,34,.83),rgba(2,16,7,.95)); border-color:rgba(0,214,110,.55); border-radius:4px; box-shadow:0 7px 12px rgba(0,0,0,.55),inset 0 0 12px rgba(0,214,110,.11); }.party-unit b { width:23px; height:23px; margin-bottom:3px; color:#e8fff0; background:#096632 !important; border:1px solid #32df78; box-shadow:0 0 10px rgba(0,214,110,.48); font-size:12px; }.party-unit span { font-size:8px; }.party-hp { display:block; height:3px; overflow:hidden; margin-top:4px; background:#062010; border-radius:0; }.party-hp i { display:block; height:100%; background:var(--forest); box-shadow:0 0 6px rgba(0,214,110,.8); }
+    .activity { margin:7px -8px -8px; padding:7px 8px; background:rgba(0,0,0,.7); border-color:#094924; }.activity-copy { color:#86cd9e; font-size:8px; }.activity-copy b { color:var(--gold); }.activity button { color:#aaffbe; background:#031309; border-color:#188448; border-radius:3px; font-size:8px; }
+    .feed { margin:0 14px; background:linear-gradient(145deg,#041008,#000300); }.feed-item { padding:8px 0; border-color:#12351e; }.feed-dot { color:var(--gold); background:#101607; border-color:#54701c; }.feed-copy strong { color:#c9ffd9; font-size:9px; }.feed-copy p,.feed-time { color:#6aa97b; font-size:8px; }.feed-copy em { color:var(--gold); }.feed-copy .damage { color:#ff7777; }
+    .simple-header { background:linear-gradient(120deg,#010a04,#062911); }.insight-banner { background:linear-gradient(125deg,#072d18,#114726); }.nav { background:#000; border-color:#0b572d; }.nav button { color:#4c875d; }.nav button.active .nav-mark { color:#001207; background:var(--forest); box-shadow:0 0 12px rgba(0,214,110,.65); }
+
+    /* v6 — content fidelity pass: source-class colours, quick economy access and denser combat cards. */
+    .header-tools { display:flex; align-items:center; gap:5px; }.header-action { font-family:var(--sans); font-size:10px; }.header-action-pack { color:#7ee9ff; border-color:#237a88; }.header-action-shop { color:var(--gold); border-color:#816513; }
+    .party-unit { min-height:70px; padding:5px 4px; }.party-unit .unit-name { margin-top:1px; font-size:9px; font-weight:700; }.party-unit .unit-role { margin-top:1px; color:#7eaf8e; font-size:6px; }.unit-warrior { border-color:#c79c6e; }.unit-warrior b { color:#ffe5bf; background:#4d3823 !important; border-color:#c79c6e; box-shadow:0 0 10px rgba(199,156,110,.5); }.unit-warrior .unit-name { color:#c79c6e; }.unit-mage { border-color:#69ccf0; }.unit-mage b { color:#e1f8ff; background:#163d54 !important; border-color:#69ccf0; box-shadow:0 0 10px rgba(105,204,240,.48); }.unit-mage .unit-name { color:#69ccf0; }.unit-priest { border-color:#fff; }.unit-priest b { color:#fff; background:#555 !important; border-color:#fff; box-shadow:0 0 10px rgba(255,255,255,.4); }.unit-priest .unit-name { color:#fff; }.party-resource { display:block; height:2px; overflow:hidden; margin-top:3px; background:#061007; }.party-resource i { display:block; height:100%; }.party-resource.rage i { background:#ff5149; box-shadow:0 0 5px rgba(255,81,73,.7); }.party-resource.mana i { background:#48a8ff; box-shadow:0 0 5px rgba(72,168,255,.7); }
+    .detail-hero { padding-bottom:11px; border-bottom:1px solid var(--line); }.detail-hero h3 { color:var(--forest); }.stat-table .stat-group { margin:12px -2px 4px; color:var(--gold); font-size:8px; letter-spacing:.08em; }.stat-table .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 11px; }.stat-table .stat-grid div { font-size:9px; }.hero-equipment-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:13px; }.hero-equipment-strip span { min-height:40px; padding:5px; color:#7dbd8d; background:#020a04; border:1px solid #134d29; font-size:7px; }.hero-equipment-strip b { display:block; margin-top:3px; color:#55a9ff; font-size:8px; }.hero-equipment-strip b.rare { color:#ffd34f; }.skill-note { margin-top:13px; padding:10px; color:#8fc59d; background:#020b04; border:1px solid #13542a; border-left:3px solid var(--forest); border-radius:3px; }.skill-note strong { color:var(--gold); font-size:9px; }.skill-note p { margin:5px 0 0; color:#83b991; font-size:8px; line-height:1.6; }.skill-list { display:grid; gap:7px; }.skill-list article { padding:9px; background:#020b04; border:1px solid #125127; }.skill-list strong { color:var(--gold); font-size:10px; }.skill-list p { margin:4px 0 0; color:#81b990; font-size:8px; line-height:1.6; }.skill-list em { color:#69ccf0; font-style:normal; }.shop-roll { display:flex; align-items:center; gap:5px; margin-top:10px; }.shop-roll span { flex:1; padding:7px 4px; text-align:center; background:#050e06; border:1px solid #164b27; font-size:8px; }.shop-roll b { display:block; margin-top:3px; color:var(--gold); font-size:12px; }.shop-roll .shop-magic b { color:#69ccf0; }.shop-roll .shop-rare b { color:#ffd34f; }
+    @media (max-width: 430px) { .prototype-bar { display: none; }.stage { min-height:100vh; padding:0; background:var(--paper); }.phone { width:100% !important; height:100dvh; border:0; border-radius:0; box-shadow:none; }.phone::before { display:none; }.hero-header { padding-top:max(20px, env(safe-area-inset-top)); }.simple-header { padding-top:max(27px, env(safe-area-inset-top)); } }
+  </style>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div class="prototype-title"><span class="prototype-mark">H</span><div><strong>挂机英雄团 · 移动端全新原型</strong><span>EXPEDITION ATLAS / 仅为交互与视觉验证，数据均为演示值</span></div></div>
+    <div class="viewport-switch" aria-label="切换原型宽度"><button data-width="375">375</button><button class="active" data-width="390">390</button><button data-width="430">430</button></div>
+  </header>
+
+  <main class="stage">
+    <div class="phone" id="phone">
+      <div class="app">
+        <section class="screen active" id="screen-expedition">
+          <header class="hero-header">
+            <div class="top-line"><span class="team-name">晨星远征队 · 在线</span><div class="header-tools"><button class="header-action header-action-pack" data-open="inventory" aria-label="打开背包">包</button><button class="header-action header-action-shop" data-open="shop" aria-label="打开商店">商</button><button class="header-action" data-open="archive" aria-label="打开更多">⋯</button></div></div>
+            <button class="route-card" data-open="map" aria-label="查看远征地图">
+              <span class="route-copy" style="text-align:left"><strong>赤脊山</strong><span>探索度 62% · 怪物强度 ×1.16</span></span>
+              <div class="route-steps"><i class="done"></i><i class="done"></i><i class="done"></i><i class="current"></i><i class="locked"></i></div>
+            </button>
+          </header>
+          <div class="vitals"><article class="vital gold"><span class="vital-label">服务端金币余额</span><strong>1,234 <small>商店 / 出售共用</small></strong></article><article class="vital exp"><span class="vital-label">当前周期经验效率</span><strong>80 <small>经验 / 100 探索步</small></strong></article></div>
+
+          <div class="section-heading"><h2>眼下战况</h2><span class="chip live">● 自动探索中</span></div>
+          <article class="battlefield" aria-label="当前遭遇阵列">
+            <div class="battlefield-top"><span>第 2 回合 · 自动战斗中</span><b>3 对 5</b></div>
+            <div class="formation-label enemy-label">敌方 · 5 名单位</div>
+            <div class="enemy-formation">
+              <button class="enemy-unit" data-open="enemy"><b>黑石间谍</b><span>普通 · Lv.12</span><span class="enemy-hp"><i style="width:72%"></i></span><span class="enemy-target-chip">锁定 → 瓦里安</span></button>
+              <button class="enemy-unit" data-open="enemy"><b>黑石座狼</b><span>普通 · Lv.12</span><span class="enemy-hp"><i style="width:100%"></i></span><span class="enemy-target-chip">锁定 → 瓦里安</span></button>
+              <button class="enemy-unit" data-open="enemy"><b>狼蛛</b><span>普通 · Lv.11</span><span class="enemy-hp"><i style="width:64%"></i></span><span class="enemy-target-chip">锁定 → 吉安娜</span></button>
+              <button class="enemy-unit elite" data-open="enemy"><b>黑石斥候</b><span>精英 · Lv.12</span><span class="enemy-hp"><i style="width:92%"></i></span><span class="enemy-target-chip">锁定 → 安度因</span></button>
+              <button class="enemy-unit elite" data-open="enemy"><b>育母蜘蛛</b><span>精英 · Lv.12</span><span class="enemy-hp"><i style="width:76%"></i></span><span class="enemy-target-chip">锁定 → 瓦里安</span></button>
+            </div>
+            <div class="formation-label party-label">我方 · 3 名英雄</div>
+            <div class="party-formation">
+              <button class="party-unit unit-warrior" data-open="hero"><b>瓦</b><span class="unit-name">瓦里安</span><span class="unit-role">战士 · Lv.12</span><span class="party-hp"><i style="width:95%"></i></span><span class="party-resource rage"><i style="width:64%"></i></span></button>
+              <button class="party-unit unit-mage" data-open="hero-mage"><b>吉</b><span class="unit-name">吉安娜</span><span class="unit-role">法师 · Lv.12</span><span class="party-hp"><i style="width:100%"></i></span><span class="party-resource mana"><i style="width:38%"></i></span></button>
+              <button class="party-unit unit-priest" data-open="hero-priest"><b>安</b><span class="unit-name">安度因</span><span class="unit-role">牧师 · Lv.12</span><span class="party-hp"><i style="width:100%"></i></span><span class="party-resource mana"><i style="width:61%"></i></span></button>
+            </div>
+            <div class="activity"><span class="activity-copy"><b>吉安娜</b> 正在咏唱「寒冰箭」</span><button data-open="battle-log">战斗复盘</button></div>
+          </article>
+
+          <div class="section-heading"><h2>刚刚发生</h2><button class="text-button" data-open="battle-log">完整记录 →</button></div>
+          <article class="surface feed">
+            <div class="feed-item"><span class="feed-dot">✦</span><div class="feed-copy"><strong>瓦里安施放 <em>破甲</em> · <span class="damage">物理伤害已结算</span></strong><p>黑石斥候获得护甲削弱状态；实际伤害与状态持续回合均来自日志事件。</p><span class="feed-time">刚刚 · 第 2 回合</span></div></div>
+            <div class="feed-item"><span class="feed-dot">+</span><div class="feed-copy"><strong>安度因施放 <em>真言术：盾</em></strong><p>护盾状态已同步到英雄面板；并非额外的手动操作。</p><span class="feed-time">12 秒前 · 第 2 回合</span></div></div>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-gear">
+          <header class="simple-header"><span class="eyebrow" style="color:#b7d2b0">整理收获</span><h1>整备营地</h1><p>装备不是背包格子，而是每一次策略迭代的证据。</p></header>
+          <div class="loadout" id="loadout"><button class="active" data-loadout="varian"><span>战士 · Lv.12</span><b>瓦里安</b></button><button data-loadout="jaina"><span>法师 · Lv.12</span><b>吉安娜</b></button><button data-loadout="anduin"><span>牧师 · Lv.12</span><b>安度因</b></button></div>
+          <article class="surface build-summary"><div class="build-crest" id="crest">瓦</div><div><strong id="build-name">瓦里安的装备</strong><p id="build-copy">由 squad[].equipment 提供；空槽可直接筛选背包。</p></div><div class="score"><b id="build-score">4</b><span>已装备件</span></div></article>
+          <div class="section-heading"><h2>正在穿戴</h2><button class="text-button" data-open="inventory">背包 6 / 100 →</button></div>
+          <div class="slot-grid" id="slots">
+            <button class="slot wide"><span class="slot-label">主手武器</span><b class="slot-item magic">寒铁长剑</b><span class="slot-stat">物攻 +8 · 命中 +2%</span></button><button class="slot"><span class="slot-label">护甲</span><b class="slot-item rare">守护者胸甲</b><span class="slot-stat">护甲 +14</span></button><button class="slot"><span class="slot-label">饰品</span><b class="slot-item normal">空置</b><i class="slot-plus">+</i></button><button class="slot"><span class="slot-label">指环 I</span><b class="slot-item magic">坚韧指环</b><span class="slot-stat">耐力 +3</span></button><button class="slot"><span class="slot-label">指环 II</span><b class="slot-item normal">空置</b><i class="slot-plus">+</i></button>
+          </div>
+          <div class="section-heading"><h2>商店 · 立即鉴定</h2><button class="text-button" data-open="shop">查看全部部位 →</button></div><article class="surface recommendation"><strong>头盔 · 490 金（队伍最高 Lv.12）</strong><p>购买调用 <b>POST /shop/buy</b>，服务端扣除金币、生成装备并写入背包；背包满载时物品会被丢弃并返回提示。</p></article>
+        </section>
+
+        <section class="screen" id="screen-insight">
+          <header class="simple-header"><span class="eyebrow" style="color:#b7d2b0">观察 · 验证 · 调整</span><h1>征途洞见</h1><p>把漫长的自动战斗，翻译成下一次有把握的决定。</p></header>
+          <article class="insight-banner"><div><span class="eyebrow" style="color:#e8ddff">探索步统计</span><h2>收益与战斗拆分</h2><p>图表读取 battleTimeline；效率统一以探索步（行动步 + 休息步）为分母。</p><div class="trend"><svg viewBox="0 0 350 70" preserveAspectRatio="none"><path d="M0 58 C30 53 42 53 62 44 S101 53 124 37 S164 45 183 29 S221 39 242 23 S287 33 350 9" fill="none" stroke="#f3e0ad" stroke-width="3"/><path d="M0 58 C30 53 42 53 62 44 S101 53 124 37 S164 45 183 29 S221 39 242 23 S287 33 350 9 L350 70 L0 70Z" fill="rgba(244,227,180,.12)"/></svg></div></div></article>
+          <div class="section-heading"><h2>本轮摘要</h2><button class="text-button">显示单位：每 100 步</button></div>
+          <div class="metric-row"><article class="surface metric"><span>胜率</span><b>82%</b></article><article class="surface metric"><span>金币 / 100 步</span><b>120</b></article><article class="surface metric"><span>经验 / 100 步</span><b>80</b></article></div>
+          <div class="section-heading"><h2>可直接操作</h2></div><article class="surface recommendation"><strong>编辑当前英雄的 AI 战术</strong><p>现有保存结构包含每位英雄的 tactics。移动端将保留「AI 解析 → 预览 → 应用」的既有流程，而不是凭统计自动修改策略。</p><button class="text-button" data-open="tactics">打开战术入口 →</button></article>
+          <div class="section-heading"><h2>伤害统计</h2><button class="text-button" data-open="analytics">全部指标 →</button></div><article class="surface breakdown"><div class="breakdown-row"><strong>瓦里安</strong><div class="bar"><i style="width:42%"></i></div><em>42%</em></div><div class="breakdown-row"><strong>吉安娜</strong><div class="bar"><i style="width:35%"></i></div><em>35%</em></div><div class="breakdown-row"><strong>安度因</strong><div class="bar"><i style="width:23%"></i></div><em>23%</em></div></article>
+        </section>
+
+        <section class="screen" id="screen-archive">
+          <header class="simple-header"><span class="eyebrow" style="color:#b7d2b0">远征手册</span><h1>档案与更多</h1><p>将不常用的功能放在这里，主战场只留下决策。</p></header>
+          <div class="section-heading"><h2>世界与社群</h2></div><article class="surface menu-list"><button class="menu-row" data-open="map"><span class="icon">⌖</span><span class="menu-copy"><strong>世界地图</strong><span>解锁区域、首领进度与探索路线</span></span><b>›</b></button><button class="menu-row"><span class="icon">♜</span><span class="menu-copy"><strong>效率排行榜</strong><span>查看过去 1,000 探索步的记录</span></span><b>›</b></button><button class="menu-row"><span class="icon">✉</span><span class="menu-copy"><strong>旅人留言板</strong><span>与其他远征队交换线索</span></span><b>›</b></button></article>
+          <div class="section-heading"><h2>游戏设置</h2></div><article class="surface menu-list"><button class="menu-row"><span class="icon">♪</span><span class="menu-copy"><strong>音效与节奏</strong><span>战斗回放速度、音量与静音</span></span><b>›</b></button><button class="menu-row"><span class="icon">i</span><span class="menu-copy"><strong>版本札记</strong><span>v0.2.0 · 征途不息</span></span><b>›</b></button><button class="menu-row danger"><span class="icon">↱</span><span class="menu-copy"><strong>结束本次会话</strong><span>安全退出当前账号</span></span><b>›</b></button></article>
+        </section>
+      </div>
+
+      <nav class="nav" aria-label="主导航"><button class="active" data-screen="expedition"><span class="nav-mark">⌁</span><span>远征</span></button><button data-screen="gear"><span class="nav-mark">◇</span><span>整备</span></button><button data-screen="insight"><span class="nav-mark">◒</span><span>洞见</span></button><button data-screen="archive"><span class="nav-mark">⋮</span><span>档案</span></button></nav>
+
+      <div class="veil" id="veil"></div>
+      <aside class="sheet" id="sheet" aria-modal="true" role="dialog"><div class="grab"></div><header class="sheet-head"><div><h2 id="sheet-title">战斗复盘</h2><p id="sheet-subtitle">每一条行动都能追溯到数据。</p></div><button class="close" id="close-sheet" aria-label="关闭">×</button></header><div class="tabs" id="sheet-tabs"></div><div class="sheet-body" id="sheet-body"></div></aside>
+    </div>
+  </main>
+
+  <script>
+    const phone = document.getElementById('phone');
+    document.querySelectorAll('[data-width]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-width]').forEach(b => b.classList.remove('active')); button.classList.add('active'); phone.style.width = button.dataset.width + 'px'; }));
+
+    document.querySelectorAll('.nav button').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      button.classList.add('active'); document.getElementById('screen-' + button.dataset.screen).classList.add('active');
+    }));
+
+    const veil = document.getElementById('veil'), sheet = document.getElementById('sheet'), sheetTitle = document.getElementById('sheet-title'), sheetSubtitle = document.getElementById('sheet-subtitle'), sheetTabs = document.getElementById('sheet-tabs'), sheetBody = document.getElementById('sheet-body');
+    const heroInfo = {
+      hero: { name: '瓦里安', role: '战士 · Lv.12 · 坦克 / 输出', mark: '瓦', color: '#C79C6E', hp: '724 / 760', mana: '64 / 100 怒气', xp: '186 / 240', points: '0', primary: [['力量','28'],['敏捷','23'],['智力','2'],['耐力','27'],['精神','3']], secondary: [['物攻','28'],['法强','—'],['护甲','16'],['抗性','1'],['物暴','11.2%'],['法暴','—'],['闪避','9.1%'],['命中','99%']], equipment: [['主手','寒铁长剑','magic'],['副手','圆盾','normal'],['头盔','全盔','normal'],['胸甲','守护者胸甲','rare'],['手套','皮手套','normal'],['靴子','皮靴','normal'],['腰带','皮腰带','normal'],['项链','空','empty'],['戒指 I','坚韧指环','magic'],['戒指 II','空','empty']], skills: [['破甲','消耗 15 怒 · 降低目标护甲','Lv.1'],['嘲讽','消耗 10 怒 · 强制目标攻击自己','Lv.1']], tactics: '默认目标：最高仇恨 · 破甲 → 嘲讽 → 普通攻击' },
+      'hero-mage': { name: '吉安娜', role: '法师 · Lv.12 · 输出', mark: '吉', color: '#69CCF0', hp: '520 / 520', mana: '152 / 400 法力', xp: '208 / 240', points: '0', primary: [['力量','2'],['敏捷','19'],['智力','29'],['耐力','19'],['精神','12']], secondary: [['物攻','—'],['法强','26'],['护甲','1'],['抗性','8'],['物暴','—'],['法暴','17.4%'],['闪避','8.4%'],['命中','99%']], equipment: [['主手','寒铁权杖','magic'],['副手','学徒宝珠','magic'],['头盔','头巾','normal'],['胸甲','布甲','normal'],['手套','布手套','normal'],['靴子','布鞋','normal'],['腰带','布腰带','normal'],['项链','空','empty'],['戒指 I','空','empty'],['戒指 II','空','empty']], skills: [['寒冰箭','消耗 25 MP · 法术伤害，可能冰冻','Lv.1'],['火球术','消耗 35 MP · 高额法术伤害','Lv.1']], tactics: '技能优先级：寒冰箭 → 火球术 → 普通攻击' },
+      'hero-priest': { name: '安度因', role: '牧师 · Lv.12 · 治疗 / 支援', mark: '安', color: '#FFFFFF', hp: '600 / 600', mana: '305 / 500 法力', xp: '195 / 240', points: '3', primary: [['力量','5'],['敏捷','17'],['智力','26'],['耐力','22'],['精神','15']], secondary: [['物攻','—'],['法强','22'],['护甲','3'],['抗性','12'],['物暴','—'],['法暴','19.0%'],['闪避','8.1%'],['命中','98%']], equipment: [['主手','侍僧权杖','normal'],['副手','空','empty'],['头盔','头巾','normal'],['胸甲','信徒长袍','magic'],['手套','布手套','normal'],['靴子','布鞋','normal'],['腰带','布腰带','normal'],['项链','空','empty'],['戒指 I','空','empty'],['戒指 II','空','empty']], skills: [['快速治疗','消耗 20 MP · 回复生命','Lv.1'],['真言术：盾','消耗 25 MP · 护盾吸收伤害','Lv.1']], tactics: '治疗条件：任意存活己方生命 ≤ 70% · 缺蓝时普通攻击' }
+    };
+    const logHtml = `<article class="surface log-card"><strong>第 2 回合 · 瓦里安 → 破甲 → 黑石斥候</strong><p>伤害、护甲削弱与剩余回合由 log 与 steps 同步；面板不自行计算或虚构结果。</p><span class="formula">战斗日志详情：实际伤害公式 / 状态效果</span></article><article class="surface log-card"><strong>第 2 回合 · 安度因 → 真言术：盾 → 瓦里安</strong><p>护盾吸收量和持续回合显示在英雄的 buffs / shield 状态中。</p><span class="formula">效果摘要：护盾上限 · 剩余回合</span></article><article class="surface log-card"><strong>第 3 回合 · 黑石斥候 → Blackjack → 安度因</strong><p>精英怪物拥有技能；怪物详情可读取其伤害类型、属性与技能说明。</p><span class="formula">当前目标由 monsterTargets[m.id] 驱动</span></article>`;
+    function heroHtml(d, tab = 'status') {
+      if (tab === 'skills') return `<div class="skill-list">${d.skills.map(([name, desc, level]) => `<article><strong>${name} · ${level}</strong><p>${desc}</p></article>`).join('')}<article><strong>AI 战术</strong><p><em>${d.tactics}</em></p><p>沿用现有「AI 解析 → 预览 → 应用」流程；战斗由服务端权威结算。</p></article></div>`;
+      if (tab === 'equipment') return `<div class="detail-hero"><div class="detail-avatar" style="background:${d.color}">${d.mark}</div><div><h3>${d.name}</h3><span>装备槽位 · 点击槽位筛选背包</span></div></div><div class="hero-equipment-strip">${d.equipment.map(([slot, item, quality]) => `<span>${slot}<b class="${quality}">${item}</b></span>`).join('')}</div><div class="skill-note"><strong>背包与替换</strong><p>背包显示 ${'inventory[]'} 内已有装备；选择新装备时，已有装备会进入对比并在确认后退回背包。</p></div>`;
+      return `<div class="detail-hero"><div class="detail-avatar" style="background:${d.color}">${d.mark}</div><div><h3>${d.name}</h3><span>${d.role}</span></div></div><div class="stat-table"><div class="stat-group">基本信息</div><div class="stat-grid"><div><span>等级</span><b>Lv.12</b></div><div><span>经验</span><b>${d.xp}</b></div><div><span>生命</span><b>${d.hp}</b></div><div><span>资源</span><b>${d.mana}</b></div><div><span>待分配属性</span><b style="color:${d.points === '0' ? '#71d6c6' : '#ffd34f'}">${d.points}</b></div></div><div class="stat-group">主属性</div><div class="stat-grid">${d.primary.map(([k,v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><div class="stat-group">战斗属性</div><div class="stat-grid">${d.secondary.map(([k,v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div></div>`;
+    }
+    function openSheet(kind) {
+      let title = '战斗复盘', subtitle = '每一条行动都能追溯到数据。', tabs = [], render = () => logHtml;
+      if (heroInfo[kind]) { const d = heroInfo[kind]; title = d.name; subtitle = d.role; tabs = [['status','属性'],['skills','技能 / 战术'],['equipment','装备']]; render = tab => heroHtml(d, tab); }
+      if (kind === 'map') { title = '世界地图'; subtitle = '地图、探索度与解锁状态均来自 combatProgress。'; render = () => `<article class="surface log-card"><strong>赤脊山 · 当前区域</strong><p>探索度 62%。当前非首领怪物强度为 ×1.16；达到 100% 后才会出现守关首领。</p></article><article class="surface log-card"><strong>艾尔文森林 / 西部荒野 / 暮色森林</strong><p>已解锁区域可切换；本版原型按固定 3 人小队展示，不在地图页堆叠招募信息。</p></article><article class="surface log-card"><strong>荆棘谷 · 后续区域</strong><p>地图解锁不是由本地演示的路线点决定，界面仅展示服务端保存的 unlockedMapCount 与 currentMapId。</p></article>`; }
+      if (kind === 'inventory') { title = '背包'; subtitle = 'inventory[] · 6 / 100 · 仅显示已有物品。'; render = () => `<article class="surface log-card"><strong style="color:#69CCF0">寒铁长剑 · 魔法 · 普通层</strong><p>主手 · 物攻 +8 · 命中 +2%。魔法装备含 1–2 条词缀；点击后可查看词缀范围并装备给符合条件的英雄。</p></article><article class="surface log-card"><strong style="color:#FFD34F">守护者胸甲 · 稀有 · 普通层</strong><p>护甲 · 护甲 +14 · 耐力 +2。稀有装备含 3–6 条词缀；替换时原装备会退回背包。</p></article><article class="surface log-card"><strong>出售与容量</strong><p>单件出售调用 POST /shop/sell；达到 100 件时，战利品和商店购买物会被丢弃，但金币、经验和战斗继续结算。</p></article>`; }
+      if (kind === 'tactics') { title = 'AI 战术'; subtitle = '沿用每位英雄的 tactics 保存字段与现有 AI 解析流程。'; render = () => `<article class="surface log-card"><strong>选择英雄 → 输入自然语言战术</strong><p>现有功能将文本解析为出手顺序、技能优先级、目标规则与条件；预览后再应用。</p></article><article class="surface log-card"><strong>当前战术摘要</strong><p>移动端只改变编辑入口与信息密度，不改变战斗引擎对 skillPriority、conditions、targetRules 的解析。</p></article>`; }
+      if (kind === 'analytics') { title = '完整统计'; subtitle = '玩家统计由 playerStats 提供；探索步 = 行动步 + 休息步。'; render = () => `<article class="surface log-card"><strong>收益概览</strong><p>金币与经验效率可按每 1 / 10 / 100 探索步显示；累计值与清零操作沿用现有统计逻辑。</p></article><article class="surface log-card"><strong>战斗构成</strong><p>支持胜率、场次趋势、伤害统计、受伤统计，以及按英雄和技能下钻。</p></article>`; }
+      if (kind === 'squad') { title = '远征编队'; subtitle = '本版移动战场以 3 名英雄为信息密度基准。'; render = () => `<article class="surface log-card"><strong>当前展示：瓦里安 / 吉安娜 / 安度因</strong><p>三个角色可在一屏内同时看清生命、资源与状态；点击角色仍进入原有详情、装备与技能层。</p></article><article class="surface log-card"><strong>战斗面板</strong><p>窄屏概览优先展示 HP、资源、目标和 buff/debuff；完整属性与装备信息收进详情抽屉。</p></article>`; }
+      if (kind === 'enemy') { title = '怪物详情'; subtitle = '由 encounter.monsters[] 的单个怪物对象提供。'; render = () => `<article class="surface log-card"><strong>黑石斥候 · 精英 · Lv.12</strong><p>详情包含当前 / 最大 HP、伤害类型、物攻或法强、敏捷、护甲、抗性，以及精英技能。</p></article><article class="surface log-card"><strong>敌方阵列</strong><p>本版将战场控制在最多 5 名敌人；每格保留名称、Tier、血量与当前目标，点击可打开完整详情。</p></article>`; }
+      if (kind === 'shop') { title = '商店 · 鉴定台'; subtitle = '按部位购买；支付金币后服务端立即鉴定并写入背包。'; render = () => `<article class="surface log-card"><strong>购买 → 自动鉴定 → 入包</strong><p>当前实现没有独立的「未鉴定物品」存档状态：POST /shop/buy 会按商店概率即时生成并鉴定装备；背包满时会返回 inventoryFull。</p><div class="shop-roll"><span>普通<b>50%</b></span><span class="shop-magic">魔法<b>35%</b></span><span class="shop-rare">稀有<b>15%</b></span></div></article><article class="surface log-card"><strong>头盔 · 490 金 · Lv.12</strong><p>slotId: Helm。价格 = 基础价 × (1 + 队伍最高等级 × 0.08)。购买前显示部位与价格，确认后扣除服务端金币。</p></article><article class="surface log-card"><strong>可选部位</strong><p>单手物理 / 双手 / 弓 / 法杖 / 权杖 / 双修武器；盾牌、宝珠；头盔、盔甲、手套、靴子、腰带；项链、戒指。</p></article>`; }
+      if (kind === 'archive') { title = '更多功能'; subtitle = '社群、设置与账号均保留在一个安静的入口。'; render = () => `<article class="surface log-card"><strong>排行榜 · 留言板 · 音效</strong><p>此处为移动端信息架构示意；接入时继续使用既有功能与接口。</p></article>`; }
+      sheetTitle.textContent = title; sheetSubtitle.textContent = subtitle; sheetTabs.innerHTML = tabs.map(([id,label], i) => `<button class="${i ? '' : 'active'}" data-tab="${id}">${label}</button>`).join('');
+      function renderTab(tab) { sheetBody.innerHTML = render(tab); sheetTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); }
+      renderTab(tabs[0]?.[0]); sheetTabs.querySelectorAll('button').forEach(b => b.onclick = () => renderTab(b.dataset.tab));
+      veil.classList.add('open'); sheet.classList.add('open');
+    }
+    document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => openSheet(el.dataset.open)));
+    function closeSheet() { veil.classList.remove('open'); sheet.classList.remove('open'); }
+    veil.addEventListener('click', closeSheet); document.getElementById('close-sheet').addEventListener('click', closeSheet);
+
+    const loadouts = { varian: ['瓦','瓦里安的装备','由 squad[].equipment 提供；空槽可筛选 inventory[]。','4'], jaina: ['吉','吉安娜的装备','法术职业的主手与副手使用现有可装备槽位过滤。','3'], anduin: ['安','安度因的装备','角色详情保留属性、装备与技能三个已有信息层。','3'] };
+    document.querySelectorAll('[data-loadout]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-loadout]').forEach(b => b.classList.remove('active')); button.classList.add('active'); const [mark,name,copy,score] = loadouts[button.dataset.loadout]; document.getElementById('crest').textContent = mark; document.getElementById('build-name').textContent = name; document.getElementById('build-copy').textContent = copy; document.getElementById('build-score').textContent = score; }));
+  </script>
+</body>
+</html>

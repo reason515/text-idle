@@ -23,6 +23,8 @@
 | **玩家数据统计** | [13-player-statistics.md](./13-player-statistics.md) | 唯一步数口径、探索步数、展示倍率、战斗与休息**日志步间毫秒一致**（7.5）、详情 Modal Tab（概览 / 场次趋势 / **伤害统计** / **受伤统计**）、按技能拆分、实际暴击/命中/闪避、图表与表 |
 | **音效（表现层）** | [14-audio.md](./14-audio.md) | Freesound CC0 HQ 预览 + Web Audio 合成回退；按事件区分；E2E 快速模式与后台标签页静音 |
 | **服务端挂机** | [15-server-combat-tick.md](./15-server-combat-tick.md) | 路径 B：Scheduler + Go 战斗引擎；24h 离线 cap；WS 事件；招募 pending 不阻塞 tick |
+| **移动端移植** | [16-mobile-port.md](./16-mobile-port.md) | 移动端技术可行性评估：PWA 路线、障碍清单（HTTPS/巨石组件/hover）、分阶段计划 |
+| **移动端适配计划** | [17-mobile-adaptation-plan.md](./17-mobile-adaptation-plan.md) | 移动端适配开发计划：现状基线、组件拆分路线、分阶段任务清单（含文件/验收/工时）、原型对齐清单 |
 
 ## 快速导航
 
@@ -33,3 +35,4 @@
 - **UI 设计令牌**：颜色、字体、间距规范 → [11-ui-tokens.md](./11-ui-tokens.md)
 - **战斗数据分析**：每探索步收益（战斗行动步+休息）、每战斗行动步 DPS/HPS、清零、按英雄与技能下钻 → [13-player-statistics.md](./13-player-statistics.md)
 - **内测部署**：腾讯云 `119.45.224.68:8080`（暂无域名）→ [deployment.md](../deployment.md) 一键命令与运维
+- **移动端适配**：开发计划与任务清单 → [17-mobile-adaptation-plan.md](./17-mobile-adaptation-plan.md)；可行性评估 → [16-mobile-port.md](./16-mobile-port.md)
