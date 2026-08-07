@@ -188,11 +188,9 @@
 > - 验证：桌面 Shop 4/5（唯一失败为既有 flake「Buy with sufficient gold」）、Inventory/Login/Register/weapon-affix 16 项全过、移动冒烟基线不变。
 >
 > **拆分踩坑（已吸取）**：① `SHOP_QUALITY_ODDS` 在 `equipment.js` 而非 `shop.js`（ESM 加载失败会让整个路由挂掉，需看 console 而非猜测）；② `defineProps` 必须赋值给变量再引用 props 字段；③ 大 edit 因输出超限可能整体未执行——改完务必 `grep` 验证 import 已落地。
-> - 下一块：MapListModal（1038-1055）→ BackpackModal（1728-1778）→ ItemDetailModal ×2。
-> - 2.1 ✅ **BackpackModal 已拆出** → `frontend/src/components/panels/BackpackModal.vue`（199 行）：背包网格 + hover tooltip（tooltip 状态组件内管理）；Props（`inventoryItems`/`inventoryCount`/`pendingEquipSlot` + MainScreen 本地格式化函数 prop 注入 `tooltipLines`/`slotMinWidth`）、事件（`close`/`slot-click`）；点击决策（tryEquip 优先 vs 打开详情）由父 `handleBackpackSlotClick` 处理。MainScreen 再减 151 行（10,352 → 10,201）。验证：inventory/equipment/weapon-affix 21 项全过（shop buy 为既有 flake）、移动冒烟基线不变。
->
-> **拆分踩坑（重要）**：`.modal-overlay` 通用样式（position/z-index/背景）在 MainScreen scoped 中，**不会应用到组件 Teleport 内的元素**——拆出的弹窗 overlay 无 z-index（auto），会被仍开着的角色详情 overlay（z-index 200）盖住，导致装备流程点击被拦截（2 分钟超时）。**每个拆出的弹窗组件必须自带 `.modal-overlay` 定位/背景/z-index 样式**（ShopModal/MapListModal/BackpackModal 均已补）。
 > - 2.1 ✅ **MapListModal 已拆出** → `frontend/src/components/panels/MapListModal.vue`（68 行）：Props（`maps`/`currentMapId`/`unlockedMapCount`）、事件（`close`/`select-map`）；解锁判断为纯展示计算（`findIndex < unlockedMapCount`）组件内自实现；`selectMap`（改 progress + saveProgress）留在 MainScreen。MainScreen 再减 38 行（10,390 → 10,352）。验证：map modal spec 通过、Combat Flow/Login/Register 34 项全过（login AC1 为库累积）、移动冒烟基线不变。
+> - 2.1 ✅ **BackpackModal 已拆出** → `frontend/src/components/panels/BackpackModal.vue`（199 行）：背包网格 + hover tooltip（tooltip 状态组件内管理）；Props（`inventoryItems`/`inventoryCount`/`pendingEquipSlot` + MainScreen 本地格式化函数 prop 注入 `tooltipLines`/`slotMinWidth`）、事件（`close`/`slot-click`）；点击决策（tryEquip 优先 vs 打开详情）由父 `handleBackpackSlotClick` 处理。MainScreen 再减 151 行（10,352 → 10,201）。验证：inventory/equipment/weapon-affix 21 项全过（shop buy 为既有 flake）、移动冒烟基线不变。**踩坑**：`.modal-overlay` 通用样式在 MainScreen scoped 中不作用到组件 Teleport 内元素——拆出的弹窗必须自带 overlay 定位/z-index/背景，否则被其他弹窗 overlay 盖住（2 分钟超时）。
+> - 2.1 ✅ **ItemDetailModal 已拆出** → `frontend/src/components/panels/ItemDetailModal.vue`（652 行）：三模式（replace_confirm 对比 / equip_confirm / detail 详情+出售+装备+戒指选择）；**两处复用**（背包 selectedItem + 角色详情 selectedEquippedItem，后者用 `showUnequip` 模式支持卸下）。新建共享格式化模块 `frontend/src/ui/itemDetailFormat.js`（108 行，抽 12 个纯函数：spellPower/affix/slot/equipped-item 格式化），MainScreen 改为 import（删本地定义）。MainScreen 再减 531 行（10,201 → 9,670）。验证：inventory/equipment/weapon-affix/login 20/21（login AC1 为库累积）、移动冒烟基线不变。**经验**：① 强耦合弹窗（18+ 函数依赖）应先把纯格式化函数抽到共享 `ui/` 模块再建组件，避免函数 prop 爆炸；② import 路径务必从原文件复制（`affixStatLabels.js` 在 `utils/` 不在 `ui/`）；③ 被拆弹窗的 CSS 类若与其他弹窗共享（`.detail-row` 等），只删专属规则。
 
 **目标**：按 §3.2 顺序完成面板级拆分，桌面零回归。
 
