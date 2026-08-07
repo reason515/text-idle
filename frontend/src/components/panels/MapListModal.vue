@@ -40,6 +40,15 @@ function isUnlocked(mapId) {
 </script>
 
 <style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
 .map-list-modal {
   display: flex;
   flex-direction: column;

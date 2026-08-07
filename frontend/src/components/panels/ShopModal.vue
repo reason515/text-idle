@@ -145,6 +145,15 @@ function shopConfirmLabel(slotId) {
 </script>
 
 <style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
 .shop-modal {
   width: min(94vw, 56rem);
   min-width: min(94vw, 20rem);

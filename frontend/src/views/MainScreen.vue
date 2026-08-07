@@ -1608,55 +1608,16 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="showBackpackModal" class="modal-overlay modal-overlay-backpack" @click.self="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">
-        <div class="modal-box inventory-modal">
-          <div class="modal-title">{{ pendingEquipSlot ? `背包 - 装备${SLOT_LABELS[pendingEquipSlot] || pendingEquipSlot}` : '背包' }}</div>
-          <div class="inventory-counter">{{ inventoryCount }} / 100</div>
-          <div v-if="inventoryItems.length === 0" class="inventory-empty-hint">{{ pendingEquipSlot ? '此槽位无可用物品' : '背包为空' }}</div>
-          <div v-else class="inventory-grid" @scroll="hoveredBackpackItem = null">
-            <div
-              v-for="(item, idx) in inventoryItems"
-              :key="item.id"
-              class="inventory-slot tooltip-wrap has-tip"
-              :style="{ color: getQualityColor(item.quality), minWidth: getInventorySlotMinWidth(item) }"
-              @click="pendingEquipSlot && tryEquipFromBackpack(item) ? null : (selectedItem = item)"
-              @mouseenter="(e) => { hoveredBackpackItem = item; backpackTooltipRect = e.currentTarget.getBoundingClientRect() }"
-              @mouseleave="hoveredBackpackItem = null"
-            >
-              <span class="slot-name">{{ formatItemDisplayName(item) }}</span>
-              <span class="slot-lvl">Lv.{{ item.levelReq || 0 }}</span>
-            </div>
-          </div>
-          <button class="btn" @click="showBackpackModal = false; selectedItem = null; pendingEquipSlot = null; hoveredBackpackItem = null">关闭</button>
-        </div>
-      </div>
-      <div
-        v-if="showBackpackModal && hoveredBackpackItem && backpackTooltipRect"
-        class="inventory-slot-tooltip"
-        :style="{
-          top: (backpackTooltipRect.top - 4) + 'px',
-          left: backpackTooltipRect.left + 'px',
-          transform: 'translateY(-100%)'
-        }"
-      >
-        <template v-if="getItemTooltipLines(hoveredBackpackItem).length">
-          <div v-for="(line, i) in getItemTooltipLines(hoveredBackpackItem)" :key="i" class="tip-line">
-            <span class="tip-label">{{ line.label }}:</span>
-            <span v-if="line.affix" class="tip-value tip-affix-line">
-              <span v-if="line.affix.name" class="tip-affix-name">{{ line.affix.name }}</span>
-              <span
-                v-if="line.affix.valueText != null && line.affix.valueText !== ''"
-                class="tip-affix-num"
-              >+{{ line.affix.valueText }}</span>
-              <span v-if="line.affix.stat" class="tip-affix-stat">{{ line.affix.stat }}</span>
-            </span>
-            <span v-else class="tip-value">{{ line.value }}</span>
-          </div>
-        </template>
-        <div v-else class="tip-empty">无属性加成</div>
-      </div>
-    </Teleport>
+    <BackpackModal
+      v-if="showBackpackModal"
+      :inventory-items="inventoryItems"
+      :inventory-count="inventoryCount"
+      :pending-equip-slot="pendingEquipSlot"
+      :tooltip-lines="getItemTooltipLines"
+      :slot-min-width="getInventorySlotMinWidth"
+      @close="closeBackpackModal"
+      @slot-click="handleBackpackSlotClick"
+    />
 
     <Teleport to="body">
       <div v-if="selectedItem || equipReplacePending?.mode === 'equip_confirm'" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
@@ -2732,6 +2693,7 @@ import { getSkillEnhancementLadder } from '../game/skillEnhancementLadder.js'
 import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import ShopModal from '../components/panels/ShopModal.vue'
 import MapListModal from '../components/panels/MapListModal.vue'
+import BackpackModal from '../components/panels/BackpackModal.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
 import OfflineCombatSummaryModal from '../components/OfflineCombatSummaryModal.vue'
 import {
@@ -3344,6 +3306,19 @@ function closeShopModal() {
   showShopModal.value = false
   shopMessage.value = null
   shopConfirmingSlot.value = null
+}
+
+/** Close backpack and clear its orchestration state (hover tooltip lives in the component). */
+function closeBackpackModal() {
+  showBackpackModal.value = false
+  selectedItem.value = null
+  pendingEquipSlot.value = null
+}
+
+/** Slot click: equip-first when in equip mode, otherwise open item detail. */
+function handleBackpackSlotClick(item) {
+  if (pendingEquipSlot.value && tryEquipFromBackpack(item)) return
+  selectedItem.value = item
 }
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
@@ -6850,132 +6825,6 @@ onUnmounted(() => {
   transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
-.modal-box.inventory-modal {
-  width: min(60vw, 44rem);
-  max-width: min(60vw, 44rem);
-  max-height: 85vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.inventory-counter {
-  font-size: var(--font-base);
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-}
-.inventory-empty-hint {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 1rem;
-  padding: 2rem;
-  margin-bottom: 0.75rem;
-}
-.inventory-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
-  margin-bottom: 0.75rem;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb-alt) var(--scrollbar-track);
-}
-.inventory-grid::-webkit-scrollbar {
-  width: 8px;
-}
-.inventory-grid::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-.inventory-grid::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-alt);
-  border-radius: 4px;
-}
-.inventory-grid::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
-}
-.inventory-slot {
-  padding: 0.5rem 0.6rem;
-  font-size: var(--font-base-sm);
-  min-height: 2.8rem;
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  justify-content: center;
-}
-.inventory-slot .slot-name {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.inventory-slot .slot-lvl {
-  display: block;
-  font-size: var(--font-sm);
-  color: var(--text-muted);
-}
-.inventory-slot:hover { border-color: var(--accent); }
-.inventory-slot.tooltip-wrap .tooltip-text {
-  white-space: pre-line;
-  max-width: 14rem;
-  text-align: left;
-}
-.inventory-slot-tooltip {
-  position: fixed;
-  z-index: var(--tooltip-z-float);
-  background: var(--tooltip-bg);
-  border: 1px solid var(--tooltip-border);
-  border-radius: var(--tooltip-radius);
-  padding: 0.4rem 0.55rem;
-  font-size: var(--font-sm);
-  max-width: 14rem;
-  text-align: left;
-  box-shadow: var(--tooltip-shadow);
-  pointer-events: none;
-}
-.inventory-slot-tooltip .tip-line {
-  display: flex;
-  gap: 0.35rem;
-  padding: 0.08rem 0;
-}
-.inventory-slot-tooltip .tip-label {
-  color: var(--text-label);
-  flex-shrink: 0;
-}
-.inventory-slot-tooltip .tip-value {
-  color: var(--text-value);
-}
-.inventory-slot-tooltip .tip-affix-line {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem;
-  color: inherit;
-}
-.inventory-slot-tooltip .tip-affix-name {
-  color: var(--text-label);
-  font-weight: 500;
-}
-.inventory-slot-tooltip .tip-affix-num {
-  color: var(--color-gold);
-  font-variant-numeric: tabular-nums;
-}
-.inventory-slot-tooltip .tip-affix-stat {
-  color: var(--accent);
-}
-.inventory-slot-tooltip .tip-empty {
-  color: var(--text-muted);
-  font-style: italic;
-}
 
 .log-item-drop {
   cursor: pointer;
