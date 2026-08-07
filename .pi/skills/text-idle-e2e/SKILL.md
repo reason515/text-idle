@@ -72,6 +72,8 @@ npm run e2e:fast -- --grep "player-statistics"
 
 **环境**：e2e 标准流程（`npm run e2e*`）自动重置 `text-idle.e2e.db`（`release-e2e-ports.ps1`）；**手动起服务前必须先删 `text-idle.e2e.db`**，残留库会导致购买/金币类测试误报。
 
+**库累积陷阱**：`login.spec.js` AC1 使用固定队名 "Test Team"（`intro.spec.js` 等也可能用固定队名），多次跑测后 e2e.db 残留同名账号 → intro 第 2 步唯一性验证卡住。出现此类超时先重置库重跑，不要改代码。
+
 **判定失败是否既有问题**：对疑似回归，`git stash push -- <改动的文件>` 后在原代码上重跑同一测试；仍失败 = 既有环境/时序问题，`git stash pop` 恢复即可。
 
 ## 补测规范

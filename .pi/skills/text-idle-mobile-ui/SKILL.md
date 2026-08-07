@@ -19,21 +19,22 @@ description: >-
 
 ## 核心策略：桌面不动，移动分支覆盖
 
+0. **先查全局外壳容器**：`frontend/src/style.css` 的 `.app` 是桌面 **16:9 信筒**（`width:min(100vw, 100vh*16/9)`），手机竖屏下会把页面压成 ~219px 高的条（阶段 1 实测：command deck 重叠的根因）。移动断点内必须覆盖为 `width:100vw; height:100dvh`（`dvh` 处理地址栏显隐，先写 `100vh` 兜底）并去掉 border/box-shadow；`body` 改 `overflow-y:auto`。
 1. **断点**：`--bp-mobile: 860px`；`@media (max-width: 860px)` 为移动分支，`min-width: 861px` 为桌面。
 2. 移动分支**只追加/覆盖**，不改桌面规则；桌面类名与 `data-testid` 全部保留。
 3. 结构差异大的区域（底部导航、纵向战场、抽屉化弹窗）用独立容器 + `isMobile` composable，不在巨石模板里堆条件渲染。
-4. 现有零散 `@media (max-width: 480px)`、`520px` 规则要并入统一断点体系，避免互相打架。
+4. 现有零散 `@media (max-width: 480px)`、`520px` 规则要并入统一断点体系（改 `860px`），`min-width: 42rem` 改 `861px`，避免互相打架。
 
 ## 移动端硬性要求
 
 | 项 | 要求 |
 |---|---|
-| 视口 | `index.html`：`viewport-fit=cover` + `theme-color` |
+| 视口 | `index.html`：`viewport-fit=cover` + `theme-color`；移动端容器高度用 `100dvh`（先 `100vh` 兜底） |
 | 安全区 | 底部导航/抽屉用 `env(safe-area-inset-bottom)`；刘海用 `env(safe-area-inset-top)` |
-| 触控目标 | 可点元素 `min-height: 44px`、间距 ≥8px；`touch-action: manipulation` 消 300ms 延迟 |
-| 字号 | 正文 ≥12px；沿用令牌字号档，不新增非令牌档 |
+| 触控目标 | 可点元素 `min-height: 44px`（**必须 `!important`**，否则被 Vue scoped 样式如 AuthLayout 的 2.6rem 覆盖）、间距 ≥8px；排除 `checkbox/radio`；`touch-action: manipulation` 消 300ms 延迟 |
+| 字号 | 正文 ≥12px；移动断点内可把 `--font-xs` 提到 0.72rem（`@media` 内重定义 `:root` 变量即可） |
 | 滚动 | 滚动区 `overflow-y:auto` + `overscroll-behavior:contain`；日志区底部操作（暂停/继续）常驻 |
-| 溢出 | 375/390/430 三档**无横向滚动**（`document.documentElement.scrollWidth <= innerWidth`） |
+| 溢出 | 375/390/430 三档无横向溢出，**用 `getBoundingClientRect` 检测元素右边缘**（`scrollWidth` 会被 `overflow:hidden` 裁剪漏报） |
 
 ## 移动端交互转换
 

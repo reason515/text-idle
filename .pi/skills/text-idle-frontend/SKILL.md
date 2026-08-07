@@ -91,6 +91,11 @@ description: >-
 - 品质色用 `getQualityColor(quality)` 或既有 `quality` class；
 - 新 UI 遵循 [docs/design/11-ui-tokens.md](../../docs/design/11-ui-tokens.md)。
 
+## 样式选择器核对（防无效规则）
+
+- 新增/引用 CSS 选择器前，先 `grep -n '\.类名' frontend/src/views/MainScreen.vue frontend/src/*.vue` 确认类名真实存在（阶段 1 曾引用 `log-entry-main`、`monsters-list` 等不存在的类，产生无效规则）；
+- 改样式后 `git diff --check` + 移动断点实测（375/390/430 无溢出）为最低验证。
+
 ## 编辑后验证（必做）
 
 1. 单元测试：改动 `game/`、`ui/`、`data/` 纯逻辑 → `cd frontend && npx vitest run <对应 *.spec.js>`（或 `npm test`）。
