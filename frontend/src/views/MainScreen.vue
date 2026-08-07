@@ -7223,7 +7223,7 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 .item-compare-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-@media (max-width: 480px) {
+@media (max-width: 860px) {
   .item-compare-columns { grid-template-columns: 1fr; }
 }
 .equip-to-unmet { font-size: var(--font-base-sm); color: var(--text-muted); cursor: help; }
@@ -7244,7 +7244,7 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
 }
-@media (max-width: 520px) {
+@media (max-width: 860px) {
   .detail-attr-equip-row {
     flex-direction: column;
   }
@@ -8139,7 +8139,7 @@ onUnmounted(() => {
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
-@media (min-width: 42rem) {
+@media (min-width: 861px) {
   .shop-sections {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem 1rem;

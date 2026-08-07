@@ -94,6 +94,13 @@
   --focus-glow: rgba(0, 255, 136, 0.4);
   --focus-glow-phys: rgba(255, 170, 68, 0.4);
 
+  /* Mobile adaptation (17-mobile-adaptation-plan Phase 1) */
+  --bp-mobile: 860px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
   font-family: 'Ark Pixel', monospace;
 }
 
@@ -510,4 +517,84 @@ body {
 .primary-attr-tip .tip-muted {
   color: var(--text-muted);
   font-size: var(--font-xs);
+}
+
+/* ---- Mobile infrastructure (17-mobile-adaptation-plan Phase 1) ---- */
+@media (max-width: 860px) {
+  /* The desktop app shell is a fixed 16:9 letterbox; on phones it would shrink
+     to a tiny strip. Let it fill the viewport and scroll natively. */
+  :root {
+    --font-xs: 0.72rem; /* lowest readable tier on low-DPR phones */
+  }
+
+  .app {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport: toolbar hide/show on mobile */
+    border: none;
+    box-shadow: none;
+  }
+
+  body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .header {
+    padding-top: calc(1rem + var(--safe-top));
+  }
+
+  /* Touch targets (WCAG 44px) for tap-driven controls.
+     !important: mobile override layer must win over scoped component styles
+     (e.g. AuthLayout inputs at 2.6rem). Exclude checkbox/radio to avoid breaking them. */
+  button,
+  [role='button'],
+  .btn,
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea,
+  .hero-card,
+  .monster-card,
+  .log-entry,
+  .shop-slot-row,
+  .equipment-slot-val,
+  .tactics-rule-item,
+  .feed-tab,
+  .nav button {
+    min-height: 44px !important;
+  }
+
+  /* Kill 300ms tap delay and tap highlight flash */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  [role='button'],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  /* Contain scroll chaining inside panel/feed/modal scroll areas */
+  .main,
+  .modal-box,
+  .game-scroll,
+  .game-scroll-alt,
+  .log-list,
+  .feed-panel {
+    overscroll-behavior: contain;
+  }
+
+  /* Gap ≥8px between tappable rows */
+  .log-list,
+  .shop-slot-list,
+  .squad-list,
+  .monster-list,
+  .feed-tabs,
+  .command-action-buttons {
+    row-gap: 8px;
+  }
 }

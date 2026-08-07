@@ -158,6 +158,18 @@
 
 ## 阶段 1：移动端基础设施（2~3 天）
 
+> **状态：✅ 已完成（2026-08-07）**
+>
+> - 1.1 ✅ `style.css` 加 `--bp-mobile: 860px` 与 `--safe-*` 变量；**解除桌面 16:9 信筒容器**——`.app` 在移动断点内改 `100vw × 100dvh` 全屏（修复手机下页面被压缩成 ~219px 高的条导致 command deck 重叠的根因）；`body` 移动端 `overflow-y: auto`。
+> - 1.2 ✅ 移动断点内触控目标 `min-height: 44px !important`（需 `!important` 压过 AuthLayout scoped 的 2.6rem 规则；排除 checkbox/radio）；375/390/430 实测无 <43.5px 控件。
+> - 1.3 ✅ 移动断点 `--font-xs` 提至 0.72rem；零散断点并入统一体系：MainScreen `480px/520px` → `860px`、`min-width:42rem` → `861px`。
+> - 1.4 ✅ `touch-action: manipulation` + `-webkit-tap-highlight-color: transparent`（实测生效）。
+> - 1.5 ✅ 滚动区 `overscroll-behavior: contain`；可点行间距 ≥8px；日志底部吸附按钮依赖阶段 3 纵向布局（顺带做）。
+>
+> **验证**：移动冒烟保持 5 passed / 1 failed（shop 遮挡红线不变）；桌面 29 项关键 spec 通过；stash 验证桌面 860px 规则不生效、无回归。
+>
+> **新增环境经验**：`login.spec.js` AC1 使用固定队名 "Test Team"，e2e.db 累积同名账号后 intro 第 2 步会卡住（重置库即恢复）；shop buy 用例为既有 flake（stash 验证与阶段 1 无关）。
+
 **目标**：页面在小屏不溢出、安全区正确、触控可用。
 
 | # | 任务 | 文件 | 验收 |
