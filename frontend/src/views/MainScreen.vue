@@ -1619,331 +1619,25 @@
       @slot-click="handleBackpackSlotClick"
     />
 
-    <Teleport to="body">
-      <div v-if="selectedItem || equipReplacePending?.mode === 'equip_confirm'" class="modal-overlay modal-overlay-item-detail" @click.self="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">
-        <div class="modal-box item-detail-modal">
-          <template v-if="equipReplacePending?.mode === 'replace_confirm'">
-            <div class="modal-title item-compare-title">对比 — 替换{{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
-            <div class="item-compare-section">
-              <div class="item-compare-columns">
-                <div class="item-compare-col">
-                  <div class="item-compare-label">当前（已装备）</div>
-                  <div class="item-compare-item" :style="{ color: getQualityColor(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)?.quality) }">
-                    {{ formatItemDisplayName(getItemInSlot(equipReplacePending.hero, equipReplacePending.targetSlot)) }}
-                  </div>
-                  <div class="item-compare-stats" v-if="replaceCompareCurrent">
-                    <div class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">等级需求</span>
-                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.levelReq || 0 }}</span>
-                    </div>
-                    <div v-if="(replaceCompareCurrent.strReq || 0) > 0 || (replaceCompareCurrent.agiReq || 0) > 0 || (replaceCompareCurrent.intReq || 0) > 0 || (replaceCompareCurrent.spiReq || 0) > 0" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">属性需求</span>
-                      <span class="item-compare-detail-value">
-                        <span v-if="(replaceCompareCurrent.strReq || 0) > 0">Str {{ replaceCompareCurrent.strReq }}</span>
-                        <span v-if="(replaceCompareCurrent.agiReq || 0) > 0">Agi {{ replaceCompareCurrent.agiReq }}</span>
-                        <span v-if="(replaceCompareCurrent.intReq || 0) > 0">Int {{ replaceCompareCurrent.intReq }}</span>
-                        <span v-if="(replaceCompareCurrent.spiReq || 0) > 0">Spi {{ replaceCompareCurrent.spiReq }}</span>
-                      </span>
-                    </div>
-                    <div v-if="(replaceCompareCurrent.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">护甲</span>
-                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.armor }}</span>
-                    </div>
-                    <div v-if="(replaceCompareCurrent.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">抗性</span>
-                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.resistance }}</span>
-                    </div>
-                    <div v-if="((replaceCompareCurrent.physAtk || 0) > 0 || (replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">物攻</span>
-                      <span class="item-compare-detail-value">{{ replaceCompareCurrent.physAtkMin != null && replaceCompareCurrent.physAtkMax != null ? (replaceCompareCurrent.physAtkMin + '-' + replaceCompareCurrent.physAtkMax) : replaceCompareCurrent.physAtk }}</span>
-                    </div>
-                    <div v-if="((replaceCompareCurrent.spellPower || 0) > 0 || (replaceCompareCurrent.spellPowerMin != null && replaceCompareCurrent.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(replaceCompareCurrent.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">{{ spellPowerDetailLabel(replaceCompareCurrent) }}</span>
-                      <span class="item-compare-detail-value">{{ spellPowerDetailValue(replaceCompareCurrent) }}</span>
-                    </div>
-                    <div
-                      v-if="(replaceCompareCurrent.prefixes?.length || 0) + (replaceCompareCurrent.suffixes?.length || 0) > 0"
-                      class="detail-sep-line item-compare-sep"
-                    >词缀</div>
-                    <div v-for="p in (replaceCompareCurrent.prefixes || [])" :key="'cp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
-                      <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, replaceCompareCurrent) }}</span>
-                        <span v-if="formatAffixStat(p.stat, replaceCompareCurrent)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
-                      </span>
-                      <span class="item-compare-detail-value item-compare-affix-val">
-                        <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
-                        <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
-                      </span>
-                    </div>
-                    <div v-for="s in (replaceCompareCurrent.suffixes || [])" :key="'cs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
-                      <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, replaceCompareCurrent) }}</span>
-                        <span v-if="formatAffixStat(s.stat, replaceCompareCurrent)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
-                      </span>
-                      <span class="item-compare-detail-value item-compare-affix-val">
-                        <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
-                        <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="item-compare-col">
-                  <div class="item-compare-label">新装备</div>
-                  <div class="item-compare-item" :style="{ color: getQualityColor(equipReplacePending.item?.quality) }">
-                    {{ formatItemDisplayName(equipReplacePending.item) }}
-                  </div>
-                  <div class="item-compare-stats" v-if="equipReplacePending.item">
-                    <div class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">等级需求</span>
-                      <span class="item-compare-detail-value">{{ equipReplacePending.item.levelReq || 0 }}</span>
-                    </div>
-                    <div v-if="(equipReplacePending.item.strReq || 0) > 0 || (equipReplacePending.item.agiReq || 0) > 0 || (equipReplacePending.item.intReq || 0) > 0 || (equipReplacePending.item.spiReq || 0) > 0" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">属性需求</span>
-                      <span class="item-compare-detail-value">
-                        <span v-if="(equipReplacePending.item.strReq || 0) > 0">Str {{ equipReplacePending.item.strReq }}</span>
-                        <span v-if="(equipReplacePending.item.agiReq || 0) > 0">Agi {{ equipReplacePending.item.agiReq }}</span>
-                        <span v-if="(equipReplacePending.item.intReq || 0) > 0">Int {{ equipReplacePending.item.intReq }}</span>
-                        <span v-if="(equipReplacePending.item.spiReq || 0) > 0">Spi {{ equipReplacePending.item.spiReq }}</span>
-                      </span>
-                    </div>
-                    <div v-if="(equipReplacePending.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">护甲</span>
-                      <span class="item-compare-detail-value">{{ equipReplacePending.item.armor }}</span>
-                    </div>
-                    <div v-if="(equipReplacePending.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">抗性</span>
-                      <span class="item-compare-detail-value">{{ equipReplacePending.item.resistance }}</span>
-                    </div>
-                    <div v-if="((equipReplacePending.item.physAtk || 0) > 0 || (equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">物攻</span>
-                      <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
-                    </div>
-                    <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                      <span class="item-compare-detail-label">{{ spellPowerDetailLabel(equipReplacePending.item) }}</span>
-                      <span class="item-compare-detail-value">{{ spellPowerDetailValue(equipReplacePending.item) }}</span>
-                    </div>
-                    <div
-                      v-if="(equipReplacePending.item.prefixes?.length || 0) + (equipReplacePending.item.suffixes?.length || 0) > 0"
-                      class="detail-sep-line item-compare-sep"
-                    >词缀</div>
-                    <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'np-' + p.id" class="item-compare-detail-row item-compare-affix-row">
-                      <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, equipReplacePending.item) }}</span>
-                        <span v-if="formatAffixStat(p.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
-                      </span>
-                      <span class="item-compare-detail-value item-compare-affix-val">
-                        <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
-                        <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
-                      </span>
-                    </div>
-                    <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ns-' + s.id" class="item-compare-detail-row item-compare-affix-row">
-                      <span class="item-compare-detail-label item-compare-affix-label">
-                        <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, equipReplacePending.item) }}</span>
-                        <span v-if="formatAffixStat(s.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
-                      </span>
-                      <span class="item-compare-detail-value item-compare-affix-val">
-                        <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
-                        <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="item-compare-actions">
-                <span class="equip-replace-hint">当前装备将移至背包。</span>
-                <div class="equip-replace-actions">
-                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null">确认</button>
-                  <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template v-else-if="equipReplacePending?.mode === 'equip_confirm'">
-            <div class="modal-title item-compare-title">确认装备 — {{ getSlotLabel(equipReplacePending.targetSlot) }}</div>
-            <div class="item-compare-section item-equip-confirm-section">
-              <div class="item-compare-item" :style="{ color: getQualityColor(equipReplacePending.item?.quality) }">
-                {{ formatItemDisplayName(equipReplacePending.item) }}
-              </div>
-              <div class="item-compare-stats" v-if="equipReplacePending.item">
-                <div class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">等级需求</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.levelReq || 0 }}</span>
-                </div>
-                <div v-if="(equipReplacePending.item.strReq || 0) > 0 || (equipReplacePending.item.agiReq || 0) > 0 || (equipReplacePending.item.intReq || 0) > 0 || (equipReplacePending.item.spiReq || 0) > 0" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">属性需求</span>
-                  <span class="item-compare-detail-value">
-                    <span v-if="(equipReplacePending.item.strReq || 0) > 0">Str {{ equipReplacePending.item.strReq }}</span>
-                    <span v-if="(equipReplacePending.item.agiReq || 0) > 0">Agi {{ equipReplacePending.item.agiReq }}</span>
-                    <span v-if="(equipReplacePending.item.intReq || 0) > 0">Int {{ equipReplacePending.item.intReq }}</span>
-                    <span v-if="(equipReplacePending.item.spiReq || 0) > 0">Spi {{ equipReplacePending.item.spiReq }}</span>
-                  </span>
-                </div>
-                <div v-if="(equipReplacePending.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">护甲</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.armor }}</span>
-                </div>
-                <div v-if="(equipReplacePending.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">抗性</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.resistance }}</span>
-                </div>
-                <div v-if="((equipReplacePending.item.physAtk || 0) > 0 || (equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">物攻</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.physAtkMin != null && equipReplacePending.item.physAtkMax != null ? (equipReplacePending.item.physAtkMin + '-' + equipReplacePending.item.physAtkMax) : equipReplacePending.item.physAtk }}</span>
-                </div>
-                <div v-if="((equipReplacePending.item.spellPower || 0) > 0 || (equipReplacePending.item.spellPowerMin != null && equipReplacePending.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(equipReplacePending.item.slot)" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">{{ spellPowerDetailLabel(equipReplacePending.item) }}</span>
-                  <span class="item-compare-detail-value">{{ spellPowerDetailValue(equipReplacePending.item) }}</span>
-                </div>
-                <div v-if="(equipReplacePending.item.blockPct || 0) > 0" class="item-compare-detail-row">
-                  <span class="item-compare-detail-label">格挡率</span>
-                  <span class="item-compare-detail-value">{{ equipReplacePending.item.blockPct }}%</span>
-                </div>
-                <div
-                  v-if="(equipReplacePending.item.prefixes?.length || 0) + (equipReplacePending.item.suffixes?.length || 0) > 0"
-                  class="detail-sep-line item-compare-sep"
-                >词缀</div>
-                <div v-for="p in (equipReplacePending.item.prefixes || [])" :key="'ecp-' + p.id" class="item-compare-detail-row item-compare-affix-row">
-                  <span class="item-compare-detail-label item-compare-affix-label">
-                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(p, equipReplacePending.item) }}</span>
-                    <span v-if="formatAffixStat(p.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(p.name) }}</span>
-                  </span>
-                  <span class="item-compare-detail-value item-compare-affix-val">
-                    <span class="item-compare-affix-num">+{{ formatAffixValue(p) }}</span>
-                    <span v-if="p.min != null && p.max != null" class="item-compare-affix-range">[{{ p.min }}-{{ p.max }}]</span>
-                  </span>
-                </div>
-                <div v-for="s in (equipReplacePending.item.suffixes || [])" :key="'ecs-' + s.id" class="item-compare-detail-row item-compare-affix-row">
-                  <span class="item-compare-detail-label item-compare-affix-label">
-                    <span class="item-compare-affix-stat">{{ formatAffixStatLinePrimary(s, equipReplacePending.item) }}</span>
-                    <span v-if="formatAffixStat(s.stat, equipReplacePending.item)" class="item-compare-affix-name">{{ formatAffixDisplayName(s.name) }}</span>
-                  </span>
-                  <span class="item-compare-detail-value item-compare-affix-val">
-                    <span class="item-compare-affix-num">+{{ formatAffixValue(s) }}</span>
-                    <span v-if="s.min != null && s.max != null" class="item-compare-affix-range">[{{ s.min }}-{{ s.max }}]</span>
-                  </span>
-                </div>
-              </div>
-              <div class="item-compare-actions">
-                <div class="equip-replace-actions">
-                  <button class="btn btn-sm" @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null">确认</button>
-                  <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template v-else>
-          <div>
-          <div class="modal-title" :style="{ color: getQualityColor(selectedItem.quality) }">
-            {{ formatItemDisplayName(selectedItem) }}
-          </div>
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">槽位</span>
-              <span class="detail-value">{{ SLOT_LABELS[selectedItem.slot] || selectedItem.slot }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">等级需求</span>
-              <span class="detail-value detail-value-req">{{ selectedItem.levelReq || 0 }}</span>
-            </div>
-            <div v-if="(selectedItem.strReq || 0) > 0 || (selectedItem.agiReq || 0) > 0 || (selectedItem.intReq || 0) > 0 || (selectedItem.spiReq || 0) > 0" class="detail-row">
-              <span class="detail-label">属性需求</span>
-              <span class="detail-value detail-value-req">
-                <span v-if="(selectedItem.strReq || 0) > 0">Str {{ selectedItem.strReq }}</span>
-                <span v-if="(selectedItem.agiReq || 0) > 0">Agi {{ selectedItem.agiReq }}</span>
-                <span v-if="(selectedItem.intReq || 0) > 0">Int {{ selectedItem.intReq }}</span>
-                <span v-if="(selectedItem.spiReq || 0) > 0">Spi {{ selectedItem.spiReq }}</span>
-              </span>
-            </div>
-            <div v-if="(selectedItem.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">护甲</span>
-              <span class="detail-value">{{ selectedItem.armor }}</span>
-            </div>
-            <div v-if="(selectedItem.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">抗性</span>
-              <span class="detail-value">{{ selectedItem.resistance }}</span>
-            </div>
-            <div v-if="((selectedItem.physAtk || 0) > 0 || (selectedItem.physAtkMin != null && selectedItem.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">物攻</span>
-              <span class="detail-value">{{ selectedItem.physAtkMin != null && selectedItem.physAtkMax != null ? (selectedItem.physAtkMin + '-' + selectedItem.physAtkMax) : selectedItem.physAtk }}</span>
-            </div>
-            <div v-if="((selectedItem.spellPower || 0) > 0 || (selectedItem.spellPowerMin != null && selectedItem.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedItem.slot)" class="detail-row">
-              <span class="detail-label">{{ spellPowerDetailLabel(selectedItem) }}</span>
-              <span class="detail-value">{{ spellPowerDetailValue(selectedItem) }}</span>
-            </div>
-            <div v-if="(selectedItem.prefixes?.length || 0) + (selectedItem.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
-            <div class="affix-list">
-              <div v-for="p in (selectedItem.prefixes || [])" :key="'p-' + p.id" class="affix-row">
-                <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
-                <span class="affix-num">+{{ formatAffixValue(p) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(p.stat, selectedItem) }}</span>
-                <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
-              </div>
-              <div v-for="s in (selectedItem.suffixes || [])" :key="'s-' + s.id" class="affix-row">
-                <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
-                <span class="affix-num">+{{ formatAffixValue(s) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(s.stat, selectedItem) }}</span>
-                <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
-              </div>
-            </div>
-            <div v-if="isItemInInventory(selectedItem)" class="detail-row">
-              <span class="detail-label">出售价格</span>
-              <span class="detail-value val-gold">{{ getSellPrice(selectedItem) }} 金币</span>
-            </div>
-          </div>
-          <div v-if="sellConfirmingItem?.id === selectedItem?.id" class="item-detail-sell-confirm">
-            <span class="sell-confirm-text">以 {{ getSellPrice(selectedItem) }} 金币出售？</span>
-            <div class="item-detail-actions">
-              <button class="btn" @click="confirmSellItem(selectedItem)">确认</button>
-              <button class="btn" @click="sellConfirmingItem = null">取消</button>
-            </div>
-          </div>
-          <div v-else class="item-detail-actions">
-            <div v-if="equipReplacePending?.mode === 'ring_choice'" class="equip-replace-section">
-              <span class="equip-to-label">为 {{ heroDisplayName(equipReplacePending.hero.name) }} 替换哪个戒指？</span>
-              <div class="equip-replace-choices">
-                <button
-                  v-for="s in ['Ring1','Ring2']"
-                  :key="s"
-                  class="btn btn-sm equip-replace-option"
-                  :style="{ color: getEquippedItemColorForHero(equipReplacePending.hero, s) }"
-                  @click="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, s); equipReplacePending = null; selectedItem = null"
-                >
-                  <span class="equip-replace-slot">戒指{{ s === 'Ring1' ? '1' : '2' }}：</span>
-                  <span class="equip-replace-name">{{ getEquippedItemNameForHero(equipReplacePending.hero, s) || '空' }}</span>
-                  <span class="equip-replace-lvl">Lv.{{ getEquippedItemLevelReqForHero(equipReplacePending.hero, s) }}</span>
-                </button>
-              </div>
-              <button class="btn btn-sm" @click="equipReplacePending = null">取消</button>
-            </div>
-            <div v-else-if="selectedItem?.slot && squad.length > 0" class="equip-to-section">
-              <span class="equip-to-label">装备给：</span>
-              <span v-for="h in squad" :key="h.id" class="equip-to-row">
-                <button
-                  v-if="canEquip(h, selectedItem)"
-                  class="btn btn-sm"
-                  @click="handleEquipToHero(selectedItem, h)"
-                >{{ heroDisplayName(h.name) }}</button>
-                <span
-                  v-else
-                  class="equip-to-unmet tooltip-wrap has-tip"
-                >
-                  {{ heroDisplayName(h.name) }}
-                  <span class="tooltip-text">
-                    <template v-for="(r, i) in getEquipReasonsStructured(h, selectedItem)" :key="r.key">
-                      <span v-if="i > 0">；</span>{{ r.label }} 需 {{ r.required }}（当前：<span class="equip-unmet-val">{{ r.current }}</span>）
-                    </template>
-                  </span>
-                </span>
-              </span>
-            </div>
-            <button v-if="isItemInInventory(selectedItem) && !sellConfirmingItem" class="btn" @click="sellConfirmingItem = selectedItem">出售</button>
-            <button class="btn" @click="selectedItem = null; sellConfirmingItem = null; equipReplacePending = null">关闭</button>
-          </div>
-          </div>
-          </template>
-        </div>
-      </div>
-    </Teleport>
+    <ItemDetailModal
+      v-if="selectedItem || equipReplacePending?.mode === 'equip_confirm'"
+      :mode="itemDetailMode"
+      :selected-item="selectedItem"
+      :equip-item="equipReplacePending?.item ?? null"
+      :equip-hero="equipReplacePending?.hero ?? null"
+      :target-slot="equipReplacePending?.targetSlot ?? ''"
+      :replace-current="replaceCompareCurrent"
+      :squad="squad"
+      :inventory-item-ids="inventoryItemIds"
+      :ring-choice="equipReplacePending?.mode === 'ring_choice' ? equipReplacePending.hero : null"
+      @close="closeItemDetail"
+      @confirm-replace="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null; selectedItem = null"
+      @cancel-replace="equipReplacePending = null"
+      @confirm-equip="confirmEquipReplace(equipReplacePending.item, equipReplacePending.hero, equipReplacePending.targetSlot); equipReplacePending = null"
+      @ring-choice="onRingChoice"
+      @equip-to-hero="handleEquipToHero(selectedItem, $event)"
+      @sell="confirmSellItem(selectedItem); sellConfirmingItem = null"
+    />
 
     <Teleport to="body">
       <div v-if="selectedHero" class="modal-overlay" @click.self="selectedHero = null; selectedEquippedItem = null; equippedUnequipConfirming = false">
@@ -2401,76 +2095,15 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="selectedEquippedItem" class="modal-overlay modal-overlay-item-detail" @click.self="selectedEquippedItem = null; equippedUnequipConfirming = false">
-        <div class="modal-box item-detail-modal">
-          <div class="modal-title" :style="{ color: getQualityColor(selectedEquippedItem.item.quality) }">
-            {{ formatItemDisplayName(selectedEquippedItem.item) }}
-          </div>
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">槽位</span>
-              <span class="detail-value">{{ SLOT_LABELS[selectedEquippedItem.item.slot] || selectedEquippedItem.item.slot }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">等级需求</span>
-              <span class="detail-value detail-value-req">{{ selectedEquippedItem.item.levelReq || 0 }}</span>
-            </div>
-            <div v-if="(selectedEquippedItem.item.strReq || 0) > 0 || (selectedEquippedItem.item.agiReq || 0) > 0 || (selectedEquippedItem.item.intReq || 0) > 0 || (selectedEquippedItem.item.spiReq || 0) > 0" class="detail-row">
-              <span class="detail-label">属性需求</span>
-              <span class="detail-value detail-value-req">
-                <span v-if="(selectedEquippedItem.item.strReq || 0) > 0">Str {{ selectedEquippedItem.item.strReq }}</span>
-                <span v-if="(selectedEquippedItem.item.agiReq || 0) > 0">Agi {{ selectedEquippedItem.item.agiReq }}</span>
-                <span v-if="(selectedEquippedItem.item.intReq || 0) > 0">Int {{ selectedEquippedItem.item.intReq }}</span>
-                <span v-if="(selectedEquippedItem.item.spiReq || 0) > 0">Spi {{ selectedEquippedItem.item.spiReq }}</span>
-              </span>
-            </div>
-            <div v-if="(selectedEquippedItem.item.armor || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">护甲</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.armor }}</span>
-            </div>
-            <div v-if="(selectedEquippedItem.item.resistance || 0) > 0 && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">抗性</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.resistance }}</span>
-            </div>
-            <div v-if="((selectedEquippedItem.item.physAtk || 0) > 0 || (selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">物攻</span>
-              <span class="detail-value">{{ selectedEquippedItem.item.physAtkMin != null && selectedEquippedItem.item.physAtkMax != null ? (selectedEquippedItem.item.physAtkMin + '-' + selectedEquippedItem.item.physAtkMax) : selectedEquippedItem.item.physAtk }}</span>
-            </div>
-            <div v-if="((selectedEquippedItem.item.spellPower || 0) > 0 || (selectedEquippedItem.item.spellPowerMin != null && selectedEquippedItem.item.spellPowerMax != null)) && !['Ring','Ring1','Ring2','Amulet'].includes(selectedEquippedItem.item.slot)" class="detail-row">
-              <span class="detail-label">{{ spellPowerDetailLabel(selectedEquippedItem.item) }}</span>
-              <span class="detail-value">{{ spellPowerDetailValue(selectedEquippedItem.item) }}</span>
-            </div>
-            <div v-if="(selectedEquippedItem.item.prefixes?.length || 0) + (selectedEquippedItem.item.suffixes?.length || 0) > 0" class="detail-sep-line">词缀</div>
-            <div class="affix-list">
-              <div v-for="p in (selectedEquippedItem.item.prefixes || [])" :key="'ep-' + p.id" class="affix-row">
-                <span class="affix-name">{{ formatAffixDisplayName(p.name) }}:</span>
-                <span class="affix-num">+{{ formatAffixValue(p) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(p.stat, selectedEquippedItem.item) }}</span>
-                <span class="affix-range">[{{ p.min }} - {{ p.max }}]</span>
-              </div>
-              <div v-for="s in (selectedEquippedItem.item.suffixes || [])" :key="'es-' + s.id" class="affix-row">
-                <span class="affix-name">{{ formatAffixDisplayName(s.name) }}:</span>
-                <span class="affix-num">+{{ formatAffixValue(s) }}</span>
-                <span class="affix-stat-label">{{ formatAffixStat(s.stat, selectedEquippedItem.item) }}</span>
-                <span class="affix-range">[{{ s.min }} - {{ s.max }}]</span>
-              </div>
-            </div>
-          </div>
-          <div v-if="equippedUnequipConfirming" class="item-detail-sell-confirm">
-            <span class="sell-confirm-text">卸下并移至背包？</span>
-            <div class="item-detail-actions">
-              <button class="btn" @click="confirmUnequipEquipment">确认</button>
-              <button class="btn" @click="equippedUnequipConfirming = false">取消</button>
-            </div>
-          </div>
-          <div v-else class="item-detail-actions">
-            <button class="btn" @click="equippedUnequipConfirming = true">卸下</button>
-            <button class="btn" @click="selectedEquippedItem = null; equippedUnequipConfirming = false">关闭</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <ItemDetailModal
+      v-if="selectedEquippedItem"
+      mode="detail"
+      :selected-item="selectedEquippedItem.item"
+      show-unequip
+      :inventory-item-ids="[]"
+      @close="selectedEquippedItem = null; equippedUnequipConfirming = false"
+      @unequip="confirmUnequipEquipment(); equippedUnequipConfirming = false"
+    />
 
     <Teleport to="body">
       <div v-if="selectedMonster" class="modal-overlay" @click.self="selectedMonster = null">
@@ -2694,6 +2327,7 @@ import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import ShopModal from '../components/panels/ShopModal.vue'
 import MapListModal from '../components/panels/MapListModal.vue'
 import BackpackModal from '../components/panels/BackpackModal.vue'
+import ItemDetailModal from '../components/panels/ItemDetailModal.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
 import OfflineCombatSummaryModal from '../components/OfflineCombatSummaryModal.vue'
 import {
@@ -2798,6 +2432,20 @@ import { buildCombatFloatingPushes, buildRegenBatchFloatingPushes } from '../gam
 import { formatSecondaryFormulaTip } from '../utils/formulaTip.js'
 import { buildPrimaryAttrTooltipHtml } from '../utils/primaryAttrTip.js'
 import { formatAffixStat } from '../utils/affixStatLabels.js'
+import {
+  isOffHandOrbSpellItem,
+  spellPowerDetailLabel,
+  spellPowerDetailValue,
+  formatAffixStatLinePrimary,
+  formatAffixValue,
+  formatAffixDisplayName,
+  getMainHandItem,
+  getItemInSlot,
+  getEquippedItemNameForHero,
+  getEquippedItemColorForHero,
+  getEquippedItemLevelReqForHero,
+  getSlotLabel,
+} from '../ui/itemDetailFormat.js'
 import { getGold } from '../game/gold.js'
 import { addToInventory, getInventory, sellItemOnServer, removeFromInventory, getSellPrice } from '../game/inventory.js'
 import { buyFromShopOnServer } from '../game/shop.js'
@@ -3008,78 +2656,9 @@ const TACTICS_TARGET_OPTIONS_ALLY = [
   { value: 'self', label: '自身' },
 ]
 
-/** True for off-hand orb spell stats (flat damage added after main-hand spell roll; not shields). */
-function isOffHandOrbSpellItem(item) {
-  if (!item || item.slot !== 'OffHand') return false
-  return (
-    (item.spellPower || 0) > 0 ||
-    (item.spellPowerMin != null && item.spellPowerMax != null)
-  )
-}
 
-function spellPowerDetailLabel(item) {
-  return isOffHandOrbSpellItem(item) ? '\u6cd5\u672f\u4f24\u5bb3\u589e\u52a0' : '\u6cd5\u5f3a'
-}
 
-function spellPowerDetailValue(item) {
-  if (!item) return ''
-  if (item.spellPowerMin != null && item.spellPowerMax != null) {
-    if (isOffHandOrbSpellItem(item)) {
-      return item.spellPowerMin === item.spellPowerMax
-        ? `${item.spellPowerMin} \u70b9`
-        : `${item.spellPowerMin}\u2013${item.spellPowerMax} \u70b9`
-    }
-    return `${item.spellPowerMin}-${item.spellPowerMax}`
-  }
-  const n = item.spellPower ?? 0
-  if (isOffHandOrbSpellItem(item)) return `${n} \u70b9`
-  return String(n)
-}
 
-function formatAffixStatLinePrimary(affix, item = null) {
-  if (!affix) return ''
-  const statLabel = formatAffixStat(affix.stat, item)
-  if (statLabel) return statLabel
-  return formatAffixDisplayName(affix.name)
-}
-function formatAffixValue(affix) {
-  if (!affix) return ''
-  const pctStats = new Set([
-    'physCritPct',
-    'physCritDmgPct',
-    'lifeStealPct',
-    'physDmgPct',
-    'ignoreArmorPct',
-    'spellCritPct',
-    'spellCritDmgPct',
-    'manaRefluxPct',
-    'spellDmgPct',
-    'ignoreResistPct',
-    'hitPct',
-    'dodgePct',
-    'goldFindPct',
-    'magicFindPct',
-    'physDrPct',
-    'armorPct',
-    'resistancePct',
-    'blockPct',
-    'blockDrPct',
-    'rageGenPct',
-    'maxHpPct',
-    'maxManaPct',
-    'doubleStrikePct',
-  ])
-  if (pctStats.has(affix.stat)) return `${affix.value}%`
-  if (affix.stat === 'addedMagicDmg' || affix.stat === 'arcaneFollowup') {
-    return `${affix.min}-${affix.max}`
-  }
-  return String(affix.value ?? '')
-}
-function formatAffixDisplayName(name) {
-  if (!name) return ''
-  if (name.startsWith('of ')) return name.slice(3)
-  return name
-}
 function classColor(heroClass) {
   return CLASS_COLORS[heroClass] ?? 'var(--text-muted)'
 }
@@ -3319,6 +2898,33 @@ function closeBackpackModal() {
 function handleBackpackSlotClick(item) {
   if (pendingEquipSlot.value && tryEquipFromBackpack(item)) return
   selectedItem.value = item
+}
+
+/** ItemDetailModal render mode derived from equipReplacePending / selection. */
+const itemDetailMode = computed(() => {
+  const m = equipReplacePending.value?.mode
+  if (m === 'replace_confirm') return 'replace_confirm'
+  if (m === 'equip_confirm') return 'equip_confirm'
+  return 'detail'
+})
+
+/** Inventory ids for ItemDetailModal's sell-price row. */
+const inventoryItemIds = computed(() => getInventory().map((i) => i.id))
+
+/** Close item detail and clear its orchestration state. */
+function closeItemDetail() {
+  selectedItem.value = null
+  sellConfirmingItem.value = null
+  equipReplacePending.value = null
+}
+
+/** Ring-choice selection in item detail (equipReplacePending mode ring_choice). */
+function onRingChoice(slot) {
+  const p = equipReplacePending.value
+  if (!p) return
+  confirmEquipReplace(p.item, p.hero, slot)
+  equipReplacePending.value = null
+  selectedItem.value = null
 }
 const COMBAT_PROGRESS_KEY = 'combatProgress'
 
@@ -3649,9 +3255,6 @@ async function confirmSellItem(item) {
   }
 }
 
-function getMainHandItem(hero) {
-  return hero?.equipment?.MainHand ?? hero?.equipment?.TwoHand ?? null
-}
 
 function isOffHandBlocked(hero) {
   return !!(hero?.equipment?.TwoHand)
@@ -3754,39 +3357,10 @@ function getItemTooltipLines(item) {
   return lines
 }
 
-function getItemInSlot(hero, slot) {
-  if (slot === 'MainHand') return getMainHandItem(hero)
-  return hero?.equipment?.[slot] ?? null
-}
 
-function getEquippedItemNameForHero(hero, slot) {
-  if (slot === 'MainHand') {
-    const item = getMainHandItem(hero)
-    return item ? formatItemDisplayName(item) : null
-  }
-  const item = hero?.equipment?.[slot]
-  return item ? formatItemDisplayName(item) : null
-}
 
-function getEquippedItemColorForHero(hero, slot) {
-  if (slot === 'MainHand') {
-    const item = getMainHandItem(hero)
-    return item ? getQualityColor(item.quality) : 'var(--text-muted)'
-  }
-  const item = hero?.equipment?.[slot]
-  return item ? getQualityColor(item.quality) : 'var(--text-muted)'
-}
 
-function getEquippedItemLevelReqForHero(hero, slot) {
-  const item = getItemInSlot(hero, slot)
-  return item?.levelReq ?? 0
-}
 
-function getSlotLabel(slot) {
-  if (slot === 'Ring1') return '戒指1'
-  if (slot === 'Ring2') return '戒指2'
-  return SLOT_LABELS[slot] || slot
-}
 
 function getTargetSlotForItem(item, heroInSquad) {
   const isRing = item.slot === 'Ring' || item.slot === 'Ring1' || item.slot === 'Ring2'
@@ -6849,108 +6423,6 @@ onUnmounted(() => {
 }
 .log-inv-full { color: var(--error); margin-left: 0.5rem; font-size: var(--font-sm); }
 
-.item-detail-modal .detail-value-req { color: var(--text-value); }
-.item-detail-modal .detail-value.val-gold { color: var(--color-gold); }
-.affix-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.25rem; font-size: var(--font-base); }
-.affix-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(2.5ch, max-content) minmax(0, 1fr) auto;
-  gap: 0 0.5rem;
-  align-items: baseline;
-  padding: 0.3rem 0.5rem;
-  padding-left: 1.25rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  position: relative;
-}
-.affix-row::before {
-  content: '\00B7';
-  position: absolute;
-  left: 0.4rem;
-  color: var(--text-label);
-  font-size: 1.2em;
-}
-.affix-name { color: var(--text-label); font-weight: 500; }
-.affix-num { color: var(--text-value); text-align: right; }
-.affix-stat-label { color: var(--text); }
-.affix-range { color: var(--text-muted); }
-.item-detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
-.item-detail-sell-confirm { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-.sell-confirm-text { font-size: var(--font-base); color: var(--text-muted); margin-right: 0.5rem; }
-.equip-to-section { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
-.equip-to-label { font-size: var(--font-base-sm); color: var(--text-label); flex-shrink: 0; }
-.equip-to-row { display: inline-flex; }
-.equip-replace-section { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
-.equip-replace-choices { display: flex; flex-direction: column; gap: 0.35rem; }
-.equip-replace-option { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 0.4rem 0.6rem; }
-.equip-replace-slot { font-size: var(--font-sm); color: var(--text-label); }
-.equip-replace-name { font-weight: 500; }
-.equip-replace-lvl { font-size: var(--font-s); color: var(--text-muted); }
-.equip-replace-hint { font-size: var(--font-s); color: var(--text-muted); }
-.equip-replace-actions { display: flex; gap: 0.35rem; }
-.item-compare-title { font-size: 1rem; }
-.item-compare-section { margin-top: 0.5rem; }
-.item-compare-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.item-compare-col { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
-.item-compare-label { font-size: var(--font-sm); font-weight: 600; color: var(--text-label); text-transform: uppercase; }
-.item-compare-item { font-weight: 500; }
-.item-compare-stats { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--font-base-sm); min-width: 0; }
-.item-compare-detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-.item-compare-detail-label {
-  color: var(--text-label);
-  flex: 1;
-  min-width: 0;
-}
-.item-compare-detail-value {
-  flex-shrink: 0;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-value);
-}
-.item-compare-sep {
-  margin-top: 0.15rem;
-  margin-bottom: 0.1rem;
-}
-.item-compare-affix-row {
-  align-items: flex-start;
-}
-.item-compare-affix-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-}
-.item-compare-affix-stat {
-  line-height: 1.25;
-}
-.item-compare-affix-name {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-.item-compare-affix-val {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.05rem;
-}
-.item-compare-affix-num {
-  color: var(--text-value);
-}
-.item-compare-affix-range {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-}
-.item-compare-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-@media (max-width: 860px) {
-  .item-compare-columns { grid-template-columns: 1fr; }
-}
-.equip-to-unmet { font-size: var(--font-base-sm); color: var(--text-muted); cursor: help; }
-.equip-unmet-val { color: var(--error); }
 .btn-sell { color: var(--color-gold); border-color: var(--color-gold); }
 .btn-sell:hover { background: var(--bg-gold-hover); }
 
@@ -8896,9 +8368,6 @@ onUnmounted(() => {
   height: 32rem;
   overflow-y: auto;
   flex-shrink: 0;
-}
-.item-detail-modal {
-  max-width: 36rem;
 }
 .modal-title {
   font-size: var(--font-md);
