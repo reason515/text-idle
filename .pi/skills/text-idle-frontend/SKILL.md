@@ -68,9 +68,9 @@ description: >-
 - 业务逻辑一律下沉 `game/`、`ui/`，组件内不复制实现。
 - 拆分顺序见计划 §3.2；每拆一块先跑对应 spec + 桌面全量再继续。
 
-### 拆分单块组件 checklist（ShopModal / MapListModal / BackpackModal 拆分踩坑固化的经验）
+### 拆分单块组件 checklist（ShopModal / MapListModal / BackpackModal / ItemDetailModal / MonsterDetailModal 拆分踩坑固化的经验）
 
-1. **依赖复制**：新组件 import 一律**从 MainScreen 原 import 语句复制**，不要凭记忆猜模块归属——`SHOP_QUALITY_ODDS` 实际在 `equipment.js`（不在 `shop.js`）、`MAPS` 在 `combat.js`，曾误引导致 ESM 加载失败。
+1. **依赖与常量复制**：新组件 import 与**常量键值**一律**从 MainScreen 原代码复制**，不要凭记忆猜——`SHOP_QUALITY_ODDS` 在 `equipment.js`（不在 `shop.js`）、`MAPS` 在 `combat.js`；`MONSTER_DAMAGE_TYPE_LABELS` 键是 `physical/magic/mixed`（曾猜成 phys）、tier 的 boss 是 `'BOSS'`（曾写成"首领"）均导致测试失败。**抽常量先 `git show HEAD:<file>` 看原定义**。
 2. **defineProps 必须赋值**：`const props = defineProps({...})`，组件内引用 `props.xxx`；只写 `defineProps({...})` 会在 script 里 undefined——**ShopModal 与 MapListModal 两次都栽在这里**（`squadMaxLevel is not defined` / `maps is not defined`），写完组件必须自查本条。
 3. **Teleport 单一**：新组件自带 `<Teleport to="body">`，父组件替换模板时不要再包一层 Teleport（双重 Teleport 冗余且易错）。
 4. **共享选择器拆分**：搬 scoped 样式时，`.a, .b {}` 联合选择器必须拆开（保留本组件侧），避免带走别组件样式或产生重复选择器行。
@@ -78,6 +78,8 @@ description: >-
 6. **ESM 失败症状**：import 错误会让整个路由挂掉（`.battle-screen` 都不渲染），诊断先抓 console（`does not provide an export named X`），不要只查 DOM。
 7. **展示计算 vs 业务逻辑的边界**：不修改存档/不调接口的派生（如解锁判断 `findIndex < unlockedMapCount`）放组件内；改状态/调接口/触发刷新的（如 `selectMap` 改 progress + saveProgress）留父组件。**MainScreen 本地格式化函数（如 `getItemTooltipLines`）可用 props 注入组件**，避免复制实现（渲染隔离阶段允许函数 prop）。
 8. **拆出的弹窗必须自带 `.modal-overlay` 样式**：`.modal-overlay` 的定位/z-index/背景在 MainScreen scoped 中，**不会作用到组件 Teleport 内的元素**——拆出的 overlay 无 z-index（auto）会被仍开着的其他弹窗 overlay（z-index 200+）盖住，点击被拦截（表现为 2 分钟超时）。每个弹窗组件需自带：`position:fixed; inset:0; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; z-index:200/250/300`（按层级）。
+9. **先查现有共享模块再抽新模块**：抽取函数前先 `grep -rn "export function X" frontend/src/` 确认是否已在 `game/`、`ui/`、`utils/` 存在（如 `formatMonsterPhysAtkRangeLabel` 在 damageUtils、`unitDebuffs`/`getTauntTip` 在 debuffDisplay）——已有则直接 import，只抽真正缺失的。
+10. **超大组件分步拆**：模板 >300 行或依赖函数 >15 个的弹窗（如 HeroDetailModal 455 行）不要一次拆完——先抽共享模块、再拆展示壳、最后搬 Tab，每步过 E2E；或先拆更独立的相邻组件（如 MonsterDetailModal）积累模式。
 
 ## E2E 映射（改哪块跑哪个 spec）
 
