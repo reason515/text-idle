@@ -182,6 +182,14 @@
 
 ## 阶段 2：MainScreen 组件拆分（5~7 天）
 
+> **状态：进行中（2026-08-07）**
+>
+> - 2.1 ✅ **ShopModal 已拆出** → `frontend/src/components/panels/ShopModal.vue`（401 行）：模板 + `.shop-*` scoped 样式 + `SHOP_SLOTS`/`SHOP_QUALITY_ODDS`/品质常量自举；Props（`gold`/`shopMessage`/`shopConfirmingSlot`/`squadMaxLevel`）、事件（`close`/`select-slot`/`confirm-buy`/`cancel-slot`）；业务逻辑（`confirmShopBuy`/`handleShopBuy`/金币/背包刷新）留在 MainScreen。MainScreen 净减 347 行（10,737 → 10,390）。
+> - 验证：桌面 Shop 4/5（唯一失败为既有 flake「Buy with sufficient gold」）、Inventory/Login/Register/weapon-affix 16 项全过、移动冒烟基线不变。
+>
+> **拆分踩坑（已吸取）**：① `SHOP_QUALITY_ODDS` 在 `equipment.js` 而非 `shop.js`（ESM 加载失败会让整个路由挂掉，需看 console 而非猜测）；② `defineProps` 必须赋值给变量再引用 props 字段；③ 大 edit 因输出超限可能整体未执行——改完务必 `grep` 验证 import 已落地。
+> - 下一块：MapListModal（1038-1055）→ BackpackModal（1728-1778）→ ItemDetailModal ×2。
+
 **目标**：按 §3.2 顺序完成面板级拆分，桌面零回归。
 
 | # | 任务 | 文件 | 验收 |

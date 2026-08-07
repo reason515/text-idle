@@ -76,6 +76,8 @@ npm run e2e:fast -- --grep "player-statistics"
 
 **判定失败是否既有问题**：对疑似回归，`git stash push -- <改动的文件>` 后在原代码上重跑同一测试；仍失败 = 既有环境/时序问题，`git stash pop` 恢复即可。
 
+**模块级错误先看 console**：前端改动后 `.battle-screen` 等核心元素不渲染、多个无关 spec 同时挂时，先抓 `page.on('console')`/`pageerror`（常见信号：`does not provide an export named X` 的 ESM 错误会让整个路由加载失败），不要先猜 DOM 选择器。
+
 ## 补测规范
 
 - 新增/变更行为必须同步补 `*.spec.js`（Vitest 或 Playwright），不能"只改实现不补测试"；
