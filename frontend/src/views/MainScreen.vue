@@ -2105,101 +2105,12 @@
       @unequip="confirmUnequipEquipment(); equippedUnequipConfirming = false"
     />
 
-    <Teleport to="body">
-      <div v-if="selectedMonster" class="modal-overlay" @click.self="selectedMonster = null">
-        <div class="modal-box detail-modal">
-          <div class="modal-title">
-            {{ selectedMonster.name }}
-            <span class="modal-tier-tag" :class="'tier-' + selectedMonster.tier">{{ monsterTierLabel(selectedMonster.tier) }}</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">等级</span>
-              <span class="detail-value">{{ selectedMonster.level ?? 1 }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">HP</span>
-              <span class="detail-value val-hp" :style="{ color: hpBarColor(monsterHpPct(selectedMonster)) }">{{ selectedMonster.currentHP }} / {{ selectedMonster.maxHP }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">伤害类型</span>
-              <span class="detail-value" :class="'log-' + selectedMonster.damageType">{{ monsterDamageTypeLabel(selectedMonster.damageType) }}</span>
-            </div>
-          </div>
-          <div class="detail-sep-line">战斗属性</div>
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">物攻</span>
-              <span class="detail-value">{{ formatMonsterPhysAtkRangeLabel(selectedMonster.physAtk) }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">法强</span>
-              <span class="detail-value">{{ selectedMonster.spellPower }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">敏捷</span>
-              <span class="detail-value">{{ selectedMonster.agility }}</span>
-            </div>
-          </div>
-          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-sep-line">技能</div>
-          <div v-if="selectedMonster.skill && getMonsterSkillDisplay(selectedMonster.skill).name" class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">技能</span>
-              <span class="detail-value skill-spec-tag">{{ getMonsterSkillDisplay(selectedMonster.skill).name }}</span>
-            </div>
-            <div class="detail-row skill-desc-row">
-              <span class="skill-desc-text">{{ getMonsterSkillDisplay(selectedMonster.skill).effectDesc }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">技能概率</span>
-              <span class="detail-value">{{ Math.round((selectedMonster.skillChance ?? 0) * 100) }}%</span>
-            </div>
-            <div v-if="getMonsterSkillDisplay(selectedMonster.skill).cooldown" class="detail-row">
-              <span class="detail-label">冷却</span>
-              <span class="detail-value">{{ getMonsterSkillDisplay(selectedMonster.skill).cooldown }} 回合</span>
-            </div>
-          </div>
-          <div v-if="selectedMonster.taunt" class="detail-sep-line">状态</div>
-          <div v-if="selectedMonster.taunt" class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">{{ TAUNT_DISPLAY.name }}</span>
-              <span class="detail-value">
-                <span class="tooltip-wrap has-tip">{{ getTauntDetailText(selectedMonster.taunt, tauntCasterDisplayName(selectedMonster)) }}
-                  <span class="tooltip-text">{{ TAUNT_DISPLAY.name }}：战士嘲讽后，该怪物在剩余行动次数内强制以嘲讽者为攻击目标（与仇恨无关）。{{ getTauntTip(selectedMonster.taunt) }}</span>
-                </span>
-              </span>
-            </div>
-          </div>
-          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-sep-line">减益</div>
-          <div v-if="unitDebuffs(selectedMonster).length > 0" class="detail-section">
-            <div v-for="d in unitDebuffs(selectedMonster)" :key="d.type" class="detail-row">
-              <span class="detail-label">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}</span>
-              <span class="detail-value tooltip-wrap has-tip">{{ getDebuffTip(d) }}
-                <span class="tooltip-text">{{ (DEBUFF_DISPLAY[d.type] ?? { name: d.type }).name }}: {{ getDebuffTip(d) }}</span>
-              </span>
-            </div>
-          </div>
-          <div class="detail-sep-line">防御</div>
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">护甲</span>
-              <span class="detail-value tooltip-wrap has-tip">
-                {{ getMonsterDisplayArmor(selectedMonster) }}
-                <span class="tooltip-text">{{ getMonsterArmorTooltip(selectedMonster) }}</span>
-              </span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">抗性</span>
-              <span class="detail-value tooltip-wrap has-tip">
-                {{ selectedMonster.resistance }}
-                <span class="tooltip-text">每次受击吸收 {{ selectedMonster.resistance }} 法术伤害</span>
-              </span>
-            </div>
-          </div>
-          <button class="btn" @click="selectedMonster = null">关闭</button>
-        </div>
-      </div>
-    </Teleport>
+    <MonsterDetailModal
+      v-if="selectedMonster"
+      :monster="selectedMonster"
+      :taunt-caster-name="tauntCasterDisplayName(selectedMonster)"
+      @close="selectedMonster = null"
+    />
 
     <Teleport to="body">
       <div
@@ -2293,21 +2204,6 @@ import {
   enemyL2OptionsForL1,
 } from '../game/tacticsTargetUi.js'
 
-function getMonsterDisplayArmor(unit) {
-  return Math.max(0, getEffectiveArmor(unit))
-}
-function getMonsterArmorTooltip(unit) {
-  const effective = getMonsterDisplayArmor(unit)
-  const debuffs = unitDebuffs(unit)
-  const totalReduction = debuffs
-    .filter((d) => d.armorReduction != null)
-    .reduce((sum, d) => sum + d.armorReduction, 0)
-  if (totalReduction > 0) {
-    const base = (unit.armor || 0)
-    return `\u57fa\u7840 ${base}\uff0c\u964d\u4f4e ${totalReduction}\uff0c\u6709\u6548 ${effective}\uff08\u6700\u4f4e 0\uff09`
-  }
-  return `\u6bcf\u6b21\u53d7\u51fb\u5438\u6536 ${effective} \u7269\u7406\u4f24\u5bb3`
-}
 import {
   heroClassHasSkillDetailPanel,
   getHeroSkillDisplay,
@@ -2328,6 +2224,7 @@ import ShopModal from '../components/panels/ShopModal.vue'
 import MapListModal from '../components/panels/MapListModal.vue'
 import BackpackModal from '../components/panels/BackpackModal.vue'
 import ItemDetailModal from '../components/panels/ItemDetailModal.vue'
+import MonsterDetailModal from '../components/panels/MonsterDetailModal.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
 import OfflineCombatSummaryModal from '../components/OfflineCombatSummaryModal.vue'
 import {
@@ -2468,6 +2365,14 @@ import {
   weaponMechanicLines,
 } from '../game/battleLogFormat.js'
 import { formatMonsterPhysAtkRangeLabel } from '../game/damageUtils.js'
+import {
+  monsterTierLabel,
+  monsterDamageTypeLabel,
+  monsterHpPct,
+  getMonsterSkillDisplay,
+  getMonsterDisplayArmor,
+  getMonsterArmorTooltip,
+} from '../ui/monsterDetailFormat.js'
 import { unitIdMatches } from '../utils/unitId.js'
 import {
   buildDisplayHeroesFromSquad,
@@ -2601,17 +2506,7 @@ const MONSTER_TIER_COLORS = {
   boss: 'var(--color-boss)',
 }
 
-const MONSTER_TIER_LABELS = {
-  normal: '\u666e\u901a',
-  elite: '\u7cbe\u82f1',
-  boss: 'BOSS',
-}
 
-const MONSTER_DAMAGE_TYPE_LABELS = {
-  physical: '\u7269\u7406',
-  magic: '\u6cd5\u672f',
-  mixed: '\u6df7\u5408',
-}
 
 const TACTICS_CONDITION_TARGETS = [
   { id: 'enemy', label: '敌方' },
@@ -2670,12 +2565,6 @@ function getClassInfo(heroClass) {
 }
 function monsterTierColor(tier) {
   return MONSTER_TIER_COLORS[tier] || 'var(--color-normal)'
-}
-function monsterTierLabel(tier) {
-  return MONSTER_TIER_LABELS[tier] ?? tier
-}
-function monsterDamageTypeLabel(damageType) {
-  return MONSTER_DAMAGE_TYPE_LABELS[damageType] ?? damageType
 }
 function resourceLabel(heroClass) {
   return (RESOURCE_MAP[heroClass] ?? DEFAULT_RESOURCE).label
@@ -3498,10 +3387,6 @@ function xpRequiredFor(hero) {
 function mpPct(hero) {
   if (!hero.maxMP) return 100
   return Math.max(0, Math.round((hero.currentMP / hero.maxMP) * 100))
-}
-function monsterHpPct(m) {
-  if (!m.maxHP) return 100
-  return Math.max(0, Math.round((m.currentHP / m.maxHP) * 100))
 }
 
 function addLogEntry(entry) {
@@ -4362,9 +4247,6 @@ function hideFormulaTooltip() {
   formulaTooltip.value = null
 }
 
-function getMonsterSkillDisplay(skillId) {
-  return getMonsterSkillById(skillId) ?? { name: '', effectDesc: '', cooldown: 0 }
-}
 
 function confirmShopBuy(slotId) {
   void handleShopBuy(slotId)
