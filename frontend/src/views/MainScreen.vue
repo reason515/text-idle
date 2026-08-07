@@ -931,28 +931,14 @@
       @cancel-slot="shopConfirmingSlot = null"
     />
 
-    <Teleport to="body">
-      <div v-if="showMapModal" class="modal-overlay" @click.self="showMapModal = false">
-        <div class="modal-box">
-          <div class="modal-title">选择地图</div>
-          <div class="map-list-modal">
-            <button
-              v-for="map in MAPS"
-              :key="map.id"
-              class="map-item"
-              :class="{ selected: map.id === progress.currentMapId, locked: !isMapUnlocked(map.id) }"
-              :disabled="!isMapUnlocked(map.id)"
-              @click="selectMap(map.id)"
-            >
-              <span>{{ map.name }}</span>
-              <span v-if="!isMapUnlocked(map.id)" class="locked-tag">未解锁</span>
-              <span v-else-if="map.id === progress.currentMapId" class="current-tag">当前</span>
-            </button>
-          </div>
-          <button class="btn" @click="showMapModal = false">关闭</button>
-        </div>
-      </div>
-    </Teleport>
+    <MapListModal
+      v-if="showMapModal"
+      :maps="MAPS"
+      :current-map-id="progress.currentMapId"
+      :unlocked-map-count="progress.unlockedMapCount"
+      @close="showMapModal = false"
+      @select-map="selectMap"
+    />
 
     <Teleport to="body">
       <div
@@ -2745,6 +2731,7 @@ import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillE
 import { getSkillEnhancementLadder } from '../game/skillEnhancementLadder.js'
 import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import ShopModal from '../components/panels/ShopModal.vue'
+import MapListModal from '../components/panels/MapListModal.vue'
 import VersionInfoModal from '../components/VersionInfoModal.vue'
 import OfflineCombatSummaryModal from '../components/OfflineCombatSummaryModal.vue'
 import {
@@ -9093,31 +9080,6 @@ onUnmounted(() => {
   border: 1px solid currentColor;
 }
 
-.map-list-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
-}
-.map-item {
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: inherit;
-  font-size: var(--font-base);
-  padding: 0.45rem 0.65rem;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
-  width: 100%;
-}
-.map-item.selected { border-color: var(--accent); color: var(--accent); }
-.map-item.locked { opacity: 0.45; cursor: not-allowed; }
-.map-item:not(.locked):hover { background: var(--bg-hover); }
-.locked-tag { color: var(--text-muted); font-size: var(--font-s); }
-.current-tag { color: var(--accent); font-size: var(--font-s); }
 
 /* Hero detail tabs */
 .detail-tabs {
