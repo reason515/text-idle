@@ -189,6 +189,7 @@
 >
 > **拆分踩坑（已吸取）**：① `SHOP_QUALITY_ODDS` 在 `equipment.js` 而非 `shop.js`（ESM 加载失败会让整个路由挂掉，需看 console 而非猜测）；② `defineProps` 必须赋值给变量再引用 props 字段；③ 大 edit 因输出超限可能整体未执行——改完务必 `grep` 验证 import 已落地。
 > - 下一块：MapListModal（1038-1055）→ BackpackModal（1728-1778）→ ItemDetailModal ×2。
+> - 2.1 ✅ **MapListModal 已拆出** → `frontend/src/components/panels/MapListModal.vue`（68 行）：Props（`maps`/`currentMapId`/`unlockedMapCount`）、事件（`close`/`select-map`）；解锁判断为纯展示计算（`findIndex < unlockedMapCount`）组件内自实现；`selectMap`（改 progress + saveProgress）留在 MainScreen。MainScreen 再减 38 行（10,390 → 10,352）。验证：map modal spec 通过、Combat Flow/Login/Register 34 项全过（login AC1 为库累积）、移动冒烟基线不变。
 
 **目标**：按 §3.2 顺序完成面板级拆分，桌面零回归。
 

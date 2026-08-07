@@ -68,14 +68,15 @@ description: >-
 - 业务逻辑一律下沉 `game/`、`ui/`，组件内不复制实现。
 - 拆分顺序见计划 §3.2；每拆一块先跑对应 spec + 桌面全量再继续。
 
-### 拆分单块组件 checklist（ShopModal 拆分踩坑固化的经验）
+### 拆分单块组件 checklist（ShopModal / MapListModal 拆分踩坑固化的经验）
 
-1. **依赖复制**：新组件 import 一律**从 MainScreen 原 import 语句复制**，不要凭记忆猜模块归属——`SHOP_QUALITY_ODDS` 实际在 `equipment.js`（不在 `shop.js`），曾误引导致 ESM 加载失败。
-2. **defineProps 必须赋值**：`const props = defineProps({...})`，组件内引用 `props.xxx`；只写 `defineProps({...})` 会在 script 里 undefined。
+1. **依赖复制**：新组件 import 一律**从 MainScreen 原 import 语句复制**，不要凭记忆猜模块归属——`SHOP_QUALITY_ODDS` 实际在 `equipment.js`（不在 `shop.js`）、`MAPS` 在 `combat.js`，曾误引导致 ESM 加载失败。
+2. **defineProps 必须赋值**：`const props = defineProps({...})`，组件内引用 `props.xxx`；只写 `defineProps({...})` 会在 script 里 undefined——**ShopModal 与 MapListModal 两次都栽在这里**（`squadMaxLevel is not defined` / `maps is not defined`），写完组件必须自查本条。
 3. **Teleport 单一**：新组件自带 `<Teleport to="body">`，父组件替换模板时不要再包一层 Teleport（双重 Teleport 冗余且易错）。
 4. **共享选择器拆分**：搬 scoped 样式时，`.a, .b {}` 联合选择器必须拆开（保留本组件侧），避免带走别组件样式或产生重复选择器行。
-5. **改后验证**：大 edit 可能因输出超限**整体未执行**——拆完必须 `grep` 确认：import 已落地、模板组件标签/事件完整、无残留旧代码。
+5. **大范围模板替换用 node 脚本**：行区间 splice 比大块 edit 可靠（edit 可能因输出超限**整体未执行**）；改完仍须 `grep` 验证：import 已落地、模板组件标签/事件完整、无残留旧代码。
 6. **ESM 失败症状**：import 错误会让整个路由挂掉（`.battle-screen` 都不渲染），诊断先抓 console（`does not provide an export named X`），不要只查 DOM。
+7. **展示计算 vs 业务逻辑的边界**：不修改存档/不调接口的派生（如解锁判断 `findIndex < unlockedMapCount`）放组件内；改状态/调接口/触发刷新的（如 `selectMap` 改 progress + saveProgress）留父组件。
 
 ## E2E 映射（改哪块跑哪个 spec）
 
