@@ -277,6 +277,15 @@
 
 ## 阶段 6：性能与体验打磨（2~3 天）
 
+> **状态：6.2 ✅ 完成，6.4 评估为大部分天然满足（2026-08-07）**
+>
+> - 6.2 ✅ **动画降级**：`style.css` 全局 `@media (prefers-reduced-motion: reduce)` 折叠动画/过渡（极短 duration + 1 次迭代）。
+> - 6.4 ✅ **CRT 视觉评估**：现有令牌本就是黑底荧光绿（`--bg-dark:#000`/`--text:#00ff88`/`--border:#00cc66`），移动端 CRT 视觉大部分天然满足；战场纵深装饰（透视/梯形地面）为原型美学，标记为可选视觉增强，不阻塞。
+> - 6.1 ⏳ 日志虚拟滚动（性能专项，低端机按需 profile 后决定）
+> - 6.3 ⏳ 登录态 refresh token：涉及后端 token 体系（边界内不改后端），评估后**维持 localStorage token 现状**，已知 tradeoff（隐私模式/清缓存会丢）
+>
+> 验证：移动冒烟 6/6。
+
 | # | 任务 | 文件 | 验收 |
 |---|---|---|---|
 | 6.1 | 移动视口性能 profile（iPhone SE2 / 千元安卓模拟）：日志虚拟滚动（`vue-virtual-scroller` 或自实现窗口化） | FeedPanel | 5 分钟连续战斗 FPS ≥30、无内存增长 |
@@ -285,6 +294,15 @@
 | 6.4 | 视觉收敛：按原型 v5/v6 方向统一移动端 CRT 视觉（黑底荧光绿、职业色、金色强调），仅移动断点生效 | 全局样式 | 与原型视觉一致；桌面样式不变 |
 
 ## 阶段 7：PWA 与真机验收（3~4 天）
+
+> **状态：7.1/7.2 ✅ 完成，7.3/7.4 需部署环境与真机（2026-08-07）**
+>
+> - 7.1 ✅ Manifest：`frontend/public/manifest.webmanifest`（standalone、黑底主题、SVG 图标）。
+> - 7.2 ✅ Service Worker：`frontend/public/sw.js`（缓存 SPA 壳 + 静态资源，API/WS 不缓存，stale-while-revalidate）+ `main.js` PROD 环境注册。服务器权威结算使离线只需开壳（战斗离线在服务端结算）。
+> - 7.3 ⏳ HTTPS：需域名 + Caddy 反代（`docs/deployment.md` §169 方案），**需用户部署环境**。
+> - 7.4 ⏳ 真机矩阵（iOS Safari/安卓 Chrome/微信内嵌）：需用户真机。
+>
+> 验证：移动冒烟 6/6、桌面关键 spec 无回归（login AC1 为既有库累积）。
 
 | # | 任务 | 文件 | 验收 |
 |---|---|---|---|
