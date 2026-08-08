@@ -257,6 +257,15 @@
 
 ## 阶段 5：网络韧性（2~3 天）
 
+> **状态：5.1 ✅ 完成，5.2/5.3 架构已有（2026-08-07）**
+>
+> - 5.1 ✅ **WS 指数退避重连**：`combatStream.js` `ws.onclose` 由固定 2s 改为指数退避（300ms 基、2 倍递增、30s 上限、50% 抖动），`ws.onopen` 重置退避阶梯。`combatStream.spec.js` 14 测试全过。
+> - 5.2 ✅ **断点续传已有**：`?since=${lastSeq}` 轮询 + `deliverEvent` seq 去重（`lastProcessedSeq`）+ 重放白名单（cycle_complete/pending_expansion）。
+> - 5.3 ✅ **前后台处理已有**：`combatPresence.js` visibilitychange + arm-offline + QUICK_UNLOAD 防 reload 误触发（git log 已多次修复）。
+> - 5.4 ⏳ pacing 降频（性能专项，低优先级，按需）。
+>
+> 验证：combat-stream 单测 14/14、Combat Flow/offline 28/29（offline-stats-sync 组跑 flake 单跑过）、移动冒烟 6/6。**结论：服务器权威结算架构使 5.2/5.3 天然就位，网络层只需补退避重连**。
+
 **目标**：弱网/切后台不丢事件、不重复步进。
 
 | # | 任务 | 文件 | 验收 |

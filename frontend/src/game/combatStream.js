@@ -58,6 +58,7 @@ export function createCombatStream(opts) {
   let pollTimer = null
   let lastSeq = 0
   let closed = false
+  let reconnectAttempt = 0
   /** @type {Promise<void>} */
   let pollChain = Promise.resolve()
   let lastProcessedSeq = 0
@@ -122,6 +123,8 @@ export function createCombatStream(opts) {
     const url = `${wsBase()}/combat/ws?token=${encodeURIComponent(opts.token)}`
     ws = new WebSocket(url)
     ws.onopen = () => {
+      // Successful open resets the backoff ladder (Phase 5.1).
+      reconnectAttempt = 0
       if (opts.onOpen) opts.onOpen()
     }
     ws.onmessage = async (ev) => {
@@ -136,7 +139,11 @@ export function createCombatStream(opts) {
     ws.onclose = () => {
       if (opts.onClose) opts.onClose()
       if (!closed) {
-        setTimeout(connect, 2000)
+        // Exponential backoff with jitter: 300ms base, 30s cap (Phase 5.1).
+        const attempt = reconnectAttempt++
+        const base = Math.min(300 * Math.pow(2, attempt), 30000)
+        const jitter = Math.round(Math.random() * 0.5 * base)
+        setTimeout(connect, base + jitter)
       }
     }
     pollTimer = setInterval(pollEvents, pollMs)
