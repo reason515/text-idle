@@ -100,3 +100,11 @@ router.onError((err) => {
 })
 
 createApp(App).use(router).mount('#app')
+
+// Phase 7.2: register service worker for the PWA shell (production only —
+// Vite dev server serves sw.js from public/, but registration stays opt-in).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* no-op */ })
+  })
+}
