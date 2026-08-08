@@ -211,6 +211,18 @@
 
 ## 阶段 3：主战场移动端布局（3~4 天）
 
+> **状态：✅ 核心完成（2026-08-07）**
+>
+> - 3.1 ✅ **战场纵向堆叠**：移动断点内 `.battle-arena` 用 `display: contents` 扁平化，`.battle-content` 改 flex column；顺序 **敌方上（order 1）/ 日志中（order 2，主滚动区）/ 我方下（order 3）**；VS 分隔隐藏；`.battle-screen` 去负 margin。**溢出钉子全部转正式断言通过**（390/375/430 无溢出）。
+> - 3.2 ✅ **卡片精简**：英雄/怪物卡移动端紧凑（字号/间距），小屏隐藏 XP 条。
+> - 3.3 ✅ **底部 Tab 导航**：新建 `frontend/src/components/MobileTabBar.vue`（远征/整备/洞见/档案 + safe-area），移动端**隐藏 command-deck**（收纳进 Tab）；整备→背包、洞见→统计、档案→音效、远征→滚回顶部。移动冒烟改为 Tab 驱动（gear/insight）。
+> - 3.4 ✅ **顶栏压缩**：地图 + 探索进度单行，隐藏 label 文字。
+> - 3.5 ⏳ 日志格式移动端精调（可后续）。
+>
+> **验证**：mobile-chrome 与 mobile-chrome-xl **6/6 全绿**（含 3 个真实溢出断言）；桌面 41/41 无回归。**阶段 0 的 shop 遮挡红线已随 command-deck 收纳消除**。
+>
+> **经验**：① 跨列重排（敌方上/日志中/我方下）用 `display: contents` 扁平化 grid 容器，让子项参与外层 flex + order，避免改 DOM；② scoped 样式不跨组件——组件的响应式显隐（如 TabBar display）必须在**组件内** @media 实现，父组件无法用 scoped 选择器匹配子组件内部元素；③ 移动冒烟从 command-deck 改为 Tab 驱动时同步更新测试选择器。
+
 **目标**：375~430px 下战场纵向堆叠可玩，对齐原型布局方向。
 
 | # | 任务 | 文件 | 验收 |
