@@ -78,6 +78,8 @@ npm run e2e:fast -- --grep "player-statistics"
 
 **判定失败是否既有问题**：对疑似回归，`git stash push -- <改动的文件>` 后在原代码上重跑同一测试；仍失败 = 既有环境/时序问题，`git stash pop` 恢复即可。
 
+**全量回归失败分类法（阶段 8 规模化应用）**：全量回归后把失败逐条分类——① 单独跑通过 = 并发 flake；② `git stash` 验证原始代码也失败 = 既有环境问题；③ 阶段基线（如阶段 0 记录）已存在的失败 = 既有问题；④ 只有改动后新出现的且原始代码通过 = 真回归。四类中前三类不阻塞，第四类必须修。记录到 17-mobile-adaptation-plan 的阶段状态，便于后续对照。
+
 **模块级错误先看 console**：前端改动后 `.battle-screen` 等核心元素不渲染、多个无关 spec 同时挂时，先抓 `page.on('console')`/`pageerror`（常见信号：`does not provide an export named X` 的 ESM 错误会让整个路由加载失败），不要先猜 DOM 选择器。
 
 ## 补测规范
