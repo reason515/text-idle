@@ -79,8 +79,15 @@ description: >-
 3. 触控目标抽查：关键按钮 ≥44px；
 4. 真机差异点记录：iOS 文本缩放、键盘顶起、滚动惯性（写入本文档或版本说明）。
 
-## 已知移动端红线（阶段 3 修复，当前 `mobile-smoke.spec.js` 红线来源）
+## 已知移动端红线（阶段 3/4 已完成，状态更新）
 
-- **command-deck 遮挡**：`data-testid="player-stats-efficiency"`（战斗统计卡片）内部的 `/100步` 元素在 375~430px 下覆盖「商店」按钮，点击被拦截 → shop 冒烟用例保持红色。修复：阶段 3 将 command deck 收纳进底部 Tab。
-- **battle-arena 横向溢出**：三栏 grid 最小 ≥720px，移动视口溢出（溢出钉子已检测）。修复：阶段 3 改纵向堆叠（敌方上/日志中/我方下）。
-- **溢出检测方法**：用 `getBoundingClientRect` 检查元素右边缘，`scrollWidth` 会被 `overflow:hidden` 裁剪漏报（参考 `mobile-smoke.spec.js` 钉子写法）。
+- ✅ **command-deck 遮挡**：阶段 3.3 已将 command deck 收纳进底部 Tab（MobileTabBar），遮挡消除。
+- ✅ **battle-arena 横向溢出**：阶段 3.1 改纵向堆叠（敌方上/日志中/我方下，`display: contents` 扁平化 + flex order），溢出钉子已转正式断言通过。
+- ✅ **弹窗 BottomSheet 化**：阶段 4.1/4.2 全局 `style.css` 移动断点内 `!important` 覆盖（`align-items: flex-end` + `width:100vw` + 顶部圆角），覆盖所有已拆/未拆弹窗。
+- **溢出检测方法**：用 `getBoundingClientRect` 检查元素右边缘，`scrollWidth` 会被 `overflow:hidden` 裁剪漏报（参考 `mobile-smoke.spec.js` 断言写法）。
+
+## 移动端层级与 scoped 经验（阶段 3/4 踩坑）
+
+- **z-index 层级**：底部 TabBar `z-index: 1500`；弹窗 BottomSheet 必须更高（`1600`）——否则 TabBar 盖住抽屉底部按钮（点击被拦截）。
+- **scoped 样式不跨组件**：父组件无法用 scoped 选择器匹配子组件内部元素——组件的响应式显隐（如 TabBar `display`）必须在**组件内** `@media` 实现。
+- **全局覆盖组件 scoped 用 `!important`**（特异性不足）。

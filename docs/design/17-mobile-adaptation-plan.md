@@ -235,6 +235,16 @@
 
 ## 阶段 4：弹窗触屏化与复杂交互（3~5 天）
 
+> **状态：4.1/4.2 ✅ 完成（2026-08-07）**
+>
+> - 4.1/4.2 ✅ **弹窗统一 BottomSheet 化**：`style.css` 移动断点内全局覆盖——`.modal-overlay { align-items: flex-end !important; z-index: 1600 !important }` + `.modal-box { width: 100vw !important; max-height: 88vh; border-radius: 14px 14px 0 0 !important }`。**覆盖所有已拆/未拆弹窗**（组件 scoped 样式被全局 !important 压过）。实测：抽屉底部对齐 844、全宽 390、圆角生效。
+> - 验证：移动冒烟 6/6 全绿、桌面 38/40（combat-flow:32 单跑过为并发 flake、shop flake、login 库累积均既有）。
+> - 4.3 ⏳ hover→触屏 tooltip（35 处，需全局改造）
+> - 4.4 ⏳ 词缀对比窄屏降级（`.item-compare-columns` 已在 860 断点内 1fr，基本完成）
+> - 4.5 ⏳ AI 战术编辑器移动端"模板 + 微调"
+>
+> **经验**：① 全局 CSS 无法覆盖组件 scoped 样式（特异性低）——必须 `!important` 或逐组件改；② **Windows CRLF 下 node 脚本的字符串 marker 替换会静默失败**（`\n` 不匹配 `\r\n`），改 style.css 等文件用 edit 工具或先确认换行符；③ 移动端底部抽屉的 z-index 必须高于底部 TabBar（1500）——否则 TabBar 盖住抽屉底部按钮。
+
 **目标**：全部 12 处 Modal 在移动端以底部抽屉呈现，hover 交互全部可触控。
 
 | # | 任务 | 文件 | 验收 |

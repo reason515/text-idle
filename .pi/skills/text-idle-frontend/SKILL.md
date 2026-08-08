@@ -119,3 +119,7 @@ description: >-
 3. 格式：`git diff --check` 无空白错误。
 4. 定点 E2E：按上表选 spec，`npm run e2e:fast -- --grep "<关键字>"`（详见 `text-idle-e2e`）。
 5. 拆分/布局大改：桌面全量 `npm run e2e` 全绿后才算完成。
+
+**Windows CRLF 陷阱（重要）**：node 脚本用 `String.replace(old, new)` 修改文件时，marker 字符串含 `\n` 在 CRLF（`\r\n`）文件中**不匹配会静默失败**（不报错、返回原字符串）——表现为规则没加上却以为成功了。改 `style.css` 等 Windows 行尾文件：① 优先用 edit 工具；② 用 node 脚本则先 `comp.includes(marker)` 断言存在；③ 改完必须 `grep` 确认新规则已落地。
+
+**全局 CSS 覆盖组件 scoped 必须 `!important`**：`style.css` 的全局选择器特异性（0,1,0）低于组件 scoped（`.x[data-v-*]`，0,1,1）——要覆盖弹窗/组件内部样式（如移动断点内 BottomSheet 化）必须加 `!important`。
