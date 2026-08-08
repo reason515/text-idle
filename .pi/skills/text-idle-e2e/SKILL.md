@@ -74,6 +74,8 @@ npm run e2e:fast -- --grep "player-statistics"
 
 **库累积陷阱**：`login.spec.js` AC1 使用固定队名 "Test Team"（`intro.spec.js` 等也可能用固定队名），多次跑测后 e2e.db 残留同名账号 → intro 第 2 步唯一性验证卡住。出现此类超时先重置库重跑，不要改代码。
 
+**409 debug/save 冲突**：`debug save failed: 409` 也是库状态问题（上次失败运行残留导致服务端写入冲突），重置库即恢复；「post a message」等留言/排行榜测试偶发。
+
 **判定失败是否既有问题**：对疑似回归，`git stash push -- <改动的文件>` 后在原代码上重跑同一测试；仍失败 = 既有环境/时序问题，`git stash pop` 恢复即可。
 
 **模块级错误先看 console**：前端改动后 `.battle-screen` 等核心元素不渲染、多个无关 spec 同时挂时，先抓 `page.on('console')`/`pageerror`（常见信号：`does not provide an export named X` 的 ESM 错误会让整个路由加载失败），不要先猜 DOM 选择器。

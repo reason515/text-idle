@@ -80,6 +80,9 @@ description: >-
 8. **拆出的弹窗必须自带 `.modal-overlay` 样式**：`.modal-overlay` 的定位/z-index/背景在 MainScreen scoped 中，**不会作用到组件 Teleport 内的元素**——拆出的 overlay 无 z-index（auto）会被仍开着的其他弹窗 overlay（z-index 200+）盖住，点击被拦截（表现为 2 分钟超时）。每个弹窗组件需自带：`position:fixed; inset:0; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; z-index:200/250/300`（按层级）。
 9. **先查现有共享模块再抽新模块**：抽取函数前先 `grep -rn "export function X" frontend/src/` 确认是否已在 `game/`、`ui/`、`utils/` 存在（如 `formatMonsterPhysAtkRangeLabel` 在 damageUtils、`unitDebuffs`/`getTauntTip` 在 debuffDisplay）——已有则直接 import，只抽真正缺失的。
 10. **超大组件分步拆**：模板 >300 行或依赖函数 >15 个的弹窗（如 HeroDetailModal 455 行）不要一次拆完——先抽共享模块、再拆展示壳、最后搬 Tab，每步过 E2E；或先拆更独立的相邻组件（如 MonsterDetailModal）积累模式。
+11. **手工写组件模板的函数名必须与 script 一致**：模板引用 `formatValue`/`formatRank` 而 script import 的是 `formatLeaderboardValue`/`formatLeaderboardRank` 会渲染报错（`_ctx.formatValue is not a function`）——手写模板后用 `grep` 核对所有模板调用名与 script 定义/import 别名一致。
+12. **模板替换后检查 div 平衡**：删除/替换模板块后，残留的 `<div>` 开头或缺失的 `</div>` 会导致 `Element is missing end tag`（无 console 错误但页面 500）——用 node 脚本统计目标区域内 `<div` vs `</div>` 计数，或直接看替换边界的行结构。
+13. **自包含面板组件模式**：非弹窗的面板（留言板/排行榜等，局部状态 + API）用 `:active` prop + `watch(active)` 触发首次加载，父只保留 Tab 切换；组件内自包含状态与 API 调用（不违反"业务下沉 game/"——API 模块在 `game/`，组件只是调用）。
 
 ## E2E 映射（改哪块跑哪个 spec）
 
