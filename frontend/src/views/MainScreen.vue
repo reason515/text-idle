@@ -687,6 +687,13 @@
       </aside>
     </div>
 
+    <MobileTabBar
+      class="mobile-tab-bar-host"
+      @expedition="scrollBattleToTop"
+      @gear="showBackpackModal = true"
+      @insight="showPlayerStatsModal = true"
+      @archive="openAudioSettingsModal"
+    />
     <div class="command-deck" aria-label="资源、统计与功能">
       <div class="command-resource-card">
         <span class="command-label">资源</span>
@@ -1551,6 +1558,7 @@ import { MAX_SKILL_ENHANCE_COUNT, MAX_SKILL_DISPLAY_LEVEL } from '../game/skillE
 import { getSkillEnhancementLadder } from '../game/skillEnhancementLadder.js'
 import SkillChoicePanel from '../components/SkillChoicePanel.vue'
 import ShopModal from '../components/panels/ShopModal.vue'
+import MobileTabBar from '../components/MobileTabBar.vue'
 import MapListModal from '../components/panels/MapListModal.vue'
 import BackpackModal from '../components/panels/BackpackModal.vue'
 import ItemDetailModal from '../components/panels/ItemDetailModal.vue'
@@ -2071,6 +2079,12 @@ const shopMessage = ref(null)
 const shopConfirmingSlot = ref(null)
 
 /** Close shop modal and reset its transient state (message + pending slot). */
+function scrollBattleToTop() {
+  const el = document.querySelector('.battle-content')
+  if (el) el.scrollTop = 0
+  else window.scrollTo(0, 0)
+}
+
 function closeShopModal() {
   showShopModal.value = false
   shopMessage.value = null
@@ -7847,5 +7861,131 @@ label.audio-setting-label {
 .recruit-prompt-actions .btn-secondary:hover {
   background: var(--bg-hover);
   color: var(--text);
+}
+
+/* ---- Phase 3: mobile vertical battlefield (enemies top / log middle / party bottom) ---- */
+@media (max-width: 860px) {
+  .battle-screen {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow-y: auto;
+  }
+  .battle-content {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+  /* Flatten the 3-column arena so its children join the column flex; VS divider hidden. */
+  .battle-arena {
+    display: contents;
+  }
+  .monsters-col {
+    order: 1;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    flex: 0 0 auto;
+    border-right: none;
+    border-bottom: 3px solid var(--color-defeat);
+  }
+  .arena-vs {
+    display: none;
+  }
+  .feed-panel {
+    order: 2;
+    flex: 1 1 auto;
+    min-height: 10rem;
+    border-left: none;
+  }
+  .squad-col {
+    order: 3;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    flex: 0 0 auto;
+    border-left: none;
+    border-top: 3px solid var(--accent);
+  }
+
+  /* Phase 3.2: compact unit cards on small screens */
+  .squad-list,
+  .monster-list {
+    gap: 0.4rem;
+  }
+  .hero-card,
+  .monster-card {
+    padding: 0.4rem 0.45rem;
+  }
+  .hero-card .card-top,
+  .monster-card .card-top {
+    gap: 0.3rem;
+  }
+  .hero-name,
+  .monster-name {
+    font-size: var(--font-sm);
+  }
+  .card-role,
+  .monster-level,
+  .monster-tier {
+    font-size: var(--font-xs);
+  }
+  .bar-row {
+    margin-top: 0.25rem;
+  }
+  .hero-card .xp-row {
+    display: none;
+  }
+  .status-effects-row {
+    gap: 0.2rem;
+  }
+  .recruit-btn {
+    width: 100%;
+  }
+
+  /* Phase 3.3: command deck folds into the bottom tab bar */
+  .command-deck {
+    display: none;
+  }
+  .mobile-tab-bar {
+    display: flex !important;
+  }
+  .battle-screen {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  /* Phase 3.4: compact top bar (map + progress on one line) */
+  .top-bar {
+    padding: 0.35rem 0.5rem;
+    gap: 0.4rem;
+  }
+  .topbar-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .topbar-section {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+  }
+  .topbar-progress-section {
+    flex: 1;
+    min-width: 0;
+  }
+  .progress-header {
+    display: none;
+  }
+  .explore-bar-wrap {
+    flex: 1;
+  }
+  .topbar-label {
+    display: none;
+  }
+  .map-btn {
+    font-size: var(--font-sm);
+  }
 }
 </style>

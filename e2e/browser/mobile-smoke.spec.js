@@ -34,30 +34,25 @@ test.describe('Mobile smoke (Phase 0 baseline)', () => {
     await expect(page.locator('.log-list')).toBeVisible()
   })
 
-  test('shop and inventory modals open and close', async ({ page }) => {
+  test('gear tab opens inventory modal', async ({ page }) => {
     await openMainMobile(page, uniqueTestEmail('mob-modal'))
 
-    await page.locator('.shop-btn').click()
-    await expect(page.locator('.shop-modal')).toBeVisible()
-    await page.locator('.shop-close-btn').click()
-    await expect(page.locator('.shop-modal')).toBeHidden()
-
-    await page.locator('.backpack-btn').click()
+    await page.getByTestId('tab-gear').click()
     await expect(page.locator('.inventory-modal')).toBeVisible()
+    await page.getByTestId('backpack-close').click()
+    await expect(page.locator('.inventory-modal')).toBeHidden()
   })
 
-  test('player stats modal opens', async ({ page }) => {
+  test('insight tab opens player stats modal', async ({ page }) => {
     await openMainMobile(page, uniqueTestEmail('mob-stats'))
 
-    await page.locator('[data-testid="player-stats-efficiency"]').click()
+    await page.getByTestId('tab-insight').click()
     await expect(page.locator('.player-stats-modal')).toBeVisible()
   })
 
-  // ---- 布局/溢出钉子：阶段 3 前预期失败（带参 test.fail 只标记单个测试）----
-  // 注意：documentElement.scrollWidth 会被外层 overflow:hidden 裁剪而漏报；
-  // 改用 getBoundingClientRect 检测元素右边缘超出视口（裁剪不影响布局尺寸）。
+  // ---- 布局/溢出：阶段 3 已落地纵向布局，钉子转为正式断言 ----
 
-  test.fail('390px: no horizontal overflow (pin — remove test.fail when Phase 3 lands)', async ({ page }) => {
+  test('390px: no horizontal overflow ', async ({ page }) => {
     await openMainMobile(page, uniqueTestEmail('mob-over-390'))
     const overflowCount = await page.evaluate(() => {
       const vw = window.innerWidth
@@ -71,7 +66,7 @@ test.describe('Mobile smoke (Phase 0 baseline)', () => {
     expect(overflowCount).toBe(0)
   })
 
-  test.fail('375px: no horizontal overflow (pin — remove test.fail when Phase 3 lands)', async ({ page }) => {
+  test('375px: no horizontal overflow ', async ({ page }) => {
     await openMainMobile(page, uniqueTestEmail('mob-over-375'), 375, 667)
     const overflowCount = await page.evaluate(() => {
       const vw = window.innerWidth
@@ -85,7 +80,7 @@ test.describe('Mobile smoke (Phase 0 baseline)', () => {
     expect(overflowCount).toBe(0)
   })
 
-  test.fail('430px: no horizontal overflow (pin — remove test.fail when Phase 3 lands)', async ({ page }) => {
+  test('430px: no horizontal overflow ', async ({ page }) => {
     await openMainMobile(page, uniqueTestEmail('mob-over-430'), 430, 932)
     const overflowCount = await page.evaluate(() => {
       const vw = window.innerWidth
