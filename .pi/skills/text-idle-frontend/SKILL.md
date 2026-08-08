@@ -22,6 +22,7 @@ description: >-
 2. **桌面不回归**：1920×1080 桌面体验与既有 Playwright E2E 必须保持通过。
 3. **不得重复实现**：`frontend/src/game/`、`frontend/src/ui/` 已有逻辑一律 import 复用，禁止在组件内复制实现。
 4. **数据演示标注**：任何硬编码演示数值（原型/静态页）必须注明"演示值"，实现时以实际代码为准。
+5. **先查机制再选方案（防过度设计）**：大规模改造前，先查底层是 CSS 还是 JS 结构——35 处 hover tooltip 原计划 JS composable，实际是全局 CSS 结构，一个 `:active`/`:focus-within` 移动断点块就解决。先 `grep` 找现有机制，低成本方案优先。
 
 ## 文件地图（MainScreen.vue，当前 10,737 行）
 

@@ -239,7 +239,7 @@
 >
 > - 4.1/4.2 ✅ **弹窗统一 BottomSheet 化**：`style.css` 移动断点内全局覆盖——`.modal-overlay { align-items: flex-end !important; z-index: 1600 !important }` + `.modal-box { width: 100vw !important; max-height: 88vh; border-radius: 14px 14px 0 0 !important }`。**覆盖所有已拆/未拆弹窗**（组件 scoped 样式被全局 !important 压过）。实测：抽屉底部对齐 844、全宽 390、圆角生效。
 > - 验证：移动冒烟 6/6 全绿、桌面 38/40（combat-flow:32 单跑过为并发 flake、shop flake、login 库累积均既有）。
-> - 4.3 ⏳ hover→触屏 tooltip（35 处，需全局改造）
+> - 4.3 ✅ **hover→触屏 tooltip（CSS 方案）**：`style.css` 移动断点内 `.tooltip-wrap:active` + `:focus-within` 显示 `.tooltip-text`（触屏 tap 按住/聚焦查看）；桌面 `:hover` 规则不变。验证：focus-within 实测 `none → block`、桌面 hover tooltip 回归通过。**注意**：纯 span/div 的 tooltip-wrap 不可聚焦，`:active` 是主要触屏路径（按住查看）；如需点击保持需给 wrap 加 tabindex（后续可上 JS composable）。
 > - 4.4 ⏳ 词缀对比窄屏降级（`.item-compare-columns` 已在 860 断点内 1fr，基本完成）
 > - 4.5 ⏳ AI 战术编辑器移动端"模板 + 微调"
 >

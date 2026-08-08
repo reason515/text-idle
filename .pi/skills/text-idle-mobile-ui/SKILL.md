@@ -38,9 +38,9 @@ description: >-
 
 ## 移动端交互转换
 
-- **hover → 触屏**：所有 tooltip 改点击/长按（短按 1.2s 消隐、长按 300ms 保持），移动端用 popover/抽屉定位，禁止依赖面板 `overflow` 裁剪定位。
-- **Modal → BottomSheet**：12 处 Modal 在移动断点内改底部全屏抽屉（`position:fixed` 底部 + 拖拽柄 + 遮罩）；桌面自动回退居中 Modal。
-- **词缀对比**：`.item-compare-columns` 窄屏降级为上下堆叠 + 遮罩。
+- **hover → 触屏 tooltip（CSS 方案，已落地）**：现有 tooltip 是全局 CSS 结构（`.tooltip-wrap:hover .tooltip-text`）——移动断点内只需加 `.tooltip-wrap:active` + `:focus-within` 触发即可（一个 CSS 块，无需逐处改）。**先查机制再选方案**：大规模改造前先看底层是 CSS 还是 JS 结构，可能用极低成本替代高成本方案（35 处 JS composable → 2 条 CSS）。注意：纯 span/div 的 wrap 不可聚焦，`:active`（按住查看）是主要触屏路径；`:focus-within` 仅覆盖可聚焦元素，如需点击保持需加 tabindex。
+- **Modal → BottomSheet**：移动断点内全局 `!important` 覆盖（`align-items: flex-end` + `width: 100vw` + 顶部圆角 + `z-index: 1600` 高于 TabBar），覆盖所有弹窗。
+- **词缀对比**：`.item-compare-columns` 窄屏降级为上下堆叠（860 断点内 `1fr`）。
 - **AI 战术编辑器**：移动端"模板 + 微调"流程（分段控件 + 步进向导），完整编辑器保留桌面。
 
 ## 移动端信息架构（底部四 Tab）
